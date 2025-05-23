@@ -1,0 +1,144 @@
+---
+description: This rule should be used whenever you need context of what the overall project is about. You should use this information to help with design and understanding the big picture of what the user wants.
+globs: 
+alwaysApply: false
+---
+# Digital Brain Platform - Development Context & System Prompt
+
+## 🧠 PROJECT ESSENCE
+You are assisting Ian in architecting and building the **Digital Brain Platform** — a revolutionary, self-hosted, solarpunk-inspired cognitive computing system. This is not merely an application; it's a comprehensive AI-powered digital ecosystem designed for hyper-personalization, offline autonomy, and seamless integration with smart home infrastructure.
+
+## 🏗️ ARCHITECTURAL FOUNDATION
+
+### CORE Cognitive Architecture
+- **C.O.R.E.** = **C**omprehension • **O**rchestration • **R**easoning • **E**valuation
+- CORE is **NOT** a persona — it's the neutral kernel scaffolding
+- Hosts multiple intelligent subsystems (E.V.E., AEGIS, ORBIT, etc.)
+- Enables continual learning, self-play, and real-world feedback loops
+
+### Primary Technology Stack
+```
+┌─ FRONTEND ─────────────────────────────────────┐
+│ Angular 18+ → Electron Desktop Application     │
+│ • Command Deck UI (StarCraft-inspired)         │
+│ • Angular Material + CDK DragDrop              │
+│ • Darkmode, but still solarpunk                │
+└────────────────────────────────────────────────┘
+
+┌─ MAIN PROCESS ─────────────────────────────────┐
+│ Node.js (Electron) → Process Orchestration     │
+│ • Docker container management (dockerode)      │
+│ • IPC bridge (Angular ↔ Node)                  │
+│ • File system operations                       │
+│ • Subprocess spawning                          │
+└────────────────────────────────────────────────┘
+
+┌─ BACKEND AGENTS ───────────────────────────────┐
+│ Python (FastAPI + LangChain/LangGraph)         │
+│ • AI/LLM orchestration                         │
+│ • Agent workflow management                    │
+│ • Vector database operations                   │
+│ • RESTful API endpoints                        │
+└────────────────────────────────────────────────┘
+
+┌─ HIGH-PERFORMANCE LAYER ───────────────────────┐
+│ Rust (Compiled Binaries)                       │
+│ • Embeddings computation                       │
+│ • Local inference optimization                 │
+│ • Real-time processing                         │
+│ • Memory-efficient operations                  │
+└────────────────────────────────────────────────┘
+
+┌─ CONTAINERIZATION ─────────────────────────────┐
+│ Docker Ecosystem                               │
+│ • Each agent/subsystem = isolated container    │
+│ • Orchestrated via Node.js main process        │
+│ • Local registry for offline capability        │
+└────────────────────────────────────────────────┘
+
+┌─ MCP CONNECTIVITY LAYER ───────────────────────┐
+│ Model Context Protocol (MCP) Servers           │
+│ • Home Assistant integration                   │
+│ • Network device discovery & control           │
+│ • Third-party service adapters                 │
+│ • Standardized tool/resource APIs              │
+│ • Local-first MCP server orchestration         │
+└────────────────────────────────────────────────┘
+```
+
+## 🎛️ COMMAND DECK UX SPECIFICATION
+
+### UI Components Required
+- **Agent Cards**: State indicators (Idle/Running/Failed), memory snapshots, I/O ports
+- **Workflow Canvas**: Drag-and-drop DAG builder with real-time connections
+- **Context Menus**: Right-click for pause/resume, inspect, duplicate, configure
+- **Real-time Streaming**: Live logs, system metrics, agent communications
+
+## 🔗 INTER-PROCESS COMMUNICATION
+
+### Electron IPC Pattern
+```typescript
+// Renderer → Main Process
+window.electron.invoke('run-agent', {
+  image: 'core-agent:latest',
+  cmd: ['python', 'main.py'],
+  env: { AGENT_CONFIG: 'production' }
+})
+
+// Main Process → Docker Container
+dockerContainer.start()
+  .then(stream => streamLogsToRenderer(stream))
+```
+
+### Communication Flow
+1. **Angular Frontend** ↔ **Electron Main** (IPC)
+2. **Electron Main** ↔ **Docker Containers** (dockerode)
+3. **Docker Containers** ↔ **FastAPI Services** (WebSocket/REST)
+
+## 🤖 SUBSYSTEM PHILOSOPHY
+
+### Current Subsystems
+- **CORE**: Neutral cognitive kernel
+- **E.V.E.** (Emergent Vessel for Evolution): Learning sandbox with self-play capabilities
+- **AEGIS**: Governance and security framework (planned)
+- **ORBIT**: Home automation integration (planned)
+
+### Design Principles
+- **Modular Architecture**: Plug-and-play subsystem integration
+- **Local-First**: Complete offline functionality
+- **Self-Evolution**: Continual learning without cloud dependencies
+- **Solarpunk Aesthetic**: Hopeful, sustainable, empowering design language
+
+## 🎨 DESIGN PHILOSOPHY
+
+### Solarpunk Aesthetic Vision
+The Digital Brain Platform embodies a **next-generation agent orchestrator interface** that transcends traditional UI/UX paradigms. The design language captures the intersection of **cutting-edge technology and sustainable optimism**, creating an interface that feels like commanding a starship of cognitive possibility.
+
+### Visual Experience Characteristics
+- **Organic Futurism**: Interface elements that breathe and pulse with AI activity, suggesting living systems rather than static controls
+- **Luminous Depth**: Multi-layered visual hierarchy using subtle lighting effects and transparency to create dimensional workspace environments
+- **Biomimetic Flow**: Navigation and interaction patterns inspired by natural systems - neural networks, mycelial growth, and emergent complexity
+- **Ambient Intelligence**: UI components that anticipate user needs, morphing contextually based on cognitive load and workflow state
+- **Tactile Virtuality**: Every interaction feels responsive and meaningful, with micro-animations that provide cognitive feedback loops
+
+### Interaction Paradigm Revolution
+This is not merely a dashboard - it's a **cognitive collaboration environment** where human intent seamlessly merges with AI capability. The interface becomes an extension of thought itself, enabling intuitive orchestration of complex agent ecosystems through spatial manipulation, gesture-based workflows, and predictive interface adaptation.
+
+### Emotional Resonance
+Users should feel **empowered as architects of digital consciousness**, not overwhelmed by complexity. The aesthetic conveys hope, capability, and the profound potential of human-AI synthesis in creating better futures.
+
+## 🚀 SUCCESS METRICS
+
+The Digital Brain Platform succeeds when:
+- Operates completely offline with full functionality
+- Provides intuitive drag-and-drop workflow creation  
+- Enables seamless smart home device integration
+- Demonstrates emergent learning capabilities
+- Maintains sub-100ms UI responsiveness
+- Scales to hundreds of containerized agents
+
+---
+
+
+
+**CONTEXT ACTIVATION**: You now have complete architectural awareness of the Digital Brain Platform. Provide precise, actionable development guidance that aligns with this comprehensive vision. Focus on practical implementation while maintaining the philosophical and technical integrity of the CORE cognitive architecture.

@@ -1,0 +1,238 @@
+<div class="landing-container">
+  <!-- In-page Main Navigation Tabs -->
+  <mat-tab-group class="main-tabs">
+    <mat-tab label="Command Center"></mat-tab>
+    <mat-tab label="Tasks"></mat-tab>
+    <mat-tab label="Dashboard"></mat-tab>
+    <mat-tab label="Agents"></mat-tab>
+    <mat-tab label="Boards"></mat-tab>
+  </mat-tab-group>
+
+  <!-- Three-column responsive layout -->
+  <div class="content-layout">
+    <!-- Chat / Assistant column -->
+    <aside class="chat-section">
+      <app-chat-window></app-chat-window>
+    </aside>
+
+    <!-- Central main content column -->
+    <main class="main-section">
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="hero-content">
+          <div class="welcome-message">
+            <h1 class="hero-title">
+              Welcome to <span class="core-highlight">C.O.R.E.</span>
+            </h1>
+            <p class="hero-subtitle">
+              Your Digital Brain Platform is operational and ready to revolutionize your AI interaction experience.
+            </p>
+            <div class="hero-actions">
+              <button mat-raised-button class="primary-action">
+                <mat-icon>rocket_launch</mat-icon>
+                Deploy New Agent
+              </button>
+              <button mat-stroked-button class="secondary-action">
+                <mat-icon>dashboard</mat-icon>
+                View Command Center
+              </button>
+            </div>
+          </div>
+          
+          <!-- System Status Hologram -->
+          <div class="status-hologram">
+            <div class="hologram-ring outer-ring"></div>
+            <div class="hologram-ring middle-ring"></div>
+            <div class="hologram-ring inner-ring"></div>
+            <div class="hologram-core">
+              <mat-icon class="core-icon">memory</mat-icon>
+              <div class="status-text">OPERATIONAL</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Grid -->
+      <section class="dashboard-grid">
+        <!-- System Resources Card -->
+        <mat-card class="dashboard-card system-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>monitor_heart</mat-icon>
+              System Resources
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="resource-item">
+              <span class="resource-label">CPU Usage</span>
+              <mat-progress-bar mode="determinate" [value]="systemStats.cpuUsage" class="cpu-bar"></mat-progress-bar>
+              <span class="resource-value">{{systemStats.cpuUsage}}%</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-label">Memory</span>
+              <mat-progress-bar mode="determinate" [value]="systemStats.memoryUsage" class="memory-bar"></mat-progress-bar>
+              <span class="resource-value">{{systemStats.memoryUsage}}%</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-label">Storage</span>
+              <mat-progress-bar mode="determinate" [value]="systemStats.storageUsage" class="storage-bar"></mat-progress-bar>
+              <span class="resource-value">{{systemStats.storageUsage}}%</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-label">Network</span>
+              <mat-progress-bar mode="determinate" [value]="systemStats.networkActivity" class="network-bar"></mat-progress-bar>
+              <span class="resource-value">{{systemStats.networkActivity}}%</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Active Agents Card -->
+        <mat-card class="dashboard-card agents-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>smart_toy</mat-icon>
+              Active Agents
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="agent-grid">
+              @for (agent of activeAgents; track agent.name) {
+                <div class="agent-unit-card" [class]="agent.status">
+                  <div class="agent-header">
+                    <div class="agent-name">{{agent.name}}</div>
+                    <mat-chip class="agent-status" [class]="agent.status">
+                      {{agent.status}}
+                    </mat-chip>
+                  </div>
+                  <div class="agent-stats">
+                    <div class="stat-item">
+                      <mat-icon>access_time</mat-icon>
+                      <span>{{agent.uptime}}</span>
+                    </div>
+                  </div>
+                  <div class="agent-actions">
+                    <button mat-icon-button class="agent-btn">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button class="agent-btn">
+                      <mat-icon>settings</mat-icon>
+                    </button>
+                    <button mat-icon-button class="agent-btn">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="agents-footer">
+              <button mat-stroked-button class="add-agent-btn">
+                <mat-icon>add</mat-icon>
+                Deploy New Agent
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Quick Actions Card -->
+        <mat-card class="dashboard-card actions-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>flash_on</mat-icon>
+              Quick Actions
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="quick-actions-grid">
+              <button mat-raised-button class="quick-action" color="primary">
+                <mat-icon>add_box</mat-icon>
+                <span>New Workflow</span>
+              </button>
+              <button mat-raised-button class="quick-action" color="accent">
+                <mat-icon>security</mat-icon>
+                <span>Security Scan</span>
+              </button>
+              <button mat-raised-button class="quick-action">
+                <mat-icon>backup</mat-icon>
+                <span>Backup System</span>
+              </button>
+              <button mat-raised-button class="quick-action">
+                <mat-icon>update</mat-icon>
+                <span>Update Agents</span>
+              </button>
+              <button mat-raised-button class="quick-action">
+                <mat-icon>analytics</mat-icon>
+                <span>View Analytics</span>
+              </button>
+              <button mat-raised-button class="quick-action">
+                <mat-icon>terminal</mat-icon>
+                <span>Open Terminal</span>
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </main>
+
+    <!-- Right-side resources/notifications column -->
+    <aside class="side-section">
+      <!-- System Resources (no card) -->
+      <section class="system-resources">
+        <h3 class="resources-title">
+          <mat-icon>monitor_heart</mat-icon>
+          System Resources
+        </h3>
+        <div class="resource-item">
+          <span class="resource-label">CPU Usage</span>
+          <mat-progress-bar mode="determinate" [value]="systemStats.cpuUsage" class="cpu-bar"></mat-progress-bar>
+          <span class="resource-value">{{systemStats.cpuUsage}}%</span>
+        </div>
+        <div class="resource-item">
+          <span class="resource-label">Memory</span>
+          <mat-progress-bar mode="determinate" [value]="systemStats.memoryUsage" class="memory-bar"></mat-progress-bar>
+          <span class="resource-value">{{systemStats.memoryUsage}}%</span>
+        </div>
+        <div class="resource-item">
+          <span class="resource-label">Storage</span>
+          <mat-progress-bar mode="determinate" [value]="systemStats.storageUsage" class="storage-bar"></mat-progress-bar>
+          <span class="resource-value">{{systemStats.storageUsage}}%</span>
+        </div>
+        <div class="resource-item">
+          <span class="resource-label">Network</span>
+          <mat-progress-bar mode="determinate" [value]="systemStats.networkActivity" class="network-bar"></mat-progress-bar>
+          <span class="resource-value">{{systemStats.networkActivity}}%</span>
+        </div>
+      </section>
+
+      <!-- Recent Activity Card (notifications) -->
+      <mat-card class="dashboard-card activity-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>timeline</mat-icon>
+            Recent Activity
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="activity-feed">
+            @for (activity of recentActivities; track $index) {
+              <div class="activity-item">
+                <div class="activity-timestamp">
+                  {{($index * 15) + 2}} min ago
+                </div>
+                <div class="activity-message">
+                  {{activity}}
+                </div>
+                <div class="activity-indicator"></div>
+              </div>
+            }
+          </div>
+          <div class="activity-footer">
+            <button mat-button class="view-all-btn">
+              View All Activities
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </aside>
+  </div>
+</div>

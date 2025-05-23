@@ -1,0 +1,39 @@
+<nav class="side-nav">
+  <!-- Main Navigation -->
+  <div class="nav-content">
+    <!-- Primary Navigation -->
+    <div class="nav-section">
+      <div class="nav-items">
+        <button mat-icon-button class="nav-item" [routerLink]="['/dashboard']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Dashboard" matTooltipPosition="right">
+          <mat-icon>dashboard</mat-icon>
+        </button>
+
+        <button mat-icon-button class="nav-item" [routerLink]="['/agents']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="agentsMenu" #agentsMenuTrigger="matMenuTrigger" matTooltip="Agents" matTooltipPosition="right" (click)="openMenu('agents')">
+          <mat-icon matBadge="{{agentCount}}" matBadgeColor="accent" matBadgeSize="small">smart_toy</mat-icon>
+        </button>
+        <mat-menu #agentsMenu="matMenu" class="side-menu" xPosition="after" yPosition="below">
+          <button mat-menu-item [routerLink]="['/agents']"><mat-icon>visibility</mat-icon><span>Overview</span></button>
+          <button mat-menu-item [routerLink]="['/agents/deploy']"><mat-icon>add</mat-icon><span>Deploy Agent</span></button>
+          <button mat-menu-item [routerLink]="['/agents/config']"><mat-icon>settings</mat-icon><span>Configuration</span></button>
+        </mat-menu>
+
+        <button mat-icon-button class="nav-item" [routerLink]="['/workflows']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="workflowsMenu" #workflowsMenuTrigger="matMenuTrigger" matTooltip="Workflows" matTooltipPosition="right" (click)="openMenu('workflows')">
+          <mat-icon matBadge="{{activeWorkflows}}" matBadgeColor="primary" matBadgeSize="small">account_tree</mat-icon>
+        </button>
+        <mat-menu #workflowsMenu="matMenu" class="side-menu" xPosition="after" yPosition="below">
+          <button mat-menu-item [routerLink]="['/workflows/new']"><mat-icon>add_box</mat-icon><span>New Workflow</span></button>
+          <button mat-menu-item [routerLink]="['/workflows']"><mat-icon>timeline</mat-icon><span>Active Workflows</span></button>
+          <button mat-menu-item [routerLink]="['/workflows/history']"><mat-icon>history</mat-icon><span>History</span></button>
+        </mat-menu>
+
+        <button mat-icon-button class="nav-item" [routerLink]="['/knowledge']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" matTooltip="Knowledge Base" matTooltipPosition="right">
+          <mat-icon>psychology</mat-icon>
+        </button>
+
+        <button mat-icon-button class="nav-item" [routerLink]="['/analytics']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" matTooltip="Analytics" matTooltipPosition="right">
+          <mat-icon>analytics</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>

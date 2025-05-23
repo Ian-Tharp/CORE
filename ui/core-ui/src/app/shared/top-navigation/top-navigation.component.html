@@ -1,0 +1,86 @@
+<mat-toolbar class="core-nav-toolbar">
+  <!-- Left section: CORE System brand -->
+  <div class="nav-brand">
+    <mat-icon class="core-logo">memory</mat-icon>
+    <span class="core-title">
+      <span class="core-primary">CORE</span>
+      <span class="core-secondary">System</span>
+    </span>
+    <div class="status-indicator" [class]="systemStatus">
+      <div class="status-pulse"></div>
+    </div>
+  </div>
+
+  <!-- Spacer -->
+  <span class="nav-spacer"></span>
+
+  <!-- Right section: Command buttons -->
+  <div class="nav-controls">
+    <!-- Agent Management -->
+    <button mat-icon-button class="nav-btn" #agentBtn [matMenuTriggerFor]="agentMenu" (click)="$any($event.currentTarget).blur()">
+      <mat-icon matBadge="{{agentCount}}" matBadgeColor="accent" matBadgeSize="small">smart_toy</mat-icon>
+    </button>
+    <mat-menu #agentMenu="matMenu" class="command-menu" (closed)="$any(agentBtn).blur()">
+      <button mat-menu-item>
+        <mat-icon>add</mat-icon>
+        <span>Deploy Agent</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>dashboard</mat-icon>
+        <span>Agent Overview</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>settings</mat-icon>
+        <span>Agent Configuration</span>
+      </button>
+    </mat-menu>
+
+    <!-- Workflow Management -->
+    <button mat-icon-button class="nav-btn" #workflowBtn [matMenuTriggerFor]="workflowMenu" (click)="$any($event.currentTarget).blur()">
+      <mat-icon matBadge="{{activeWorkflows}}" matBadgeColor="primary" matBadgeSize="small">account_tree</mat-icon>
+    </button>
+    <mat-menu #workflowMenu="matMenu" class="command-menu" (closed)="$any(workflowBtn).blur()">
+      <button mat-menu-item>
+        <mat-icon>add_box</mat-icon>
+        <span>New Workflow</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>timeline</mat-icon>
+        <span>Active Workflows</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>history</mat-icon>
+        <span>Execution History</span>
+      </button>
+    </mat-menu>
+
+    <!-- System Resources -->
+    <button mat-icon-button class="nav-btn" #systemBtn [matMenuTriggerFor]="systemMenu" (click)="$any($event.currentTarget).blur()">
+      <mat-icon>monitor_heart</mat-icon>
+    </button>
+    <mat-menu #systemMenu="matMenu" class="command-menu" (closed)="$any(systemBtn).blur()">
+      <button mat-menu-item>
+        <mat-icon>memory</mat-icon>
+        <span>System Monitor</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>storage</mat-icon>
+        <span>Resource Pool</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>security</mat-icon>
+        <span>Security Center</span>
+      </button>
+    </mat-menu>
+
+    <!-- Command Terminal -->
+    <button mat-icon-button class="nav-btn terminal-btn" (click)="$any($event.currentTarget).blur()">
+      <mat-icon>terminal</mat-icon>
+    </button>
+
+    <!-- Settings -->
+    <button mat-icon-button class="nav-btn settings-btn" (click)="$any($event.currentTarget).blur()">
+      <mat-icon>settings</mat-icon>
+    </button>
+  </div>
+</mat-toolbar>

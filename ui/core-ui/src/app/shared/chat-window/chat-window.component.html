@@ -1,0 +1,18 @@
+<div class="chat-window-container">
+  <div class="messages" #scrollContainer>
+    @for (msg of messages; track $index) {
+      <div class="message" [class]="msg.sender">
+        <span class="msg-text">{{msg.text}}</span>
+      </div>
+    }
+  </div>
+
+  <form class="input-area" (ngSubmit)="sendMessage()">
+    <mat-form-field appearance="outline" class="input-field" floatLabel="auto">
+      <input matInput placeholder="Type a message..." [(ngModel)]="newMessage" name="newMessage" />
+    </mat-form-field>
+    <button mat-icon-button color="primary" type="submit">
+      <mat-icon>send</mat-icon>
+    </button>
+  </form>
+</div>

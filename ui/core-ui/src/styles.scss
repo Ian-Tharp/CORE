@@ -1,0 +1,214 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Angular Material Theme Configuration */
+@use '@angular/material' as mat;
+
+// Include the common styles for Angular Material
+@include mat.core();
+
+// Define the theme using the new v19 API
+$core-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$cyan-palette,
+    tertiary: mat.$green-palette,
+  ),
+  typography: (
+    brand-family: 'Roboto',
+    plain-family: 'Roboto',
+  ),
+  density: (
+    scale: 0
+  )
+));
+
+// Apply the theme to all Angular Material components
+:root {
+  @include mat.all-component-themes($core-theme);
+
+  /* ----------------------------- */
+  /*  Design-System Color Tokens   */
+  /* ----------------------------- */
+  /* Core brand / background */
+  --clr-bg-1: #0a0a0a;          /* dark neutral */
+  --clr-bg-2: #1a1a2e;          /* deep desaturated indigo */
+
+  /* Accents */
+  --clr-accent-cyan:   #00ffff; /* primary accent */
+  --clr-accent-blue:   #0088ff; /* secondary accent */
+  --clr-accent-green:  #00ff88; /* success / positive */
+  --clr-accent-yellow: #ffdd55; /* solar / highlight */
+
+  /* Surfaces */
+  --clr-surface-dark:  #0d1421;
+  --clr-surface-light: #16213e;
+}
+
+/* Optional – future colour-way override that can be toggled via a root class */
+.theme-solarpunk {
+  --clr-bg-1: #061813;          /* dark jungle green */
+  --clr-bg-2: #013d2e;          /* rich teal */
+  --clr-accent-cyan:   #34e5ff; /* sky-bright cyan */
+  --clr-accent-blue:   #00a0ff; /* clear-sky blue */
+  --clr-accent-green:  #00ff88; /* bio-green */
+  --clr-accent-yellow: #ffb400; /* warm solar gold */
+  --clr-surface-dark:  #053327;
+  --clr-surface-light: #004d3a;
+}
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, var(--clr-bg-1) 0%, var(--clr-bg-2) 100%);
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+body {
+  background: linear-gradient(135deg, var(--clr-bg-1) 0%, var(--clr-bg-2) 100%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00ffff 0%, #0088ff 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00ccff 0%, #0066ff 100%);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.5);
+}
+
+/* Custom Material overrides */
+.mat-mdc-card {
+  /* Fallback for browsers that don't yet support color-mix() */
+  background: linear-gradient(135deg, rgba(13, 20, 33, 0.8) 0%, rgba(26, 26, 46, 0.8) 100%) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--clr-surface-dark) 80%, transparent) 0%, color-mix(in srgb, var(--clr-surface-light) 80%, transparent) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 255, 255, 0.2) !important;
+}
+
+.mat-mdc-button {
+  border-radius: 8px !important;
+}
+
+.mat-mdc-raised-button {
+  box-shadow: 
+    0 3px 12px rgba(0, 0, 0, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.mat-mdc-raised-button:hover {
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Progress bar customization */
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-track-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Chip customization */
+.mat-mdc-standard-chip {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+}
+
+/* Menu customization */
+.mat-mdc-menu-panel {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--clr-surface-dark) 95%, transparent) 0%, color-mix(in srgb, var(--clr-surface-light) 95%, transparent) 100%) !important;
+  border: 1px solid rgba(0, 255, 255, 0.3) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(15px) !important;
+}
+
+/* Toolbar customization */
+.mat-toolbar {
+  background: linear-gradient(135deg, var(--clr-surface-dark) 0%, var(--clr-bg-2) 50%, var(--clr-surface-light) 100%) !important;
+  color: #ffffff !important;
+}
+
+/* Utility classes */
+.text-glow {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.border-glow {
+  box-shadow: 0 0 10px currentColor;
+}
+
+.backdrop-blur {
+  backdrop-filter: blur(10px);
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Focus styles */
+.mat-mdc-button:focus,
+.mat-mdc-icon-button:focus {
+  outline: 2px solid rgba(0, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background: rgba(0, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background: rgba(0, 255, 255, 0.3);
+  color: #ffffff;
+}
