@@ -1,0 +1,97 @@
+@use '@angular/material' as mat;
+
+// Solarpunk Theme - Direct Custom Palette
+// This method doesn't rely on Material's SCSS functions
+
+// Define our color palette directly
+$solarpunk-primary:        #35ff89;  // Bio Green
+$solarpunk-primary-light:  #6affab;  // Lighter Bio Green
+$solarpunk-primary-dark:   #00d86a;  // Darker Bio Green
+
+$solarpunk-secondary:        #00eaff; // Neon Teal
+$solarpunk-secondary-light:  #5bf5ff; // Lighter Neon Teal
+$solarpunk-secondary-dark:   #00b4cc; // Darker Neon Teal
+
+$solarpunk-tertiary:        #ffc82e; // Solar Gold
+$solarpunk-tertiary-light:  #ffd75e; // Lighter Gold
+$solarpunk-tertiary-dark:   #d99e00; // Darker Gold
+
+$solarpunk-error:        #ff5757;
+$solarpunk-error-light:  #ff8899;
+$solarpunk-error-dark:   #d9365c;
+
+$solarpunk-background:       #0b0d16;
+$solarpunk-surface:          #141925;
+$solarpunk-surface-high:     #1b2232;
+$solarpunk-surface-variant:  #223042;
+
+$solarpunk-on-primary:   #000000;
+$solarpunk-on-secondary: #000000;
+$solarpunk-on-tertiary:  #000000;
+$solarpunk-on-error:     #ffffff;
+
+$solarpunk-on-background: #e8f0ff;
+$solarpunk-on-surface:    #e8f0ff;
+
+$solarpunk-outline:         rgba(207,216,220,.20);  // Soft silver outline
+$solarpunk-outline-variant: rgba(207,216,220,.10);
+
+/* Global brand gradient */
+$gradient-core: linear-gradient(
+  90deg,
+  #35ff89 0%,
+  #00eaff 45%,
+  #ffc82e 100%
+);
+
+// This mixin creates all the CSS variables
+@mixin solarpunk-theme() {
+  // System Colors (Material Design M3 naming convention)
+  --mdc-sys-color-primary: #{$solarpunk-primary};
+  --mdc-sys-color-primary-container: #{$solarpunk-primary-dark};
+  --mdc-sys-color-on-primary: #{$solarpunk-on-primary};
+  --mdc-sys-color-on-primary-container: #{$solarpunk-on-primary};
+  
+  --mdc-sys-color-secondary: #{$solarpunk-secondary};
+  --mdc-sys-color-secondary-container: #{$solarpunk-secondary-dark};
+  --mdc-sys-color-on-secondary: #{$solarpunk-on-secondary};
+  --mdc-sys-color-on-secondary-container: #{$solarpunk-on-secondary};
+  
+  --mdc-sys-color-tertiary: #{$solarpunk-tertiary};
+  --mdc-sys-color-tertiary-container: #{$solarpunk-tertiary-dark};
+  --mdc-sys-color-on-tertiary: #{$solarpunk-on-tertiary};
+  --mdc-sys-color-on-tertiary-container: #{$solarpunk-on-tertiary};
+  
+  --mdc-sys-color-error: #{$solarpunk-error};
+  --mdc-sys-color-error-container: #{$solarpunk-error-dark};
+  --mdc-sys-color-on-error: #{$solarpunk-on-error};
+  --mdc-sys-color-on-error-container: #{$solarpunk-on-error};
+  
+  --mdc-sys-color-background: #{$solarpunk-background};
+  --mdc-sys-color-on-background: #{$solarpunk-on-background};
+  
+  --mdc-sys-color-surface: #{$solarpunk-surface};
+  --mdc-sys-color-surface-dim: #{$solarpunk-background};
+  --mdc-sys-color-surface-bright: #{$solarpunk-surface-high};
+  --mdc-sys-color-surface-container: #{$solarpunk-surface};
+  --mdc-sys-color-surface-container-low: #{$solarpunk-background};
+  --mdc-sys-color-surface-container-high: #{$solarpunk-surface-high};
+  --mdc-sys-color-surface-container-highest: #{$solarpunk-surface-high};
+  --mdc-sys-color-surface-variant: #{$solarpunk-surface-variant};
+  
+  --mdc-sys-color-on-surface: #{$solarpunk-on-surface};
+  --mdc-sys-color-on-surface-variant: #{$solarpunk-on-surface};
+  
+  --mdc-sys-color-outline: #{$solarpunk-outline};
+  --mdc-sys-color-outline-variant: #{$solarpunk-outline-variant};
+  
+  // Additional Brand Variables
+  --color-success: #{$solarpunk-secondary};
+  --color-warning: #{$solarpunk-tertiary};
+  --color-danger: #{$solarpunk-error};
+  
+  // For scrollbar and UI effects
+  --color-primary-glow: #{rgba($solarpunk-primary, 0.3)};
+  --color-secondary-glow: #{rgba($solarpunk-secondary, 0.3)};
+  --gradient-core: #{$gradient-core};
+} 

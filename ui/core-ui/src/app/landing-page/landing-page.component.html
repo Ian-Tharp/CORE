@@ -2,10 +2,10 @@
   <!-- In-page Main Navigation Tabs -->
   <mat-tab-group class="main-tabs">
     <mat-tab label="Command Center"></mat-tab>
-    <mat-tab label="Tasks"></mat-tab>
-    <mat-tab label="Dashboard"></mat-tab>
-    <mat-tab label="Agents"></mat-tab>
-    <mat-tab label="Boards"></mat-tab>
+    <mat-tab label="Tasks" ></mat-tab>
+    <mat-tab label="Dashboard" ></mat-tab>
+    <mat-tab label="Agents" ></mat-tab>
+    <mat-tab label="Boards" ></mat-tab>
   </mat-tab-group>
 
   <!-- Three-column responsive layout -->
@@ -54,38 +54,6 @@
 
       <!-- Dashboard Grid -->
       <section class="dashboard-grid">
-        <!-- System Resources Card -->
-        <mat-card class="dashboard-card system-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>monitor_heart</mat-icon>
-              System Resources
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="resource-item">
-              <span class="resource-label">CPU Usage</span>
-              <mat-progress-bar mode="determinate" [value]="systemStats.cpuUsage" class="cpu-bar"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.cpuUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Memory</span>
-              <mat-progress-bar mode="determinate" [value]="systemStats.memoryUsage" class="memory-bar"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.memoryUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Storage</span>
-              <mat-progress-bar mode="determinate" [value]="systemStats.storageUsage" class="storage-bar"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.storageUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Network</span>
-              <mat-progress-bar mode="determinate" [value]="systemStats.networkActivity" class="network-bar"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.networkActivity}}%</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
         <!-- Active Agents Card -->
         <mat-card class="dashboard-card agents-card">
           <mat-card-header>

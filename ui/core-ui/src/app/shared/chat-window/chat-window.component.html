@@ -1,17 +1,36 @@
 <div class="chat-window-container">
+  <mat-form-field appearance="outline" class="model-select">
+    <mat-label>Model</mat-label>
+    <mat-select [(ngModel)]="selectedModel" name="model">
+      @for (m of models; track m) {
+        <mat-option [value]="m">{{ m }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   <div class="messages" #scrollContainer>
     @for (msg of messages; track $index) {
       <div class="message" [class]="msg.sender">
-        <span class="msg-text">{{msg.text}}</span>
+        <ng-container *ngIf="msg.sender === 'assistant'; else plain">
+          <markdown [data]="msg.text"></markdown>
+        </ng-container>
+        <ng-template #plain>
+          <span class="msg-text">{{ msg.text }}</span>
+        </ng-template>
       </div>
     }
   </div>
 
   <form class="input-area" (ngSubmit)="sendMessage()">
-    <mat-form-field appearance="outline" class="input-field" floatLabel="auto">
-      <input matInput placeholder="Type a message..." [(ngModel)]="newMessage" name="newMessage" />
-    </mat-form-field>
-    <button mat-icon-button color="primary" type="submit">
+    <input
+      matInput
+      class="input-field"
+      placeholder="Type a message…"
+      [(ngModel)]="newMessage"
+      name="newMessage"
+      autocomplete="off"
+    />
+    <button mat-icon-button color="primary" type="submit" aria-label="Send message">
       <mat-icon>send</mat-icon>
     </button>
   </form>

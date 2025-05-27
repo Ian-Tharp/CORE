@@ -1,15 +1,20 @@
 [project]
-name = "cognitive-core"
+name = "core-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "CORE System Backend FastAPI app to orchestrate the cognitive architecture and agentic capabilities."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.52.0",
     "fastapi>=0.115.12",
-    "langchain>=0.3.22",
-    "langchain-openai>=0.3.12",
-    "langgraph>=0.3.24",
-    "mcp>=1.6.0",
-    "openai>=1.70.0",
-    "pydantic>=2.11.1",
+    "fastmcp>=2.5.1",
+    "langchain>=0.3.25",
+    "langchain-openai>=0.3.18",
+    "langgraph>=0.4.7",
+    "openai>=1.82.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
 ]

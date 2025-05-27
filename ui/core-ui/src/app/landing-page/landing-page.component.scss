@@ -14,7 +14,7 @@
 
 // Hero section
 .hero-section {
-  padding: 40px 0 60px 0;
+  padding: 2rem 0 0.5rem 0;
   position: relative;
   flex-shrink: 0;
   
@@ -152,11 +152,14 @@
       }
       
       .status-text {
-        font-size: 0.9rem;
-        font-weight: 700;
+        font-size: 1rem;
+        font-weight: 800;
         color: #00ff88;
-        text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
-        letter-spacing: 2px;
+        text-shadow: 0 0 12px rgba(0, 255, 136, 0.8);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        width: 100%;
+        text-align: center;
       }
     }
   }
@@ -164,10 +167,10 @@
 
 // Dashboard grid
 .dashboard-grid {
-  max-width: 1400px;
+  max-width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px;
   flex: 1;
   
@@ -215,60 +218,14 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
-// System resources card
-.system-card {
-  .resource-item {
-    display: grid;
-    grid-template-columns: 1fr 2fr auto;
-    gap: 16px;
-    align-items: center;
-    margin-bottom: 16px;
-    
-    .resource-label {
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .resource-value {
-      font-weight: 700;
-      color: #ffffff;
-      min-width: 40px;
-      text-align: right;
-    }
-  }
-}
-
-// Progress bar styling - using host binding instead of ng-deep
-:host .system-card mat-progress-bar {
-  height: 8px;
-  border-radius: 4px;
-  
-  .mat-mdc-progress-bar-buffer {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  &.cpu-bar .mat-mdc-progress-bar-fill::after {
-    background: linear-gradient(90deg, #00ffff, #0088ff);
-  }
-  
-  &.memory-bar .mat-mdc-progress-bar-fill::after {
-    background: linear-gradient(90deg, #ff8800, #ffaa00);
-  }
-  
-  &.storage-bar .mat-mdc-progress-bar-fill::after {
-    background: linear-gradient(90deg, #00ff88, #88ffaa);
-  }
-  
-  &.network-bar .mat-mdc-progress-bar-fill::after {
-    background: linear-gradient(90deg, #ff4488, #ff88aa);
-  }
-}
-
 // Agents card
 .agents-card {
   .agent-grid {
-    display: flex;
-    flex-direction: column;
+    /* Allow the grid to decide between one or two columns based on available card width.
+       Each agent card gets at least 170 px before wrapping, giving the status chip
+       enough horizontal room. */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 12px;
   }
   
@@ -331,24 +288,24 @@
     
     .agent-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 8px;
       margin-bottom: 12px;
       
       .agent-name {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 700;
         color: #ffffff;
       }
       
       .agent-status {
-        font-size: 0.8rem;
+        /* Further reduce size so longer words comfortably fit */
+        font-size: 0.6rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 4px 8px;
-        border-radius: 12px;
-        border: none;
+        letter-spacing: 0.4px;
+        padding: 2px 6px;
+        white-space: nowrap;
       }
     }
     
@@ -497,7 +454,7 @@
 .actions-card {
   .quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, 1fr); // three actions per row
     gap: 12px;
     
     .quick-action {
@@ -605,6 +562,13 @@
       grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     }
   }
+  
+  .agents-card .agent-grid {
+    grid-template-columns: 1fr;
+  }
+  .actions-card .quick-actions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
 }
 
 @media (max-width: 480px) {
@@ -658,8 +622,10 @@
 }
 
 .chat-section {
-  width: 340px;
-  overflow: hidden;
+  width: 100%;
+  max-width: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -668,16 +634,17 @@
   z-index: 2;
 
   app-chat-window {
-    flex: 1;
+    flex: 1 0 auto;
   }
 }
 
 .main-section {
   overflow-y: auto;
+  overflow-x: hidden; // prevent horizontal scroll bar
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding-right: 8px;
+  padding: 0 8px 24px 0;
 }
 
 .side-section {
@@ -761,5 +728,51 @@
   }
   .mat-mdc-card-header .mat-mdc-card-title {
     font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 1440px) {
+  /* Better column sizing on laptop-scale displays */
+  .content-layout {
+    /* shrink side columns so the centre column gets extra real-estate */
+    grid-template-columns: 280px auto 220px;
+  }
+
+  /* Keep hero content within column width on laptops */
+  .hero-section {
+    .hero-content {
+      max-width: 100%;
+      padding: 0 0.5rem;
+    }
+    gap: 40px;
+  }
+}
+
+@media (max-width: 1280px) and (min-width: 1025px) {
+  .content-layout {
+    grid-template-columns: 260px auto 200px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .hero-section {
+    .hero-content {
+      max-width: 100%;
+      padding: 0 0.5rem;
+      gap: 40px;
+    }
+  }
+}
+
+/*****  Card internal spacing improvements  *****/
+// Add breathing room between the card header and its content so the title isn't hard up against the body.
+.dashboard-card {
+  .mat-mdc-card-header {
+    margin-bottom: 0.5rem; // space below the header area
+  }
+
+  // Ensure the content itself has a little extra padding on top when titles are present
+  .mat-mdc-card-content {
+    padding-top: 0.25rem;
   }
 }

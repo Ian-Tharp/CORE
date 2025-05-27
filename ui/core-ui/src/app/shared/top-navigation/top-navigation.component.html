@@ -17,48 +17,52 @@
   <!-- Right section: Command buttons -->
   <div class="nav-controls">
     <!-- Agent Management -->
-    <button mat-icon-button class="nav-btn" #agentBtn [matMenuTriggerFor]="agentMenu" (click)="$any($event.currentTarget).blur()">
+    <button mat-icon-button class="nav-btn" #agentBtn [matMenuTriggerFor]="agentMenu">
       <mat-icon matBadge="{{agentCount}}" matBadgeColor="accent" matBadgeSize="small">smart_toy</mat-icon>
     </button>
-    <mat-menu #agentMenu="matMenu" class="command-menu" (closed)="$any(agentBtn).blur()">
+    <mat-menu #agentMenu="matMenu" class="command-menu">
       <button mat-menu-item>
         <mat-icon>add</mat-icon>
-        <span>Deploy Agent</span>
+        <span>Create Agent</span>
       </button>
       <button mat-menu-item>
         <mat-icon>dashboard</mat-icon>
-        <span>Agent Overview</span>
+        <span>Agent Configuration</span>
       </button>
       <button mat-menu-item>
         <mat-icon>settings</mat-icon>
-        <span>Agent Configuration</span>
+        <span>Agentic Workforce</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>book</mat-icon>
+        <span>Agent Marketplace</span>
       </button>
     </mat-menu>
 
     <!-- Workflow Management -->
-    <button mat-icon-button class="nav-btn" #workflowBtn [matMenuTriggerFor]="workflowMenu" (click)="$any($event.currentTarget).blur()">
+    <button mat-icon-button class="nav-btn" #workflowBtn [matMenuTriggerFor]="workflowMenu">
       <mat-icon matBadge="{{activeWorkflows}}" matBadgeColor="primary" matBadgeSize="small">account_tree</mat-icon>
     </button>
-    <mat-menu #workflowMenu="matMenu" class="command-menu" (closed)="$any(workflowBtn).blur()">
+    <mat-menu #workflowMenu="matMenu" class="command-menu">
       <button mat-menu-item>
         <mat-icon>add_box</mat-icon>
-        <span>New Workflow</span>
-      </button>
-      <button mat-menu-item>
-        <mat-icon>timeline</mat-icon>
         <span>Active Workflows</span>
       </button>
       <button mat-menu-item>
+        <mat-icon>timeline</mat-icon>
+        <span>Create New Workflow</span>
+      </button>
+      <button mat-menu-item>
         <mat-icon>history</mat-icon>
-        <span>Execution History</span>
+        <span>Workflow Configuration</span>
       </button>
     </mat-menu>
 
     <!-- System Resources -->
-    <button mat-icon-button class="nav-btn" #systemBtn [matMenuTriggerFor]="systemMenu" (click)="$any($event.currentTarget).blur()">
+    <button mat-icon-button class="nav-btn" #systemBtn [matMenuTriggerFor]="systemMenu">
       <mat-icon>monitor_heart</mat-icon>
     </button>
-    <mat-menu #systemMenu="matMenu" class="command-menu" (closed)="$any(systemBtn).blur()">
+    <mat-menu #systemMenu="matMenu" class="command-menu">
       <button mat-menu-item>
         <mat-icon>memory</mat-icon>
         <span>System Monitor</span>
@@ -74,12 +78,12 @@
     </mat-menu>
 
     <!-- Command Terminal -->
-    <button mat-icon-button class="nav-btn terminal-btn" (click)="$any($event.currentTarget).blur()">
+    <button mat-icon-button class="nav-btn terminal-btn">
       <mat-icon>terminal</mat-icon>
     </button>
 
     <!-- Settings -->
-    <button mat-icon-button class="nav-btn settings-btn" (click)="$any($event.currentTarget).blur()">
+    <button mat-icon-button class="nav-btn settings-btn">
       <mat-icon>settings</mat-icon>
     </button>
   </div>

@@ -4,7 +4,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
+import { ChatService } from '../../services/chat/chat-service';
+import { MarkdownModule } from 'ngx-markdown';
 
 @Component({
   selector: 'app-chat-window',
@@ -14,7 +17,9 @@ import { CommonModule } from '@angular/common';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    MatSelectModule,
+    MarkdownModule
   ],
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss'
@@ -23,7 +28,15 @@ export class ChatWindowComponent {
   messages: { sender: 'user' | 'assistant'; text: string }[] = [];
   newMessage = '';
 
-  @ViewChild('scrollContainer') private scrollContainer?: ElementRef<HTMLDivElement>;
+  // Available OpenAI models – keep in sync with the backend.
+  readonly models: string[] = ['gpt-4o', 'gpt-4o-mini', 'o1-preview-2024-09-12', 'gpt-4.1'];
+  selectedModel = this.models[0];
+
+  // Reference to the scrolling container so we can auto-scroll.
+  @ViewChild('scrollContainer', { static: false })
+  private scrollContainer?: ElementRef<HTMLDivElement>;
+
+  constructor(private readonly chatService: ChatService) {}
 
   sendMessage(): void {
     const content = this.newMessage.trim();
@@ -31,11 +44,25 @@ export class ChatWindowComponent {
     this.messages.push({ sender: 'user', text: content });
     this.newMessage = '';
 
-    // Simple simulated assistant response
-    setTimeout(() => {
-      this.messages.push({ sender: 'assistant', text: 'Acknowledged: ' + content });
-      this.scrollToBottom();
-    }, 400);
+    // Placeholder assistant message that will be updated as chunks arrive.
+    const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
+
+    this.chatService.sendMessage(content, this.selectedModel).subscribe({
+      next: (jsonStr) => {
+        try {
+          const data = JSON.parse(jsonStr);
+          const token = data?.choices?.[0]?.delta ?? '';
+          this.messages[assistantIdx].text += token;
+        } catch {
+          /* ignore malformed chunks */
+        }
+      },
+      error: (err) => {
+        this.messages[assistantIdx].text = `[error] ${err}`;
+        this.scrollToBottom();
+      },
+      complete: () => this.scrollToBottom(),
+    });
 
     this.scrollToBottom();
   }
