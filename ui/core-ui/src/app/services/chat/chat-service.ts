@@ -58,13 +58,13 @@ export class ChatService {
    * @param content The content of the user message to send.
    * @param model   The OpenAI model the backend should use (e.g. `gpt-4o`).
    */
-  sendMessage(content: string, model: string): Observable<string> {
+  sendMessage(content: string, model: string, conversationId?: string): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };
     this.addMessage(userInput);
 
     // 2. Build the request payload by trimming local bookkeeping fields.
-    const payload = {
+    const payload: Record<string, unknown> = {
       model,
       messages: this._messages$.value.map(({ role, content: msgContent }) => ({
         role,
@@ -72,6 +72,10 @@ export class ChatService {
       })),
       stream: true,
     };
+
+    if (conversationId) {
+      payload["conversation_id"] = conversationId;
+    }
 
     return new Observable<string>((observer) => {
       fetch(`${this._apiUrl}/chat/stream`, {
@@ -85,6 +89,14 @@ export class ChatService {
               `HTTP error ${response.status}: ${response.statusText}`,
             );
             return;
+          }
+
+          // If the caller did not yet have a conversation id, attempt to read
+          // it from the response headers.
+          const convId = response.headers.get('X-Conversation-Id');
+          if (!conversationId && convId) {
+            // Emit a synthetic SSE chunk so that consumers can capture the id.
+            observer.next(JSON.stringify({ meta: { conversation_id: convId } }));
           }
 
           const reader = response.body.getReader();

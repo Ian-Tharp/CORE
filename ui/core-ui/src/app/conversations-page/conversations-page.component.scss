@@ -1,0 +1,81 @@
+.conversations-page-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.conversation-list {
+  width: 22rem;
+  padding: 1rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  mat-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+
+    .mat-list-item.selected {
+      background: rgba(63, 81, 181, 0.12);
+      .mat-icon, .mat-line {
+        color: #00ffff;
+      }
+    }
+
+    .mat-list-item {
+      min-height: 48px;
+      padding: 0.5rem 0.25rem;
+      .mat-line {
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .mat-list-item-content {
+        display: flex;
+        align-items: center;
+      }
+      .title-line {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+  }
+
+  .new-conv-btn {
+    align-self: stretch;
+  }
+
+}
+
+.chat-section {
+  flex: 1 1 auto;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  .chat-card {
+    flex: 1 1 auto;
+    width: 100%;
+    background: transparent;
+    box-shadow: none;
+
+    app-chat-window {
+      width: 100%;
+      max-width: 60rem;
+    }
+  }
+}
+
+.title-edit-input {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font: inherit;
+  padding: 0;
+}

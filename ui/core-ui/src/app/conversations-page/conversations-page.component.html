@@ -1,0 +1,55 @@
+<div class="conversations-page-layout">
+  <aside class="conversation-list">
+    <button mat-raised-button color="primary" (click)="startNewConversation()" class="new-conv-btn">
+      <mat-icon>add</mat-icon>
+      <span>New Conversation</span>
+    </button>
+
+    <mat-list>
+      @for (conv of conversations; track conv.id) {
+        <mat-list-item
+          (click)="selectConversation(conv.id)"
+          [ngClass]="{ selected: conv.id === selectedConversationId }"
+        >
+          <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
+            <div matLine class="title-line">
+              {{ conv.title || (conv.id | slice:0:8) }}
+            </div>
+          </ng-container>
+          <ng-template #editTitle>
+            <input
+              type="text"
+              class="title-edit-input"
+              [(ngModel)]="editingTitle"
+              (keydown.enter)="saveTitle(conv)"
+              (blur)="saveTitle(conv)"
+              (click)="$event.stopPropagation()"
+              autofocus
+            />
+          </ng-template>
+
+          <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
+
+          <button
+            mat-icon-button
+            (click)="beginEdit(conv, $event)"
+            matListItemMeta
+            *ngIf="editingConversationId !== conv.id"
+          >
+            <mat-icon>edit</mat-icon>
+          </button>
+        </mat-list-item>
+        <mat-divider></mat-divider>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="chat-section">
+    <mat-card class="chat-card" *ngIf="true">
+      <app-chat-window
+        [conversationId]="selectedConversationId"
+        (conversationIdChange)="onConversationCreated($event)"
+      ></app-chat-window>
+    </mat-card>
+  </section>
+</div>

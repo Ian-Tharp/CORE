@@ -6,10 +6,12 @@
   position: relative;
   background: rgba(13, 20, 33, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 87.5vh;
 
   .messages {
     flex: 1;
+    min-height: 0;
     padding: 16px 16px 72px;
     overflow-y: auto;
     display: flex;
@@ -21,7 +23,6 @@
       padding: 10px 14px;
       border-radius: 12px;
       font-size: 0.9rem;
-      line-height: 1.4;
       &.user {
         align-self: flex-end;
         background: linear-gradient(135deg, #00ffff 0%, #0088ff 100%);
@@ -67,12 +68,59 @@
     }
   }
 
-  .model-select {
+  /* Header containing tool & model select icons */
+  .header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
     padding: 8px 16px 0;
-    width: 100%;
+  }
 
-    .mat-mdc-form-field-subscript-wrapper {
-      display: none;
+  /** Tools button placeholder **/
+  .tools-btn {
+    color: #ffffff;
+  }
+
+  /* Compact but readable model select */
+  .model-select {
+    width: auto;
+    min-width: 120px;
+    flex: 0 0 auto;
+
+    .mat-mdc-text-field-wrapper {
+      padding: 0 8px !important;
     }
+
+    .mat-mdc-form-field-infix {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+  }
+}
+
+/* Global styles for model dropdown panel (outside container for global scope) */
+.model-dropdown-panel {
+  background-color: #0d1421 !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+
+  .mat-mdc-option {
+    color: #ffffff !important;
+    min-height: 48px !important;
+    padding: 0 24px !important;
+    
+    &:hover:not(.mdc-list-item--disabled) {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    
+    &.mat-mdc-option-active,
+    &.mdc-list-item--selected {
+      background-color: rgba(255, 255, 255, 0.12) !important;
+    }
+  }
+  
+  .mat-mdc-option .mdc-list-item__primary-text {
+    color: #ffffff !important;
   }
 }

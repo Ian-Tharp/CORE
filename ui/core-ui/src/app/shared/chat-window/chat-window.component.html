@@ -1,12 +1,18 @@
 <div class="chat-window-container">
-  <mat-form-field appearance="outline" class="model-select">
-    <mat-label>Model</mat-label>
-    <mat-select [(ngModel)]="selectedModel" name="model">
-      @for (m of models; track m) {
-        <mat-option [value]="m">{{ m }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
+  <!-- Header containing tools and model-select icons aligned to the far right -->
+  <div class="header">
+    <button mat-icon-button aria-label="Tools" class="tools-btn">
+      <mat-icon>build</mat-icon>
+    </button>
+
+    <mat-form-field appearance="outline" class="model-select">
+      <mat-select [(ngModel)]="selectedModel" name="model" panelClass="model-dropdown-panel">
+        @for (m of models; track m) {
+          <mat-option [value]="m">{{ m }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
 
   <div class="messages" #scrollContainer>
     @for (msg of messages; track $index) {
