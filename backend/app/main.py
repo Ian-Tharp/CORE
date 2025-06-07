@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from controllers import chat, core_entry
+from controllers import chat, core_entry, conversations, system_monitor
 
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +29,8 @@ app = FastAPI(lifespan=lifespan)
 # Routers --------------------------------------------------------------------
 app.include_router(core_entry.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
+app.include_router(system_monitor.router)
 
 # ---------------------------------------------------------------------------
 # Middleware

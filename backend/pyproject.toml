@@ -12,6 +12,7 @@ dependencies = [
     "langchain-openai>=0.3.18",
     "langgraph>=0.4.7",
     "openai>=1.82.0",
+    "psutil>=7.0.0",
 ]
 
 [dependency-groups]

@@ -15,13 +15,19 @@ from dependencies import _get_openai_client
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["generate_chat_stream"]
+# Public symbol exports
+__all__ = ["chat_service"]
 
 
 # ---------------------------------------------------------------------------
 # Public service-layer API
 # ---------------------------------------------------------------------------
-async def generate_chat_stream(
+
+# NOTE: This function was formerly named ``generate_chat_stream``. It has been
+# renamed to ``chat_service`` to better reflect its role as the primary entry
+# point for streaming chat completions to the controller layer.
+
+async def chat_service(
     *,
     model: str,
     messages: List[Dict[str, str]],
@@ -45,39 +51,22 @@ async def generate_chat_stream(
     client = _get_openai_client()
 
     try:
-        response = await client.chat.completions.create(
+        # Using the newer "Responses" API (see: https://github.com/openai/openai-python#responses-api)
+        response = await client.responses.create(
             model=model,
-            messages=messages,
+            input=messages,  # Our ``messages`` already match the simple text schema
             stream=True,
         )
 
         async for chunk in response:
             logger.debug("Service received chunk: %s", chunk)
 
-            # Build a minimal dict matching the chunk structure expected by the
-            # front-end while stripping out ``None`` values for compactness.
-            data: Dict[str, object] = {
-                "id": getattr(chunk, "id", None),
-                "object": getattr(chunk, "object", None),
-                "created": getattr(chunk, "created", None),
-                "model": getattr(chunk, "model", None),
-                "system_fingerprint": getattr(chunk, "system_fingerprint", None),
-                "choices": [
-                    {
-                        "index": choice.index,
-                        "delta": (
-                            getattr(choice.delta, "content", None)
-                            if hasattr(choice, "delta")
-                            else None
-                        ),
-                        "finish_reason": getattr(choice, "finish_reason", None),
-                    }
-                    for choice in getattr(chunk, "choices", [])
-                ],
-            }
-
-            # Remove keys whose value is ``None`` for cleaner JSON output.
-            data = {k: v for k, v in data.items() if v is not None}
+            # The OpenAI Python SDK v1+ returns Pydantic models. We can leverage
+            # their built-in ``model_dump`` helper to serialise the chunk to a
+            # plain-old Python ``dict`` while automatically filtering ``None``
+            # values. This keeps the service logic compact and forwards the
+            # exact response schema expected by downstream consumers.
+            data: Dict[str, object] = chunk.model_dump(exclude_none=True)
 
             # Allow the event loop to process other tasks to avoid starvation.
             await asyncio.sleep(0)
