@@ -26,11 +26,6 @@ import { MatBadgeModule } from '@angular/material/badge';
   styleUrl: './side-navigation.component.scss'
 })
 export class SideNavigationComponent {
-  systemStatus: string = 'operational';
-  agentCount: number = 3;
-  activeWorkflows: number = 2;
-  systemUptime: string = '7d 14h 23m';
-
   @ViewChild('agentsMenuTrigger') agentsMenuTrigger!: MatMenuTrigger;
   @ViewChild('workflowsMenuTrigger') workflowsMenuTrigger!: MatMenuTrigger;
 

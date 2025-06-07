@@ -12,6 +12,102 @@
   flex-direction: column;
   gap: 1rem;
 
+  .new-conv-btn {
+    align-self: stretch;
+    
+    &:disabled {
+      opacity: 0.6;
+    }
+  }
+
+  // Loading State
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    gap: 1rem;
+    color: #ffffff;
+    
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
+  }
+
+  // Error State
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    gap: 1rem;
+    text-align: center;
+    color: #ffffff;
+    
+    .error-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: #ff6b6b;
+      opacity: 0.8;
+    }
+    
+    h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #ff6b6b;
+    }
+    
+    .error-message {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      opacity: 0.9;
+      max-width: 18rem;
+    }
+    
+    .retry-btn {
+      margin-top: 0.5rem;
+      min-width: 8rem;
+    }
+  }
+
+  // Empty State
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    gap: 0.75rem;
+    text-align: center;
+    color: #ffffff;
+    
+    .empty-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: #ffffff;
+      opacity: 0.4;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+    
+    small {
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+  }
+
   mat-list {
     flex: 1 1 auto;
     overflow-y: auto;
@@ -43,11 +139,6 @@
       }
     }
   }
-
-  .new-conv-btn {
-    align-self: stretch;
-  }
-
 }
 
 .chat-section {

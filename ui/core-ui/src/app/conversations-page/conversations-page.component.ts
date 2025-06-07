@@ -11,6 +11,9 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 interface ConversationSummary {
   id: string;
@@ -34,6 +37,7 @@ interface ConversationSummary {
     MatInputModule,
     MatTooltipModule,
     MatDividerModule,
+    MatProgressSpinnerModule,
   ]
 })
 export class ConversationsPageComponent implements OnInit {
@@ -41,6 +45,11 @@ export class ConversationsPageComponent implements OnInit {
   selectedConversationId?: string;
   editingConversationId?: string;
   editingTitle: string = '';
+  
+  // Connection status tracking
+  isLoading: boolean = false;
+  isConnected: boolean = true;
+  connectionError: string = '';
 
   private readonly _apiUrl = 'http://localhost:8001';
 
@@ -51,9 +60,45 @@ export class ConversationsPageComponent implements OnInit {
   }
 
   refreshList(): void {
+    this.isLoading = true;
+    this.connectionError = '';
+    
     this.http
       .get<ConversationSummary[]>(`${this._apiUrl}/conversations/`)
-      .subscribe((data) => (this.conversations = data));
+      .pipe(
+        catchError((error) => {
+          console.error('Failed to load conversations:', error);
+          this.isConnected = false;
+          this.connectionError = this.getErrorMessage(error);
+          return of([]); // Return empty array on error
+        })
+      )
+      .subscribe((data) => {
+        this.conversations = data;
+        this.isConnected = data.length > 0 || this.connectionError === '';
+        this.isLoading = false;
+        
+        // If we successfully got data, mark as connected
+        if (data.length > 0 || this.connectionError === '') {
+          this.isConnected = true;
+        }
+      });
+  }
+
+  private getErrorMessage(error: any): string {
+    if (error.status === 0) {
+      return 'Unable to connect to the backend service. Please ensure the Python backend is running on localhost:8001.';
+    } else if (error.status >= 500) {
+      return 'Backend server error. Please check the server logs.';
+    } else if (error.status >= 400) {
+      return 'Request error. Please try again.';
+    } else {
+      return 'Connection failed. Please check your network connection and try again.';
+    }
+  }
+
+  retryConnection(): void {
+    this.refreshList();
   }
 
   selectConversation(id: string): void {
@@ -88,8 +133,18 @@ export class ConversationsPageComponent implements OnInit {
       .patch(`${this._apiUrl}/conversations/${conv.id}`, {
         title: newTitle,
       })
-      .subscribe(() => {
-        conv.title = newTitle;
+      .pipe(
+        catchError((error) => {
+          console.error('Failed to update conversation title:', error);
+          // Reset editing state on error
+          this.editingConversationId = undefined;
+          return of(null);
+        })
+      )
+      .subscribe((result) => {
+        if (result !== null) {
+          conv.title = newTitle;
+        }
         this.editingConversationId = undefined;
       });
   }

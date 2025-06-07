@@ -10,6 +10,7 @@ import { ChatService } from '../../services/chat/chat-service';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
 import { ViewEncapsulation } from '@angular/core';
+import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
 
 @Component({
   selector: 'app-chat-window',
@@ -22,7 +23,8 @@ import { ViewEncapsulation } from '@angular/core';
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
-    MarkdownModule
+    MarkdownModule,
+    TextFieldModule
   ],
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss',
@@ -42,6 +44,10 @@ export class ChatWindowComponent implements OnChanges {
   // Reference to the scrolling container so we can auto-scroll.
   @ViewChild('scrollContainer', { static: false })
   private scrollContainer?: ElementRef<HTMLDivElement>;
+
+  // Reference to the textarea autosize directive
+  @ViewChild(CdkTextareaAutosize, { static: false })
+  private autosize?: CdkTextareaAutosize;
 
   private readonly _apiUrl = 'http://localhost:8001';
 
@@ -119,6 +125,16 @@ export class ChatWindowComponent implements OnChanges {
       });
 
     this.scrollToBottom();
+  }
+
+  onEnterKey(event: Event): void {
+    // Cast to KeyboardEvent for type safety
+    const keyboardEvent = event as KeyboardEvent;
+    // Send message on Enter, but allow Shift+Enter for new lines
+    if (keyboardEvent.key === 'Enter' && !keyboardEvent.shiftKey) {
+      event.preventDefault();
+      this.sendMessage();
+    }
   }
 
   private scrollToBottom(): void {

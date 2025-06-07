@@ -6,7 +6,7 @@
     radial-gradient(circle at 80% 20%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
     linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
   color: #ffffff;
-  padding: 0 0.5rem 0.25rem 0.5rem;
+  padding: 0 0.5rem 0.25rem 0rem;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -633,6 +633,7 @@
 
   app-chat-window {
     flex: 1 0 auto;
+    max-height: 89vh;
   }
 }
 
@@ -681,6 +682,7 @@
   border: 1px solid rgba(0, 255, 255, 0.2);
   border-radius: 8px;
   padding: 16px;
+  margin-top: 1rem;
 
   .resources-title {
     display: flex;

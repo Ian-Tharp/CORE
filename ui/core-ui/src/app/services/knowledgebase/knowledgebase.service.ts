@@ -1,0 +1,306 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, BehaviorSubject, Subject, of, throwError } from 'rxjs';
+import { map, tap, catchError, finalize } from 'rxjs/operators';
+import {
+  KnowledgeFile,
+  VectorEmbedding,
+  EmbeddingStats,
+  FileTag,
+  FileMetadata,
+  KnowledgebaseFilter,
+  KnowledgebaseStats,
+  FileUploadRequest,
+  FileStatus,
+  FileSource,
+  ActivityLog
+} from '../../models/knowledgebase.models';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class KnowledgebaseService {
+  private http = inject(HttpClient);
+  private apiUrl = '/api/knowledgebase';
+
+  // State management
+  private filesSubject = new BehaviorSubject<KnowledgeFile[]>([]);
+  private statsSubject = new BehaviorSubject<KnowledgebaseStats | null>(null);
+  private uploadProgressSubject = new Subject<{ fileId: string; progress: number }>();
+  private activeFiltersSubject = new BehaviorSubject<KnowledgebaseFilter>({});
+
+  // Public observables
+  files$ = this.filesSubject.asObservable();
+  stats$ = this.statsSubject.asObservable();
+  uploadProgress$ = this.uploadProgressSubject.asObservable();
+  activeFilters$ = this.activeFiltersSubject.asObservable();
+
+  // Available tags
+  private availableTagsSubject = new BehaviorSubject<FileTag[]>([]);
+  availableTags$ = this.availableTagsSubject.asObservable();
+
+  constructor() {
+    // Defer initialization to avoid potential circular dependency issues
+    setTimeout(() => {
+      this.initializeService();
+    }, 0);
+  }
+
+  private initializeService(): void {
+    // Only load if we have a valid HTTP client
+    if (this.http) {
+      this.loadFiles().subscribe();
+      this.loadStats().subscribe();
+      this.loadAvailableTags().subscribe();
+    }
+  }
+
+  // File operations
+  loadFiles(filter?: KnowledgebaseFilter): Observable<KnowledgeFile[]> {
+    const params = this.buildFilterParams(filter || this.activeFiltersSubject.value);
+    
+    return this.http.get<KnowledgeFile[]>(`${this.apiUrl}/files`, { params }).pipe(
+      map(files => files.map(file => ({
+        ...file,
+        uploadDate: new Date(file.uploadDate),
+        lastModified: new Date(file.lastModified)
+      }))),
+      tap(files => this.filesSubject.next(files)),
+      catchError(this.handleError)
+    );
+  }
+
+  getFile(fileId: string): Observable<KnowledgeFile> {
+    return this.http.get<KnowledgeFile>(`${this.apiUrl}/files/${fileId}`).pipe(
+      map(file => ({
+        ...file,
+        uploadDate: new Date(file.uploadDate),
+        lastModified: new Date(file.lastModified)
+      })),
+      catchError(this.handleError)
+    );
+  }
+
+  uploadFile(request: FileUploadRequest): Observable<KnowledgeFile> {
+    const formData = new FormData();
+    formData.append('file', request.file);
+    formData.append('data', JSON.stringify({
+      tags: request.tags,
+      description: request.description,
+      isGlobal: request.isGlobal,
+      metadata: request.metadata,
+      processImmediately: request.processImmediately
+    }));
+
+    return this.http.post<KnowledgeFile>(`${this.apiUrl}/upload`, formData, {
+      reportProgress: true,
+      observe: 'events'
+    }).pipe(
+      map((event: any) => {
+        if (event.type === 4) {
+          return event.body;
+        }
+        if (event.type === 1 && event.total) {
+          const progress = Math.round(100 * event.loaded / event.total);
+          this.uploadProgressSubject.next({ fileId: request.file.name, progress });
+        }
+        return null;
+      }),
+      tap(file => {
+        if (file) {
+          const currentFiles = this.filesSubject.value;
+          this.filesSubject.next([file, ...currentFiles]);
+          this.loadStats();
+        }
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  deleteFile(fileId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/files/${fileId}`).pipe(
+      tap(() => {
+        const currentFiles = this.filesSubject.value;
+        this.filesSubject.next(currentFiles.filter(f => f.id !== fileId));
+        this.loadStats();
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  // Vector embedding operations
+  getEmbeddingStats(fileId: string): Observable<EmbeddingStats> {
+    return this.http.get<EmbeddingStats>(`${this.apiUrl}/files/${fileId}/embeddings/stats`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getEmbeddings(fileId: string): Observable<VectorEmbedding[]> {
+    return this.http.get<VectorEmbedding[]>(`${this.apiUrl}/files/${fileId}/embeddings`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  processFileEmbeddings(fileId: string): Observable<EmbeddingStats> {
+    return this.http.post<EmbeddingStats>(`${this.apiUrl}/files/${fileId}/process`, {}).pipe(
+      tap(() => this.updateFileStatus(fileId, FileStatus.PROCESSING)),
+      catchError(this.handleError)
+    );
+  }
+
+  // Metadata and tagging
+  getFileMetadata(fileId: string): Observable<FileMetadata> {
+    return this.http.get<FileMetadata>(`${this.apiUrl}/files/${fileId}/metadata`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  updateFileMetadata(fileId: string, metadata: Partial<FileMetadata>): Observable<FileMetadata> {
+    return this.http.patch<FileMetadata>(`${this.apiUrl}/files/${fileId}/metadata`, metadata).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  addTag(fileId: string, tag: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/files/${fileId}/tags`, { tag }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  removeTag(fileId: string, tagId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/files/${fileId}/tags/${tagId}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Search and filtering
+  searchFiles(query: string): Observable<KnowledgeFile[]> {
+    return this.http.get<KnowledgeFile[]>(`${this.apiUrl}/search`, {
+      params: { q: query }
+    }).pipe(
+      map(files => files.map(file => ({
+        ...file,
+        uploadDate: new Date(file.uploadDate),
+        lastModified: new Date(file.lastModified)
+      }))),
+      catchError(this.handleError)
+    );
+  }
+
+  semanticSearch(query: string, limit: number = 10): Observable<Array<KnowledgeFile & { similarity: number }>> {
+    return this.http.post<Array<KnowledgeFile & { similarity: number }>>(`${this.apiUrl}/semantic-search`, {
+      query,
+      limit
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  applyFilter(filter: KnowledgebaseFilter): void {
+    this.activeFiltersSubject.next(filter);
+    this.loadFiles(filter);
+  }
+
+  clearFilters(): void {
+    this.activeFiltersSubject.next({});
+    this.loadFiles();
+  }
+
+  // Stats and activity
+  loadStats(): Observable<KnowledgebaseStats> {
+    return this.http.get<KnowledgebaseStats>(`${this.apiUrl}/stats`).pipe(
+      tap(stats => this.statsSubject.next(stats)),
+      catchError((error) => {
+        console.error('Failed to load stats:', error);
+        // Return default stats when API is not available
+        const defaultStats: KnowledgebaseStats = {
+          totalFiles: 0,
+          totalSize: 0,
+          filesByType: {},
+          filesBySource: {} as Record<FileSource, number>,
+          totalEmbeddings: 0,
+          processingQueue: 0,
+          recentActivity: []
+        };
+        this.statsSubject.next(defaultStats);
+        return of(defaultStats);
+      })
+    );
+  }
+
+  getRecentActivity(limit: number = 20): Observable<ActivityLog[]> {
+    return this.http.get<ActivityLog[]>(`${this.apiUrl}/activity`, {
+      params: { limit: limit.toString() }
+    }).pipe(
+      map(activities => activities.map(activity => ({
+        ...activity,
+        timestamp: new Date(activity.timestamp)
+      }))),
+      catchError(this.handleError)
+    );
+  }
+
+  // Tag management
+  loadAvailableTags(): Observable<FileTag[]> {
+    return this.http.get<FileTag[]>(`${this.apiUrl}/tags`).pipe(
+      tap(tags => this.availableTagsSubject.next(tags)),
+      catchError(this.handleError)
+    );
+  }
+
+  createTag(tag: Omit<FileTag, 'id'>): Observable<FileTag> {
+    return this.http.post<FileTag>(`${this.apiUrl}/tags`, tag).pipe(
+      tap(newTag => {
+        const currentTags = this.availableTagsSubject.value;
+        this.availableTagsSubject.next([...currentTags, newTag]);
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  // Helper methods
+  private buildFilterParams(filter: KnowledgebaseFilter): any {
+    const params: any = {};
+    
+    if (filter.searchQuery) params.q = filter.searchQuery;
+    if (filter.tags?.length) params.tags = filter.tags.join(',');
+    if (filter.fileTypes?.length) params.types = filter.fileTypes.join(',');
+    if (filter.sources?.length) params.sources = filter.sources.join(',');
+    if (filter.status?.length) params.status = filter.status.join(',');
+    if (filter.isGlobal !== undefined) params.global = filter.isGlobal.toString();
+    if (filter.userId) params.userId = filter.userId;
+    if (filter.dateRange) {
+      params.startDate = filter.dateRange.start.toISOString();
+      params.endDate = filter.dateRange.end.toISOString();
+    }
+    
+    return params;
+  }
+
+  private updateFileStatus(fileId: string, status: FileStatus): void {
+    const currentFiles = this.filesSubject.value;
+    const updatedFiles = currentFiles.map(file =>
+      file.id === fileId ? { ...file, status } : file
+    );
+    this.filesSubject.next(updatedFiles);
+  }
+
+  private handleError(error: any): Observable<any> {
+    console.error('Knowledgebase service error:', error);
+    // Instead of throwing error, return empty data for development
+    if (error.status === 404 || error.status === 0) {
+      console.warn('API endpoint not available, returning empty data');
+      return of([]);
+    }
+    return throwError(() => error);
+  }
+
+  // Utility methods for file size formatting
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+} 

@@ -1,47 +1,79 @@
 <div class="conversations-page-layout">
   <aside class="conversation-list">
-    <button mat-raised-button color="primary" (click)="startNewConversation()" class="new-conv-btn">
+    <button mat-raised-button color="primary" (click)="startNewConversation()" class="new-conv-btn" [disabled]="!isConnected">
       <mat-icon>add</mat-icon>
       <span>New Conversation</span>
     </button>
 
-    <mat-list>
-      @for (conv of conversations; track conv.id) {
-        <mat-list-item
-          (click)="selectConversation(conv.id)"
-          [ngClass]="{ selected: conv.id === selectedConversationId }"
-        >
-          <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
-            <div matLine class="title-line">
-              {{ conv.title || (conv.id | slice:0:8) }}
-            </div>
-          </ng-container>
-          <ng-template #editTitle>
-            <input
-              type="text"
-              class="title-edit-input"
-              [(ngModel)]="editingTitle"
-              (keydown.enter)="saveTitle(conv)"
-              (blur)="saveTitle(conv)"
-              (click)="$event.stopPropagation()"
-              autofocus
-            />
-          </ng-template>
+    <!-- Loading State -->
+    @if (isLoading) {
+      <div class="loading-container">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading conversations...</p>
+      </div>
+    }
 
-          <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
+    <!-- Connection Error State -->
+    @if (!isConnected && !isLoading) {
+      <div class="error-container">
+        <mat-icon class="error-icon">wifi_off</mat-icon>
+        <h3>Connection Error</h3>
+        <p class="error-message">{{ connectionError }}</p>
+        <button mat-raised-button color="accent" (click)="retryConnection()" class="retry-btn">
+          <mat-icon>refresh</mat-icon>
+          <span>Retry Connection</span>
+        </button>
+      </div>
+    }
 
-          <button
-            mat-icon-button
-            (click)="beginEdit(conv, $event)"
-            matListItemMeta
-            *ngIf="editingConversationId !== conv.id"
-          >
-            <mat-icon>edit</mat-icon>
-          </button>
-        </mat-list-item>
-        <mat-divider></mat-divider>
-      }
-    </mat-list>
+    <!-- Conversations List -->
+    @if (isConnected && !isLoading) {
+      <mat-list>
+        @if (conversations.length === 0) {
+          <div class="empty-state">
+            <mat-icon class="empty-icon">chat</mat-icon>
+            <p>No conversations yet</p>
+            <small>Start a new conversation to get started</small>
+          </div>
+        } @else {
+          @for (conv of conversations; track conv.id) {
+            <mat-list-item
+              (click)="selectConversation(conv.id)"
+              [ngClass]="{ selected: conv.id === selectedConversationId }"
+            >
+              <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
+                <div matLine class="title-line">
+                  {{ conv.title || (conv.id | slice:0:8) }}
+                </div>
+              </ng-container>
+              <ng-template #editTitle>
+                <input
+                  type="text"
+                  class="title-edit-input"
+                  [(ngModel)]="editingTitle"
+                  (keydown.enter)="saveTitle(conv)"
+                  (blur)="saveTitle(conv)"
+                  (click)="$event.stopPropagation()"
+                  autofocus
+                />
+              </ng-template>
+
+              <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
+
+              <button
+                mat-icon-button
+                (click)="beginEdit(conv, $event)"
+                matListItemMeta
+                *ngIf="editingConversationId !== conv.id"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            </mat-list-item>
+            <mat-divider></mat-divider>
+          }
+        }
+      </mat-list>
+    }
   </aside>
 
   <section class="chat-section">

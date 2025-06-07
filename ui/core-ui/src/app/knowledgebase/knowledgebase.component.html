@@ -1,0 +1,457 @@
+<div class="knowledgebase-container" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+  <!-- Header Section -->
+  <div class="knowledgebase-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <mat-icon class="title-icon">hub</mat-icon>
+        Digital Brain Knowledgebase
+      </h1>
+      <p class="page-subtitle">Your cognitive ecosystem for AI-human collaboration</p>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="stats-overview" *ngIf="stats$ | async as stats" @fadeIn>
+      <div class="stat-card">
+        <mat-icon>folder</mat-icon>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.totalFiles }}</span>
+          <span class="stat-label">Total Files</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <mat-icon>storage</mat-icon>
+        <div class="stat-info">
+          <span class="stat-value">{{ formatFileSize(stats.totalSize) }}</span>
+          <span class="stat-label">Storage Used</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <mat-icon>memory</mat-icon>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.totalEmbeddings }}</span>
+          <span class="stat-label">Embeddings</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <mat-icon>pending</mat-icon>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.processingQueue }}</span>
+          <span class="stat-label">Processing</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <mat-tab-group [selectedIndex]="currentTab === 'personal' ? 0 : currentTab === 'global' ? 1 : 2" 
+                 (selectedIndexChange)="onTabChange(tabIndexToView($event))"
+                 class="knowledgebase-tabs">
+    
+    <!-- Personal Files Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">person</mat-icon>
+        <span>Personal Knowledge</span>
+      </ng-template>
+      
+      <div class="tab-content">
+        <!-- Search and Filters Bar -->
+        <div class="controls-bar">
+          <mat-form-field class="search-field" appearance="outline">
+            <mat-label>Search files...</mat-label>
+            <input matInput [formControl]="searchControl">
+            <mat-icon matPrefix>search</mat-icon>
+            <button mat-icon-button matSuffix 
+                    *ngIf="searchControl.value" 
+                    (click)="searchControl.reset()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </mat-form-field>
+          
+          <div class="action-buttons">
+            <!-- Upload Button -->
+            <input #fileInput type="file" multiple hidden (change)="onFileSelect($event)">
+            <button mat-raised-button color="primary" 
+                    class="upload-button"
+                    (click)="fileInput.click()">
+              <mat-icon>cloud_upload</mat-icon>
+              Upload Files
+            </button>
+            
+            <!-- View Mode Toggle -->
+            <div class="view-toggle">
+              <button mat-icon-button 
+                      [class.active]="viewMode === 'grid'"
+                      (click)="toggleViewMode('grid')"
+                      matTooltip="Grid view">
+                <mat-icon>grid_view</mat-icon>
+              </button>
+              <button mat-icon-button 
+                      [class.active]="viewMode === 'list'"
+                      (click)="toggleViewMode('list')"
+                      matTooltip="List view">
+                <mat-icon>view_list</mat-icon>
+              </button>
+              <button mat-icon-button 
+                      [class.active]="viewMode === 'timeline'"
+                      (click)="toggleViewMode('timeline')"
+                      matTooltip="Timeline view">
+                <mat-icon>timeline</mat-icon>
+              </button>
+            </div>
+            
+            <!-- Bulk Actions -->
+            <button mat-icon-button 
+                    [matMenuTriggerFor]="bulkMenu"
+                    *ngIf="selectedFiles.size > 0"
+                    matBadge="{{ selectedFiles.size }}"
+                    matBadgeColor="accent">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #bulkMenu="matMenu">
+              <button mat-menu-item (click)="deleteSelected()">
+                <mat-icon>delete</mat-icon>
+                Delete selected
+              </button>
+              <button mat-menu-item (click)="clearSelection()">
+                <mat-icon>clear</mat-icon>
+                Clear selection
+              </button>
+            </mat-menu>
+          </div>
+        </div>
+        
+        <!-- Advanced Filters -->
+        <mat-expansion-panel class="filters-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon>filter_list</mat-icon>
+              Advanced Filters
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          
+          <form [formGroup]="filterForm" class="filter-form">
+            <mat-form-field appearance="outline">
+              <mat-label>Tags</mat-label>
+              <mat-select formControlName="tags" multiple>
+                <mat-option *ngFor="let tag of availableTags$ | async" 
+                            [value]="tag.id">
+                  <mat-icon [style.color]="tag.color">label</mat-icon>
+                  {{ tag.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>File Types</mat-label>
+              <mat-select formControlName="fileTypes" multiple>
+                <mat-option value="application/pdf">PDF</mat-option>
+                <mat-option value="text/plain">Text</mat-option>
+                <mat-option value="text/markdown">Markdown</mat-option>
+                <mat-option value="application/json">JSON</mat-option>
+                <mat-option value="image/*">Images</mat-option>
+              </mat-select>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Source</mat-label>
+              <mat-select formControlName="sources" multiple>
+                <mat-option *ngFor="let source of FileSource | keyvalue" 
+                            [value]="source.value">
+                  {{ getSourceLabel(source.value) }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            
+            <button mat-button (click)="clearFilters()">Clear Filters</button>
+          </form>
+        </mat-expansion-panel>
+        
+        <!-- Files Display -->
+        <div class="files-container" [@fileAnimation]="(filteredFiles$ | async)?.length">
+          <!-- Grid View -->
+          <div class="files-grid" *ngIf="viewMode === 'grid'">
+            <mat-card class="file-card" 
+                      *ngFor="let file of filteredFiles$ | async"
+                      [class.selected]="selectedFiles.has(file.id)"
+                      (click)="toggleFileSelection(file.id)">
+              <mat-card-header>
+                <mat-icon mat-card-avatar 
+                          [style.color]="getSourceColor(file.source)"
+                          class="file-type-icon">
+                  {{ getFileIcon(file.mimeType) }}
+                </mat-icon>
+                <mat-card-title>{{ file.filename }}</mat-card-title>
+                <mat-card-subtitle>
+                  {{ formatFileSize(file.size) }} • {{ file.uploadDate | date:'short' }}
+                </mat-card-subtitle>
+              </mat-card-header>
+              
+              <mat-card-content>
+                <p class="file-description" *ngIf="file.description">
+                  {{ file.description }}
+                </p>
+                
+                <!-- Status Indicator -->
+                <div class="status-indicator">
+                  <mat-chip [class]="'status-' + file.status.toLowerCase()">
+                    <mat-icon *ngIf="file.status === FileStatus.PROCESSING" 
+                              class="spinning">sync</mat-icon>
+                    <mat-icon *ngIf="file.status === FileStatus.READY">check_circle</mat-icon>
+                    <mat-icon *ngIf="file.status === FileStatus.ERROR">error</mat-icon>
+                    {{ file.status }}
+                  </mat-chip>
+                </div>
+                
+                <!-- Progress Bar -->
+                <mat-progress-bar *ngIf="uploadProgress[file.filename]" 
+                                  mode="determinate" 
+                                  [value]="uploadProgress[file.filename]">
+                </mat-progress-bar>
+              </mat-card-content>
+              
+              <mat-card-actions>
+                <button mat-icon-button 
+                        matTooltip="Process embeddings"
+                        (click)="processEmbeddings(file); $event.stopPropagation()">
+                  <mat-icon>memory</mat-icon>
+                </button>
+                <button mat-icon-button 
+                        matTooltip="View details"
+                        (click)="$event.stopPropagation()">
+                  <mat-icon>info</mat-icon>
+                </button>
+                <button mat-icon-button 
+                        matTooltip="Delete"
+                        (click)="deleteFile(file); $event.stopPropagation()">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+          
+          <!-- List View -->
+          <div class="files-list" *ngIf="viewMode === 'list'">
+            <table mat-table [dataSource]="(filteredFiles$ | async) || []" class="files-table">
+              <!-- Selection Column -->
+              <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef>
+                  <mat-checkbox (change)="$event ? selectAll() : clearSelection()">
+                  </mat-checkbox>
+                </th>
+                <td mat-cell *matCellDef="let file">
+                  <mat-checkbox [checked]="selectedFiles.has(file.id)"
+                                (click)="$event.stopPropagation()"
+                                (change)="toggleFileSelection(file.id)">
+                  </mat-checkbox>
+                </td>
+              </ng-container>
+              
+              <!-- Name Column -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <td mat-cell *matCellDef="let file">
+                  <div class="file-name-cell">
+                    <mat-icon [style.color]="getSourceColor(file.source)">
+                      {{ getFileIcon(file.mimeType) }}
+                    </mat-icon>
+                    <span>{{ file.filename }}</span>
+                  </div>
+                </td>
+              </ng-container>
+              
+              <!-- Size Column -->
+              <ng-container matColumnDef="size">
+                <th mat-header-cell *matHeaderCellDef>Size</th>
+                <td mat-cell *matCellDef="let file">{{ formatFileSize(file.size) }}</td>
+              </ng-container>
+              
+              <!-- Source Column -->
+              <ng-container matColumnDef="source">
+                <th mat-header-cell *matHeaderCellDef>Source</th>
+                <td mat-cell *matCellDef="let file">
+                  <mat-chip [style.background-color]="getSourceBgColor(file.source)"
+                            [style.color]="getSourceColor(file.source)">
+                    {{ getSourceLabel(file.source) }}
+                  </mat-chip>
+                </td>
+              </ng-container>
+              
+              <!-- Date Column -->
+              <ng-container matColumnDef="date">
+                <th mat-header-cell *matHeaderCellDef>Upload Date</th>
+                <td mat-cell *matCellDef="let file">{{ file.uploadDate | date:'short' }}</td>
+              </ng-container>
+              
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let file">
+                  <button mat-icon-button [matMenuTriggerFor]="fileMenu">
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #fileMenu="matMenu">
+                    <button mat-menu-item (click)="processEmbeddings(file)">
+                      <mat-icon>memory</mat-icon>
+                      Process embeddings
+                    </button>
+                    <button mat-menu-item>
+                      <mat-icon>info</mat-icon>
+                      View details
+                    </button>
+                    <button mat-menu-item (click)="deleteFile(file)">
+                      <mat-icon>delete</mat-icon>
+                      Delete
+                    </button>
+                  </mat-menu>
+                </td>
+              </ng-container>
+              
+              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'size', 'source', 'date', 'actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['select', 'name', 'size', 'source', 'date', 'actions'];"></tr>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="(filteredFiles$ | async)?.length === 0">
+          <mat-icon class="empty-icon">folder_open</mat-icon>
+          <h3>No files found</h3>
+          <p>Upload your first file to start building your personal knowledge base</p>
+          <button mat-raised-button color="primary" (click)="fileInput.click()">
+            <mat-icon>cloud_upload</mat-icon>
+            Upload Files
+          </button>
+        </div>
+      </div>
+    </mat-tab>
+    
+    <!-- Global Knowledge Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">public</mat-icon>
+        <span>Global Knowledge</span>
+      </ng-template>
+      
+      <div class="tab-content">
+        <!-- Similar structure as Personal tab but for global files -->
+        <div class="global-knowledge-info">
+          <mat-card class="info-card">
+            <mat-card-header>
+              <mat-icon mat-card-avatar class="brain-icon">psychology</mat-icon>
+              <mat-card-title>Collective Digital Brain</mat-card-title>
+              <mat-card-subtitle>Shared knowledge across all agents and users</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <p>The Global Knowledgebase serves as the collective memory for your Digital Brain Platform. 
+                 Files here are accessible by all agents and contribute to the platform's overall intelligence.</p>
+              <div class="knowledge-categories">
+                <mat-chip-set>
+                  <mat-chip><mat-icon>history</mat-icon> Conversation Histories</mat-chip>
+                  <mat-chip><mat-icon>account_tree</mat-icon> Saved Workflows</mat-chip>
+                  <mat-chip><mat-icon>lightbulb</mat-icon> Agent Insights</mat-chip>
+                  <mat-chip><mat-icon>article</mat-icon> System Documentation</mat-chip>
+                </mat-chip-set>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+        
+        <!-- Reuse the same file display structure -->
+        <div class="controls-bar">
+          <!-- Same controls as personal tab -->
+        </div>
+        
+        <div class="files-container" [@fileAnimation]="(filteredFiles$ | async)?.length">
+          <!-- Same grid/list views as personal tab -->
+        </div>
+      </div>
+    </mat-tab>
+    
+    <!-- Activity Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">timeline</mat-icon>
+        <span>Activity Timeline</span>
+      </ng-template>
+      
+      <div class="tab-content">
+        <div class="activity-timeline">
+          <h2 class="timeline-header">Recent Activity</h2>
+          
+          <div class="timeline-container" *ngIf="recentActivity.length > 0">
+            <div class="timeline-item" 
+                 *ngFor="let activity of recentActivity"
+                 @fadeIn>
+              <div class="timeline-marker">
+                <ng-container [ngSwitch]="activity.action">
+                  <mat-icon *ngSwitchCase="'upload'">cloud_upload</mat-icon>
+                  <mat-icon *ngSwitchCase="'delete'">delete</mat-icon>
+                  <mat-icon *ngSwitchCase="'process'">memory</mat-icon>
+                  <mat-icon *ngSwitchCase="'tag'">label</mat-icon>
+                  <mat-icon *ngSwitchCase="'annotate'">edit_note</mat-icon>
+                  <mat-icon *ngSwitchCase="'share'">share</mat-icon>
+                </ng-container>
+              </div>
+              
+              <mat-card class="activity-card">
+                <mat-card-content>
+                  <div class="activity-header">
+                    <span class="activity-action">{{ activity.action | titlecase }}</span>
+                    <span class="activity-time">{{ activity.timestamp | date:'short' }}</span>
+                  </div>
+                  <p class="activity-description">
+                    <strong>{{ activity.fileName }}</strong>
+                    <span *ngIf="activity.details"> - {{ activity.details }}</span>
+                  </p>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+          
+          <div class="empty-state" *ngIf="recentActivity.length === 0">
+            <mat-icon class="empty-icon">history</mat-icon>
+            <h3>No recent activity</h3>
+            <p>Your knowledgebase activity will appear here</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+  
+  <!-- Floating Semantic Search -->
+  <button mat-fab 
+          class="semantic-search-fab"
+          color="accent"
+          matTooltip="Semantic search"
+          (click)="openSemanticSearch()">
+    <mat-icon>auto_awesome</mat-icon>
+  </button>
+  
+  <!-- Drop Zone Overlay -->
+  <div class="drop-zone-overlay" 
+       *ngIf="false"
+       @fadeIn>
+    <mat-icon class="drop-icon">cloud_upload</mat-icon>
+    <h2>Drop files here to upload</h2>
+  </div>
+</div>
+
+<!-- Semantic Search Dialog Template -->
+<ng-template #semanticSearchDialog>
+  <div class="semantic-search-dialog">
+    <h2>Semantic Search</h2>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Enter your search query...</mat-label>
+      <textarea matInput rows="3" 
+                placeholder="Search using natural language..."></textarea>
+    </mat-form-field>
+    <div mat-dialog-actions>
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-raised-button color="primary">
+        <mat-icon>search</mat-icon>
+        Search
+      </button>
+    </div>
+  </div>
+</ng-template>

@@ -17,25 +17,31 @@
   <div class="messages" #scrollContainer>
     @for (msg of messages; track $index) {
       <div class="message" [class]="msg.sender">
-        <ng-container *ngIf="msg.sender === 'assistant'; else plain">
+        @if (msg.sender === 'assistant') {
           <markdown [data]="msg.text"></markdown>
-        </ng-container>
-        <ng-template #plain>
+        } @else {
           <span class="msg-text">{{ msg.text }}</span>
-        </ng-template>
+        }
       </div>
     }
   </div>
 
   <form class="input-area" (ngSubmit)="sendMessage()">
-    <input
-      matInput
-      class="input-field"
-      placeholder="Type a message…"
-      [(ngModel)]="newMessage"
-      name="newMessage"
-      autocomplete="off"
-    />
+    <div class="textarea-wrapper">
+      <textarea
+        matInput
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="1"
+        cdkAutosizeMaxRows="10"
+        cdkAutosizeDebounceTime="100"
+        class="input-field"
+        placeholder="Type a message…"
+        [(ngModel)]="newMessage"
+        name="newMessage"
+        autocomplete="off"
+        (keydown.enter)="onEnterKey($event)"
+      ></textarea>
+    </div>
     <button mat-icon-button color="primary" type="submit" aria-label="Send message">
       <mat-icon>send</mat-icon>
     </button>

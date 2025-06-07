@@ -11,6 +11,28 @@
     </div>
   </div>
 
+  <!-- Breadcrumb Navigation -->
+  @if (breadcrumbs.length > 1) {
+    <div class="breadcrumb-section">
+      <button mat-icon-button class="back-btn" (click)="goBack()" [disabled]="breadcrumbs.length <= 1">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="breadcrumb-trail">
+        @for (breadcrumb of breadcrumbs; track breadcrumb.url; let last = $last) {
+          <a class="breadcrumb-link" 
+             [class.active]="breadcrumb.isActive" 
+             (click)="navigateTo(breadcrumb.url)"
+             [attr.aria-current]="breadcrumb.isActive ? 'page' : null">
+            {{ breadcrumb.label }}
+          </a>
+          @if (!last) {
+            <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
+          }
+        }
+      </div>
+    </div>
+  }
+
   <!-- Spacer -->
   <span class="nav-spacer"></span>
 

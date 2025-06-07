@@ -1,1 +1,272 @@
-<p>boards works!</p>
+<div class="boards-container">
+  <!-- Three-column responsive layout -->
+  <div class="boards-layout">
+    <!-- Chat / Assistant column (Left) -->
+    <aside class="chat-section">
+      <app-chat-window></app-chat-window>
+    </aside>
+
+    <!-- Central main content column (Middle) -->
+    <main class="main-section">
+      <!-- Calendar Section -->
+      <section class="calendar-section">
+        <mat-card class="calendar-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>calendar_month</mat-icon>
+              Task Calendar
+            </mat-card-title>
+            <div class="calendar-actions">
+              <button mat-icon-button [matMenuTriggerFor]="calendarMenu" matTooltip="Calendar Options">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #calendarMenu="matMenu">
+                <button mat-menu-item>
+                  <mat-icon>today</mat-icon>
+                  <span>Go to Today</span>
+                </button>
+                <button mat-menu-item>
+                  <mat-icon>view_week</mat-icon>
+                  <span>Week View</span>
+                </button>
+                <button mat-menu-item>
+                  <mat-icon>view_month</mat-icon>
+                  <span>Month View</span>
+                </button>
+              </mat-menu>
+            </div>
+          </mat-card-header>
+          <mat-card-content>
+            <mat-calendar 
+              [(selected)]="selectedDate" 
+              (selectedChange)="onDateSelected($event)"
+              class="task-calendar">
+            </mat-calendar>
+          </mat-card-content>
+        </mat-card>
+      </section>
+
+      <!-- Tasks for Selected Day -->
+      <section class="tasks-section">
+        <mat-card class="tasks-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>assignment</mat-icon>
+              Tasks for {{selectedDate | date:'fullDate'}}
+              <mat-chip 
+                [matBadge]="tasksForSelectedDate.length.toString()" 
+                matBadgeSize="small" 
+                matBadgeColor="accent"
+                class="task-count-chip">
+                {{tasksForSelectedDate.length}} task{{tasksForSelectedDate.length !== 1 ? 's' : ''}}
+              </mat-chip>
+            </mat-card-title>
+            <div class="task-actions">
+              <button mat-raised-button color="primary" class="add-task-btn">
+                <mat-icon>add</mat-icon>
+                New Task
+              </button>
+              <button mat-icon-button [matMenuTriggerFor]="taskMenu" matTooltip="Task Options">
+                <mat-icon>filter_list</mat-icon>
+              </button>
+              <mat-menu #taskMenu="matMenu">
+                <button mat-menu-item>
+                  <mat-icon>sort</mat-icon>
+                  <span>Sort by Priority</span>
+                </button>
+                <button mat-menu-item>
+                  <mat-icon>view_kanban</mat-icon>
+                  <span>Kanban View</span>
+                </button>
+                <button mat-menu-item>
+                  <mat-icon>import_export</mat-icon>
+                  <span>Export Tasks</span>
+                </button>
+              </mat-menu>
+            </div>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="tasks-list">
+              @if (tasksForSelectedDate.length === 0) {
+                <div class="empty-tasks-state">
+                  <mat-icon class="empty-icon">event_available</mat-icon>
+                  <h3>No tasks for this day</h3>
+                  <p>Select a different date or create a new task to get started.</p>
+                  <button mat-raised-button color="primary">
+                    <mat-icon>add</mat-icon>
+                    Add First Task
+                  </button>
+                </div>
+              } @else {
+                @for (task of tasksForSelectedDate; track task.id) {
+                  <div class="task-item" [class]="task.status" [class.priority]="task.priority">
+                    <div class="task-header">
+                      <button mat-icon-button 
+                              class="task-status-btn" 
+                              (click)="toggleTaskStatus(task)"
+                              [matTooltip]="'Status: ' + task.status">
+                        <mat-icon [style.color]="task.status === 'completed' ? '#4caf50' : getPriorityColor(task.priority)">
+                          {{getStatusIcon(task.status)}}
+                        </mat-icon>
+                      </button>
+                      <div class="task-content">
+                        <h4 class="task-title" [class.completed]="task.status === 'completed'">
+                          {{task.title}}
+                        </h4>
+                        <p class="task-description" *ngIf="task.description">
+                          {{task.description}}
+                        </p>
+                        <div class="task-meta">
+                          <mat-chip class="priority-chip" [style.background-color]="getPriorityColor(task.priority)">
+                            {{task.priority}}
+                          </mat-chip>
+                          <span class="assigned-to" *ngIf="task.assignedTo">
+                            <mat-icon>person</mat-icon>
+                            {{task.assignedTo}}
+                          </span>
+                          <span class="estimated-time" *ngIf="task.estimatedHours">
+                            <mat-icon>schedule</mat-icon>
+                            {{task.completedHours || 0}}/{{task.estimatedHours}}h
+                          </span>
+                        </div>
+                        <div class="task-tags" *ngIf="task.tags.length > 0">
+                          @for (tag of task.tags; track tag) {
+                            <mat-chip class="tag-chip">{{tag}}</mat-chip>
+                          }
+                        </div>
+                      </div>
+                      <div class="task-actions">
+                        <button mat-icon-button matTooltip="Edit Task">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button mat-icon-button [matMenuTriggerFor]="taskItemMenu" matTooltip="More Options">
+                          <mat-icon>more_vert</mat-icon>
+                        </button>
+                        <mat-menu #taskItemMenu="matMenu">
+                          <button mat-menu-item>
+                            <mat-icon>content_copy</mat-icon>
+                            <span>Duplicate</span>
+                          </button>
+                          <button mat-menu-item>
+                            <mat-icon>schedule</mat-icon>
+                            <span>Reschedule</span>
+                          </button>
+                          <button mat-menu-item>
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete</span>
+                          </button>
+                        </mat-menu>
+                      </div>
+                    </div>
+                    <div class="task-progress" *ngIf="task.estimatedHours && task.completedHours">
+                      <mat-progress-bar 
+                        mode="determinate" 
+                        [value]="(task.completedHours / task.estimatedHours) * 100"
+                        class="progress-bar">
+                      </mat-progress-bar>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </main>
+
+    <!-- Right-side upcoming events column -->
+    <aside class="side-section">
+      <!-- Upcoming Events -->
+      <section class="upcoming-events">
+        <mat-card class="events-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>upcoming</mat-icon>
+              Upcoming Events
+            </mat-card-title>
+            <div class="events-actions">
+              <button mat-icon-button matTooltip="Add Event">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="events-list">
+              @if (upcomingEventsThisWeek.length === 0) {
+                <div class="empty-events-state">
+                  <mat-icon class="empty-icon">event_note</mat-icon>
+                  <p>No upcoming events this week</p>
+                  <button mat-button color="primary">
+                    <mat-icon>add</mat-icon>
+                    Add Event
+                  </button>
+                </div>
+              } @else {
+                @for (event of upcomingEventsThisWeek; track event.id) {
+                  <div class="event-item" [class]="event.priority">
+                    <div class="event-date">
+                      <div class="date-month">{{event.date | date:'MMM'}}</div>
+                      <div class="date-day">{{event.date | date:'d'}}</div>
+                    </div>
+                    <div class="event-content">
+                      <div class="event-header">
+                        <mat-icon class="event-type-icon">{{getEventTypeIcon(event.type)}}</mat-icon>
+                        <h4 class="event-title">{{event.title}}</h4>
+                      </div>
+                      <p class="event-description" *ngIf="event.description">
+                        {{event.description}}
+                      </p>
+                      <div class="event-meta">
+                        <mat-chip class="event-type-chip" [class]="event.type">
+                          {{event.type}}
+                        </mat-chip>
+                        <span class="event-time">{{event.date | date:'shortTime'}}</span>
+                      </div>
+                    </div>
+                    <div class="event-actions">
+                      <button mat-icon-button matTooltip="Edit Event">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+
+      <!-- Quick Stats -->
+      <section class="quick-stats">
+        <mat-card class="stats-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>analytics</mat-icon>
+              Quick Stats
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">{{pendingTasksCount}}</div>
+                <div class="stat-label">Pending</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{inProgressTasksCount}}</div>
+                <div class="stat-label">In Progress</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{completedTasksCount}}</div>
+                <div class="stat-label">Completed</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{highPriorityTasksCount}}</div>
+                <div class="stat-label">High Priority</div>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </aside>
+  </div>
+</div>
