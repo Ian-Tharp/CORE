@@ -1,0 +1,596 @@
+<div class="agent-builder-container">
+  <!-- Progress Indicator -->
+  <div class="progress-container">
+    <div class="progress-line" [style.width.%]="progressPercentage"></div>
+    <div class="progress-steps">
+      @for (step of steps; track step.id) {
+        <div 
+          class="progress-step" 
+          [class.active]="currentStepIndex >= $index"
+          [class.current]="currentStepIndex === $index"
+          (click)="goToStep($index)">
+          <div class="step-icon">
+            <mat-icon>{{step.icon}}</mat-icon>
+          </div>
+          <span class="step-label">{{step.label}}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="builder-content">
+    <!-- Step 1: Core Configuration -->
+    @if (currentStepIndex === 0) {
+      <div class="step-content core-config" [@slideIn]>
+        <h2 class="step-title">Configure Your Agent's Core</h2>
+        <p class="step-subtitle">Define the fundamental identity and capabilities of your intelligent agent</p>
+        
+        <div class="config-grid">
+          <!-- Agent Identity Card -->
+          <mat-card class="config-card identity-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>fingerprint</mat-icon>
+                Agent Identity
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-form-field appearance="outline" class="agent-name-field">
+                <mat-label>Agent Name</mat-label>
+                <input matInput [(ngModel)]="agentConfig.name" placeholder="E.g., DataAnalyst, CodeReviewer">
+                <mat-icon matSuffix>badge</mat-icon>
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline" class="agent-description-field">
+                <mat-label>Agent Description</mat-label>
+                <textarea 
+                  matInput 
+                  [(ngModel)]="agentConfig.description" 
+                  rows="3"
+                  placeholder="Briefly describe what this agent will do..."></textarea>
+              </mat-form-field>
+
+              <!-- Model Selection -->
+              <mat-form-field appearance="outline" class="model-selection-field">
+                <mat-label>AI Model</mat-label>
+                <mat-select [(ngModel)]="agentConfig.model" placeholder="Select an AI model">
+                  @for (model of aiModels; track model.id) {
+                    <mat-option [value]="model.id">
+                      <span class="model-option">
+                        <strong>{{model.name}}</strong> - {{model.provider}}
+                        <br>
+                        <small>{{model.description}}</small>
+                      </span>
+                    </mat-option>
+                  }
+                </mat-select>
+                <mat-icon matSuffix>smart_toy</mat-icon>
+              </mat-form-field>
+
+              <!-- Agent Type Selection -->
+              <div class="agent-type-selection">
+                <h4>Agent Type</h4>
+                <div class="type-options">
+                  @for (type of agentTypes; track type.id) {
+                    <div 
+                      class="type-option" 
+                      [class.selected]="agentConfig.type === type.id"
+                      (click)="selectAgentType(type.id)">
+                      <mat-icon>{{type.icon}}</mat-icon>
+                      <span class="type-name">{{type.name}}</span>
+                      <span class="type-desc">{{type.description}}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- System Prompt Configuration -->
+          <mat-card class="config-card prompt-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>psychology</mat-icon>
+                System Prompt
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="prompt-templates">
+                <h4>Start with a template</h4>
+                <mat-chip-listbox [(ngModel)]="selectedTemplate">
+                  @for (template of promptTemplates; track template.id) {
+                    <mat-chip-option [value]="template.id">
+                      {{template.name}}
+                    </mat-chip-option>
+                  }
+                </mat-chip-listbox>
+              </div>
+
+              <mat-form-field appearance="outline" class="system-prompt-field">
+                <mat-label>System Prompt</mat-label>
+                <textarea 
+                  matInput 
+                  [(ngModel)]="agentConfig.systemPrompt" 
+                  rows="12"
+                  placeholder="Define your agent's behavior, capabilities, and constraints..."></textarea>
+                <mat-hint align="end">{{agentConfig.systemPrompt?.length || 0}} / 4000</mat-hint>
+              </mat-form-field>
+
+              <div class="prompt-suggestions">
+                <button mat-stroked-button class="suggestion-btn">
+                  <mat-icon>auto_awesome</mat-icon>
+                  Enhance with AI
+                </button>
+                <button mat-stroked-button class="suggestion-btn">
+                  <mat-icon>security</mat-icon>
+                  Add Safety Guidelines
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    }
+
+    <!-- Step 2: Knowledge Base -->
+    @if (currentStepIndex === 1) {
+      <div class="step-content knowledge-config" [@slideIn]>
+        <h2 class="step-title">Build Your Agent's Knowledge Base</h2>
+        <p class="step-subtitle">Upload documents and configure vector search capabilities for enhanced context</p>
+        
+        <div class="knowledge-grid">
+          <!-- Document Upload Area -->
+          <mat-card class="config-card upload-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>cloud_upload</mat-icon>
+                Document Upload
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div 
+                class="upload-zone"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)"
+                (drop)="onDrop($event)"
+                [class.drag-over]="isDragging">
+                <mat-icon class="upload-icon">upload_file</mat-icon>
+                <h3>Drag & Drop Documents Here</h3>
+                <p>or click to browse</p>
+                <button mat-raised-button color="primary">
+                  <mat-icon>folder_open</mat-icon>
+                  Browse Files
+                </button>
+                <p class="supported-formats">Supported: PDF, TXT, MD, DOCX, CSV</p>
+              </div>
+
+              <!-- Uploaded Documents List -->
+              @if (uploadedDocuments.length > 0) {
+                <div class="uploaded-docs">
+                  <h4>Uploaded Documents</h4>
+                  @for (doc of uploadedDocuments; track doc.id) {
+                    <div class="doc-item">
+                      <mat-icon>{{getFileIcon(doc.type)}}</mat-icon>
+                      <span class="doc-name">{{doc.name}}</span>
+                      <span class="doc-size">{{doc.size}}</span>
+                      <button mat-icon-button (click)="removeDocument(doc.id)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Vector Search Configuration -->
+          <mat-card class="config-card vector-config-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>manage_search</mat-icon>
+                Vector Search Settings
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="vector-settings">
+                <mat-form-field appearance="outline">
+                  <mat-label>Embedding Model</mat-label>
+                  <mat-select [(ngModel)]="agentConfig.embeddingModel">
+                    <mat-option value="openai-ada">OpenAI Ada-002</mat-option>
+                    <mat-option value="sentence-transformers">Sentence Transformers</mat-option>
+                    <mat-option value="custom">Custom Model</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Chunk Size</mat-label>
+                  <input matInput type="number" [(ngModel)]="agentConfig.chunkSize" placeholder="500">
+                  <mat-hint>Characters per chunk</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Chunk Overlap</mat-label>
+                  <input matInput type="number" [(ngModel)]="agentConfig.chunkOverlap" placeholder="50">
+                  <mat-hint>Overlap between chunks</mat-hint>
+                </mat-form-field>
+
+                <div class="retrieval-strategy">
+                  <h4>Retrieval Strategy</h4>
+                  <mat-radio-group [(ngModel)]="agentConfig.retrievalStrategy">
+                    <mat-radio-button value="similarity">Similarity Search</mat-radio-button>
+                    <mat-radio-button value="mmr">Maximum Marginal Relevance</mat-radio-button>
+                    <mat-radio-button value="hybrid">Hybrid Search</mat-radio-button>
+                  </mat-radio-group>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    }
+
+    <!-- Step 3: Tools & Capabilities -->
+    @if (currentStepIndex === 2) {
+      <div class="step-content tools-config" [@slideIn]>
+        <h2 class="step-title">Equip Your Agent with Tools</h2>
+        <p class="step-subtitle">Connect MCP servers and select tools to extend your agent's capabilities</p>
+        
+        <div class="tools-container">
+          <!-- MCP Server Connection -->
+          <mat-card class="config-card mcp-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>hub</mat-icon>
+                MCP Server Registry
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <!-- MCP Search -->
+              <mat-form-field appearance="outline" class="mcp-search">
+                <mat-label>Search MCP Servers</mat-label>
+                <input matInput [(ngModel)]="mcpSearchQuery" placeholder="Search by name or capability...">
+                <mat-icon matPrefix>search</mat-icon>
+              </mat-form-field>
+
+              <!-- Available MCP Servers -->
+              <div class="mcp-servers">
+                @for (server of filteredMcpServers; track server.id) {
+                  <div class="mcp-server-item" [class.connected]="server.connected">
+                    <div class="server-info">
+                      <mat-icon>{{server.icon}}</mat-icon>
+                      <div class="server-details">
+                        <h4>{{server.name}}</h4>
+                        <p>{{server.description}}</p>
+                        <div class="server-stats">
+                          <mat-chip>{{server.toolCount}} tools</mat-chip>
+                          <mat-chip>{{server.category}}</mat-chip>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      mat-raised-button 
+                      [color]="server.connected ? 'warn' : 'primary'"
+                      (click)="toggleMcpServer(server)">
+                      {{server.connected ? 'Disconnect' : 'Connect'}}
+                    </button>
+                  </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Selected Tools -->
+          <mat-card class="config-card selected-tools-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>build</mat-icon>
+                Selected Tools
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <!-- Tool Categories -->
+              <mat-tab-group class="tool-categories">
+                @for (category of toolCategories; track category.id) {
+                  <mat-tab [label]="category.name">
+                    <div class="tools-grid">
+                      @for (tool of getToolsByCategory(category.id); track tool.id) {
+                        <div 
+                          class="tool-item" 
+                          [class.selected]="isToolSelected(tool.id)"
+                          (click)="toggleTool(tool)">
+                          <mat-icon>{{tool.icon}}</mat-icon>
+                          <h5>{{tool.name}}</h5>
+                          <p>{{tool.description}}</p>
+                          <mat-checkbox 
+                            [checked]="isToolSelected(tool.id)"
+                            (click)="$event.stopPropagation()">
+                          </mat-checkbox>
+                        </div>
+                      }
+                    </div>
+                  </mat-tab>
+                }
+              </mat-tab-group>
+
+              <!-- Selected Tools Summary -->
+              <div class="selected-tools-summary">
+                <h4>Selected Tools ({{selectedTools.length}})</h4>
+                <div class="selected-tools-chips">
+                  @for (tool of selectedTools; track tool.id) {
+                    <mat-chip [removable]="true" (removed)="removeTool(tool)">
+                      <mat-icon matChipAvatar>{{tool.icon}}</mat-icon>
+                      {{tool.name}}
+                      <mat-icon matChipRemove>cancel</mat-icon>
+                    </mat-chip>
+                  }
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    }
+
+    <!-- Step 4: Test & Validate -->
+    @if (currentStepIndex === 3) {
+      <div class="step-content test-validate" [@slideIn]>
+        <h2 class="step-title">Test & Validate Your Agent</h2>
+        <p class="step-subtitle">Interact with your configured agent in a sandbox environment before deployment</p>
+        
+        <div class="testing-sandbox">
+          <!-- Chat Interface -->
+          <mat-card class="config-card chat-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>chat</mat-icon>
+                Agent Testing Sandbox
+              </mat-card-title>
+              <button mat-icon-button (click)="clearTestChat()" matTooltip="Clear chat">
+                <mat-icon>clear_all</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="chat-interface">
+                <div class="chat-messages">
+                  @if (chatMessages.length === 0) {
+                    <div class="empty-chat">
+                      <mat-icon>chat_bubble_outline</mat-icon>
+                      <p>Start a conversation to test your agent</p>
+                    </div>
+                  }
+                  @for (message of chatMessages; track message.id) {
+                    <div class="chat-message" [class]="message.type">
+                      <div class="message-header">
+                        <mat-icon>{{message.type === 'user' ? 'person' : 'smart_toy'}}</mat-icon>
+                        <span>{{message.type === 'user' ? 'You' : agentConfig.name || 'Agent'}}</span>
+                      </div>
+                      <div class="message-content">{{message.content}}</div>
+                    </div>
+                  }
+                  @if (isTestLoading) {
+                    <div class="chat-message agent">
+                      <div class="message-header">
+                        <mat-icon>smart_toy</mat-icon>
+                        <span>{{agentConfig.name || 'Agent'}}</span>
+                      </div>
+                      <div class="message-content">
+                        <mat-spinner diameter="20"></mat-spinner>
+                      </div>
+                    </div>
+                  }
+                </div>
+                
+                <div class="chat-input-container">
+                  <mat-form-field appearance="outline" class="chat-input-field">
+                    <mat-label>Test your agent...</mat-label>
+                    <textarea 
+                      matInput 
+                      [(ngModel)]="testPrompt" 
+                      rows="2"
+                      placeholder="Type a message to test your agent..."
+                      (keypress)="handleKeyPress($event)"
+                      [disabled]="isTestLoading"></textarea>
+                  </mat-form-field>
+                  <button 
+                    mat-raised-button 
+                    color="primary" 
+                    class="send-btn"
+                    (click)="sendTestMessage()"
+                    [disabled]="!testPrompt.trim() || isTestLoading">
+                    <mat-icon>send</mat-icon>
+                    Send
+                  </button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Test Scenarios & Metrics -->
+          <div class="test-scenarios">
+            <mat-card class="config-card scenarios-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>assignment</mat-icon>
+                  Test Scenarios
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <h4>Quick Test Prompts</h4>
+                @for (scenario of testScenarios; track scenario.id) {
+                  <div class="scenario-item" (click)="loadTestScenario(scenario)">
+                    <div class="scenario-title">{{scenario.title}}</div>
+                    <div class="scenario-desc">{{scenario.description}}</div>
+                  </div>
+                }
+                
+                <div class="test-metrics">
+                  <h5>Performance Metrics</h5>
+                  <div class="metric-item">
+                    <span class="metric-label">Response Time</span>
+                    <span class="metric-value">{{testMetrics.responseTime}}ms</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Token Count</span>
+                    <span class="metric-value">{{testMetrics.tokenCount}}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Tool Calls</span>
+                    <span class="metric-value">{{testMetrics.toolCalls}}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Context Usage</span>
+                    <span class="metric-value">{{testMetrics.contextUsage}}%</span>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Step 5: Review & Deploy -->
+    @if (currentStepIndex === 4) {
+      <div class="step-content review-deploy" [@slideIn]>
+        <h2 class="step-title">Review & Deploy Your Agent</h2>
+        <p class="step-subtitle">Confirm your configuration and launch your intelligent agent</p>
+        
+        <div class="review-container">
+          <!-- Agent Preview -->
+          <div class="agent-preview">
+            <div class="preview-header">
+              <div class="agent-avatar">
+                <mat-icon>smart_toy</mat-icon>
+              </div>
+              <div class="agent-info">
+                <h3>{{agentConfig.name || 'Unnamed Agent'}}</h3>
+                <p>{{agentConfig.description || 'No description provided'}}</p>
+                <mat-chip-listbox>
+                  <mat-chip>{{agentConfig.type || 'General'}}</mat-chip>
+                  <mat-chip>{{uploadedDocuments.length}} Documents</mat-chip>
+                  <mat-chip>{{selectedTools.length}} Tools</mat-chip>
+                </mat-chip-listbox>
+              </div>
+            </div>
+
+            <!-- Configuration Summary -->
+            <mat-accordion class="config-summary">
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>psychology</mat-icon>
+                    System Prompt
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="prompt-preview">{{agentConfig.systemPrompt || 'No system prompt defined'}}</div>
+              </mat-expansion-panel>
+
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>storage</mat-icon>
+                    Knowledge Base
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="knowledge-summary">
+                  <p><strong>Documents:</strong> {{uploadedDocuments.length}}</p>
+                  <p><strong>Embedding Model:</strong> {{agentConfig.embeddingModel || 'Not selected'}}</p>
+                  <p><strong>Retrieval Strategy:</strong> {{agentConfig.retrievalStrategy || 'Not selected'}}</p>
+                </div>
+              </mat-expansion-panel>
+
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>build</mat-icon>
+                    Tools & Capabilities
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="tools-summary">
+                  @for (tool of selectedTools; track tool.id) {
+                    <div class="tool-summary-item">
+                      <mat-icon>{{tool.icon}}</mat-icon>
+                      <span>{{tool.name}}</span>
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
+          </div>
+
+          <!-- Deployment Options -->
+          <mat-card class="deployment-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>rocket_launch</mat-icon>
+                Deployment Configuration
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="deployment-options">
+                <mat-form-field appearance="outline">
+                  <mat-label>Container Resources</mat-label>
+                  <mat-select [(ngModel)]="deploymentConfig.resources">
+                    <mat-option value="minimal">Minimal (1 CPU, 1GB RAM)</mat-option>
+                    <mat-option value="standard">Standard (2 CPU, 4GB RAM)</mat-option>
+                    <mat-option value="performance">Performance (4 CPU, 8GB RAM)</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-checkbox [(ngModel)]="deploymentConfig.autoStart">
+                  Auto-start on system boot
+                </mat-checkbox>
+
+                <mat-checkbox [(ngModel)]="deploymentConfig.enableLogging">
+                  Enable detailed logging
+                </mat-checkbox>
+
+                <mat-checkbox [(ngModel)]="deploymentConfig.exposeApi">
+                  Expose REST API endpoint
+                </mat-checkbox>
+              </div>
+
+              <div class="deployment-actions">
+                <button mat-raised-button color="primary" class="deploy-btn" (click)="deployAgent()">
+                  <mat-icon>rocket_launch</mat-icon>
+                  Deploy Agent
+                </button>
+                <button mat-stroked-button (click)="saveAsTemplate()">
+                  <mat-icon>save</mat-icon>
+                  Save as Template
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Navigation Controls -->
+  <div class="navigation-controls">
+    <button 
+      mat-button 
+      class="nav-btn prev-btn"
+      [disabled]="currentStepIndex === 0"
+      (click)="previousStep()">
+      <mat-icon>arrow_back</mat-icon>
+      Previous
+    </button>
+    
+    <div class="step-indicator">
+      Step {{currentStepIndex + 1}} of {{steps.length}}
+    </div>
+    
+    <button 
+      mat-raised-button 
+      color="primary"
+      class="nav-btn next-btn"
+      [disabled]="!canProceed()"
+      (click)="nextStep()">
+      {{currentStepIndex === steps.length - 1 ? 'Deploy' : 'Next'}}
+      <mat-icon>{{currentStepIndex === steps.length - 1 ? 'rocket_launch' : 'arrow_forward'}}</mat-icon>
+    </button>
+  </div>
+</div>

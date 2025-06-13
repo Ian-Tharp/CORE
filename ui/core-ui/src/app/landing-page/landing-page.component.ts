@@ -13,6 +13,7 @@ import { SystemMonitorService } from '../services/system-monitor/system-monitor.
 import { Subject, takeUntil } from 'rxjs';
 import { CommandCenterComponent } from './command-center/command-center.component';
 import { BoardsComponent } from './boards/boards.component';
+import { MyAgentsPageComponent } from '../agents-page/my-agents-page/my-agents-page.component';
 
 @Component({
   selector: 'app-landing-page',
@@ -28,7 +29,8 @@ import { BoardsComponent } from './boards/boards.component';
     CommonModule,
     HttpClientModule,
     CommandCenterComponent,
-    BoardsComponent
+    BoardsComponent,
+    MyAgentsPageComponent
   ],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.scss'
@@ -70,8 +72,8 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   constructor(private systemMonitor: SystemMonitorService) {}
 
   ngOnInit(): void {
-    // Start polling system resources every 5 seconds
-    this.systemMonitor.getSystemResourcesPolling(5)
+    // Start polling system resources every 15 seconds
+    this.systemMonitor.getSystemResourcesPolling(15)
       .pipe(takeUntil(this.destroy$))
       .subscribe(resources => {
         // Update the main stats used in the template
