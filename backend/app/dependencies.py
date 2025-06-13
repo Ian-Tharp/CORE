@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 @lru_cache()
 def get_4o_llm():
     return ChatOpenAI(

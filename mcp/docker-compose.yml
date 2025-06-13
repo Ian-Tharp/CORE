@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mcp-registry:
+    build: .
+    container_name: mcp-registry
+    ports:
+      - "8000:8000"
+    environment:
+      - MCP_DATABASE_URL=postgresql://mcp:mcp_password@postgres:5432/mcp_registry
+      - MCP_REDIS_URL=redis://redis:6379
+      - MCP_SECRET_KEY=${MCP_SECRET_KEY:-your-secret-key-here}
+      - MCP_DEBUG=${MCP_DEBUG:-false}
+      - MCP_WORKERS=4
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./mcp:/app/mcp
+      - ./mcp_servers:/app/mcp_servers
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcp-postgres
+    environment:
+      - POSTGRES_USER=mcp
+      - POSTGRES_PASSWORD=mcp_password
+      - POSTGRES_DB=mcp_registry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: mcp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mcp-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@mcp.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  mcp-network:
+    driver: bridge 

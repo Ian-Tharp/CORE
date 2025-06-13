@@ -40,7 +40,9 @@ async def post_conversation():
 async def get_single_conversation(conv_id: str):
     conv = await get_conversation(conv_id)
     if conv is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+        )
     return conv
 
 
@@ -52,4 +54,4 @@ async def patch_conversation(conv_id: str, payload: dict):
         raise HTTPException(status_code=400, detail="'title' is required")
 
     await update_title(conv_id, title)
-    return None 
+    return None

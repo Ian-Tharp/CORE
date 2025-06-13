@@ -66,6 +66,7 @@ async def _flush_raw(payload: Dict[str, Any]) -> None:
 # Public repository API
 # ---------------------------------------------------------------------------
 
+
 async def list_conversations() -> List[_Conversation]:
     """Return a **copy** of all stored conversations (without mutating state)."""
     raw = await _load_raw()
@@ -111,7 +112,11 @@ async def append_message(conv_id: str, message: _Message) -> None:
     # If we reached this point the conversation did not exist – create it so we
     # do not silently drop data. This should never happen in normal flows but
     # guards against corrupt state.
-    new_conv: _Conversation = {"id": conv_id, "title": "Recovered", "messages": [message]}
+    new_conv: _Conversation = {
+        "id": conv_id,
+        "title": "Recovered",
+        "messages": [message],
+    }
     raw["conversations"].append(new_conv)
     await _flush_raw(raw)
 
@@ -123,4 +128,4 @@ async def update_title(conv_id: str, title: str) -> None:
         if conv.get("id") == conv_id:
             conv["title"] = title
             await _flush_raw(raw)
-            return 
+            return

@@ -23,9 +23,6 @@ __all__ = ["chat_service"]
 # Public service-layer API
 # ---------------------------------------------------------------------------
 
-# NOTE: This function was formerly named ``generate_chat_stream``. It has been
-# renamed to ``chat_service`` to better reflect its role as the primary entry
-# point for streaming chat completions to the controller layer.
 
 async def chat_service(
     *,
