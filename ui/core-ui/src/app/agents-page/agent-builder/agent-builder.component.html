@@ -114,7 +114,7 @@
                   [(ngModel)]="agentConfig.systemPrompt" 
                   rows="12"
                   placeholder="Define your agent's behavior, capabilities, and constraints..."></textarea>
-                <mat-hint align="end">{{agentConfig.systemPrompt?.length || 0}} / 4000</mat-hint>
+                <mat-hint align="end">{{agentConfig.systemPrompt.length || 0}} / 4000</mat-hint>
               </mat-form-field>
 
               <div class="prompt-suggestions">

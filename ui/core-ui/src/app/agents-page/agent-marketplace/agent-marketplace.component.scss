@@ -1,0 +1,1315 @@
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes neural-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes hover-glow {
+  0%, 100% { box-shadow: 0 0.5rem 2rem rgba(0, 255, 136, 0.1); }
+  50% { box-shadow: 0 0.5rem 3rem rgba(0, 255, 136, 0.2); }
+}
+
+.agent-marketplace-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0f1c 0%, #1a2332 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+
+// Header Section
+.marketplace-header {
+  position: relative;
+  padding: 3rem 2rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+
+  .header-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .marketplace-title {
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    letter-spacing: 0.1em;
+    
+    .title-icon {
+      font-size: 3rem;
+      color: #00ff88;
+      animation: pulse 2s ease-in-out infinite;
+    }
+  }
+
+  .marketplace-subtitle {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 0.5rem;
+    font-weight: 300;
+  }
+
+  .neural-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+    opacity: 0.5;
+    animation: neural-flow 10s ease infinite;
+    background-size: 200% 200%;
+  }
+}
+
+// Main Content Layout
+.marketplace-content {
+  display: flex;
+  gap: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+// Sidebar
+.marketplace-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 1.5rem;
+  height: fit-content;
+  position: sticky;
+  top: 2rem;
+
+  .sidebar-section {
+    margin-bottom: 1.5rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    color: white;
+    margin: 0 0 1rem;
+    font-weight: 400;
+
+    mat-icon {
+      color: #00ff88;
+      font-size: 1.3rem;
+    }
+  }
+
+  .sidebar-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 1.5rem 0;
+  }
+
+  .insight-cards {
+    display: grid;
+    gap: 1rem;
+
+    .insight-card {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: rgba(0, 255, 136, 0.15);
+        border-color: rgba(0, 255, 136, 0.3);
+      }
+
+      .insight-value {
+        display: block;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #00ff88;
+        margin-bottom: 0.25rem;
+      }
+
+      .insight-label {
+        display: block;
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+
+  .quick-filter-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .quick-filter-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 0.5rem 0.75rem;
+      border-radius: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(0, 255, 136, 0.3);
+        color: white;
+      }
+
+      &.selected {
+        background: rgba(0, 255, 136, 0.2);
+        border-color: rgba(0, 255, 136, 0.5);
+        color: #00ff88;
+      }
+
+      .chip-icon {
+        font-size: 1.2rem;
+      }
+    }
+  }
+
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    .tag-item {
+      padding: 0.25rem 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: rgba(0, 255, 136, 0.1);
+        border-color: rgba(0, 255, 136, 0.3);
+        color: #00ff88;
+      }
+    }
+  }
+}
+
+// Main Content Area
+.marketplace-main {
+  flex: 1;
+  min-width: 0;
+}
+
+// Glass Morphism Effect
+.glass-morphism {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+// Filters Section
+.filters-section {
+  margin-bottom: 2rem;
+  transition: all 0.3s ease;
+
+  .filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+
+    .filters-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+      font-size: 1.1rem;
+      color: white;
+      font-weight: 400;
+
+      mat-icon {
+        color: #00ff88;
+      }
+    }
+
+    .filters-toggle {
+      color: rgba(255, 255, 255, 0.7);
+      transition: transform 0.3s ease;
+
+      &:hover {
+        color: white;
+      }
+    }
+  }
+
+  .filters-content {
+    padding: 0 1.5rem 1.5rem;
+    animation: slideDown 0.3s ease;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .search-container {
+    margin-bottom: 1.5rem;
+
+    .search-field {
+      width: 100%;
+      
+      ::ng-deep .mat-mdc-form-field-wrapper {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        
+        &:hover {
+          border-color: rgba(0, 255, 136, 0.3);
+          background: rgba(30, 41, 59, 0.8);
+        }
+      }
+
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        background: transparent !important;
+      }
+
+      ::ng-deep .mat-mdc-form-field-focused .mat-mdc-form-field-wrapper {
+        background: rgba(30, 41, 59, 0.9);
+        border-color: rgba(0, 255, 136, 0.5);
+      }
+
+      ::ng-deep .mat-mdc-form-field-outline {
+        display: none;
+      }
+
+      ::ng-deep input {
+        color: white;
+        padding: 0.5rem 0;
+      }
+
+      ::ng-deep .mat-mdc-form-field-label {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      ::ng-deep .mat-mdc-form-field-hint {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .search-icon, .clear-icon {
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        transition: color 0.3s ease;
+        vertical-align: middle;
+
+        &:hover {
+          color: #00ff88;
+        }
+      }
+    }
+  }
+
+  .filter-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+
+    .filter-field {
+      ::ng-deep .mat-mdc-form-field-wrapper {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        height: 100%;
+        
+        &:hover {
+          border-color: rgba(0, 255, 136, 0.3);
+          background: rgba(30, 41, 59, 0.8);
+        }
+      }
+
+      ::ng-deep .mat-mdc-form-field-focused .mat-mdc-form-field-wrapper {
+        background: rgba(30, 41, 59, 0.9);
+        border-color: rgba(0, 255, 136, 0.5);
+      }
+
+      ::ng-deep .mat-mdc-form-field-outline {
+        display: none;
+      }
+
+      ::ng-deep .mat-mdc-select-value {
+        color: white;
+        padding: 0.5rem 0;
+      }
+
+      ::ng-deep .mat-mdc-form-field-label {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      ::ng-deep .mat-mdc-select-arrow {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      ::ng-deep .mat-mdc-select-panel {
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(20px);
+        margin-top: 0.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      }
+
+      ::ng-deep .mat-mdc-option {
+        color: rgba(255, 255, 255, 0.9);
+        
+        &:hover:not(.mat-mdc-option-disabled) {
+          background: rgba(0, 255, 136, 0.1);
+        }
+        
+        &.mat-mdc-option-active {
+          background: rgba(0, 255, 136, 0.2);
+          color: white;
+        }
+      }
+    }
+
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding: 1rem;
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+      
+      &:hover {
+        border-color: rgba(0, 255, 136, 0.3);
+        background: rgba(30, 41, 59, 0.8);
+      }
+
+      .offline-toggle {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
+        
+        ::ng-deep .mat-mdc-checkbox {
+          display: flex;
+          align-items: center;
+        }
+        
+        ::ng-deep .mat-mdc-checkbox-frame {
+          border-color: rgba(255, 255, 255, 0.5);
+          background: rgba(255, 255, 255, 0.1);
+        }
+        
+        ::ng-deep .mat-mdc-checkbox-checked .mat-mdc-checkbox-frame {
+          background: #00ff88;
+          border-color: #00ff88;
+        }
+
+        .toggle-icon {
+          margin-right: 0.5rem;
+          color: #00ff88;
+          vertical-align: middle;
+        }
+      }
+    }
+  }
+
+  .status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    box-shadow: 0 0 6px currentColor;
+
+    &.status-stable { background: #00ff88; color: #00ff88; }
+    &.status-beta { background: #ff9800; color: #ff9800; }
+    &.status-experimental { background: #ff5252; color: #ff5252; }
+  }
+
+  .category-icon {
+    margin-right: 0.5rem;
+    color: #00ff88;
+    vertical-align: middle;
+  }
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+
+  .loading-animation {
+    text-align: center;
+
+    ::ng-deep .mat-mdc-progress-spinner {
+      margin: 0 auto 1rem;
+      
+      circle {
+        stroke: #00ff88 !important;
+      }
+    }
+
+    .loading-text {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.1rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+// Agent Grid
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+  padding: 0 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+// Agent Card
+.agent-card {
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #00ff88, #00a8ff, #ff00a8, #00ff88);
+    border-radius: 1rem;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+    background-size: 300% 300%;
+    animation: neural-flow 5s ease infinite;
+  }
+
+  &:hover {
+    transform: translateY(-5px);
+    animation: hover-glow 2s ease-in-out infinite;
+
+    &::before {
+      opacity: 0.3;
+    }
+  }
+
+  &.installing {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    .agent-icon-container {
+      position: relative;
+      
+      .agent-icon {
+        font-size: 3rem;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        
+        &.category-cognitive { color: #00ff88; }
+        &.category-automation { color: #00a8ff; }
+        &.category-integration { color: #ff9800; }
+        &.category-analytics { color: #9c27b0; }
+        &.category-security { color: #ff5252; }
+        &.category-experimental { color: #ffeb3b; }
+      }
+
+      .agent-status-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+
+        .status-dot {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          border: 2px solid #1a2332;
+          
+          &.status-stable { background: #00ff88; }
+          &.status-beta { background: #ff9800; }
+          &.status-experimental { background: #ff5252; }
+        }
+      }
+    }
+
+    .agent-info {
+      flex: 1;
+
+      .agent-name {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: white;
+        margin: 0 0 0.25rem;
+      }
+
+      .agent-author {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin: 0;
+      }
+    }
+  }
+
+  .agent-description {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .agent-tags {
+    margin-bottom: 1rem;
+
+    ::ng-deep .mat-mdc-chip-set {
+      gap: 0.5rem;
+    }
+
+    ::ng-deep .mat-mdc-chip {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      color: #00ff88;
+      font-size: 0.75rem;
+      height: 24px;
+      
+      &.more-tags {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+
+  .agent-metrics {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+
+    .metric {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      .metric-icon {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1.2rem;
+      }
+
+      .metric-value {
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+      }
+    }
+  }
+
+  .capabilities-preview {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    .capability-icon {
+      color: rgba(0, 255, 136, 0.7);
+      background: rgba(0, 255, 136, 0.1);
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      font-size: 1.2rem;
+    }
+  }
+
+  .agent-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    .install-button {
+      background: linear-gradient(135deg, #00ff88 0%, #00d68f 100%);
+      color: #0a0f1c;
+      font-weight: 500;
+      
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #00d68f 0%, #00ff88 100%);
+        transform: scale(1.05);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+      }
+
+      ::ng-deep .mat-mdc-progress-spinner {
+        margin-right: 0.5rem;
+        
+        circle {
+          stroke: #0a0f1c !important;
+        }
+      }
+    }
+  }
+}
+
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: rgba(255, 255, 255, 0.6);
+
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .empty-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .empty-message {
+    font-size: 1.1rem;
+  }
+}
+
+// Agent Detail Modal
+.agent-detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.agent-detail-modal {
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.3s ease;
+
+  .close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    z-index: 10;
+
+    &:hover {
+      color: white;
+    }
+  }
+
+  .detail-header {
+    padding: 2rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    .detail-icon-container {
+      .detail-icon {
+        font-size: 4rem;
+        padding: 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        
+        &.category-cognitive { color: #00ff88; }
+        &.category-automation { color: #00a8ff; }
+        &.category-integration { color: #ff9800; }
+        &.category-analytics { color: #9c27b0; }
+        &.category-security { color: #ff5252; }
+        &.category-experimental { color: #ffeb3b; }
+      }
+    }
+
+    .detail-info {
+      flex: 1;
+
+      .detail-name {
+        font-size: 2rem;
+        color: white;
+        margin: 0 0 0.5rem;
+      }
+
+      .detail-version {
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 1rem;
+      }
+
+      .detail-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+
+        ::ng-deep .mat-mdc-chip {
+          &.status-chip {
+            &.status-stable { 
+              background: rgba(0, 255, 136, 0.2);
+              color: #00ff88;
+            }
+            &.status-beta { 
+              background: rgba(255, 152, 0, 0.2);
+              color: #ff9800;
+            }
+            &.status-experimental { 
+              background: rgba(255, 82, 82, 0.2);
+              color: #ff5252;
+            }
+          }
+
+          &.feature-chip {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+
+            &.eco {
+              background: rgba(0, 255, 136, 0.1);
+              color: #00ff88;
+            }
+
+            .chip-icon {
+              margin-right: 0.25rem;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .detail-tabs {
+    ::ng-deep .mat-mdc-tab-group {
+      background: transparent;
+    }
+
+    ::ng-deep .mat-mdc-tab-list {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    ::ng-deep .mat-mdc-tab {
+      color: rgba(255, 255, 255, 0.7);
+
+      &.mat-mdc-tab-label-active {
+        color: #00ff88;
+      }
+    }
+
+    ::ng-deep .mat-mdc-tab-label-content {
+      font-size: 1rem;
+    }
+
+    ::ng-deep .mat-ink-bar {
+      background-color: #00ff88;
+    }
+  }
+
+  .tab-content {
+    padding: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+
+    .detail-section {
+      margin-bottom: 2rem;
+
+      .section-title {
+        font-size: 1.3rem;
+        color: white;
+        margin-bottom: 1rem;
+        font-weight: 300;
+      }
+
+      .long-description {
+        line-height: 1.8;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+
+        .metric-card {
+          background: rgba(255, 255, 255, 0.05);
+          padding: 1.5rem;
+          border-radius: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+
+          .metric-icon {
+            font-size: 2rem;
+            color: #00ff88;
+          }
+
+          .metric-details {
+            .metric-label {
+              display: block;
+              font-size: 0.875rem;
+              color: rgba(255, 255, 255, 0.6);
+              margin-bottom: 0.25rem;
+            }
+
+            .metric-value {
+              font-size: 1.5rem;
+              font-weight: 500;
+              color: white;
+            }
+          }
+        }
+      }
+
+      .container-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 0.5rem;
+
+        .container-image {
+          flex: 1;
+          font-family: monospace;
+          color: #00ff88;
+        }
+
+        button {
+          color: rgba(255, 255, 255, 0.7);
+
+          &:hover {
+            color: white;
+          }
+        }
+      }
+    }
+
+    .capabilities-grid {
+      display: grid;
+      gap: 1rem;
+
+      .capability-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+
+        .capability-icon {
+          font-size: 2rem;
+          padding: 0.75rem;
+          border-radius: 0.5rem;
+          background: rgba(255, 255, 255, 0.05);
+
+          &.cap-perception { color: #00a8ff; }
+          &.cap-reasoning { color: #9c27b0; }
+          &.cap-action { color: #00ff88; }
+          &.cap-learning { color: #ff9800; }
+          &.cap-integration { color: #ffeb3b; }
+        }
+
+        .capability-details {
+          flex: 1;
+
+          .capability-name {
+            font-size: 1.1rem;
+            color: white;
+            margin: 0 0 0.5rem;
+          }
+
+          .capability-description {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin-bottom: 0.75rem;
+          }
+
+          ::ng-deep .mat-mdc-chip {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+          }
+        }
+      }
+    }
+
+    .performance-metrics {
+      display: grid;
+      gap: 1.5rem;
+
+      .perf-metric {
+        .perf-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+          color: rgba(255, 255, 255, 0.9);
+
+          mat-icon {
+            color: #00ff88;
+          }
+        }
+
+        .perf-bar {
+          height: 8px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 0.5rem;
+
+          .perf-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00d68f 100%);
+            transition: width 0.3s ease;
+
+            &.success {
+              background: linear-gradient(90deg, #00ff88 0%, #00d68f 100%);
+            }
+
+            &.eco {
+              background: linear-gradient(90deg, #00ff88 0%, #4caf50 100%);
+            }
+          }
+        }
+
+        .perf-value {
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.7);
+        }
+      }
+    }
+
+    .dependencies-list {
+      display: grid;
+      gap: 1rem;
+      margin-bottom: 2rem;
+
+      .dependency-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+
+        .dep-icon {
+          font-size: 1.5rem;
+
+          &.dep-container { color: #00a8ff; }
+          &.dep-service { color: #ff9800; }
+          &.dep-hardware { color: #ff5252; }
+          &.dep-model { color: #9c27b0; }
+        }
+
+        .dep-details {
+          flex: 1;
+
+          .dep-name {
+            font-weight: 500;
+            color: white;
+            margin-right: 0.5rem;
+          }
+
+          .dep-version {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+          }
+        }
+
+        ::ng-deep .mat-mdc-chip {
+          background: rgba(255, 152, 0, 0.2);
+          color: #ff9800;
+          font-size: 0.75rem;
+        }
+      }
+    }
+
+    .compatibility-info {
+      padding: 1rem;
+
+      .compat-title {
+        color: white;
+        margin-bottom: 1rem;
+      }
+
+      .compat-item {
+        margin-bottom: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+
+        strong {
+          color: white;
+          margin-right: 0.5rem;
+        }
+
+        ::ng-deep .mat-mdc-chip {
+          background: rgba(0, 168, 255, 0.2);
+          color: #00a8ff;
+          font-size: 0.75rem;
+          margin: 0.25rem;
+        }
+      }
+    }
+  }
+
+  .detail-actions {
+    padding: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+    .action-button {
+      color: rgba(255, 255, 255, 0.9);
+      border-color: rgba(255, 255, 255, 0.3);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .install-button.large {
+      background: linear-gradient(135deg, #00ff88 0%, #00d68f 100%);
+      color: #0a0f1c;
+      font-weight: 500;
+      padding: 0.75rem 2rem;
+      
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #00d68f 0%, #00ff88 100%);
+        transform: scale(1.05);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+      }
+
+      ::ng-deep .mat-mdc-progress-spinner {
+        margin-right: 0.5rem;
+        
+        circle {
+          stroke: #0a0f1c !important;
+        }
+      }
+    }
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive Design
+@media (max-width: 1200px) {
+  .marketplace-sidebar {
+    width: 250px;
+  }
+}
+
+@media (max-width: 992px) {
+  .marketplace-content {
+    flex-direction: column;
+  }
+
+  .marketplace-sidebar {
+    width: 100%;
+    position: static;
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    
+    .sidebar-divider {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .marketplace-header {
+    padding: 2rem 1rem;
+
+    .marketplace-title {
+      font-size: 2rem;
+      
+      .title-icon {
+        font-size: 2.5rem;
+      }
+    }
+
+    .marketplace-subtitle {
+      font-size: 1rem;
+    }
+  }
+
+  .marketplace-content {
+    padding: 0 1rem;
+  }
+
+  .marketplace-sidebar {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+
+    .insight-cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-filter-chips {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+
+      .quick-filter-chip {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.625rem;
+      }
+    }
+  }
+
+  .filters-section {
+    .filter-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .agents-grid {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+
+  .agent-card {
+    .agent-header {
+      .agent-icon {
+        font-size: 2.5rem;
+      }
+    }
+  }
+
+  .agent-detail-modal {
+    .detail-header {
+      flex-direction: column;
+      text-align: center;
+      padding: 1.5rem;
+
+      .detail-icon {
+        font-size: 3rem;
+      }
+
+      .detail-name {
+        font-size: 1.5rem;
+      }
+    }
+
+    .tab-content {
+      padding: 1rem;
+
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-actions {
+      flex-direction: column;
+      padding: 1rem;
+
+      .action-button,
+      .install-button {
+        width: 100%;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .marketplace-sidebar {
+    .insight-cards {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .agent-card {
+    padding: 1rem;
+
+    .agent-tags {
+      ::ng-deep .mat-mdc-chip {
+        font-size: 0.7rem;
+        height: 20px;
+        padding: 0 8px;
+      }
+    }
+
+    .agent-metrics {
+      gap: 1rem;
+
+      .metric {
+        .metric-icon {
+          font-size: 1rem;
+        }
+
+        .metric-value {
+          font-size: 0.875rem;
+        }
+      }
+    }
+  }
+}

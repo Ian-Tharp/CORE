@@ -10,7 +10,7 @@ from app.prompts.comprehension_agent_prompt import comprehension_agent_prompt
 
 class ComprehensionAgent:
     def __init__(self, model: str):
-        self.model = model or "gpt-4.1"
+        self.model = model or "gpt-4.1-mini"
         self.system_capabilities = comprehension_agent_prompt
 
     def run(self, user_input: UserInput) -> ComprehensionOutput:

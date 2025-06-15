@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage the lifespan events of the FastAPI application."""
-    logger.info("CORE System- Initializing...")
+    logger.info("CORE System - Initializing...")
     try:
         yield
     finally:
@@ -49,16 +49,11 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Entry-point helper (optional)
 # ---------------------------------------------------------------------------
-def create_app() -> FastAPI:  # pragma: no cover
+def create_app() -> FastAPI:
     """Factory for reuse in unit tests or external ASGI servers."""
     return app
 
 
-if __name__ == "__main__":  # pragma: no cover
-    # For direct execution:  `python -m backend.app.main` or `python backend/app/main.py`
-    # Pass the application instance directly so `uvicorn` doesn't have to
-    # resolve the module path – this works no matter which directory you
-    # launch the script from (project root or backend/).
+if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="127.0.0.1", port=8001)

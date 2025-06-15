@@ -1,1 +1,483 @@
-<p>agent-marketplace works!</p>
+<div class="agent-marketplace-container">
+  <!-- Header Section with Organic Animation -->
+  <div class="marketplace-header">
+    <div class="header-content">
+      <h1 class="marketplace-title">
+        <mat-icon class="title-icon pulse-animation">hub</mat-icon>
+        Agent Ecosystem Marketplace
+      </h1>
+      <p class="marketplace-subtitle">
+        Discover and deploy cognitive subsystems to expand your CORE's capabilities
+      </p>
+    </div>
+    <div class="neural-background"></div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="marketplace-content">
+    <!-- Sidebar for Quick Insights -->
+    <div class="marketplace-sidebar glass-morphism">
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">
+          <mat-icon>trending_up</mat-icon>
+          Marketplace Insights
+        </h3>
+        <div class="insight-cards">
+          <div class="insight-card">
+            <span class="insight-value">{{ agents.length }}</span>
+            <span class="insight-label">Total Agents</span>
+          </div>
+          <div class="insight-card">
+            <span class="insight-value">{{ filteredAgents.length }}</span>
+            <span class="insight-label">Filtered Results</span>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider class="sidebar-divider"></mat-divider>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">
+          <mat-icon>category</mat-icon>
+          Quick Filters
+        </h3>
+        <div class="quick-filter-chips">
+          @for (category of categories; track category.value) {
+            <mat-chip 
+              class="quick-filter-chip" 
+              [class.selected]="categoryFilter.value?.includes(category.value)"
+              (click)="toggleCategory(category.value)">
+              <mat-icon class="chip-icon">{{ category.icon }}</mat-icon>
+              {{ category.label }}
+            </mat-chip>
+          }
+        </div>
+      </div>
+
+      <mat-divider class="sidebar-divider"></mat-divider>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">
+          <mat-icon>stars</mat-icon>
+          Featured Tags
+        </h3>
+                 <div class="tag-cloud">
+           @for (tag of ['AI', 'Automation', 'Learning', 'Vision', 'NLP']; track tag) {
+             <span class="tag-item">{{ tag }}</span>
+           }
+         </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="marketplace-main">
+      <!-- Advanced Filters Section -->
+      <div class="filters-section glass-morphism">
+        <div class="filters-header">
+          <h3 class="filters-title">
+            <mat-icon>filter_list</mat-icon>
+            Filter & Search
+          </h3>
+          <button mat-icon-button class="filters-toggle" (click)="toggleFilters()">
+            <mat-icon>{{ showFilters ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+        </div>
+
+        @if (showFilters) {
+          <div class="filters-content">
+            <div class="search-container">
+              <mat-form-field appearance="outline" class="search-field">
+                <mat-label>Search agents by name, capability, or tag</mat-label>
+                <input matInput [formControl]="searchControl" placeholder="e.g., learning, home automation">
+                <mat-icon matPrefix class="search-icon">search</mat-icon>
+                @if (searchControl.value) {
+                  <mat-icon matSuffix class="clear-icon" (click)="searchControl.setValue('')">clear</mat-icon>
+                }
+              </mat-form-field>
+            </div>
+
+            <div class="filter-controls">
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Status</mat-label>
+                <mat-select [formControl]="statusFilter" multiple>
+                  @for (status of statuses; track status.value) {
+                    <mat-option [value]="status.value">
+                      <span class="status-indicator" [ngClass]="'status-' + status.value"></span>
+                      {{ status.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Sort By</mat-label>
+                <mat-select [formControl]="sortControl">
+                  @for (option of sortOptions; track option.value) {
+                    <mat-option [value]="option.value">
+                      {{ option.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <div class="toggle-container">
+                <mat-checkbox [formControl]="offlineOnlyFilter" class="offline-toggle">
+                  <mat-icon class="toggle-icon">cloud_off</mat-icon>
+                  Offline Capable Only
+                </mat-checkbox>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Loading State -->
+      @if (isLoading) {
+        <div class="loading-container">
+          <div class="loading-animation">
+            <mat-spinner diameter="60"></mat-spinner>
+            <p class="loading-text">Synchronizing with the agent registry...</p>
+          </div>
+        </div>
+      }
+
+      <!-- Agent Grid -->
+      @if (!isLoading) {
+        <div class="agents-grid">
+          @for (agent of filteredAgents; track agent.id) {
+            <div class="agent-card glass-morphism hover-lift" 
+                 (click)="selectAgent(agent)"
+                 [class.installing]="installingAgentId === agent.id">
+              
+              <!-- Agent Header -->
+              <div class="agent-header">
+                <div class="agent-icon-container">
+                  <mat-icon class="agent-icon" [ngClass]="'category-' + agent.category">
+                    {{ getCategoryIcon(agent.category) }}
+                  </mat-icon>
+                  <div class="agent-status-badge">
+                    <span class="status-dot" [ngClass]="'status-' + agent.status"></span>
+                  </div>
+                </div>
+                <div class="agent-info">
+                  <h3 class="agent-name">{{ agent.displayName }}</h3>
+                  <p class="agent-author">by {{ agent.author }}</p>
+                </div>
+              </div>
+
+              <!-- Agent Description -->
+              <p class="agent-description">{{ agent.description }}</p>
+
+              <!-- Agent Tags -->
+              <div class="agent-tags">
+                <mat-chip-set aria-label="Agent tags">
+                  @for (tag of agent.tags.slice(0, 3); track tag) {
+                    <mat-chip class="agent-tag">
+                      {{ tag }}
+                    </mat-chip>
+                  }
+                  @if (agent.tags.length > 3) {
+                    <mat-chip class="more-tags">
+                      +{{ agent.tags.length - 3 }}
+                    </mat-chip>
+                  }
+                </mat-chip-set>
+              </div>
+
+              <!-- Agent Metrics -->
+              <div class="agent-metrics">
+                <div class="metric">
+                  <mat-icon class="metric-icon">download</mat-icon>
+                  <span class="metric-value">{{ formatNumber(agent.downloads) }}</span>
+                </div>
+                <div class="metric">
+                  <mat-icon class="metric-icon">star</mat-icon>
+                  <span class="metric-value">{{ agent.rating.toFixed(1) }}</span>
+                </div>
+                <div class="metric">
+                  <mat-icon class="metric-icon">memory</mat-icon>
+                  <span class="metric-value">{{ formatBytes(agent.size) }}</span>
+                </div>
+              </div>
+
+              <!-- Agent Capabilities Preview -->
+              <div class="capabilities-preview">
+                @for (cap of agent.capabilities.slice(0, 3); track cap.name) {
+                  <mat-icon class="capability-icon" 
+                            [matTooltip]="cap.name"
+                            matTooltipPosition="above">
+                    {{ cap.icon }}
+                  </mat-icon>
+                }
+              </div>
+
+              <!-- Quick Actions -->
+              <div class="agent-actions">
+                <button mat-raised-button 
+                        color="primary" 
+                        class="install-button"
+                        (click)="installAgent(agent); $event.stopPropagation()"
+                        [disabled]="installingAgentId === agent.id">
+                  @if (installingAgentId !== agent.id) {
+                    <mat-icon>download</mat-icon>
+                  } @else {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  }
+                  {{ installingAgentId === agent.id ? 'Installing...' : 'Install' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!isLoading && filteredAgents.length === 0) {
+        <div class="empty-state">
+          <mat-icon class="empty-icon">search_off</mat-icon>
+          <h3 class="empty-title">No agents found</h3>
+          <p class="empty-message">Try adjusting your filters or search criteria</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Agent Detail Modal -->
+  @if (selectedAgent) {
+    <div class="agent-detail-overlay" (click)="closeAgentDetails()">
+      <div class="agent-detail-modal glass-morphism" (click)="$event.stopPropagation()">
+        <button mat-icon-button class="close-button" (click)="closeAgentDetails()">
+          <mat-icon>close</mat-icon>
+        </button>
+
+        <div class="detail-header">
+          <div class="detail-icon-container">
+            <mat-icon class="detail-icon" [ngClass]="'category-' + selectedAgent.category">
+              {{ getCategoryIcon(selectedAgent.category) }}
+            </mat-icon>
+          </div>
+          <div class="detail-info">
+            <h2 class="detail-name">{{ selectedAgent.displayName }}</h2>
+            <p class="detail-version">Version {{ selectedAgent.version }}</p>
+            <div class="detail-badges">
+              <mat-chip class="status-chip" [ngClass]="'status-' + selectedAgent.status">
+                {{ selectedAgent.status }}
+              </mat-chip>
+              @if (selectedAgent.isOfflineCapable) {
+                <mat-chip class="feature-chip">
+                  <mat-icon class="chip-icon">cloud_off</mat-icon>
+                  Offline Capable
+                </mat-chip>
+              }
+              @if (selectedAgent.energyEfficient) {
+                <mat-chip class="feature-chip eco">
+                  <mat-icon class="chip-icon">eco</mat-icon>
+                  Energy Efficient
+                </mat-chip>
+              }
+            </div>
+          </div>
+        </div>
+
+        <mat-tab-group class="detail-tabs" animationDuration="300ms">
+          <!-- Overview Tab -->
+          <mat-tab label="Overview">
+            <div class="tab-content">
+              <section class="detail-section">
+                <h3 class="section-title">Description</h3>
+                <p class="long-description">{{ selectedAgent.longDescription }}</p>
+              </section>
+
+              <section class="detail-section">
+                <h3 class="section-title">Key Metrics</h3>
+                <div class="metrics-grid">
+                  <div class="metric-card">
+                    <mat-icon class="metric-icon">download</mat-icon>
+                    <div class="metric-details">
+                      <span class="metric-label">Downloads</span>
+                      <span class="metric-value">{{ formatNumber(selectedAgent.downloads) }}</span>
+                    </div>
+                  </div>
+                  <div class="metric-card">
+                    <mat-icon class="metric-icon">star</mat-icon>
+                    <div class="metric-details">
+                      <span class="metric-label">Rating</span>
+                      <span class="metric-value">{{ selectedAgent.rating.toFixed(1) }}/5.0</span>
+                    </div>
+                  </div>
+                  <div class="metric-card">
+                    <mat-icon class="metric-icon">storage</mat-icon>
+                    <div class="metric-details">
+                      <span class="metric-label">Size</span>
+                      <span class="metric-value">{{ formatBytes(selectedAgent.size) }}</span>
+                    </div>
+                  </div>
+                  <div class="metric-card">
+                    <mat-icon class="metric-icon">update</mat-icon>
+                    <div class="metric-details">
+                      <span class="metric-label">Last Updated</span>
+                      <span class="metric-value">{{ selectedAgent.lastUpdated | date:'shortDate' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="detail-section">
+                <h3 class="section-title">Container Information</h3>
+                <div class="container-info">
+                  <code class="container-image">{{ selectedAgent.containerImage }}</code>
+                  <button mat-icon-button matTooltip="Copy container image">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </mat-tab>
+
+          <!-- Capabilities Tab -->
+          <mat-tab label="Capabilities">
+            <div class="tab-content">
+              <div class="capabilities-grid">
+                @for (cap of selectedAgent.capabilities; track cap.name) {
+                  <div class="capability-card">
+                    <mat-icon class="capability-icon" [ngClass]="'cap-' + cap.category">
+                      {{ cap.icon }}
+                    </mat-icon>
+                    <div class="capability-details">
+                      <h4 class="capability-name">{{ cap.name }}</h4>
+                      <p class="capability-description">{{ cap.description }}</p>
+                      <mat-chip class="capability-category">{{ cap.category }}</mat-chip>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </mat-tab>
+
+          <!-- Performance Tab -->
+          <mat-tab label="Performance">
+            <div class="tab-content">
+              <div class="performance-metrics">
+                <div class="perf-metric">
+                  <div class="perf-header">
+                    <mat-icon>memory</mat-icon>
+                    <span>Memory Usage</span>
+                  </div>
+                  <div class="perf-bar">
+                    <div class="perf-fill" [style.width.%]="(selectedAgent.performanceMetrics.memoryUsage / 2048) * 100"></div>
+                  </div>
+                  <span class="perf-value">{{ selectedAgent.performanceMetrics.memoryUsage }} MB</span>
+                </div>
+
+                <div class="perf-metric">
+                  <div class="perf-header">
+                    <mat-icon>speed</mat-icon>
+                    <span>CPU Usage</span>
+                  </div>
+                  <div class="perf-bar">
+                    <div class="perf-fill" [style.width.%]="selectedAgent.performanceMetrics.cpuUsage"></div>
+                  </div>
+                  <span class="perf-value">{{ selectedAgent.performanceMetrics.cpuUsage }}%</span>
+                </div>
+
+                <div class="perf-metric">
+                  <div class="perf-header">
+                    <mat-icon>timer</mat-icon>
+                    <span>Responsiveness</span>
+                  </div>
+                  <div class="perf-bar">
+                    <div class="perf-fill success" [style.width.%]="100 - (selectedAgent.performanceMetrics.responsiveness / 2)"></div>
+                  </div>
+                  <span class="perf-value">{{ selectedAgent.performanceMetrics.responsiveness }}ms</span>
+                </div>
+
+                <div class="perf-metric">
+                  <div class="perf-header">
+                    <mat-icon>eco</mat-icon>
+                    <span>Energy Efficiency</span>
+                  </div>
+                  <div class="perf-bar">
+                    <div class="perf-fill eco" [style.width.%]="selectedAgent.performanceMetrics.energyEfficiency"></div>
+                  </div>
+                  <span class="perf-value">{{ selectedAgent.performanceMetrics.energyEfficiency }}%</span>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+
+          <!-- Dependencies Tab -->
+          <mat-tab label="Dependencies">
+            <div class="tab-content">
+              <div class="dependencies-list">
+                @for (dep of selectedAgent.dependencies; track dep.name) {
+                  <div class="dependency-item">
+                    <mat-icon class="dep-icon" [ngClass]="'dep-' + dep.type">
+                      {{ dep.type === 'container' ? 'widgets' : 
+                         dep.type === 'service' ? 'api' : 
+                         dep.type === 'hardware' ? 'memory' : 'layers' }}
+                    </mat-icon>
+                    <div class="dep-details">
+                      <span class="dep-name">{{ dep.name }}</span>
+                      <span class="dep-version">{{ dep.version }}</span>
+                    </div>
+                    @if (dep.optional) {
+                      <mat-chip class="optional-chip">Optional</mat-chip>
+                    }
+                  </div>
+                }
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="compatibility-info">
+                <h4 class="compat-title">Compatibility</h4>
+                <div class="compat-item">
+                  <strong>CORE Version:</strong> {{ selectedAgent.compatibility.coreVersion }}
+                </div>
+                <div class="compat-item">
+                  <strong>Platforms:</strong> 
+                  @for (platform of selectedAgent.compatibility.platforms; track platform) {
+                    <mat-chip class="platform-chip">
+                      {{ platform }}
+                    </mat-chip>
+                  }
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+
+        <div class="detail-actions">
+          <a mat-stroked-button 
+             [href]="selectedAgent.documentation" 
+             target="_blank"
+             class="action-button">
+            <mat-icon>description</mat-icon>
+            Documentation
+          </a>
+          @if (selectedAgent.sourceCodeUrl) {
+            <a mat-stroked-button 
+               [href]="selectedAgent.sourceCodeUrl" 
+               target="_blank"
+               class="action-button">
+              <mat-icon>code</mat-icon>
+              Source Code
+            </a>
+          }
+          <button mat-raised-button 
+                  color="primary" 
+                  class="install-button large"
+                  (click)="installAgent(selectedAgent)"
+                  [disabled]="installingAgentId === selectedAgent.id">
+            @if (installingAgentId !== selectedAgent.id) {
+              <mat-icon>download</mat-icon>
+            } @else {
+              <mat-spinner diameter="24"></mat-spinner>
+            }
+            {{ installingAgentId === selectedAgent.id ? 'Installing...' : 'Install Agent' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
