@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.grid .cta { grid-column: 1 / -1; }
+.grid .cta .btn { display:inline-block; padding:0.6rem 1rem; border-radius:0.6rem; border:1px solid rgba(0,255,200,0.18); background: rgba(14,60,70,0.5); color:#dffff8; text-decoration:none; }
+.empty { grid-column: 1 / -1; text-align:center; opacity:0.9; }
+

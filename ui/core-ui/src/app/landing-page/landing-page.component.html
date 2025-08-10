@@ -1,13 +1,7 @@
 <div class="landing-container">
   <!-- In-page Main Navigation Tabs -->
-  <mat-tab-group class="main-tabs" selectedIndex="2">
-    <mat-tab label="Command Center">
-      <app-command-center></app-command-center>
-    </mat-tab>
-    <mat-tab label="Tasks">
-      <!-- Tasks content will go here -->
-    </mat-tab>
-    <mat-tab label="Dashboard">
+  <mat-tab-group class="main-tabs" selectedIndex="0">
+      <mat-tab label="Dashboard">
       <!-- Three-column responsive layout -->
       <div class="content-layout">
         <!-- Chat / Assistant column -->
@@ -28,13 +22,17 @@
                   Your Digital Brain Platform is operational and ready to revolutionize your AI interaction experience.
                 </p>
                 <div class="hero-actions">
-                  <button mat-raised-button class="primary-action">
+                  <button mat-raised-button class="primary-action" [routerLink]="['/agents']">
                     <mat-icon>rocket_launch</mat-icon>
                     Deploy New Agent
                   </button>
-                  <button mat-stroked-button class="secondary-action">
+                  <button mat-stroked-button class="secondary-action" [routerLink]="['/command-center']">
                     <mat-icon>dashboard</mat-icon>
                     View Command Center
+                  </button>
+                  <button mat-stroked-button class="secondary-action" [routerLink]="['/creative']">
+                    <mat-icon>palette</mat-icon>
+                    Creative Studio
                   </button>
                 </div>
               </div>
@@ -219,6 +217,9 @@
           </mat-card>
         </aside>
       </div>
+    </mat-tab>
+    <mat-tab label="Tasks">
+      <!-- Tasks content will go here -->
     </mat-tab>
     <mat-tab label="Agents">
       <app-my-agents-page></app-my-agents-page>

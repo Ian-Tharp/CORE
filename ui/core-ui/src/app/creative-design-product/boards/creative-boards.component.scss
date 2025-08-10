@@ -1,0 +1,9 @@
+.boards { display: grid; gap: 0.8rem; }
+.boards .bar { display: flex; gap: 0.5rem; }
+.boards .bar input { flex: 1; padding: 0.4rem 0.6rem; border-radius: 0.6rem; border: 1px solid rgba(0,255,200,0.18); background: rgba(8,28,35,0.4); color: #c8fff0; }
+.boards .bar button { padding: 0.4rem 0.8rem; border-radius: 0.6rem; border: 1px solid rgba(0,255,200,0.18); background: rgba(14,60,70,0.5); color: #dffff8; }
+.masonry { column-count: 3; column-gap: 0.8rem; }
+.board { display: inline-block; width: 100%; margin: 0 0 0.8rem; padding: 0.8rem; border-radius: 0.8rem; border: 1px solid rgba(0,255,200,0.18); background: linear-gradient(135deg, rgba(8,28,35,0.5), rgba(20,60,70,0.35)); color: #c8fff0; }
+@media (max-width: 900px) { .masonry { column-count: 2; } }
+@media (max-width: 600px) { .masonry { column-count: 1; } }
+

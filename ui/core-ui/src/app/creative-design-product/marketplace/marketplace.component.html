@@ -1,0 +1,20 @@
+<section class="marketplace">
+  <header class="controls">
+    <input class="search" placeholder="Search worlds" [(ngModel)]="query" />
+    <div class="seg">
+      <button [class.active]="filter==='all'" (click)="filter='all'">All</button>
+      <button [class.active]="filter==='human'" (click)="filter='human'">Human</button>
+      <button [class.active]="filter==='ai'" (click)="filter='ai'">AI</button>
+    </div>
+    <button class="btn" (click)="onCreate()">Create World</button>
+  </header>
+  <div class="masonry">
+    <app-remote-world-card *ngFor="let w of filtered" [world]="w" [showActions]="true" (delete)="onDeleteWorld($event)"></app-remote-world-card>
+  </div>
+  @if (filtered.length === 0) {
+    <div class="empty">
+      <div>No worlds yet.</div>
+      <a class="btn" routerLink="/command-center">Create Your First World</a>
+    </div>
+  }
+</section>

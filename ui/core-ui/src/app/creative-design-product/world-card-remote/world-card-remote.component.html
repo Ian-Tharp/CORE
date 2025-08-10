@@ -1,0 +1,18 @@
+<article class="world-card" (click)="openInEditor()" tabindex="0" [attr.aria-label]="'Open world ' + world.name">
+  <div class="preview" *ngIf="world.preview; else noPreview">
+    <img [src]="world.preview!" alt="World preview" />
+  </div>
+  <ng-template #noPreview>
+    <div class="preview placeholder"></div>
+  </ng-template>
+  <header>
+    <h3>{{ world.name }}</h3>
+    <time>{{ world.updated_at | date:'medium' }}</time>
+  </header>
+  <footer>
+    <span class="badge" [class.human]="(world.origin||'human')==='human'" [class.ai]="(world.origin||'human')==='ai'">{{ (world.origin||'human') | titlecase }}</span>
+    @if (showActions) { <button class="icon" title="Delete" (click)="onDelete($event)">🗑️</button> }
+  </footer>
+</article>
+
+

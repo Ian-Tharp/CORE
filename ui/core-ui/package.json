@@ -29,11 +29,14 @@
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
     "electron": "^36.3.1",
+    "hexagon-grid": "^2.1.0",
+    "honeycomb-grid": "^4.1.5",
     "marked": "^15.0.12",
     "ngx-markdown": "^19.1.1",
     "rxjs": "~7.8.0",
+    "three": "^0.165.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "^0.15.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.1.7",
@@ -45,6 +48,7 @@
     "@angular/cli": "^19.1.7",
     "@angular/compiler-cli": "^19.1.0",
     "@types/jasmine": "~5.1.0",
+    "@types/three": "^0.165.0",
     "@typescript-eslint/eslint-plugin": "7.11.0",
     "@typescript-eslint/parser": "7.11.0",
     "concurrently": "^9.1.2",

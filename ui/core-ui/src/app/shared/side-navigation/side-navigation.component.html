@@ -8,6 +8,10 @@
           <mat-icon>dashboard</mat-icon>
         </button>
 
+        <button mat-icon-button class="nav-item" [routerLink]="['/command-center']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Command Center" matTooltipPosition="right">
+          <mat-icon>grid_on</mat-icon>
+        </button>
+
         <button mat-icon-button class="nav-item" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="agentsMenu" #agentsMenuTrigger="matMenuTrigger" matTooltip="Agents" matTooltipPosition="right" (click)="openMenu('agents')">
           <mat-icon>smart_toy</mat-icon>
         </button>
@@ -38,6 +42,18 @@
         <button mat-icon-button class="nav-item" [routerLink]="['/conversations']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Conversations" matTooltipPosition="right">
           <mat-icon>chat</mat-icon>
         </button>
+
+        <!-- Creative Design (Worlds/Boards/Wiki/Marketplace) -->
+        <button mat-icon-button class="nav-item" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="creativeMenu" #creativeMenuTrigger="matMenuTrigger" matTooltip="Creative Design" matTooltipPosition="right" (click)="openMenu('creative')">
+          <mat-icon>palette</mat-icon>
+        </button>
+        <mat-menu #creativeMenu="matMenu" class="side-menu" xPosition="after" yPosition="below">
+          <button mat-menu-item [routerLink]="['/creative']"><mat-icon>dashboard_customize</mat-icon><span>Creative Studio</span></button>
+          <button mat-menu-item [routerLink]="['/creative/worlds']"><mat-icon>grid_view</mat-icon><span>My Worlds</span></button>
+          <button mat-menu-item [routerLink]="['/creative/boards']"><mat-icon>view_quilt</mat-icon><span>Boards</span></button>
+          <button mat-menu-item [routerLink]="['/creative/wiki']"><mat-icon>article</mat-icon><span>Wiki</span></button>
+          <button mat-menu-item [routerLink]="['/creative/marketplace']"><mat-icon>storefront</mat-icon><span>Marketplace</span></button>
+        </mat-menu>
       </div>
     </div>
   </div>

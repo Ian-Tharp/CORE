@@ -1,1 +1,111 @@
-<p>command-center works!</p>
+<section class="command-center">
+  <aside class="toolbox">
+    <div class="panel-title">Generative Procedural Worlds</div>
+    <div class="controls">
+      <input class="name" placeholder="Project name" [(ngModel)]="projectName" />
+      <div class="row">
+        <button (click)="onSave()">Quick Save</button>
+        <button (click)="onSaveAs()">Save As</button>
+        <button (click)="onOpenWorlds()">Open Worlds</button>
+      </div>
+      <div class="row">
+        <button (click)="onRandomize()">Randomize</button>
+        <button (click)="onClear()">Clear</button>
+      </div>
+      <div class="tool-group">
+        <label class="group-label">World Settings</label>
+        <div class="row small">Radius <input type="number" step="0.1" [(ngModel)]="worldConfig.radius"></div>
+        <div class="row small">Width <input type="number" [(ngModel)]="worldConfig.gridWidth"></div>
+        <div class="row small">Height <input type="number" [(ngModel)]="worldConfig.gridHeight"></div>
+        <div class="row small">Elevation <input type="number" step="0.05" [(ngModel)]="worldConfig.elevation"></div>
+        <div class="row" style="gap:0.6rem"><button (click)="onApplyWorldConfig()">Apply</button></div>
+      </div>
+      <div class="tool-group">
+        <label class="group-label">Procedural Seed</label>
+        <input class="name" placeholder="seed (optional)" [(ngModel)]="seed" />
+        <div class="row"><button (click)="onApplySeed()">Apply Seed</button></div>
+      </div>
+      <div class="divider"></div>
+      <div class="tool-group">
+        <label class="group-label">Layers</label>
+        <div class="row" style="gap:0.8rem">
+          <label><input type="checkbox" [(ngModel)]="layerVisibility.terrain" (ngModelChange)="onToggleLayerVisibility('terrain', $event)"> Terrain</label>
+          <label><input type="checkbox" [(ngModel)]="layerVisibility.biome" (ngModelChange)="onToggleLayerVisibility('biome', $event)"> Biome</label>
+          <label><input type="checkbox" [(ngModel)]="layerVisibility.resources" (ngModelChange)="onToggleLayerVisibility('resources', $event)"> Resources</label>
+        </div>
+        <div class="row" style="gap:0.8rem; margin-top:0.4rem">
+          <label><input type="checkbox" [(ngModel)]="outlinesVisible" (ngModelChange)="onToggleOutlines($event)"> Outlines</label>
+        </div>
+        <div class="row" style="gap:0.8rem; margin-top:0.4rem">
+          <label><input type="radio" name="activeLayer" value="terrain" [checked]="activeLayer==='terrain'" (change)="onActiveLayerChange('terrain')"> Terrain</label>
+          <label><input type="radio" name="activeLayer" value="biome" [checked]="activeLayer==='biome'" (change)="onActiveLayerChange('biome')"> Biome</label>
+          <label><input type="radio" name="activeLayer" value="resources" [checked]="activeLayer==='resources'" (change)="onActiveLayerChange('resources')"> Resources</label>
+        </div>
+        <div class="row" style="gap:0.8rem; margin-top:0.4rem">
+          <button (click)="onToggleEditMode()" [class.selected]="isEditMode">@if (isEditMode) { Editing } @else { View }</button>
+        </div>
+      </div>
+      <div class="tool-group">
+        <label class="group-label">Palette</label>
+        @if (activeLayer === 'terrain') {
+          <div class="row" style="gap:0.5rem">
+            <button (click)="onTerrainToolChange('plain')" [class.selected]="terrainTool==='plain'">Plain</button>
+            <button (click)="onTerrainToolChange('water')" [class.selected]="terrainTool==='water'">Water</button>
+            <button (click)="onTerrainToolChange('mountain')" [class.selected]="terrainTool==='mountain'">Mountain</button>
+          </div>
+        } @else if (activeLayer === 'biome') {
+          <div class="row" style="gap:0.5rem">
+            <button (click)="onBiomeToolChange('forest')" [class.selected]="biomeTool==='forest'">Forest</button>
+            <button (click)="onBiomeToolChange('desert')" [class.selected]="biomeTool==='desert'">Desert</button>
+            <button (click)="onBiomeToolChange('tundra')" [class.selected]="biomeTool==='tundra'">Tundra</button>
+            <button (click)="onBiomeToolChange('none')" [class.selected]="biomeTool==='none'">Erase</button>
+          </div>
+        } @else {
+          <div class="row" style="gap:0.5rem">
+            <button (click)="onResourceToolChange('node')" [class.selected]="resourceTool==='node'">Resource</button>
+            <button (click)="onResourceToolChange('erase')" [class.selected]="resourceTool==='erase'">Erase</button>
+          </div>
+        }
+      </div>
+      <div class="tool-group">
+        <label class="group-label">Brush</label>
+        <label class="group-label">Size</label>
+        <input type="range" min="0" max="6" [(ngModel)]="brush" (ngModelChange)="onBrushChange($event)">
+        <div class="group-label">Current Tile</div>
+        <div class="debug-tile">@if (hoveredInfo) { (x: {{hoveredInfo.x | number:'1.0-1'}}, y: {{hoveredInfo.y}}, z: {{hoveredInfo.z | number:'1.0-1'}}) } @else { - }</div>
+        @if (hoveredInfo) {
+          <div class="row small">Terrain: <strong>{{hoveredInfo.terrain}}</strong></div>
+          <div class="row small">Biome: <strong>{{hoveredInfo.biome}}</strong></div>
+          <div class="row small">Resources: <strong>{{hoveredInfo.resource}}</strong></div>
+        }
+        <div class="group-label">Selected Tile</div>
+        <div class="selected-panel">
+          @if (selectedInfo) {
+            <div class="row small">Coords: (x: {{selectedInfo.x | number:'1.0-1'}}, y: {{selectedInfo.y}}, z: {{selectedInfo.z | number:'1.0-1'}})</div>
+            <div class="row small">Terrain: <strong>{{selectedInfo.terrain}}</strong></div>
+            <div class="row small">Biome: <strong>{{selectedInfo.biome}}</strong></div>
+            <div class="row small">Resources: <strong>{{selectedInfo.resource}}</strong></div>
+          } @else {
+            <div class="row small">-</div>
+          }
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <canvas #canvas class="viewport" aria-label="Command Center viewport" tabindex="0"></canvas>
+    @if (contextMenu.visible) {
+      <div class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" (click)="$event.stopPropagation()">
+        <button class="menu-item" (click)="onEnterWorld()">Enter World</button>
+        <button class="menu-item" (click)="onCloseContextMenu()">Cancel</button>
+      </div>
+    }
+    @if (isLoading) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading World...</div>
+      </div>
+    }
+  </div>
+</section>

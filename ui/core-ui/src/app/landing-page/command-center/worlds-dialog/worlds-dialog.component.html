@@ -1,0 +1,24 @@
+<div class="dialog">
+  <h3>Worlds</h3>
+  @if (!isLoading) {
+    <mat-nav-list>
+      @for (w of worlds; track w.id) {
+        <a mat-list-item (click)="onSelect(w)" [attr.aria-label]="'Open world ' + w.name">
+          <span matListItemTitle>{{ w.name }}</span>
+          <span matListItemLine>{{ w.updated_at | date:'medium' }}</span>
+          <button mat-icon-button (click)="$event.stopPropagation(); onDelete(w)"><mat-icon>delete</mat-icon></button>
+        </a>
+      }
+    </mat-nav-list>
+    @if (worlds.length === 0) {
+      <div class="empty">No worlds yet.</div>
+    }
+  } @else {
+    <div class="loading"><mat-icon>hourglass_empty</mat-icon> Loading...</div>
+  }
+  <div class="actions">
+    <button mat-button (click)="onCancel()">Cancel</button>
+  </div>
+  </div>
+
+

@@ -85,14 +85,14 @@ export class TopNavigationComponent implements OnInit, OnDestroy {
       });
     });
     
-    // Handle special cases like Command Center which might be a sub-view
-    if (url.includes('command-center')) {
-      this.breadcrumbs.splice(1, 0, {
-        label: 'Command Center',
-        url: '/command-center',
-        isActive: false
-      });
-    }
+    // Remove any accidental duplicates while preserving order
+    const seen = new Set<string>();
+    this.breadcrumbs = this.breadcrumbs.filter(b => {
+      const key = `${b.label}|${b.url}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   private getLabelForSegment(segment: string): string {

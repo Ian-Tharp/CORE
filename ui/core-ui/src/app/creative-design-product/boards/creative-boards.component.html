@@ -1,0 +1,13 @@
+<section class="boards">
+  <header class="bar">
+    <input placeholder="New board title" [(ngModel)]="newTitle"/>
+    <button (click)="createBoard()">Create Board</button>
+  </header>
+  <section class="masonry">
+    <article class="board" *ngFor="let b of boards">
+      <h3>{{ b.title }}</h3>
+      <small>{{ b.createdAt | date:'medium' }}</small>
+      <div class="chips">{{ b.cards.length }} cards</div>
+    </article>
+  </section>
+</section>

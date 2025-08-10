@@ -38,7 +38,7 @@ export class ChatWindowComponent implements OnChanges {
   newMessage = '';
 
   // Available OpenAI models – keep in sync with the backend.
-  readonly models: string[] = ['gpt-4o', 'o3', 'o4-mini', 'gpt-4.1'];
+  readonly models: string[] = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o', 'o3', 'o4-mini'];
   selectedModel = this.models[0];
 
   // Reference to the scrolling container so we can auto-scroll.
@@ -91,40 +91,55 @@ export class ChatWindowComponent implements OnChanges {
   sendMessage(): void {
     const content = this.newMessage.trim();
     if (!content) return;
-    this.messages.push({ sender: 'user', text: content });
-    this.newMessage = '';
+    const run = (convId?: string) => {
+      this.messages.push({ sender: 'user', text: content });
+      this.newMessage = '';
 
-    // Placeholder assistant message that will be updated as chunks arrive.
-    const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
+      const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
 
-    this.chatService
-      .sendMessage(content, this.selectedModel, this.conversationId)
-      .subscribe({
-        next: (jsonStr) => {
-          try {
-            const data = JSON.parse(jsonStr);
+      this.chatService
+        .sendMessage(content, this.selectedModel, convId ?? this.conversationId)
+        .subscribe({
+          next: (jsonStr) => {
+            try {
+              const data = JSON.parse(jsonStr);
 
-            // Handle synthetic meta message for newly created conversations
-            if (data?.meta?.conversation_id) {
-              this.conversationId = data.meta.conversation_id;
-              this.conversationIdChange.emit(this.conversationId);
-              return;
+              if (data?.meta?.conversation_id) {
+                this.conversationId = data.meta.conversation_id;
+                this.conversationIdChange.emit(this.conversationId);
+                return;
+              }
+
+              const token = data?.delta ?? '';
+              this.messages[assistantIdx].text += token;
+            } catch {
+              /* ignore malformed chunks */
             }
+          },
+          error: (err) => {
+            this.messages[assistantIdx].text = `[error] ${err}`;
+            this.scrollToBottom();
+          },
+          complete: () => this.scrollToBottom(),
+        });
 
-            const token = data?.delta ?? '';
-            this.messages[assistantIdx].text += token;
-          } catch {
-            /* ignore malformed chunks */
-          }
+      this.scrollToBottom();
+    };
+
+    // If we don't yet have a conversation id, create one first to avoid race
+    // conditions when users send multiple rapid messages.
+    if (!this.conversationId) {
+      this.http.post<{ id: string }>(`${this._apiUrl}/conversations/`, {}).subscribe({
+        next: (res) => {
+          this.conversationId = res.id;
+          this.conversationIdChange.emit(this.conversationId);
+          run(this.conversationId);
         },
-        error: (err) => {
-          this.messages[assistantIdx].text = `[error] ${err}`;
-          this.scrollToBottom();
-        },
-        complete: () => this.scrollToBottom(),
+        error: () => run(undefined), // fallback to legacy behavior
       });
-
-    this.scrollToBottom();
+    } else {
+      run(this.conversationId);
+    }
   }
 
   onEnterKey(event: Event): void {

@@ -11,9 +11,9 @@ import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { SystemMonitorService } from '../services/system-monitor/system-monitor.service';
 import { Subject, takeUntil } from 'rxjs';
-import { CommandCenterComponent } from './command-center/command-center.component';
 import { BoardsComponent } from './boards/boards.component';
 import { MyAgentsPageComponent } from '../agents-page/my-agents-page/my-agents-page.component';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-landing-page',
@@ -28,9 +28,9 @@ import { MyAgentsPageComponent } from '../agents-page/my-agents-page/my-agents-p
     ChatWindowComponent,
     CommonModule,
     HttpClientModule,
-    CommandCenterComponent,
     BoardsComponent,
-    MyAgentsPageComponent
+    MyAgentsPageComponent,
+    RouterLink
   ],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.scss'

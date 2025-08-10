@@ -1,0 +1,22 @@
+.creative-landing {
+  display: grid;
+  gap: 1rem;
+}
+.creative-landing .hero {
+  padding: 1rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(0,255,200,0.18);
+  background: linear-gradient(135deg, rgba(8, 28, 35, 0.5), rgba(20, 60, 70, 0.35));
+  color: #c8fff0;
+}
+.creative-landing .sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+.creative-landing .sections .card {
+  display: grid; place-items: center;
+  padding: 0.8rem; border-radius: 0.8rem; border: 1px solid rgba(0,255,200,0.18);
+  background: rgba(14,60,70,0.4); color: #dffff8; text-decoration: none;
+}
+

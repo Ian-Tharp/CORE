@@ -1,0 +1,12 @@
+<section class="grid">
+  <div class="cta">
+    <a class="btn" routerLink="/command-center">Create New World</a>
+  </div>
+  @if (remoteWorlds.length > 0) {
+    <app-remote-world-card *ngFor="let rw of remoteWorlds" [world]="rw"></app-remote-world-card>
+  }
+  <app-world-card *ngFor="let w of worlds" [world]="w"></app-world-card>
+  @if (remoteWorlds.length === 0 && worlds.length === 0) {
+    <div class="empty">No worlds yet. <a class="btn" routerLink="/command-center">Open Command Center</a></div>
+  }
+</section>

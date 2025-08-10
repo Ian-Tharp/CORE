@@ -10,77 +10,6 @@
 :root {
   // Apply our custom solarpunk theme
   @include solarpunk.solarpunk-theme();
-
-  // Digital Brain Platform - Global Theme
-  // Solarpunk Color Palette
-  --color-primary-green: #00c853;
-  --color-secondary-teal: #00acc1;
-  --color-accent-gold: #ffd600;
-  --color-deep-forest: #1b5e20;
-  --color-light-moss: #e8f5e9;
-  --color-cyber-purple: #7c4dff;
-  --color-warm-orange: #ff6d00;
-  
-  // Neutral Colors
-  --color-neutral-dark: #212121;
-  --color-neutral-light: #fafafa;
-  --color-neutral-medium: #757575;
-  --color-white: #ffffff;
-  --color-black: #000000;
-  
-  // Semantic Colors
-  --color-success: #4caf50;
-  --color-warning: #ff9800;
-  --color-error: #f44336;
-  --color-info: #2196f3;
-  
-  // Opacity Variants
-  --color-primary-alpha-10: rgba(0, 200, 83, 0.1);
-  --color-primary-alpha-20: rgba(0, 200, 83, 0.2);
-  --color-primary-alpha-30: rgba(0, 200, 83, 0.3);
-  --color-secondary-alpha-10: rgba(0, 172, 193, 0.1);
-  --color-secondary-alpha-20: rgba(0, 172, 193, 0.2);
-  
-  // Gradients
-  --gradient-solarpunk: linear-gradient(135deg, var(--color-primary-green) 0%, var(--color-secondary-teal) 100%);
-  --gradient-organic: radial-gradient(circle at 30% 30%, rgba(255, 214, 0, 0.2) 0%, transparent 70%);
-  --gradient-background: linear-gradient(135deg, rgba(27, 94, 32, 0.03) 0%, rgba(0, 172, 193, 0.03) 100%);
-  
-  // Shadows
-  --shadow-subtle: 0 2px 10px rgba(0, 0, 0, 0.05);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.1);
-  --shadow-strong: 0 8px 30px rgba(0, 200, 83, 0.2);
-  --shadow-glow: 0 0 20px rgba(0, 200, 83, 0.3);
-  
-  // Border Radius
-  --radius-small: 0.5rem;
-  --radius-medium: 0.75rem;
-  --radius-large: 1rem;
-  --radius-xl: 1.5rem;
-  
-  // Spacing
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-xxl: 3rem;
-  
-  // Typography
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2rem;
-  --font-size-4xl: 2.5rem;
-  
-  // Animation
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
-  --transition-bounce: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // Dark Mode Support
@@ -116,29 +45,7 @@ body {
   background: linear-gradient(135deg, var(--mdc-sys-color-surface-container-low) 0%, var(--mdc-sys-color-surface) 100%);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #00ffff 0%, #0088ff 100%);
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(0, 224, 255, 0.35);
-  background: var(--gradient-core);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #00ccff 0%, #0066ff 100%);
-  box-shadow: 0 0 12px rgba(0, 224, 255, 0.5);
-  background: var(--gradient-core);
-}
+/* Custom scrollbar (see refined rules later using theme variables) */
 
 /* Custom Material overrides */
 .mat-mdc-card {
@@ -179,12 +86,61 @@ body {
   backdrop-filter: blur(5px);
 }
 
+/* --- Next-Gen Glass Inputs & Selects (global) ------------------------ */
+.mat-mdc-form-field-wrapper {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(12px);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  transition: all 0.3s ease;
+}
+.mat-mdc-form-field:hover .mat-mdc-form-field-wrapper {
+  border-color: rgba(0, 255, 136, 0.4);
+  background: rgba(30, 41, 59, 0.8);
+}
+.mat-mdc-form-field.mat-focused .mat-mdc-form-field-wrapper {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(0, 255, 136, 0.5);
+}
+/* Remove default outline since we now have a custom border */
+.mat-mdc-form-field-outline {
+  display: none !important;
+}
+/* Unified input & select text colour */
+.mat-mdc-select-value,
+.mat-mdc-input-element {
+  color: #ffffff;
+}
+/* Global select dropdown panel */
+.mat-mdc-select-panel {
+  background: rgba(13, 20, 33, 0.95);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  backdrop-filter: blur(20px);
+}
+/* Make option hover + active clearer */
+.mat-mdc-option:hover:not(.mat-mdc-option-disabled) {
+  background: rgba(0, 255, 136, 0.1);
+}
+.mat-mdc-option.mat-mdc-option-active {
+  background: rgba(0, 255, 136, 0.2);
+  color: #ffffff;
+}
+
 /* Menu customization */
 .mat-mdc-menu-panel {
   background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface-container) 95%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface) 95%, transparent) 100%) !important;
   border: 1px solid var(--mdc-sys-color-outline-variant, rgba(0, 255, 255, 0.3)) !important;
   border-radius: 8px !important;
   backdrop-filter: blur(15px) !important;
+}
+
+/* Glass dialog theming for dark solarpunk UI */
+.glass-dialog .mdc-dialog__surface,
+.glass-dialog .mat-mdc-dialog-surface {
+  background: linear-gradient(135deg, rgba(8, 28, 35, 0.85), rgba(20, 60, 70, 0.65)) !important;
+  color: #c8fff0 !important;
+  border: 1px solid rgba(0,255,200,0.18) !important;
+  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.5) !important;
 }
 
 /* Toolbar customization */
@@ -290,20 +246,7 @@ body {
   opacity: 1 !important;
 }
 
-/* Global Base Styles */
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--gradient-background);
-  color: var(--color-neutral-dark);
-  line-height: 1.6;
-}
+/* Global Base Styles (deduplicated; keep the definitions above) */
 
 /* Utility Classes */
 .solarpunk-gradient {

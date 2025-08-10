@@ -1,0 +1,14 @@
+.dialog {
+  min-width: 24rem;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.loading, .empty {
+  padding: 1rem;
+  opacity: 0.9;
+}
+
+

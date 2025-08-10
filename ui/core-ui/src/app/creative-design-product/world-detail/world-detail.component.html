@@ -1,0 +1,14 @@
+<section class="world-detail" *ngIf="world as w">
+  <header>
+    <h2>{{ w.name }}</h2>
+    <time>{{ w.createdAt | date:'medium' }}</time>
+  </header>
+  <section class="meta">
+    <div>Tiles: terrain {{ w.layers?.terrain?.length || 0 }}, biome {{ w.layers?.biome?.length || 0 }}, resources {{ w.layers?.resources?.length || 0 }}</div>
+  </section>
+  <section class="actions">
+    <button mat-raised-button color="primary" (click)="openInEditor()">Open in Editor</button>
+    <button mat-stroked-button (click)="openBoards()">Open Boards</button>
+    <button mat-stroked-button (click)="openWiki()">Open Wiki</button>
+  </section>
+</section>

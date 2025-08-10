@@ -1,0 +1,14 @@
+<article class="world-card" [routerLink]="['/creative/world', world.id]">
+  <header>
+    <h3>{{ world.name }}</h3>
+    <time>{{ world.createdAt | date:'medium' }}</time>
+  </header>
+  <section class="meta">
+    <div>Terrain: {{ world.layers?.terrain?.length || 0 }}</div>
+    <div>Biome: {{ world.layers?.biome?.length || 0 }}</div>
+    <div>Resources: {{ world.layers?.resources?.length || 0 }}</div>
+  </section>
+  <footer>
+    <span class="badge">Hex World</span>
+  </footer>
+</article>

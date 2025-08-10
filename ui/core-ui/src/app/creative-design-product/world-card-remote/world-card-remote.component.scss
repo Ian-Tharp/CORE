@@ -1,0 +1,25 @@
+.world-card {
+  display: grid;
+  grid-template-rows: 140px auto auto;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(0,255,200,0.18);
+  background: linear-gradient(135deg, rgba(8, 28, 35, 0.55), rgba(20, 60, 70, 0.45));
+  color: #c8fff0;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 120ms ease, box-shadow 150ms ease;
+}
+.world-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,0.35); }
+.preview { border-radius: 0.5rem; overflow: hidden; background: rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; }
+.preview img { width: 100%; height: 100%; object-fit: cover; display:block; }
+.preview.placeholder { background: radial-gradient(circle at 40% 40%, rgba(0,255,200,0.15), rgba(0,0,0,0.4)); }
+.world-card header { display: flex; align-items: baseline; justify-content: space-between; }
+.world-card footer { display:flex; align-items:center; justify-content: space-between; }
+.world-card .badge { border: 1px solid rgba(0,255,200,0.2); padding: 0.1rem 0.4rem; border-radius: 0.4rem; }
+.world-card .badge.human { border-color: rgba(0,255,200,0.35); color:#bdfded; }
+.world-card .badge.ai { border-color: rgba(200,160,255,0.45); color:#e0d2ff; }
+.world-card .icon { background: transparent; border: 1px solid rgba(255,80,80,0.4); color:#ffdede; border-radius: 0.4rem; padding: 0.2rem 0.4rem; cursor: pointer; }
+
+

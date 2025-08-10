@@ -94,4 +94,75 @@ $gradient-core: linear-gradient(
   --color-primary-glow: #{rgba($solarpunk-primary, 0.3)};
   --color-secondary-glow: #{rgba($solarpunk-secondary, 0.3)};
   --gradient-core: #{$gradient-core};
+
+  // Brand Tokens (moved from global styles to centralize theme tokens)
+  // Color Palette
+  --color-primary-green: #00c853;
+  --color-secondary-teal: #00acc1;
+  --color-accent-gold: #ffd600;
+  --color-deep-forest: #1b5e20;
+  --color-light-moss: #e8f5e9;
+  --color-cyber-purple: #7c4dff;
+  --color-warm-orange: #ff6d00;
+
+  // Neutrals
+  --color-neutral-dark: #212121;
+  --color-neutral-light: #fafafa;
+  --color-neutral-medium: #757575;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  // Semantic Colors
+  --color-success: #4caf50;
+  --color-warning: #ff9800;
+  --color-error: #f44336;
+  --color-info: #2196f3;
+
+  // Opacity Variants
+  --color-primary-alpha-10: #{rgba(#00c853, 0.1)};
+  --color-primary-alpha-20: #{rgba(#00c853, 0.2)};
+  --color-primary-alpha-30: #{rgba(#00c853, 0.3)};
+  --color-secondary-alpha-10: #{rgba(#00acc1, 0.1)};
+  --color-secondary-alpha-20: #{rgba(#00acc1, 0.2)};
+
+  // Gradients
+  --gradient-solarpunk: linear-gradient(135deg, var(--color-primary-green) 0%, var(--color-secondary-teal) 100%);
+  --gradient-organic: radial-gradient(circle at 30% 30%, rgba(255, 214, 0, 0.2) 0%, transparent 70%);
+  --gradient-background: linear-gradient(135deg, rgba(27, 94, 32, 0.03) 0%, rgba(0, 172, 193, 0.03) 100%);
+
+  // Shadows
+  --shadow-subtle: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 8px 30px rgba(0, 200, 83, 0.2);
+  --shadow-glow: 0 0 20px rgba(0, 200, 83, 0.3);
+
+  // Border Radius
+  --radius-small: 0.5rem;
+  --radius-medium: 0.75rem;
+  --radius-large: 1rem;
+  --radius-xl: 1.5rem;
+
+  // Spacing
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+
+  // Typography
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
+
+  // Animation
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  --transition-bounce: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 } 

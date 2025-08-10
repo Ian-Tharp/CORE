@@ -1,0 +1,46 @@
+<section class="wiki">
+  <aside class="outline">
+    <div class="new">
+      <input placeholder="New page title" [(ngModel)]="newTitle"/>
+      <button (click)="create()">Create</button>
+    </div>
+    <div class="sections">
+      <button [class.active]="section==='All'" (click)="section='All'">All</button>
+      <button [class.active]="section==='Lore'" (click)="section='Lore'">Lore</button>
+      <button [class.active]="section==='Factions'" (click)="section='Factions'">Factions</button>
+      <button [class.active]="section==='Biomes'" (click)="section='Biomes'">Biomes</button>
+      <button [class.active]="section==='Items'" (click)="section='Items'">Items</button>
+      <button [class.active]="section==='Technology'" (click)="section='Technology'">Technology</button>
+    </div>
+    <ul>
+      <li *ngFor="let p of filteredPages()" (click)="editing=p" [class.active]="editing?.id===p.id">{{ p.title }}</li>
+    </ul>
+    <div class="quick">
+      <div class="label">Quick add</div>
+      <button (click)="createOfType('Lore')">Lore</button>
+      <button (click)="createOfType('Factions')">Faction</button>
+      <button (click)="createOfType('Biomes')">Biome</button>
+      <button (click)="createOfType('Items')">Item</button>
+      <button (click)="createOfType('Technology')">Tech</button>
+    </div>
+  </aside>
+  <main class="editor" *ngIf="editing as e">
+    <input class="title" [(ngModel)]="e.title"/>
+    <textarea [(ngModel)]="e.content" rows="16" placeholder="Describe your world: geography, factions, magic systems, technology, cultures..."></textarea>
+    <div class="actions"><button (click)="save()">Save</button></div>
+
+    <section class="characters">
+      <h3>Character Builder</h3>
+      <div class="row">
+        <input placeholder="Character name" [(ngModel)]="characterName"/>
+      </div>
+      <div class="row">
+        <textarea [(ngModel)]="characterTraits" rows="6" placeholder='Traits as JSON or free text, e.g. {"role":"Ranger","mood":"Stoic","gear":"Cloak, bow"}'></textarea>
+      </div>
+      <div class="actions"><button (click)="createCharacter()">Generate Portrait</button></div>
+      <div class="preview" *ngIf="characterImageB64 as img">
+        <img [src]="'data:image/png;base64,' + img" alt="Character" />
+      </div>
+    </section>
+  </main>
+</section>

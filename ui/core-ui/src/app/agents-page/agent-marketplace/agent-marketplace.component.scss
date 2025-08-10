@@ -46,11 +46,13 @@
     justify-content: center;
     gap: 1rem;
     letter-spacing: 0.1em;
+    line-height: 1;
     
     .title-icon {
       font-size: 3rem;
       color: #00ff88;
       animation: pulse 2s ease-in-out infinite;
+      margin-top: 0.2rem; /* prevent clipping */
     }
   }
 
@@ -160,11 +162,13 @@
 
     .quick-filter-chip {
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(0, 255, 136, 0.15);
+      color: rgba(255, 255, 255, 0.8);
       cursor: pointer;
-      transition: all 0.3s ease;
-      padding: 0.5rem 0.75rem;
+      transition: all 0.2s ease-out;
+      min-height: 2.2rem;
+      line-height: 1;
+      padding: 0.35rem 0.9rem;
       border-radius: 2rem;
       display: flex;
       align-items: center;
@@ -183,7 +187,12 @@
       }
 
       .chip-icon {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+        width: 1.2rem;
+        height: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
     }
   }
@@ -540,9 +549,9 @@
 
   .agent-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center; /* Ensure icon and text remain perfectly centered */
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1rem; /* Preserve spacing */
 
     .agent-icon-container {
       position: relative;
@@ -552,6 +561,9 @@
         padding: 0.75rem;
         border-radius: 1rem;
         background: rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         
         &.category-cognitive { color: #00ff88; }
         &.category-automation { color: #00a8ff; }
@@ -643,6 +655,8 @@
       .metric-icon {
         color: rgba(255, 255, 255, 0.5);
         font-size: 1.2rem;
+        line-height: 1;
+        vertical-align: middle;
       }
 
       .metric-value {
@@ -660,9 +674,13 @@
     .capability-icon {
       color: rgba(0, 255, 136, 0.7);
       background: rgba(0, 255, 136, 0.1);
-      padding: 0.5rem;
+      padding: 0.45rem;
       border-radius: 0.5rem;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   }
 
@@ -951,8 +969,12 @@
         align-items: flex-start;
 
         .capability-icon {
-          font-size: 2rem;
-          padding: 0.75rem;
+          font-size: 1.6rem;
+          width: 2.2rem;
+          height: 2.2rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           border-radius: 0.5rem;
           background: rgba(255, 255, 255, 0.05);
 

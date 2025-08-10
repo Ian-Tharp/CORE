@@ -1,0 +1,15 @@
+.world-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(0,255,200,0.18);
+  background: linear-gradient(135deg, rgba(8, 28, 35, 0.5), rgba(20, 60, 70, 0.35));
+  color: #c8fff0;
+  cursor: pointer;
+  text-decoration: none;
+}
+.world-card header { display: flex; align-items: baseline; justify-content: space-between; }
+.world-card .badge { border: 1px solid rgba(0,255,200,0.2); padding: 0.1rem 0.4rem; border-radius: 0.4rem; }
+

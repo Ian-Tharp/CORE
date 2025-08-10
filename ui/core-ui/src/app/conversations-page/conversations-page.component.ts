@@ -129,6 +129,10 @@ export class ConversationsPageComponent implements OnInit {
       return;
     }
 
+    // Optimistically update UI; revert on error
+    const previousTitle = conv.title;
+    conv.title = newTitle;
+
     this.http
       .patch(`${this._apiUrl}/conversations/${conv.id}`, {
         title: newTitle,
@@ -136,15 +140,14 @@ export class ConversationsPageComponent implements OnInit {
       .pipe(
         catchError((error) => {
           console.error('Failed to update conversation title:', error);
-          // Reset editing state on error
+          // Revert title on error
+          conv.title = previousTitle;
           this.editingConversationId = undefined;
           return of(null);
         })
       )
-      .subscribe((result) => {
-        if (result !== null) {
-          conv.title = newTitle;
-        }
+      .subscribe(() => {
+        // 204 No Content returns null body; we already updated optimistically
         this.editingConversationId = undefined;
       });
   }

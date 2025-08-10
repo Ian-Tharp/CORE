@@ -1,0 +1,19 @@
+.marketplace { display:flex; flex-direction:column; gap:1rem; }
+.controls { display:flex; gap:0.8rem; align-items:center; }
+.controls .search { flex:1; padding:0.5rem 0.8rem; border-radius:0.6rem; border:1px solid rgba(0,255,200,0.18); background: rgba(8,28,35,0.4); color:#c8fff0; }
+.controls .seg { display:flex; gap:0.4rem; }
+.controls .seg button { padding:0.4rem 0.8rem; border-radius:0.6rem; border:1px solid rgba(0,255,200,0.18); background: rgba(14,60,70,0.5); color:#dffff8; }
+.controls .seg button.active { outline: 0.12rem solid rgba(0,255,200,0.45); background: rgba(14,60,70,0.7); }
+
+/* Masonry via CSS columns for a Pinterest-like layout */
+.masonry { column-count: 4; column-gap: 1rem; }
+@media (max-width: 1200px) { .masonry { column-count: 3; } }
+@media (max-width: 900px) { .masonry { column-count: 2; } }
+@media (max-width: 600px) { .masonry { column-count: 1; } }
+.masonry > * { break-inside: avoid; margin-bottom: 1rem; display: block; }
+.empty { text-align:center; opacity:0.9; margin-top: 2rem; }
+.empty .btn { display:inline-block; margin-top:0.6rem; padding:0.6rem 1rem; border-radius:0.6rem; border:1px solid rgba(0,255,200,0.18); background: rgba(14,60,70,0.5); color:#dffff8; text-decoration:none; }
+
+/* Section heading */
+.marketplace::before { content:'Marketplace'; font-size:1.2rem; letter-spacing:0.06rem; color:#c8fff0; opacity:0.9; }
+

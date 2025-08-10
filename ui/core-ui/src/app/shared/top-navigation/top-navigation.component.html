@@ -18,7 +18,7 @@
         <mat-icon>arrow_back</mat-icon>
       </button>
       <div class="breadcrumb-trail">
-        @for (breadcrumb of breadcrumbs; track breadcrumb.url; let last = $last) {
+        @for (breadcrumb of breadcrumbs; track $index; let i = $index; let last = $last) {
           <a class="breadcrumb-link" 
              [class.active]="breadcrumb.isActive" 
              (click)="navigateTo(breadcrumb.url)"
@@ -39,8 +39,8 @@
   <!-- Right section: Command buttons -->
   <div class="nav-controls">
     <!-- Agent Management -->
-    <button mat-icon-button class="nav-btn" #agentBtn [matMenuTriggerFor]="agentMenu">
-      <mat-icon matBadge="{{agentCount}}" matBadgeColor="accent" matBadgeSize="small">smart_toy</mat-icon>
+    <button mat-icon-button class="nav-btn" #agentBtn [matMenuTriggerFor]="agentMenu" aria-label="Agents">
+      <mat-icon aria-hidden="false" matBadge="{{agentCount}}" matBadgeColor="accent" matBadgeSize="small">smart_toy</mat-icon>
     </button>
     <mat-menu #agentMenu="matMenu" class="command-menu">
       <button mat-menu-item>
@@ -62,8 +62,8 @@
     </mat-menu>
 
     <!-- Workflow Management -->
-    <button mat-icon-button class="nav-btn" #workflowBtn [matMenuTriggerFor]="workflowMenu">
-      <mat-icon matBadge="{{activeWorkflows}}" matBadgeColor="primary" matBadgeSize="small">account_tree</mat-icon>
+    <button mat-icon-button class="nav-btn" #workflowBtn [matMenuTriggerFor]="workflowMenu" aria-label="Workflows">
+      <mat-icon aria-hidden="false" matBadge="{{activeWorkflows}}" matBadgeColor="primary" matBadgeSize="small">account_tree</mat-icon>
     </button>
     <mat-menu #workflowMenu="matMenu" class="command-menu">
       <button mat-menu-item>
