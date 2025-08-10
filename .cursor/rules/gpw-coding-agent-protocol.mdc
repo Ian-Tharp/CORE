@@ -1,0 +1,99 @@
+---
+description: GPW Coding Agent protocol for CORE. Treat as guardrails + contracts; adjust to repo reality.
+globs:
+alwaysApply: false
+---
+# GPW Coding Agent: Operating Context & Implementation Protocol (CORE)
+
+You have full agency to adapt details to the real repo state. Use this protocol as your baseline.
+
+## Mission
+Build Generative Procedural Worlds (GPW) within CORE:
+- Desktop UI: Angular 19 + Electron (located in `ui/core-ui/`).
+- Gateway: FastAPI (located in `backend/`).
+- Optional services: Rust/C++ microservice(s) for world simulation/agents (gRPC), plus Python workers for search/asset tasks.
+- Infra: Postgres (+pgvector optional), MinIO (S3), Redis, and optionally Kafka/Redpanda if adopted.
+- MCP: Memory Knowledge Graph + Obsidian for documentation and knowledge capture.
+
+## Authority & Change Policy
+- You may refactor or upgrade when justified, but start by aligning with the current structure. Major changes require an ADR with rollback strategy.
+- Use `uv` for Python dependency management; do not introduce conflicting tools.
+- Angular remains at 19 unless a well-justified ADR recommends otherwise.
+
+## Canonical Paths (current repo)
+- Frontend app: `ui/core-ui/`
+- Backend app: `backend/`
+- Docs: `docs/` (+ Obsidian vault via MCP)
+- Cursor rules: `.cursor/rules/`
+
+## Contracts (versioned)
+### REST (Gateway, OpenAPI v1)
+- Entities: Workspace, Board, Card, Asset, World, Entity, Graph.
+- Endpoints (examples):
+  - `POST /cards` – create card with blocks/tags/attachments
+  - `POST /worlds` – create world
+  - `POST /worlds/{id}/entities` – upsert entity
+  - `GET /search?q=...` – semantic search
+  - SSE/WebSocket for live updates
+- Store spec at `docs/schemas/openapi.v1.yaml` (or `backend/app/schemas/` if more natural), and register in the Memory KG.
+
+### Events (optional, if adopted)
+- Topics (keyed): `gpw.cards.v1`, `gpw.assets.v1`, `gpw.search.index.v1`, `gpw.worlds.v1`, `gpw.entities.v1`, `gpw.agent.tasks.v1`, `gpw.agent.results.v1`.
+- Use outbox pattern in the Gateway when enabling an event bus. Keep consumers idempotent with idempotency keys.
+- Event schemas as JSON Schema under `docs/schemas/events/v1/` and linked in the Memory KG.
+
+### gRPC (Simulation boundary)
+- `libs/protos/world/v1/world.proto` (or `backend/app/protos/` if preferred):
+  - `WorldSim.Step`, `WorldSim.UpsertEntity`, `WorldSim.GetState`, `WorldSim.RunScenario`, `WorldSim.StreamEvents`.
+- Implement service in Rust (tonic) or C++ (gRPC). Choose via ADR based on latency, integration, and developer productivity.
+
+## Storage
+- Postgres (core tables; JSONB for flexible blocks/attrs/relations).
+- pgvector table for embeddings: `embedding(object_id TEXT PK, kind TEXT, workspace_id TEXT, title TEXT, content TEXT, embedding vector(N), updated_at TIMESTAMPTZ)`.
+- MinIO for assets (bucket e.g., `gpw-assets`) with license/sha256/source metadata.
+- Redis for caching, rate limiting, ephemeral locks.
+
+## Frontend implementation rules (Angular 19)
+- Use `@if` / `@for` directives; Angular Material; SCSS; responsive `rem` units.
+- Maintain per-component files: `.ts`, `.html`, `.scss`, `.spec.ts`.
+- Tests: prefer Jest. If currently using Karma, migrate via ADR and plan; meanwhile keep tests green.
+- Code style: explicit `public`/`private`; prefix private functions with `_`; opening braces on same line.
+
+## Backend implementation rules (FastAPI + uv)
+- Enforce type hints; keep formatting consistent.
+- Use `uv` for dependency resolution and lock management.
+- Prefer `MagicMock` over monkeypatch in unit tests.
+
+## Design language (UI)
+- Follow the next-gen RTS/StarCraft-style glass-morphism with neon accents and responsive layout. Keep input/select styling consistent; center icons/text; preserve header icon visibility.
+
+## Implementation Protocol (tight loop)
+1) Discover
+   - Read `ui/core-ui/package.json`, `backend/pyproject.toml`, compose files, and any service READMEs.
+   - Write an inventory note to Obsidian: `GPW/Reports/repo-inventory.md` and upsert Memory KG nodes for key modules.
+2) Plan
+   - Create ADR(s) in `docs/adr/` (and Obsidian `GPW/ADRs/`) for any nontrivial change (framework, event bus, sim tech).
+3) Contracts first
+   - Author OpenAPI v1 and `world.v1` proto stubs; place under `docs/schemas/` and `libs/protos/` (or local equivalents). Link in Memory KG.
+4) Implement
+   - Gateway: CRUD + SSE + (optional) outbox when event bus is enabled.
+   - Search indexer: consumer → pgvector (if event bus enabled) or HTTP-triggered indexer otherwise.
+   - Asset pipeline: upload/transcode → MinIO → `AssetReady` (if events) or synchronous fallback.
+   - Sim service: build stubs, wire `Step` and `StreamEvents`.
+5) Test
+   - Contract: Schemathesis on OpenAPI.
+   - Integration: Testcontainers for Postgres/MinIO/Kafka (if used).
+   - E2E: Playwright for desktop flows.
+6) Document & capture
+   - Specs/HowTo under `docs/` and mirrored to Obsidian; update Memory KG nodes/edges.
+
+## URNs (suggested)
+`urn:gpw:svc:gateway-api`, `urn:gpw:app:desktop`, `urn:gpw:event:gpw.cards.v1`, `urn:gpw:proto:world.v1`, `urn:gpw:api:rest:v1`.
+Edges: `implements`, `depends_on`, `emits`, `consumes`, `exposes`, `supersedes`.
+
+## First actions
+- Perform discovery and write `repo-inventory.md`.
+- Author OpenAPI v1 + `world.v1` proto stubs and register in Memory KG.
+- Add minimal SSE to FastAPI gateway and a placeholder sim `Step`.
+- Create ADRs for event bus decision and sim tech choice.
+

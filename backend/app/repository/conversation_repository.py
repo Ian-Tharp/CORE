@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-"""Lightweight JSON-file backed storage for chat conversations.
+"""PostgreSQL-backed storage for chat conversations.
 
-This is **not** intended for production use. It exists purely so that the
-application can persist chat history between restarts without requiring an
-external database.  For production workloads consider PostgreSQL, MongoDB or
-similar managed stores.
+This replaces the previous JSON-file approach and persists conversations and
+messages using the schema provided in `init.sql` (tables `conversations` and
+`messages`).
 """
 
-from pathlib import Path
-import json
+from typing import Any, Dict, List, Optional, TypedDict
 import uuid
-import asyncio
-from typing import Dict, List, TypedDict, Any
+
+import asyncpg
+
+from app.dependencies import get_db_pool
 
 
 class _Message(TypedDict):
@@ -27,105 +27,156 @@ class _Conversation(TypedDict):
 
 
 # ---------------------------------------------------------------------------
-# File-system paths / global runtime state
-# ---------------------------------------------------------------------------
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-_DATA_DIR.mkdir(parents=True, exist_ok=True)
-_CONVERSATIONS_FILE = _DATA_DIR / "conversations.json"
-
-# An async lock to ensure we do not perform concurrent read/write access to
-# the underlying JSON file which may lead to corruption.
-_LOCK = asyncio.Lock()
-
-
-async def _load_raw() -> Dict[str, Any]:
-    """Load the raw JSON payload from disk."""
-    if not _CONVERSATIONS_FILE.exists():
-        return {"conversations": []}
-
-    async with _LOCK:
-        loop = asyncio.get_running_loop()
-        data_str = await loop.run_in_executor(None, _CONVERSATIONS_FILE.read_text)
-        try:
-            return json.loads(data_str)
-        except json.JSONDecodeError:
-            # If the file is corrupted we fall back to an empty structure so as
-            # to not crash the entire application.
-            return {"conversations": []}
-
-
-async def _flush_raw(payload: Dict[str, Any]) -> None:
-    """Persist the given JSON payload to disk atomically."""
-    async with _LOCK:
-        loop = asyncio.get_running_loop()
-        data_str = json.dumps(payload, indent=2)
-        await loop.run_in_executor(None, _CONVERSATIONS_FILE.write_text, data_str)
-
-
-# ---------------------------------------------------------------------------
 # Public repository API
 # ---------------------------------------------------------------------------
 
 
-async def list_conversations() -> List[_Conversation]:
-    """Return a **copy** of all stored conversations (without mutating state)."""
-    raw = await _load_raw()
-    return list(raw.get("conversations", []))
+async def list_conversations() -> List[Dict[str, Any]]:
+    """Return list of conversations with message counts.
+
+    Shape matches controller expectations: `{id, title, messages}` where
+    `messages` is the count of messages in the conversation.
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT c.conversation_id AS id,
+                   COALESCE(c.title, '') AS title,
+                   COUNT(m.id) AS messages,
+                   COALESCE(MAX(m.timestamp), MAX(c.updated_at)) AS last_activity
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.conversation_id
+            GROUP BY c.conversation_id, c.title
+            ORDER BY last_activity DESC NULLS LAST
+            """
+        )
+        # Do not expose last_activity field to the controller response shape
+        return [{"id": r["id"], "title": r["title"], "messages": r["messages"]} for r in rows]
 
 
-async def get_conversation(conv_id: str) -> _Conversation | None:
-    """Return a single conversation by id or *None* if it cannot be found."""
-    raw = await _load_raw()
-    for conv in raw.get("conversations", []):
-        if conv.get("id") == conv_id:
-            return conv
-    return None
+async def get_conversation(conv_id: str) -> Optional[_Conversation]:
+    """Return a single conversation with its messages or None if not found."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        conv_row = await conn.fetchrow(
+            """
+            SELECT conversation_id AS id, COALESCE(title, 'New Conversation') AS title
+            FROM conversations
+            WHERE conversation_id = $1
+            """,
+            conv_id,
+        )
+        if conv_row is None:
+            return None
+
+        msg_rows = await conn.fetch(
+            """
+            SELECT role, content
+            FROM messages
+            WHERE conversation_id = $1
+            ORDER BY timestamp ASC, id ASC
+            """,
+            conv_id,
+        )
+
+        return {
+            "id": conv_row["id"],
+            "title": conv_row["title"],
+            "messages": [{"role": r["role"], "content": r["content"]} for r in msg_rows],
+        }
 
 
 async def create_conversation(
     initial_messages: List[_Message] | None = None,
     title: str | None = None,
 ) -> str:
-    """Create a new conversation and return its *id*."""
+    """Create a new conversation and return its id (UUID4 string)."""
     conv_id = str(uuid.uuid4())
-    new_conv: _Conversation = {
-        "id": conv_id,
-        "title": title or "New Conversation",
-        "messages": initial_messages or [],
-    }
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO conversations (conversation_id, title)
+                VALUES ($1, $2)
+                ON CONFLICT (conversation_id) DO NOTHING
+                """,
+                conv_id,
+                title or "New Conversation",
+            )
 
-    raw = await _load_raw()
-    raw.setdefault("conversations", []).append(new_conv)
-    await _flush_raw(raw)
+            if initial_messages:
+                await _insert_messages(conn, conv_id, initial_messages)
+                await conn.execute(
+                    """
+                    UPDATE conversations
+                    SET updated_at = CURRENT_TIMESTAMP
+                    WHERE conversation_id = $1
+                    """,
+                    conv_id,
+                )
+
     return conv_id
 
 
 async def append_message(conv_id: str, message: _Message) -> None:
-    """Append *message* to the conversation identified by *conv_id*."""
-    raw = await _load_raw()
-    for conv in raw.setdefault("conversations", []):
-        if conv.get("id") == conv_id:
-            conv.setdefault("messages", []).append(message)
-            await _flush_raw(raw)
-            return
+    """Append message to an existing conversation; create if missing."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # Ensure conversation exists
+            exists = await conn.fetchval(
+                "SELECT 1 FROM conversations WHERE conversation_id = $1",
+                conv_id,
+            )
+            if not exists:
+                await conn.execute(
+                    """
+                    INSERT INTO conversations (conversation_id, title)
+                    VALUES ($1, $2)
+                    ON CONFLICT (conversation_id) DO NOTHING
+                    """,
+                    conv_id,
+                    "Recovered",
+                )
 
-    # If we reached this point the conversation did not exist – create it so we
-    # do not silently drop data. This should never happen in normal flows but
-    # guards against corrupt state.
-    new_conv: _Conversation = {
-        "id": conv_id,
-        "title": "Recovered",
-        "messages": [message],
-    }
-    raw["conversations"].append(new_conv)
-    await _flush_raw(raw)
+            await _insert_messages(conn, conv_id, [message])
+            await conn.execute(
+                """
+                UPDATE conversations
+                SET updated_at = CURRENT_TIMESTAMP
+                WHERE conversation_id = $1
+                """,
+                conv_id,
+            )
 
 
 async def update_title(conv_id: str, title: str) -> None:
     """Update the title of a conversation."""
-    raw = await _load_raw()
-    for conv in raw.setdefault("conversations", []):
-        if conv.get("id") == conv_id:
-            conv["title"] = title
-            await _flush_raw(raw)
-            return
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE conversations
+            SET title = $2, updated_at = CURRENT_TIMESTAMP
+            WHERE conversation_id = $1
+            """,
+            conv_id,
+            title,
+        )
+
+
+async def _insert_messages(conn: asyncpg.Connection, conv_id: str, messages: List[_Message]) -> None:
+    """Helper to bulk-insert messages for a given conversation id."""
+    if not messages:
+        return
+
+    # Use executemany for efficiency
+    await conn.executemany(
+        """
+        INSERT INTO messages (conversation_id, role, content)
+        VALUES ($1, $2, $3)
+        """,
+        [(conv_id, m["role"], m["content"]) for m in messages],
+    )

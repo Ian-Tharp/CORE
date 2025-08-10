@@ -3,6 +3,7 @@
 ## UI
 - Need to update padding on .mdc-card-header to have a padding-bottom of 16px to match
     - alternatively could do this on the .mdc-card-content for padding-top
+- Need to create web components and modular design especially for styling so SCSS files don't continue to duplicate values that could be centralized and only declared once.
 
 - Need to update notification left hand panel to ensure that statuses are taken into consideration for the display of what icon is available
     - Completed - green/blueish - current - ping circle
@@ -21,5 +22,14 @@ Comprehension:
     - Check semantic similarity against Capabilities Check
         - System Capabilities first:
             - Services & APIs description of what is available to use for the CORE system engine
-            - 
+        - Tool Capabilities check (MCP Registry?)
+Orchestration:
+    - Step by step plan generation and organization
+Reasoning:
+    - Execute plan
+Evaluation:
+    - Evaluate output of reasoning for each step in the plan
+        - Check if plan needs to be updated or continue
 
+Northbound Bus
+Southbound Bus

@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from typing import List, AsyncGenerator
 import logging
 
-from services.chat_service import chat_service
-from repository.conversation_repository import (
+from app.services.chat_service import chat_service
+from app.repository.conversation_repository import (
     create_conversation,
     append_message,
 )
@@ -97,6 +97,10 @@ async def chat_stream(request: ChatRequest):
         "Transfer-Encoding": "chunked",
         "X-Vercel-AI-Data-Stream": "v1",
         "X-Conversation-Id": conv_id,
+        # Explicit CORS headers to avoid browser blocking even on SSE streams
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
     }
     return StreamingResponse(
         event_stream(), media_type="text/event-stream", headers=headers

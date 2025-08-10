@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from typing import List
 
-from repository.conversation_repository import (
+from app.repository.conversation_repository import (
     list_conversations,
     create_conversation,
     get_conversation,
@@ -18,22 +18,38 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 @router.get("/", status_code=status.HTTP_200_OK)
 async def get_conversations() -> List[dict]:
     """Return a list of all conversations (id, title, message count)."""
-    convs = await list_conversations()
-    return [
-        {
-            "id": c["id"],
-            "title": c.get("title", ""),
-            "messages": len(c.get("messages", [])),
-        }
-        for c in convs
-    ]
+    try:
+        convs = await list_conversations()
+        # If repository returns aggregated counts, normalize shape
+        result: List[dict] = []
+        for c in convs:
+            if "messages" in c and isinstance(c["messages"], int):
+                result.append({"id": c["id"], "title": c.get("title", ""), "messages": c["messages"]})
+            else:
+                result.append({
+                    "id": c["id"],
+                    "title": c.get("title", ""),
+                    "messages": len(c.get("messages", [])),
+                })
+        return result
+    except Exception:
+        # Fail gracefully in dev if DB is unavailable
+        return []
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def post_conversation():
     """Create a new empty conversation and return its id."""
-    conv_id = await create_conversation()
-    return {"id": conv_id}
+    try:
+        conv_id = await create_conversation()
+        return {"id": conv_id}
+    except Exception:
+        # If schema is missing during first boot, try to create it lazily
+        from app.dependencies import setup_db_schema
+
+        await setup_db_schema()
+        conv_id = await create_conversation()
+        return {"id": conv_id}
 
 
 @router.get("/{conv_id}", status_code=status.HTTP_200_OK)

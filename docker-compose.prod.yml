@@ -1,0 +1,104 @@
+# Docker Compose for production deployment
+
+services:
+  # Backend - CORE FastAPI Application (Production)
+  core-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: core-backend-prod
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - CORE_ENV=production
+      - DATABASE_URL=postgresql://core_user:core_password@postgres:5432/core_db
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - core-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend - Angular Application (Production Build)
+  core-ui:
+    build:
+      context: ./ui/core-ui
+      dockerfile: Dockerfile.prod
+    container_name: core-ui-prod
+    ports:
+      - "80:80"
+    networks:
+      - core-network
+    depends_on:
+      - core-backend
+    restart: unless-stopped
+
+  # Database - PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: core-postgres-prod
+    environment:
+      - POSTGRES_DB=core_db
+      - POSTGRES_USER=core_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-core_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - core-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U core_user -d core_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - For caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: core-redis-prod
+    volumes:
+      - redis-data:/data
+    networks:
+      - core-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx - Reverse Proxy (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: core-nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    networks:
+      - core-network
+    depends_on:
+      - core-ui
+      - core-backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  postgres-data:
+  redis-data:
+
+networks:
+  core-network:
+    driver: bridge

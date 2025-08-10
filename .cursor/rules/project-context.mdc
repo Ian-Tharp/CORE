@@ -19,7 +19,7 @@ You are assisting Ian in architecting and building the **Digital Brain Platform*
 ### Primary Technology Stack
 ```
 ┌─ FRONTEND ─────────────────────────────────────┐
-│ Angular 18+ → Electron Desktop Application     │
+│ Angular 19 → Electron Desktop Application      │
 │ • Command Deck UI (StarCraft-inspired)         │
 │ • Angular Material + CDK DragDrop              │
 │ • Darkmode, but still solarpunk                │
@@ -68,6 +68,12 @@ You are assisting Ian in architecting and building the **Digital Brain Platform*
 
 ## 🎛️ COMMAND DECK UX SPECIFICATION
 
+## 🔍 Preflight Repository Discovery (must read before action)
+- Inspect current repository layout and versions before any change.
+- Frontend: `ui/core-ui/` (Angular 19 + Electron). Backend: `backend/` (FastAPI managed with `uv`).
+- Prefer additive, non-breaking edits. If a restructure is needed, write an ADR and define rollback.
+- See also: `.cursor/rules/process-guardrails.mdc` and `.cursor/rules/gpw-coding-agent-protocol.mdc` for detailed operating protocol.
+
 ### UI Components Required
 - **Agent Cards**: State indicators (Idle/Running/Failed), memory snapshots, I/O ports
 - **Workflow Canvas**: Drag-and-drop DAG builder with real-time connections
@@ -112,7 +118,7 @@ dockerContainer.start()
 ## 🎨 DESIGN PHILOSOPHY
 
 ### Solarpunk Aesthetic Vision
-The Digital Brain Platform embodies a **next-generation agent orchestrator interface** that transcends traditional UI/UX paradigms. The design language captures the intersection of **cutting-edge technology and sustainable optimism**, creating an interface that feels like commanding a starship of cognitive possibility.
+The Digital Brain Platform embodies a **next-generation agent orchestrator interface** that transcends traditional UI/UX paradigms. The design language captures the intersection of **cutting-edge technology and sustainable optimism**, creating an interface that feels like commanding a starship of cognitive possibility, building upon the intersection of game design UI/UX principles into the world of web application design - ultimately blending the two worlds together for a gamified UX interaction with cutting-edge technology.
 
 ### Visual Experience Characteristics
 - **Organic Futurism**: Interface elements that breathe and pulse with AI activity, suggesting living systems rather than static controls
@@ -138,7 +144,4 @@ The Digital Brain Platform succeeds when:
 - Scales to hundreds of containerized agents
 
 ---
-
-
-
 **CONTEXT ACTIVATION**: You now have complete architectural awareness of the Digital Brain Platform. Provide precise, actionable development guidance that aligns with this comprehensive vision. Focus on practical implementation while maintaining the philosophical and technical integrity of the CORE cognitive architecture.

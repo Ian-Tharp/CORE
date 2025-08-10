@@ -10,7 +10,7 @@ from typing import AsyncGenerator, Dict, List
 import asyncio
 import json
 import logging
-from dependencies import _get_openai_client
+from app.dependencies import _get_openai_client
 
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,8 @@ async def chat_service(
         ``fastapi.responses.StreamingResponse``.
     """
 
-    client = _get_openai_client()
-
     try:
+        client = _get_openai_client()
         # Using the newer "Responses" API (see: https://github.com/openai/openai-python#responses-api)
         response = await client.responses.create(
             model=model,

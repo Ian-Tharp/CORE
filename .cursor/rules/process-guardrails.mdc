@@ -1,0 +1,33 @@
+---
+description: Small, always-on guardrails for working inside CORE. Keep this in mind before any edit.
+globs:
+alwaysApply: true
+---
+## Preflight repository discovery (must-do before any change)
+- Always inspect the current repository structure and versions first:
+  - Frontend: `ui/core-ui/` (Angular 19 + Electron)
+  - Backend: `backend/` (FastAPI; Python managed with `uv` via `pyproject.toml` + `uv.lock`)
+  - Compose/Docker, MCP integration, and any existing infra files
+- Align implementation with what exists; prefer additive, non-breaking edits. If a restructure is necessary, author an ADR and a rollback plan.
+
+## Frontend rules (Angular 19)
+- Use Angular 19 features (`@if`, `@for` - NOT *ngIf or *ngFor), Angular Material, SCSS, and responsive `rem` units.
+- Keep traditional Angular component structure: `.ts`, `.html`, `.scss`, `.spec.ts` for each component.
+- Tests: prefer Jest. If the project currently uses Karma/Jasmine, plan a migration ADR and timeline, but do not block work.
+- Code style: explicit `public`/`private`; prefix private functions with `_`. Place opening braces on the same line.
+
+## Backend rules (FastAPI + uv)
+- Python must be fully type-hinted and formatted; manage deps with `uv`.
+- Tests: use `MagicMock` instead of monkeypatching where possible.
+- Eventing/outbox is optional; introduce Kafka/Redpanda only with an ADR and dual-write plan if needed.
+
+## Simulation services (Rust/C++)
+- Latency-critical world/agent simulation may be a Rust or C++ microservice over gRPC. Choose based on integration needs (Rust for rapid, safe concurrency; C++ for UE/native SDKs). Record choice in an ADR.
+
+## MCP usage (Memory KG + Obsidian)
+- Persist decisions and architecture as Markdown via Obsidian MCP; mirror key nodes/edges in the Memory KG.
+- Use stable URNs for nodes and connect with `implements`, `emits`, `consumes`, `depends_on`.
+
+## Always verify before changing
+- Re-read relevant files you are about to edit. Run linters/tests after substantive edits. Keep changeset focused; avoid unrelated reformatting.
+

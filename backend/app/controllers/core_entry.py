@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from models.user_input import UserInput
+from app.models.user_input import UserInput
 
 router = APIRouter(prefix="/core")
 
