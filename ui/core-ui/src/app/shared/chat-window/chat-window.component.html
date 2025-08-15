@@ -5,6 +5,24 @@
       <mat-icon>build</mat-icon>
     </button>
 
+    <mat-form-field appearance="outline" class="kb-select">
+      <mat-select [(ngModel)]="kbMode" name="kbMode" panelClass="model-dropdown-panel">
+        <mat-option value="none">No RAG</mat-option>
+        <mat-option value="all">All Knowledgebase</mat-option>
+        <mat-option value="file">Specific File</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    @if (kbMode === 'file') {
+      <mat-form-field appearance="outline" class="kb-file-select">
+        <mat-select [(ngModel)]="kbFileId" name="kbFile">
+          @for (f of kbFiles; track f.id) {
+            <mat-option [value]="f.id">{{ f.originalName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
     <mat-form-field appearance="outline" class="model-select">
       <mat-select [(ngModel)]="selectedModel" name="model" panelClass="model-dropdown-panel">
         @for (m of models; track m) {

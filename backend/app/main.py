@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 
 
@@ -50,6 +50,7 @@ app.include_router(conversations.router)
 app.include_router(system_monitor.router)
 app.include_router(worlds.router)
 app.include_router(creative.router)
+app.include_router(knowledgebase.router)
 
 # ---------------------------------------------------------------------------
 # Middleware

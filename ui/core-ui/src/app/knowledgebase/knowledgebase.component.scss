@@ -183,12 +183,22 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
           min-width: 300px;
           
           ::ng-deep {
-            .mat-mdc-form-field-outline {
-              color: rgba($primary-green, 0.3);
+            .mat-mdc-text-field-wrapper {
+              background: rgba(255, 255, 255, 0.06);
+              backdrop-filter: blur(8px);
+              border-radius: 0.75rem;
             }
-            
-            .mat-mdc-form-field-focused .mat-mdc-form-field-outline {
-              color: $primary-green;
+            .mat-mdc-notched-outline {
+              > * {
+                border-color: rgba($primary-green, 0.35) !important;
+              }
+            }
+            .mat-mdc-form-field-focus-overlay {
+              opacity: 0 !important;
+            }
+            .mat-mdc-form-field.mat-focused .mat-mdc-notched-outline > * {
+              border-color: $primary-green !important;
+              box-shadow: 0 0 0 1px rgba($primary-green, 0.25);
             }
             
             .mat-mdc-form-field-infix {
@@ -198,7 +208,7 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
             }
             
             .mat-mdc-input-element {
-              color: rgba($neutral-light, 0.9);
+              color: rgba($neutral-light, 0.92);
               
               &::placeholder {
                 color: rgba($neutral-light, 0.6);
@@ -334,49 +344,136 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
             ::ng-deep {
               .mat-mdc-card-header {
                 background: rgba($light-moss, 0.1);
+                align-items: center;
+                padding-right: 0.75rem;
+                gap: 0.5rem;
                 
                 .file-type-icon {
-                  font-size: 2.5rem;
-                  width: 2.5rem;
-                  height: 2.5rem;
-                  display: flex;
+                  font-size: 2rem;
+                  width: 2.25rem;
+                  height: 2.25rem;
+                  display: inline-flex;
                   align-items: center;
                   justify-content: center;
+                  margin-right: 0.5rem;
+                  vertical-align: middle;
+                }
+
+                .mat-mdc-card-header-text {
+                  margin-left: 0.1rem;
+                }
+                .mat-mdc-card-title {
+                  display: inline-flex;
+                  align-items: center;
+                  line-height: 1.2;
+                  margin: 0;
                 }
               }
               
               .mat-mdc-card-content {
                 .file-description {
-                  color: rgba($neutral-dark, 0.7);
+                  color: rgba($neutral-dark, 0.8);
                   margin: 0.5rem 0;
+                  line-height: 1.3;
                 }
                 
                 .status-indicator {
                   margin-top: 1rem;
-                  
+
                   .mat-mdc-chip {
-                    font-size: 0.85rem;
-                    
-                    &.status-processing {
-                      background: rgba($secondary-teal, 0.2);
-                      color: $secondary-teal;
-                      
-                      .spinning {
-                        animation: spin 1s linear infinite;
-                      }
-                    }
-                    
-                    &.status-ready {
-                      background: rgba($primary-green, 0.2);
-                      color: $primary-green;
-                    }
-                    
-                    &.status-error {
-                      background: rgba(#f44336, 0.2);
-                      color: #f44336;
-                    }
+                    font-size: 0.8rem;
+                    height: 1.6rem;
+                    border-radius: 1rem;
+                    padding: 0 0.6rem;
+                    display: inline-flex;
+                    align-items: center;
+                    vertical-align: middle;
+                  }
+
+                  /* Force icon + label to share a single aligned row */
+                  ::ng-deep .mat-mdc-chip .mdc-evolution-chip__text-label {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 0.35rem !important;
+                  }
+                  ::ng-deep .mat-mdc-chip mat-icon {
+                    width: 1.1rem !important;
+                    height: 1.1rem !important;
+                    font-size: 1.1rem !important;
+                    line-height: 1 !important;
+                  }
+
+                  .status-processing {
+                    background: rgba($secondary-teal, 0.18) !important;
+                    color: $secondary-teal !important;
+                    .spinning { animation: spin 1s linear infinite; }
+                  }
+                  .status-ready {
+                    background: rgba($primary-green, 0.18) !important;
+                    color: $primary-green !important;
+                  }
+                  .status-error {
+                    background: rgba(#f44336, 0.18) !important;
+                    color: #f44336 !important;
                   }
                 }
+              }
+
+              .file-actions {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+
+                button.mat-icon-button {
+                  width: 2.25rem;
+                  height: 2.25rem;
+                  border-radius: 0.5rem;
+                  background: transparent;
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  transition: transform 120ms ease, box-shadow 150ms ease, background 150ms ease;
+
+                  /* Ensure icon centers perfectly */
+                  ::ng-deep .mdc-icon-button__icon, ::ng-deep mat-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.25rem;
+                    line-height: 1;
+                  }
+
+                  /* Theming via color and MDC variable for strong override */
+                  &.action-embed {
+                    color: $secondary-teal !important;
+                    --mdc-icon-button-icon-color: #{$secondary-teal};
+                  }
+                  &.action-info {
+                    color: $accent-gold !important;
+                    --mdc-icon-button-icon-color: #{$accent-gold};
+                  }
+                  &.action-delete {
+                    color: $warm-orange !important;
+                    --mdc-icon-button-icon-color: #{$warm-orange};
+                  }
+
+                  &:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 6px 18px rgba($primary-green, 0.15);
+                    background: rgba($light-moss, 0.15);
+                  }
+                }
+
+                /* Stronger icon color override to beat MDC defaults */
+                ::ng-deep .file-actions .action-embed mat-icon { color: $secondary-teal !important; }
+                ::ng-deep .file-actions .action-info mat-icon { color: $accent-gold !important; }
+                ::ng-deep .file-actions .action-delete mat-icon { color: $warm-orange !important; }
+
+                /* Attribute-based fallback in case classes are altered */
+                ::ng-deep .file-actions button[data-color="teal"] mat-icon { color: $secondary-teal !important; }
+                ::ng-deep .file-actions button[data-color="gold"] mat-icon { color: $accent-gold !important; }
+                ::ng-deep .file-actions button[data-color="orange"] mat-icon { color: $warm-orange !important; }
               }
             }
           }
@@ -632,6 +729,62 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
       font-weight: 300;
     }
   }
+
+  // Floating Upload Panel
+  .upload-panel {
+    position: fixed;
+    right: 2rem;
+    bottom: 6.5rem; // above the semantic fab
+    width: min(28rem, 90vw);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba($primary-green, 0.25);
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    padding: 1rem;
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 0.5rem 0;
+      color: $deep-forest;
+
+      mat-icon {
+        color: $primary-green;
+      }
+    }
+
+    .upload-item {
+      padding: 0.5rem 0;
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.25rem;
+
+        .meta {
+          .filename {
+            font-size: 0.95rem;
+            color: $neutral-dark;
+          }
+          .stage {
+            font-size: 0.8rem;
+            color: rgba($neutral-dark, 0.6);
+          }
+        }
+
+        .pct {
+          min-width: 3rem;
+          text-align: right;
+          font-size: 0.9rem;
+          color: $primary-green;
+        }
+      }
+    }
+  }
 }
 
 // Semantic Search Dialog
@@ -751,8 +904,9 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
       }
       
       .page-subtitle, .stat-label, p {
-        color: rgba($neutral-light, 0.7);
+        color: rgba($neutral-light, 0.72);
       }
+      .file-description { color: rgba($neutral-light, 0.86) !important; }
     }
     
     ::ng-deep {

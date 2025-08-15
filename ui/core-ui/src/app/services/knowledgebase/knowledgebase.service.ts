@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { Observable, BehaviorSubject, Subject, of, throwError } from 'rxjs';
-import { map, tap, catchError, finalize } from 'rxjs/operators';
+import { map, tap, catchError, finalize, filter } from 'rxjs/operators';
 import {
   KnowledgeFile,
   VectorEmbedding,
@@ -21,18 +21,20 @@ import {
 })
 export class KnowledgebaseService {
   private http = inject(HttpClient);
-  private apiUrl = '/api/knowledgebase';
+  private apiUrl = 'http://localhost:8001/knowledgebase';
 
   // State management
   private filesSubject = new BehaviorSubject<KnowledgeFile[]>([]);
   private statsSubject = new BehaviorSubject<KnowledgebaseStats | null>(null);
   private uploadProgressSubject = new Subject<{ fileId: string; progress: number }>();
+  private uploadStageSubject = new Subject<{ fileId: string; stage: string }>();
   private activeFiltersSubject = new BehaviorSubject<KnowledgebaseFilter>({});
 
   // Public observables
   files$ = this.filesSubject.asObservable();
   stats$ = this.statsSubject.asObservable();
   uploadProgress$ = this.uploadProgressSubject.asObservable();
+  uploadStage$ = this.uploadStageSubject.asObservable();
   activeFilters$ = this.activeFiltersSubject.asObservable();
 
   // Available tags
@@ -92,28 +94,40 @@ export class KnowledgebaseService {
       processImmediately: request.processImmediately
     }));
 
+    // Emit initial stage
+    this.uploadStageSubject.next({ fileId: request.file.name, stage: 'uploading' });
+
     return this.http.post<KnowledgeFile>(`${this.apiUrl}/upload`, formData, {
       reportProgress: true,
       observe: 'events'
     }).pipe(
       map((event: any) => {
-        if (event.type === 4) {
-          return event.body;
-        }
-        if (event.type === 1 && event.total) {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
           const progress = Math.round(100 * event.loaded / event.total);
           this.uploadProgressSubject.next({ fileId: request.file.name, progress });
+          this.uploadStageSubject.next({ fileId: request.file.name, stage: 'uploading' });
+          return null;
+        }
+        if (event.type === HttpEventType.Response) {
+          this.uploadProgressSubject.next({ fileId: request.file.name, progress: 100 });
+          this.uploadStageSubject.next({ fileId: request.file.name, stage: request.processImmediately ? 'processing' : 'finalizing' });
+          return event.body as KnowledgeFile;
         }
         return null;
       }),
+      filter((file): file is KnowledgeFile => file !== null),
       tap(file => {
         if (file) {
           const currentFiles = this.filesSubject.value;
           this.filesSubject.next([file, ...currentFiles]);
           this.loadStats();
+          this.uploadStageSubject.next({ fileId: request.file.name, stage: 'complete' });
         }
       }),
-      catchError(this.handleError)
+      catchError((err) => {
+        this.uploadStageSubject.next({ fileId: request.file.name, stage: 'error' });
+        return this.handleError(err);
+      })
     );
   }
 

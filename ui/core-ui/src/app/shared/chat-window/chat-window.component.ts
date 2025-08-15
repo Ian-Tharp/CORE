@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { ChatService } from '../../services/chat/chat-service';
+import { KnowledgebaseService } from '../../services/knowledgebase/knowledgebase.service';
+import { KnowledgeFile } from '../../models/knowledgebase.models';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
 import { ViewEncapsulation } from '@angular/core';
@@ -41,6 +43,11 @@ export class ChatWindowComponent implements OnChanges {
   readonly models: string[] = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o', 'o3', 'o4-mini'];
   selectedModel = this.models[0];
 
+  // Knowledgebase RAG options
+  kbMode: 'none' | 'all' | 'file' = 'none';
+  kbFiles: KnowledgeFile[] = [];
+  kbFileId?: string;
+
   // Reference to the scrolling container so we can auto-scroll.
   @ViewChild('scrollContainer', { static: false })
   private scrollContainer?: ElementRef<HTMLDivElement>;
@@ -51,7 +58,18 @@ export class ChatWindowComponent implements OnChanges {
 
   private readonly _apiUrl = 'http://localhost:8001';
 
-  constructor(private readonly chatService: ChatService, private readonly http: HttpClient) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly http: HttpClient,
+    private readonly kbService: KnowledgebaseService
+  ) {
+    // Load knowledgebase files for selection
+    this.kbService.files$.subscribe(files => {
+      this.kbFiles = files;
+    });
+    // Kick off initial load
+    this.kbService.loadFiles().subscribe();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['conversationId'] && !changes['conversationId'].firstChange) {
@@ -98,7 +116,10 @@ export class ChatWindowComponent implements OnChanges {
       const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
 
       this.chatService
-        .sendMessage(content, this.selectedModel, convId ?? this.conversationId)
+        .sendMessage(content, this.selectedModel, convId ?? this.conversationId, {
+          kbMode: this.kbMode,
+          kbFileId: this.kbMode === 'file' ? this.kbFileId : undefined,
+        })
         .subscribe({
           next: (jsonStr) => {
             try {

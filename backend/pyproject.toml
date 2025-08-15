@@ -16,6 +16,8 @@ dependencies = [
     "psutil>=7.0.0",
     "asyncpg>=0.29.0",
     "python-dotenv>=1.0.1",
+    "pypdf>=5.1.0",
+    "python-docx>=1.1.2",
 ]
 
 [dependency-groups]

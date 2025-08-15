@@ -58,7 +58,12 @@ export class ChatService {
    * @param content The content of the user message to send.
    * @param model   The OpenAI model the backend should use (e.g. `gpt-4o`).
    */
-  sendMessage(content: string, model: string, conversationId?: string): Observable<string> {
+  sendMessage(
+    content: string,
+    model: string,
+    conversationId?: string,
+    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string }
+  ): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };
     this.addMessage(userInput);
@@ -75,6 +80,13 @@ export class ChatService {
 
     if (conversationId) {
       payload["conversation_id"] = conversationId;
+    }
+
+    if (options?.kbMode && options.kbMode !== 'none') {
+      payload["kb_mode"] = options.kbMode;
+      if (options.kbMode === 'file' && options.kbFileId) {
+        payload["kb_file_id"] = options.kbFileId;
+      }
     }
 
     return new Observable<string>((observer) => {

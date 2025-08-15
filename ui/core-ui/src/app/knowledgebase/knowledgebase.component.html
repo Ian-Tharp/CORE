@@ -10,32 +10,32 @@
     </div>
     
     <!-- Stats Overview -->
-    <div class="stats-overview" *ngIf="stats$ | async as stats" @fadeIn>
+    <div class="stats-overview" @fadeIn>
       <div class="stat-card">
         <mat-icon>folder</mat-icon>
         <div class="stat-info">
-          <span class="stat-value">{{ stats.totalFiles }}</span>
+          <span class="stat-value">{{ (totalFiles$ | async) || 0 }}</span>
           <span class="stat-label">Total Files</span>
         </div>
       </div>
       <div class="stat-card">
         <mat-icon>storage</mat-icon>
         <div class="stat-info">
-          <span class="stat-value">{{ formatFileSize(stats.totalSize) }}</span>
+          <span class="stat-value">{{ formatFileSize((totalBytes$ | async) || 0) }}</span>
           <span class="stat-label">Storage Used</span>
         </div>
       </div>
       <div class="stat-card">
         <mat-icon>memory</mat-icon>
         <div class="stat-info">
-          <span class="stat-value">{{ stats.totalEmbeddings }}</span>
+          <span class="stat-value">{{ (stats$ | async)?.totalEmbeddings || 0 }}</span>
           <span class="stat-label">Embeddings</span>
         </div>
       </div>
       <div class="stat-card">
         <mat-icon>pending</mat-icon>
         <div class="stat-info">
-          <span class="stat-value">{{ stats.processingQueue }}</span>
+          <span class="stat-value">{{ (stats$ | async)?.processingQueue || 0 }}</span>
           <span class="stat-label">Processing</span>
         </div>
       </div>
@@ -210,21 +210,21 @@
                 </mat-progress-bar>
               </mat-card-content>
               
-              <mat-card-actions>
-                <button mat-icon-button 
+              <mat-card-actions class="file-actions">
+                <button mat-icon-button class="action-embed" data-color="teal"
                         matTooltip="Process embeddings"
                         (click)="processEmbeddings(file); $event.stopPropagation()">
-                  <mat-icon>memory</mat-icon>
+                  <mat-icon style="color:#00acc1">memory</mat-icon>
                 </button>
-                <button mat-icon-button 
+                <button mat-icon-button class="action-info" data-color="gold"
                         matTooltip="View details"
                         (click)="$event.stopPropagation()">
-                  <mat-icon>info</mat-icon>
+                  <mat-icon style="color:#ffd600">info</mat-icon>
                 </button>
-                <button mat-icon-button 
+                <button mat-icon-button class="action-delete" data-color="orange"
                         matTooltip="Delete"
                         (click)="deleteFile(file); $event.stopPropagation()">
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon style="color:#ff6d00">delete</mat-icon>
                 </button>
               </mat-card-actions>
             </mat-card>
@@ -427,6 +427,21 @@
           (click)="openSemanticSearch()">
     <mat-icon>auto_awesome</mat-icon>
   </button>
+
+  <!-- Floating Upload Panel -->
+  <div class="upload-panel" *ngIf="uploadingNames.length > 0">
+    <h4 class="panel-title"><mat-icon>cloud_upload</mat-icon> Uploads</h4>
+    <div class="upload-item" *ngFor="let name of uploadingNames">
+      <div class="row">
+        <div class="meta">
+          <div class="filename">{{ name }}</div>
+          <div class="stage">{{ uploadStage[name] || 'uploading' }}</div>
+        </div>
+        <div class="pct">{{ uploadProgress[name] }}%</div>
+      </div>
+      <mat-progress-bar mode="determinate" [value]="uploadProgress[name]"></mat-progress-bar>
+    </div>
+  </div>
   
   <!-- Drop Zone Overlay -->
   <div class="drop-zone-overlay" 

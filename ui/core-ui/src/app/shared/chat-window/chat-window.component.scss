@@ -113,8 +113,74 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     padding: 8px 16px 0;
+    background: transparent;
+    flex-wrap: wrap; /* allow controls to wrap in narrow sidebars */
+    .mat-mdc-form-field {
+      --field-height: 36px;
+    }
+
+    /* Solarpunk border for compact selects using masked pseudo-border (no white seams) */
+    .mat-mdc-text-field-wrapper {
+      position: relative;
+      border: 1px solid rgba(53, 255, 137, 0.25) !important;
+      border-radius: 12px !important;
+      background: linear-gradient(135deg, rgba(8, 28, 35, 0.6), rgba(20, 60, 70, 0.4)) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+      outline: none !important;
+      overflow: hidden; /* ensure rounded corners clip inner contents */
+    }
+    .mat-mdc-text-field-wrapper::before {
+      display: none !important;
+    }
+    .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
+      background: linear-gradient(135deg, rgba(8, 28, 35, 0.75), rgba(20, 60, 70, 0.55)) !important;
+      box-shadow: 0 0 0 0 rgba(0,0,0,0), 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+      border-color: rgba(53, 255, 137, 0.5) !important;
+      box-shadow: 0 0 8px rgba(53, 255, 137, 0.30) !important;
+    }
+
+    /* Remove any remaining helper/underline area that can appear as a thin line */
+    .mat-mdc-form-field-subscript-wrapper {
+      display: none !important;
+    }
+
+    /* Completely hide the default Material notched outline */
+    .mdc-notched-outline,
+    .mat-mdc-notched-outline,
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__trailing,
+    .mdc-notched-outline__notch {
+      display: none !important;
+      opacity: 0 !important;
+      border: none !important;
+      background: transparent !important;
+    }
+
+    /* Ensure trigger text is perfectly centered and never sits high */
+    .mat-mdc-form-field-infix {
+      min-height: 36px;
+      height: 36px;
+      padding: 0 8px !important;
+      display: flex;
+      align-items: center;
+    }
+    .mat-mdc-select-trigger {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      line-height: 1;
+    }
+    .mat-mdc-select-value {
+      display: flex;
+      align-items: center;
+      line-height: 1.1;
+    }
+    .mat-mdc-select-arrow-wrapper {
+      display: flex;
+      align-items: center;
+    }
   }
 
   /** Tools button placeholder **/
@@ -125,7 +191,7 @@
   /* Compact but readable model select */
   .model-select {
     width: auto;
-    min-width: 120px;
+    min-width: 150px;
     flex: 0 0 auto;
 
     .mat-mdc-text-field-wrapper {
@@ -137,26 +203,60 @@
       padding-right: 0 !important;
     }
   }
+
+  /* Knowledgebase selectors */
+  .kb-select, .kb-file-select {
+    width: auto;
+    min-width: 210px; /* ensure RAG text is never truncated */
+    .mat-mdc-text-field-wrapper {
+      padding: 0 8px !important;
+      height: 36px;
+    }
+    .mat-mdc-form-field-infix {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      min-height: 36px;
+      display: flex;
+      align-items: center; /* vertically center the select value */
+    }
+    .mat-mdc-select {
+      color: #cfe9ff;
+    }
+    .mat-mdc-select-value {
+      display: flex;
+      align-items: center;
+    }
+  }
 }
 
 /* Global styles for model dropdown panel (outside container for global scope) */
 .model-dropdown-panel {
-  background-color: #0d1421 !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, rgba(8, 28, 35, 0.85), rgba(20, 60, 70, 0.75)) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid transparent !important;
+  border-image: var(--gradient-solarpunk) 1 !important;
+  border-radius: 10px !important;
+  outline: none !important;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(53, 255, 137, 0.15) !important;
 
   .mat-mdc-option {
-    color: #ffffff !important;
-    min-height: 48px !important;
-    padding: 0 24px !important;
+    color: #e8f0ff !important;
+    min-height: 42px !important;
+    padding: 0 16px !important;
+    margin: 2px 6px !important;
+    border-radius: 8px !important;
     
     &:hover:not(.mdc-list-item--disabled) {
-      background-color: rgba(255, 255, 255, 0.08) !important;
+      background: linear-gradient(135deg, rgba(53, 255, 137, 0.12), rgba(0, 234, 255, 0.12)) !important;
     }
     
     &.mat-mdc-option-active,
     &.mdc-list-item--selected {
-      background-color: rgba(255, 255, 255, 0.12) !important;
+      background: linear-gradient(135deg, rgba(53, 255, 137, 0.2), rgba(0, 234, 255, 0.2)) !important;
+      color: #ffffff !important;
+      text-shadow: 0 0 6px rgba(0, 234, 255, 0.25);
     }
   }
   

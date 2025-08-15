@@ -109,6 +109,12 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
   selectedFiles = new Set<string>();
   isLoading = false;
   uploadProgress: Record<string, number> = {};
+  uploadStage: Record<string, string> = {};
+
+  // Helper for template to list active upload names
+  get uploadingNames(): string[] {
+    return Object.keys(this.uploadProgress);
+  }
 
   // Form controls - initialize immediately
   searchControl = new FormControl('');
@@ -118,6 +124,8 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
   // Data streams - use the service directly
   files$ = this.knowledgebaseService.files$;
   stats$ = this.knowledgebaseService.stats$;
+  totalBytes$ = this.files$.pipe(map(files => files.reduce((sum, f) => sum + (f.size || 0), 0)));
+  totalFiles$ = this.files$.pipe(map(files => files.length));
   availableTags$ = this.knowledgebaseService.availableTags$;
   recentActivity: ActivityLog[] = [];
 
@@ -208,6 +216,13 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         this.uploadProgress[progress.fileId] = progress.progress;
       });
 
+    // Subscribe to upload stage updates
+    this.knowledgebaseService.uploadStage$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(stage => {
+        this.uploadStage[stage.fileId] = stage.stage;
+      });
+
     // Load recent activity
     this.loadRecentActivity();
 
@@ -265,6 +280,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
             duration: 3000
           });
           delete this.uploadProgress[file.name];
+          delete this.uploadStage[file.name];
         }
       },
       error: (error) => {
@@ -272,6 +288,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
           duration: 5000
         });
         delete this.uploadProgress[file.name];
+        delete this.uploadStage[file.name];
       }
     });
   }

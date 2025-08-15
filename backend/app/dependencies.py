@@ -301,3 +301,51 @@ async def setup_db_schema() -> None:
                 )
                 """
             )
+
+            # -----------------------------------------------------------------
+            # Knowledgebase: documents and chunk embeddings (RAG)
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS kb_documents (
+                    id UUID PRIMARY KEY,
+                    filename VARCHAR(512) NOT NULL,
+                    original_name VARCHAR(512) NOT NULL,
+                    size BIGINT NOT NULL,
+                    mime_type VARCHAR(128) NOT NULL,
+                    description TEXT,
+                    is_global BOOLEAN DEFAULT FALSE,
+                    source VARCHAR(64) DEFAULT 'user_upload',
+                    status VARCHAR(32) DEFAULT 'ready',
+                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    storage_path VARCHAR(1024) NOT NULL,
+                    doc_embedding JSONB,
+                    embedding_model VARCHAR(128),
+                    embedding_dimensions INTEGER
+                )
+                """
+            )
+
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS kb_chunks (
+                    id UUID PRIMARY KEY,
+                    document_id UUID NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    embedding JSONB NOT NULL,
+                    embedding_model VARCHAR(128) NOT NULL,
+                    embedding_dimensions INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (document_id) REFERENCES kb_documents(id) ON DELETE CASCADE
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_document_id ON kb_chunks(document_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_upload_date ON kb_documents(upload_date)"
+            )
