@@ -1,0 +1,63 @@
+---
+description: Procedural Worlds and multi-agent interaction rules for CORE (UI, Gateway, Sim, MCP, collaboration)
+globs:
+  alwaysApply: false
+---
+# Procedural Worlds — Build & Integrate (CORE)
+
+Use this rule when implementing worlds, simulations, and cross-agent interactions in CORE.
+
+## Scope
+- UI: Angular 19 + Electron (Three.js + hex/honeycomb grid components)
+- Gateway: FastAPI `controllers/worlds.py` + SSE for streaming state
+- Sim: local client stepping (initial) → gRPC service (Rust/C++) later via ADR
+- Memory & Collaboration: MCP (registry/integration), Knowledgebase, Conversations
+
+## World Model (minimum viable)
+- World: `{ id, name, seed, created_at, updated_at, metadata(jsonb) }`
+- Entity: `{ id, world_id, kind, props(jsonb), position(axial|xyz), updated_at }`
+- Snapshot: `{ id, world_id, tick, state(jsonb), created_at }`
+
+DB (JSONB-first): maintain SQL in `init.sql`; add migrations later.
+
+## REST (align to OpenAPI v1)
+- `POST /worlds` → create world (name, seed)
+- `GET /worlds` / `GET /worlds/{id}`
+- `POST /worlds/{id}/entities` → upsert entity
+- `POST /worlds/{id}/snapshots` → persist snapshot
+- `GET /worlds/{id}/stream` (SSE) → live ticks/events (gateway produces `text/event-stream`)
+
+Gateway implementation notes:
+- Add routes under `app/controllers/worlds.py`; mount in `app.main` with `/worlds` prefix.
+- SSE: use async generator; heartbeat every 10–15s; include `retry:` hint.
+- CORS: allow UI origin for SSE.
+
+## UI Integration
+- Services in `src/app/services/*worlds*.ts`:
+  - `createWorld`, `listWorlds`, `getWorld`, `upsertEntity`, `saveSnapshot`, `streamWorld(id)` (EventSource)
+- Components: reuse `creative-design-product/worlds-*` patterns; style with SCSS + rem; Angular Material.
+- Rendering: Three.js scene with hex/honeycomb for tiles; deterministic client stepping while gRPC is not available.
+- Electron: long-lived tasks via IPC; avoid polling—consume SSE for stream.
+
+## Sim boundary
+- Initial: client-side deterministic step (seed + rules) for demos.
+- Later: define `libs/protos/world/v1/world.proto` and add `WorldSim.{Step,StreamEvents}`; implement in Rust (tonic) or C++ (ADR required).
+- Gateway proxies gRPC to SSE for the UI.
+
+## Multi-agent collaboration
+- Memory KG + Obsidian via MCP: register new APIs (OpenAPI, proto URNs) and architectural ADRs.
+- Add a simple Blackboard concept (repo-level): use Conversations/Knowledgebase endpoints to persist collaborative notes tied to world IDs.
+- Event bus (optional): if enabled, emit `gpw.worlds.v1` and `gpw.entities.v1` (outbox pattern).
+
+## Testing
+- Backend: FastAPI route tests (pytest), prefer `MagicMock` over monkeypatch; add a smoke SSE test.
+- Contract: Schemathesis on OpenAPI; ensure `/worlds` and `/worlds/{id}/stream` are covered.
+- UI: keep Karma specs green; minimal rendering test (Three.js boot + service mocks). Plan Jest migration ADR.
+
+## Deliverables checklist
+- [ ] OpenAPI v1 updated with `/worlds` CRUD + SSE stream
+- [ ] `controllers/worlds.py` aligned with spec; mounted in `app.main`
+- [ ] UI services and components wired; SSE stream renders world ticks
+- [ ] (Optional) proto stub + ADR for sim tech
+- [ ] Docs under `docs/` + nodes/edges in Memory KG via MCP
+

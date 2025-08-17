@@ -1,0 +1,39 @@
+---
+description: Repo reality snapshot for coding agents — align plans to the actual CORE codebase
+globs:
+  alwaysApply: true
+---
+# CORE Repo Reality (synchronize plans to this)
+
+Use this as a quick alignment check before proposing work.
+
+## Layout
+- Frontend (Angular 19 + Electron): `ui/core-ui/`
+- Backend (FastAPI, Python 3.12+ via uv): `backend/`
+- MCP integration utilities: `mcp/`
+- Compose/Docker: root `docker-compose*.yml`, backend `Dockerfile`, ui `Dockerfile`
+
+## Key files to read
+- UI: `ui/core-ui/package.json`, `angular.json`, `src/app/**`
+- Backend: `backend/pyproject.toml`, `backend/app/main.py`, `backend/app/controllers/*.py`
+- MCP: `mcp/README.md`, `mcp/mcp_registry_service.py`
+
+## Present modules
+- Controllers: `chat.py`, `conversations.py`, `knowledgebase.py`, `system_monitor.py`, `worlds.py`
+- Agents: `app/core/agents/{comprehension,orchestration,reasoning,evaluation}_agent.py`
+- LangGraph graphs: `app/langgraph/*.py`
+
+## UI tech in use
+- `three`, `honeycomb-grid`, `ngx-markdown`; Angular Material; SCSS; Electron builder.
+- Tests: Karma/Jasmine active; keep green. If proposing Jest, include migration ADR + timeline.
+
+## Backend deps
+- FastAPI, LangChain/LangGraph, fastmcp, Anthropic/OpenAI SDKs, asyncpg, psutil, dotenv, pypdf, python-docx.
+- Manage with `uv` (`uv sync`, `uv run`).
+
+## Immediate guidance
+- Prefer additive edits; extend existing controllers/services/components instead of creating parallel ones.
+- Worlds work belongs in `controllers/worlds.py` and UI `services/*worlds*.ts` + existing worlds components.
+- Live updates: use SSE/WebSocket (no polling). Implement async-generator SSE in FastAPI; consume via `EventSource` in UI.
+- Document nontrivial changes as ADRs in `docs/adr/` and mirror to Obsidian/Memory KG via MCP.
+

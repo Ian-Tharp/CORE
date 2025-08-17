@@ -6,6 +6,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { HttpClient } from '@angular/common/http';
+import { EnginePlaygroundComponent } from './engine-playground.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
@@ -38,6 +39,7 @@ interface ConversationSummary {
     MatTooltipModule,
     MatDividerModule,
     MatProgressSpinnerModule,
+    EnginePlaygroundComponent,
   ]
 })
 export class ConversationsPageComponent implements OnInit {

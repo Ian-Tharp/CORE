@@ -1,0 +1,78 @@
+.engine-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.step-rail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+
+  .chips {
+    .mat-mdc-chip-option.mdc-evolution-chip--selected {
+      background: linear-gradient(90deg, rgba(0,255,255,0.15), rgba(0,255,153,0.15));
+      border: 1px solid rgba(0,255,204,0.35);
+      box-shadow: 0 0 0.75rem rgba(0,255,204,0.25) inset;
+    }
+    .mdc-evolution-chip__text-label { font-weight: 500; }
+    .ok { font-size: 1rem; margin-right: 0.25rem; }
+  }
+
+  .rail-actions { display: flex; gap: 0.5rem; }
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: flex-end;
+
+  .metrics {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    white-space: nowrap;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.85rem;
+    margin-right: 0.25rem;
+  }
+
+  .actions { display: flex; gap: 0.25rem; align-items: center; }
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  .input-field { flex: 1 1 auto; }
+}
+
+.outputs { margin-top: 1rem; }
+
+.step {
+  background: rgba(255,255,255,0.03);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255,255,255,0.06);
+  pre {
+    white-space: pre-wrap;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  small { opacity: 0.85; }
+}
+
+.meta { opacity: 0.7; margin-left: 0.5rem; font-size: 0.9rem; }
+
+.model-select {
+  width: 10rem;
+  margin-right: 0.25rem;
+}
+
+
