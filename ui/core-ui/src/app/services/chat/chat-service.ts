@@ -62,7 +62,7 @@ export class ChatService {
     content: string,
     model: string,
     conversationId?: string,
-    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string }
+    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local' }
   ): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };
@@ -87,6 +87,12 @@ export class ChatService {
       if (options.kbMode === 'file' && options.kbFileId) {
         payload["kb_file_id"] = options.kbFileId;
       }
+    }
+
+    // Route to the desired provider; default to OpenAI
+    if (options?.provider) {
+      const p = options.provider === 'local' ? 'ollama' : options.provider;
+      payload["provider"] = p;
     }
 
     return new Observable<string>((observer) => {

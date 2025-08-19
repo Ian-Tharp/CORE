@@ -162,9 +162,33 @@
                 </mat-option>
               </mat-select>
             </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Status</mat-label>
+              <mat-select formControlName="status" multiple>
+                <mat-option [value]="FileStatus.READY">Ready</mat-option>
+                <mat-option [value]="FileStatus.PROCESSING">Processing</mat-option>
+                <mat-option [value]="FileStatus.UPLOADING">Uploading</mat-option>
+                <mat-option [value]="FileStatus.ERROR">Error</mat-option>
+                <mat-option [value]="FileStatus.ARCHIVED">Archived</mat-option>
+              </mat-select>
+            </mat-form-field>
             
             <button mat-button (click)="clearFilters()">Clear Filters</button>
           </form>
+
+          <!-- Active filter chips -->
+          <div class="active-filters" *ngIf="activeFilterChips.length > 0">
+            <span class="label"><mat-icon>tune</mat-icon> Active Filters:</span>
+            <mat-chip-set>
+              <mat-chip *ngFor="let chip of activeFilterChips" (removed)="removeFilterChip(chip)" removable>
+                {{ chip.label }}
+                <button matChipRemove aria-label="Remove filter">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </mat-chip>
+            </mat-chip-set>
+          </div>
         </mat-expansion-panel>
         
         <!-- Files Display -->
@@ -172,7 +196,7 @@
           <!-- Grid View -->
           <div class="files-grid" *ngIf="viewMode === 'grid'">
             <mat-card class="file-card" 
-                      *ngFor="let file of filteredFiles$ | async"
+                      *ngFor="let file of pagedFiles$ | async; trackBy: trackByFileId"
                       [class.selected]="selectedFiles.has(file.id)"
                       (click)="toggleFileSelection(file.id)">
               <mat-card-header>
@@ -181,28 +205,55 @@
                           class="file-type-icon">
                   {{ getFileIcon(file.mimeType) }}
                 </mat-icon>
-                <mat-card-title>{{ file.filename }}</mat-card-title>
-                <mat-card-subtitle>
-                  {{ formatFileSize(file.size) }} • {{ file.uploadDate | date:'short' }}
-                </mat-card-subtitle>
+                <div class="header-main">
+                  <mat-card-title
+                    [matTooltip]="getFullTitle(file)"
+                    [matTooltipDisabled]="!isTitleLong(file)"
+                  >
+                    {{ getFullTitle(file) }}
+                  </mat-card-title>
+                  <div class="header-tools">
+                    <button mat-icon-button class="copy-title" matTooltip="Copy title"
+                            aria-label="Copy title"
+                            (click)="copyFilename(file); $event.stopPropagation()">
+                      <mat-icon>content_copy</mat-icon>
+                    </button>
+                    <div class="header-right" [ngClass]="'status-' + file.status.toLowerCase()">
+                      <mat-icon *ngIf="file.status === FileStatus.PROCESSING" class="spinning">sync</mat-icon>
+                      <mat-icon *ngIf="file.status === FileStatus.READY">check_circle</mat-icon>
+                      <mat-icon *ngIf="file.status === FileStatus.ERROR">error</mat-icon>
+                    </div>
+                  </div>
+                </div>
               </mat-card-header>
               
               <mat-card-content>
-                <p class="file-description" *ngIf="file.description">
+                <p class="file-description" *ngIf="file.description"
+                   [matTooltip]="file.description"
+                   [matTooltipDisabled]="!file.description"
+                   matTooltipShowDelay="300">
                   {{ file.description }}
                 </p>
-                
-                <!-- Status Indicator -->
-                <div class="status-indicator">
-                  <mat-chip [class]="'status-' + file.status.toLowerCase()">
-                    <mat-icon *ngIf="file.status === FileStatus.PROCESSING" 
-                              class="spinning">sync</mat-icon>
-                    <mat-icon *ngIf="file.status === FileStatus.READY">check_circle</mat-icon>
-                    <mat-icon *ngIf="file.status === FileStatus.ERROR">error</mat-icon>
-                    {{ file.status }}
-                  </mat-chip>
+                <!-- Meta row: size, created/updated, source -->
+                <div class="meta-row">
+                  <span class="meta-item">
+                    <mat-icon>event</mat-icon>
+                    <span class="nowrap">Created: {{ file.uploadDate | date:'short' }}</span>
+                  </span>
+                  <span class="meta-item">
+                    <mat-icon>schedule</mat-icon>
+                    <span class="nowrap">Updated: {{ file.lastModified | date:'short' }}</span>
+                  </span>
+                  <span class="meta-item">
+                    <mat-icon>data_usage</mat-icon>
+                    {{ formatFileSize(file.size) }}
+                  </span>
+                  <span class="meta-item">
+                    <mat-icon>source</mat-icon>
+                    {{ getSourceLabel(file.source) }}
+                  </span>
                 </div>
-                
+
                 <!-- Progress Bar -->
                 <mat-progress-bar *ngIf="uploadProgress[file.filename]" 
                                   mode="determinate" 
@@ -216,19 +267,41 @@
                         (click)="processEmbeddings(file); $event.stopPropagation()">
                   <mat-icon style="color:#00acc1">memory</mat-icon>
                 </button>
+                
                 <button mat-icon-button class="action-info" data-color="gold"
-                        matTooltip="View details"
-                        (click)="$event.stopPropagation()">
-                  <mat-icon style="color:#ffd600">info</mat-icon>
+                        matTooltip="Re-extract title"
+                        aria-label="Re-extract title"
+                        (click)="onReextractTitle(file); $event.stopPropagation()">
+                  <mat-icon style="color:#ffd600">auto_fix_high</mat-icon>
                 </button>
+                <div class="footer-meta">
+                  <div class="footer-block" *ngIf="file.embeddingModel">
+                    <div class="footer-title">Embedding Model:</div>
+                    <div class="footer-value">{{ file.embeddingModel }}</div>
+                  </div>
+                  <div class="footer-block" *ngIf="file.chunkCount !== undefined">
+                    <div class="footer-title">Chunks:</div>
+                    <div class="footer-value">{{ file.chunkCount }}</div>
+                  </div>
+                </div>
                 <button mat-icon-button class="action-delete" data-color="orange"
                         matTooltip="Delete"
                         (click)="deleteFile(file); $event.stopPropagation()">
-                  <mat-icon style="color:#ff6d00">delete</mat-icon>
+                  <mat-icon style="color:#f91100">delete</mat-icon>
                 </button>
               </mat-card-actions>
             </mat-card>
           </div>
+
+          <!-- Grid paginator -->
+          <mat-paginator
+            *ngIf="viewMode === 'grid'"
+            [length]="(filteredFiles$ | async)?.length || 0"
+            [pageIndex]="gridPageIndex"
+            [pageSize]="gridPageSize"
+            [pageSizeOptions]="gridPageSizeOptions"
+            (page)="onGridPageChange($event)">
+          </mat-paginator>
           
           <!-- List View -->
           <div class="files-list" *ngIf="viewMode === 'list'">
@@ -255,7 +328,7 @@
                     <mat-icon [style.color]="getSourceColor(file.source)">
                       {{ getFileIcon(file.mimeType) }}
                     </mat-icon>
-                    <span>{{ file.filename }}</span>
+                    <span>{{ file.title || file.originalName || file.filename }}</span>
                   </div>
                 </td>
               </ng-container>
@@ -419,14 +492,7 @@
     </mat-tab>
   </mat-tab-group>
   
-  <!-- Floating Semantic Search -->
-  <button mat-fab 
-          class="semantic-search-fab"
-          color="accent"
-          matTooltip="Semantic search"
-          (click)="openSemanticSearch()">
-    <mat-icon>auto_awesome</mat-icon>
-  </button>
+  
 
   <!-- Floating Upload Panel -->
   <div class="upload-panel" *ngIf="uploadingNames.length > 0">

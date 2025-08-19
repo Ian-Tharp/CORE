@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 import os
 import mimetypes
 import uuid
+import hashlib
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -32,6 +33,10 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None) ->
             "id": d["id"],
             "filename": d["filename"],
             "originalName": d["original_name"],
+            "title": d.get("title") or "",
+            "chunkCount": d.get("chunk_count", 0),
+            "embeddingModel": d.get("embedding_model"),
+            "embeddingDimensions": d.get("embedding_dimensions"),
             "size": d["size"],
             "mimeType": d["mime_type"],
             "uploadDate": d["upload_date"],
@@ -54,6 +59,10 @@ async def get_file(file_id: str) -> Dict[str, Any]:
         "id": doc["id"],
         "filename": doc["filename"],
         "originalName": doc["original_name"],
+        "title": doc.get("title") or "",
+        "chunkCount": doc.get("chunk_count", 0),
+        "embeddingModel": doc.get("embedding_model"),
+        "embeddingDimensions": doc.get("embedding_dimensions"),
         "size": doc["size"],
         "mimeType": doc["mime_type"],
         "uploadDate": doc["upload_date"],
@@ -74,6 +83,17 @@ async def delete_file(file_id: str) -> Dict[str, str]:
         except Exception:
             pass
     await repo.delete_document(file_id)
+    try:
+        await repo.insert_activity(
+            action="delete",
+            document_id=file_id,
+            file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+            user_id=None,
+            details=None,
+        )
+    except Exception:
+        # Do not block deletion on logging failures
+        pass
     return {"status": "ok"}
 
 
@@ -95,8 +115,21 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
     stored_name = f"{uuid.uuid4().hex}{ext}"
     storage_path = os.path.join(storage_dir, stored_name)
 
+    content = await file.read()
     with open(storage_path, "wb") as out:
-        out.write(await file.read())
+        out.write(content)
+
+    # Compute a content hash for duplicate detection
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    # Reject duplicate files
+    existing = await repo.get_document_by_hash(file_hash)
+    if existing:
+        try:
+            os.remove(storage_path)
+        except Exception:
+            pass
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="File already exists in knowledgebase")
 
     # Try to infer mime if missing
     mime_type = file.content_type or (mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream")
@@ -109,8 +142,20 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
             mime_type=mime_type,
             description=payload.description,
             is_global=bool(payload.isGlobal),
+            file_hash=file_hash,
         )
         doc = await repo.get_document(doc_id)
+        # Log upload activity
+        try:
+            await repo.insert_activity(
+                action="upload",
+                document_id=doc_id,
+                file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+                user_id=None,
+                details=f"mime={mime_type}; size={doc.get('size', 0)}",
+            )
+        except Exception:
+            pass
     else:
         doc_id = await repo.create_document(
             filename=stored_name,
@@ -121,6 +166,7 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
             description=payload.description,
             is_global=bool(payload.isGlobal),
             status="processing",
+            file_hash=file_hash,
         )
         doc = await repo.get_document(doc_id)
 
@@ -128,6 +174,7 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
         "id": doc["id"],
         "filename": doc["filename"],
         "originalName": doc["original_name"],
+        "title": doc.get("title") or "",
         "size": doc["size"],
         "mimeType": doc["mime_type"],
         "uploadDate": doc["upload_date"],
@@ -152,6 +199,16 @@ async def process_file(file_id: str) -> Dict[str, Any]:
         description=doc.get("description"),
         is_global=doc.get("is_global", False),
     )
+    try:
+        await repo.insert_activity(
+            action="process",
+            document_id=file_id,
+            file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+            user_id=None,
+            details="re-embedded document",
+        )
+    except Exception:
+        pass
     return {"fileId": file_id, "status": "ready"}
 
 
@@ -174,6 +231,10 @@ async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]
                 "id": d["id"],
                 "filename": d["filename"],
                 "originalName": d["original_name"],
+                "title": d.get("title") or "",
+                "chunkCount": d.get("chunk_count", 0),
+                "embeddingModel": d.get("embedding_model"),
+                "embeddingDimensions": d.get("embedding_dimensions"),
                 "size": d["size"],
                 "mimeType": d["mime_type"],
                 "uploadDate": d["upload_date"],
@@ -187,4 +248,50 @@ async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]
         )
     return out
 
+
+@router.get("/activity")
+async def recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
+    try:
+        rows = await repo.list_recent_activity(limit=limit)
+        return [
+            {
+                "id": r["id"],
+                "action": r["action"],
+                "fileId": r.get("document_id") or "",
+                "fileName": r.get("file_name") or "",
+                "userId": r.get("user_id") or "",
+                "timestamp": r.get("timestamp"),
+                "details": r.get("details") or "",
+            }
+            for r in rows
+        ]
+    except Exception:
+        # Return empty list if anything goes wrong to keep UI functional
+        return []
+
+
+@router.post("/files/{file_id}/reextract-title")
+async def reextract_title(file_id: str) -> Dict[str, Any]:
+    doc = await repo.get_document(file_id)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    try:
+        title = await svc.reextract_title_for_document(storage_path=doc["storage_path"], mime_type=doc["mime_type"])
+        if title:
+            await repo.update_document_title_and_description(document_id=file_id, title=title)
+            try:
+                await repo.insert_activity(
+                    action="annotate",
+                    document_id=file_id,
+                    file_name=title,
+                    user_id=None,
+                    details="auto re-extracted title",
+                )
+            except Exception:
+                pass
+            return {"fileId": file_id, "title": title, "updated": True}
+        return {"fileId": file_id, "updated": False}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 

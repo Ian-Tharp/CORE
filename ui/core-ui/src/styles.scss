@@ -57,6 +57,15 @@ body {
   background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface) 90%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface-high) 90%, transparent) 100%) !important;
 }
 
+/* Ensure readable text within cards globally */
+.mat-mdc-card .mat-mdc-card-content,
+.mat-mdc-card .mat-mdc-card-content p {
+  color: #e8f0ff !important;
+}
+
+/* Utility for strong on-surface text */
+.text-strong { color: #ffffff !important; }
+
 .mat-mdc-button {
   border-radius: 8px !important;
 }
@@ -212,6 +221,12 @@ body {
 .mat-mdc-option .mdc-list-item__primary-text {
   color: inherit !important;
 }
+/* Reduce white outlines/ink on options for paginator select */
+.mat-mdc-option .mat-pseudo-checkbox-minimal,
+.mat-mdc-option .mat-pseudo-checkbox-checked.mat-pseudo-checkbox-minimal {
+  border-color: rgba(0, 255, 136, 0.35) !important;
+}
+.mat-mdc-option .mdc-list-item__ripple { background-color: transparent !important; }
 
 /* Menu customization */
 .mat-mdc-menu-panel {
@@ -428,6 +443,28 @@ body {
   &:hover {
     box-shadow: var(--shadow-strong);
   }
+}
+
+/* Global paginator theme (use everywhere) */
+.mat-mdc-paginator {
+  background: transparent !important;
+  color: var(--mdc-sys-color-on-surface, #e8f0ff) !important;
+  padding: 0.25rem 0 !important;
+
+  .mat-mdc-paginator-container {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--mdc-sys-color-surface-container-high) 85%, transparent) 0%,
+      color-mix(in srgb, var(--mdc-sys-color-surface) 85%, transparent) 100%
+    );
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 10px;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .mat-mdc-icon-button { color: var(--color-primary-green) !important; }
+  .mat-mdc-paginator-page-size { color: inherit; }
+  .mat-mdc-select-trigger { color: var(--color-secondary-teal) !important; }
 }
 
 /* Scrollbar Styling */

@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
     messages: List[Message]
     conversation_id: str | None = None
     stream: bool = True  # Default to streaming
+    provider: Optional[str] = "openai"  # "openai" | "anthropic" | "ollama" (local)
     # Optional knowledgebase RAG configuration
     kb_mode: Optional[str] = None  # 'all' | 'file'
     kb_file_id: Optional[str] = None
@@ -75,6 +76,7 @@ async def chat_stream(request: ChatRequest):
         async for chunk in chat_service(
             model=request.model,
             messages=final_messages,
+            provider=request.provider or "openai",
         ):
             logger.debug("Received chunk: %s", chunk)
 

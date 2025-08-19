@@ -24,12 +24,31 @@
     }
 
     <mat-form-field appearance="outline" class="model-select">
+      <mat-select [(ngModel)]="selectedProvider" name="provider" (selectionChange)="onProviderChange()" panelClass="model-dropdown-panel">
+        <mat-option value="openai">OpenAI</mat-option>
+        <mat-option value="ollama">Local (Ollama)</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="model-select">
       <mat-select [(ngModel)]="selectedModel" name="model" panelClass="model-dropdown-panel">
         @for (m of models; track m) {
           <mat-option [value]="m">{{ m }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
+
+    @if (selectedProvider === 'ollama') {
+      <button mat-icon-button aria-label="Pull model" [disabled]="isPullingModel" (click)="pullLocalModel()">
+        <mat-icon>download</mat-icon>
+      </button>
+      <mat-form-field appearance="outline" class="kb-file-select">
+        <input matInput placeholder="model:tag (e.g., gpt-oss:20b)" [(ngModel)]="newLocalModelName" name="newLocalModelName" />
+      </mat-form-field>
+      <button mat-icon-button aria-label="Pull custom model" [disabled]="isPullingModel || !newLocalModelName" (click)="pullArbitraryLocalModel()">
+        <mat-icon>cloud_download</mat-icon>
+      </button>
+    }
   </div>
 
   <div class="messages" #scrollContainer>

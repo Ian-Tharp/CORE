@@ -2,6 +2,10 @@ export interface KnowledgeFile {
   id: string;
   filename: string;
   originalName: string;
+  title?: string;
+  chunkCount?: number;
+  embeddingModel?: string;
+  embeddingDimensions?: number;
   size: number;
   mimeType: string;
   uploadDate: Date;

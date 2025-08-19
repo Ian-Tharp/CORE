@@ -23,6 +23,8 @@ async def create_document(
     doc_embedding: Optional[List[float]] = None,
     embedding_model: Optional[str] = None,
     embedding_dimensions: Optional[int] = None,
+    title: Optional[str] = None,
+    file_hash: Optional[str] = None,
 ) -> str:
     doc_id = str(uuid.uuid4())
     pool = await get_db_pool()
@@ -31,8 +33,8 @@ async def create_document(
             """
             INSERT INTO kb_documents (
                 id, filename, original_name, size, mime_type, description, is_global, source, status,
-                storage_path, doc_embedding, embedding_model, embedding_dimensions
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                storage_path, doc_embedding, embedding_model, embedding_dimensions, title, file_hash
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             """,
             doc_id,
             filename,
@@ -47,6 +49,8 @@ async def create_document(
             doc_embedding,
             embedding_model,
             embedding_dimensions,
+            title,
+            file_hash,
         )
     return doc_id
 
@@ -119,11 +123,14 @@ async def list_documents(*, q: Optional[str] = None, is_global: Optional[bool] =
         where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
         rows = await conn.fetch(
             f"""
-            SELECT id, filename, original_name, size, mime_type, upload_date, last_modified,
-                   is_global, coalesce(description,'') AS description, source, status
-            FROM kb_documents
+            SELECT d.id, d.filename, d.original_name, d.size, d.mime_type, d.upload_date, d.last_modified,
+                   d.is_global, coalesce(d.description,'') AS description, d.source, d.status,
+                   coalesce(d.title, '') AS title,
+                   COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count,
+                   d.embedding_model, d.embedding_dimensions
+            FROM kb_documents d
             {where_sql}
-            ORDER BY upload_date DESC
+            ORDER BY d.upload_date DESC
             """,
             *params,
         )
@@ -135,11 +142,13 @@ async def get_document(document_id: str) -> Optional[Dict[str, Any]]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, filename, original_name, size, mime_type, upload_date, last_modified,
-                   is_global, coalesce(description,'') AS description, source, status, storage_path,
-                   doc_embedding, embedding_model, embedding_dimensions
-            FROM kb_documents
-            WHERE id = $1
+            SELECT d.id, d.filename, d.original_name, d.size, d.mime_type, d.upload_date, d.last_modified,
+                   d.is_global, coalesce(d.description,'') AS description, d.source, d.status, d.storage_path,
+                   d.doc_embedding, d.embedding_model, d.embedding_dimensions,
+                   coalesce(d.title, '') AS title,
+                   COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count
+            FROM kb_documents d
+            WHERE d.id = $1
             """,
             document_id,
         )
@@ -173,7 +182,7 @@ async def list_all_doc_embeddings() -> List[Dict[str, Any]]:
         rows = await conn.fetch(
             """
             SELECT id, coalesce(description,'') AS description, filename, original_name,
-                   doc_embedding, embedding_model, embedding_dimensions
+                   doc_embedding, embedding_model, embedding_dimensions, coalesce(title,'') AS title
             FROM kb_documents
             WHERE doc_embedding IS NOT NULL
             """
@@ -230,5 +239,86 @@ async def update_document_description(document_id: str, description: str) -> Non
             document_id,
             description,
         )
+
+
+async def update_document_title_and_description(
+    *, document_id: str, title: Optional[str] = None, description: Optional[str] = None
+) -> None:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        sets = []
+        params: List[Any] = [document_id]
+        if title is not None:
+            sets.append("title = $%d" % (len(params) + 1))
+            params.append(title)
+        if description is not None:
+            sets.append("description = $%d" % (len(params) + 1))
+            params.append(description)
+        if not sets:
+            return
+        set_sql = ", ".join(sets) + ", last_modified = CURRENT_TIMESTAMP"
+        await conn.execute(
+            f"UPDATE kb_documents SET {set_sql} WHERE id = $1",
+            *params,
+        )
+
+async def get_document_by_hash(file_hash: str) -> Optional[Dict[str, Any]]:
+    if not file_hash:
+        return None
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT d.id, d.filename, d.original_name, d.size, d.mime_type, d.upload_date, d.last_modified,
+                   d.is_global, coalesce(d.description,'') AS description, d.source, d.status, d.storage_path,
+                   d.doc_embedding, d.embedding_model, d.embedding_dimensions,
+                   coalesce(d.title, '') AS title,
+                   COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count
+            FROM kb_documents d
+            WHERE file_hash = $1
+            """,
+            file_hash,
+        )
+        return dict(row) if row else None
+
+async def insert_activity(
+    *,
+    action: str,
+    document_id: Optional[str],
+    file_name: Optional[str],
+    user_id: Optional[str] = None,
+    details: Optional[str] = None,
+) -> str:
+    activity_id = str(uuid.uuid4())
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO kb_activity (id, action, document_id, file_name, user_id, details)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            """,
+            activity_id,
+            action,
+            document_id,
+            file_name,
+            user_id,
+            details,
+        )
+    return activity_id
+
+
+async def list_recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, action, document_id, file_name, user_id, details, timestamp
+            FROM kb_activity
+            ORDER BY timestamp DESC
+            LIMIT $1
+            """,
+            limit,
+        )
+        return [dict(r) for r in rows]
 
 

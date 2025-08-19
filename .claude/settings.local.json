@@ -8,7 +8,8 @@
       "Bash(find:*)",
       "mcp__memory__create_entities",
       "mcp__memory__create_relations"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": false
 }

@@ -19,12 +19,13 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTableModule } from '@angular/material/table';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged, combineLatest, map, startWith, firstValueFrom, Observable } from 'rxjs';
+import { Subject, BehaviorSubject, takeUntil, debounceTime, distinctUntilChanged, combineLatest, map, startWith, firstValueFrom, Observable } from 'rxjs';
 import { trigger, state, style, transition, animate, stagger, query } from '@angular/animations';
 
 import { KnowledgebaseService } from '../services/knowledgebase/knowledgebase.service';
@@ -70,6 +71,7 @@ type TabView = 'personal' | 'global' | 'activity';
     MatDividerModule,
     MatTableModule,
     MatCheckboxModule,
+    MatPaginatorModule,
     DragDropModule
   ],
   templateUrl: './knowledgebase.component.html',
@@ -127,10 +129,18 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
   totalBytes$ = this.files$.pipe(map(files => files.reduce((sum, f) => sum + (f.size || 0), 0)));
   totalFiles$ = this.files$.pipe(map(files => files.length));
   availableTags$ = this.knowledgebaseService.availableTags$;
+  private tagIdToName: Record<string, string> = {};
   recentActivity: ActivityLog[] = [];
 
   // Filtered files observable - will be initialized in setupFilteredFiles()
   filteredFiles$!: Observable<KnowledgeFile[]>;
+  // Grid pagination
+  private pageIndex$ = new BehaviorSubject<number>(0);
+  private pageSize$ = new BehaviorSubject<number>(12);
+  pagedFiles$!: Observable<KnowledgeFile[]>;
+  gridPageIndex = 0;
+  gridPageSize = 12;
+  gridPageSizeOptions: number[] = [8, 12, 16, 24];
 
   // Enums for template
   FileSource = FileSource;
@@ -197,6 +207,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
           filtered = filtered.filter(f =>
+            (f.title?.toLowerCase?.().includes(term) ?? false) ||
             f.filename.toLowerCase().includes(term) ||
             f.description?.toLowerCase().includes(term) ||
             f.originalName.toLowerCase().includes(term)
@@ -206,9 +217,29 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         return filtered;
       })
     );
+
+    // Derive paged files for grid view
+    this.pagedFiles$ = combineLatest([
+      this.filteredFiles$,
+      this.pageIndex$,
+      this.pageSize$
+    ]).pipe(
+      map(([files, index, size]) => {
+        const start = index * size;
+        return files.slice(start, start + size);
+      })
+    );
   }
 
   ngOnInit(): void {
+    // Load persisted grid page size
+    const savedSize = Number(localStorage.getItem('kb.gridPageSize') || '0');
+    if (savedSize > 0) {
+      this.gridPageSize = savedSize;
+      // initialize the subject so first page uses saved size
+      // Note: pageSize$ default is 12; update to saved value
+      (this as any).pageSize$.next(savedSize);
+    }
     // Subscribe to upload progress
     this.knowledgebaseService.uploadProgress$
       .pipe(takeUntil(this.destroy$))
@@ -225,6 +256,20 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
 
     // Load recent activity
     this.loadRecentActivity();
+
+    // Maintain a lookup for tag names for active filter chips
+    this.availableTags$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(tags => {
+        const map: Record<string, string> = {};
+        for (const t of tags) { map[t.id] = t.name; }
+        this.tagIdToName = map;
+      });
+
+    // Reset pagination on search changes
+    this.searchControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.resetGridPagination());
 
     // Subscribe to filter changes
     this.filterForm.valueChanges
@@ -250,6 +295,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
     if (tab === 'activity') {
       this.loadRecentActivity();
     }
+    this.resetGridPagination();
   }
 
   // View mode
@@ -284,9 +330,8 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         }
       },
       error: (error) => {
-        this.snackBar.open(`Failed to upload "${file.name}"`, 'Close', {
-          duration: 5000
-        });
+        const msg = error?.status === 409 ? `Upload failed: "${file.name}" already exists in your knowledgebase` : `Failed to upload "${file.name}"`;
+        this.snackBar.open(msg, 'Close', { duration: 5000 });
         delete this.uploadProgress[file.name];
         delete this.uploadStage[file.name];
       }
@@ -323,6 +368,30 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
+
+  onReextractTitle(file: KnowledgeFile): void {
+    this.knowledgebaseService.reextractTitle(file.id).subscribe({
+      next: (res) => {
+        if (res.updated && res.title) {
+          this.snackBar.open('Title updated', 'Close', { duration: 2500 });
+        } else {
+          this.snackBar.open('No better title found', 'Close', { duration: 2500 });
+        }
+      },
+      error: () => {
+        this.snackBar.open('Failed to re-extract title', 'Close', { duration: 4000 });
+      }
+    });
+  }
+
+  copyFilename(file: KnowledgeFile): void {
+    try {
+      navigator.clipboard.writeText(file.filename);
+      this.snackBar.open('Filename copied', 'Close', { duration: 2000 });
+    } catch {
+      this.snackBar.open('Copy failed', 'Close', { duration: 3000 });
+    }
   }
 
   // Selection
@@ -373,12 +442,108 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
     };
     
     this.knowledgebaseService.applyFilter(filter);
+    this.resetGridPagination();
   }
 
   clearFilters(): void {
     this.filterForm.reset();
     this.searchControl.reset();
     this.knowledgebaseService.clearFilters();
+  }
+
+  // Active filter chips helpers
+  get activeFilterChips(): Array<{ label: string; type: string; value: string }>{
+    const chips: Array<{ label: string; type: string; value: string }> = [];
+    const form = this.filterForm.value;
+
+    // Tags
+    for (const id of (form.tags as string[] || [])) {
+      const name = this.tagIdToName[id] || id;
+      chips.push({ label: `Tag: ${name}`, type: 'tag', value: id });
+    }
+
+    // File types
+    for (const t of (form.fileTypes as string[] || [])) {
+      chips.push({ label: `Type: ${t.split('/')[1] || t}`, type: 'type', value: t });
+    }
+
+    // Sources
+    for (const s of (form.sources as FileSource[] || [])) {
+      chips.push({ label: `Source: ${this.getSourceLabel(s)}`, type: 'source', value: s });
+    }
+
+    // Statuses
+    for (const st of (form.status as FileStatus[] || [])) {
+      chips.push({ label: `Status: ${st}`, type: 'status', value: st });
+    }
+
+    // Date range
+    if (form.dateRange?.start || form.dateRange?.end) {
+      const start = form.dateRange?.start ? new Date(form.dateRange.start).toLocaleDateString() : '...';
+      const end = form.dateRange?.end ? new Date(form.dateRange.end).toLocaleDateString() : '...';
+      chips.push({ label: `Date: ${start} – ${end}` , type: 'date', value: 'date' });
+    }
+
+    // Search
+    if ((this.searchControl.value || '').trim()) {
+      chips.push({ label: `Search: ${this.searchControl.value}` , type: 'search', value: 'search' });
+    }
+
+    return chips;
+  }
+
+  removeFilterChip(chip: { type: string; value: string }): void {
+    const formVal = { ...this.filterForm.value } as any;
+    switch (chip.type) {
+      case 'tag':
+        formVal.tags = (formVal.tags || []).filter((id: string) => id !== chip.value);
+        break;
+      case 'type':
+        formVal.fileTypes = (formVal.fileTypes || []).filter((t: string) => t !== chip.value);
+        break;
+      case 'source':
+        formVal.sources = (formVal.sources || []).filter((s: string) => s !== chip.value);
+        break;
+      case 'status':
+        formVal.status = (formVal.status || []).filter((s: string) => s !== chip.value);
+        break;
+      case 'date':
+        formVal.dateRange = { start: null, end: null };
+        break;
+      case 'search':
+        this.searchControl.reset('');
+        break;
+    }
+    this.filterForm.setValue(formVal);
+    this.applyFilters();
+  }
+
+  // Pagination handlers for grid view
+  onGridPageChange(event: PageEvent): void {
+    this.gridPageIndex = event.pageIndex;
+    this.gridPageSize = event.pageSize;
+    this.pageIndex$.next(event.pageIndex);
+    this.pageSize$.next(event.pageSize);
+    try { localStorage.setItem('kb.gridPageSize', String(event.pageSize)); } catch {}
+  }
+
+  private resetGridPagination(): void {
+    this.gridPageIndex = 0;
+    this.pageIndex$.next(0);
+  }
+
+  // TrackBy for perf
+  trackByFileId(index: number, file: KnowledgeFile): string {
+    return file.id;
+  }
+
+  // Title helpers for tooltip/length
+  getFullTitle(file: KnowledgeFile): string {
+    return (file.title && file.title.trim()) || file.originalName || file.filename;
+  }
+
+  isTitleLong(file: KnowledgeFile, limit: number = 60): boolean {
+    return this.getFullTitle(file).length > limit;
   }
 
   // Activity

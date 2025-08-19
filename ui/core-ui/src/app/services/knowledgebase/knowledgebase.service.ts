@@ -122,6 +122,8 @@ export class KnowledgebaseService {
           this.filesSubject.next([file, ...currentFiles]);
           this.loadStats();
           this.uploadStageSubject.next({ fileId: request.file.name, stage: 'complete' });
+          // After upload, if processing or missing model/chunks, refresh until ready
+          this.refreshFileUntilReady(file.id).subscribe();
         }
       }),
       catchError((err) => {
@@ -156,8 +158,30 @@ export class KnowledgebaseService {
   }
 
   processFileEmbeddings(fileId: string): Observable<EmbeddingStats> {
-    return this.http.post<EmbeddingStats>(`${this.apiUrl}/files/${fileId}/process`, {}).pipe(
-      tap(() => this.updateFileStatus(fileId, FileStatus.PROCESSING)),
+    // Optimistically mark processing, then flip to READY on success
+    this.updateFileStatus(fileId, FileStatus.PROCESSING);
+    return this.http.post<any>(`${this.apiUrl}/files/${fileId}/process`, {}).pipe(
+      tap((resp) => {
+        // Backend returns { fileId, status: 'ready' }
+        if (resp && resp.status && String(resp.status).toLowerCase() === 'ready') {
+          this.updateFileStatus(fileId, FileStatus.READY);
+        }
+        // Ensure model/chunk counts are refreshed
+        this.refreshFileUntilReady(fileId).subscribe();
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  // Re-extract a better title for the document
+  reextractTitle(fileId: string): Observable<{ fileId: string; title?: string; updated: boolean }> {
+    return this.http.post<{ fileId: string; title?: string; updated: boolean }>(`${this.apiUrl}/files/${fileId}/reextract-title`, {}).pipe(
+      tap(res => {
+        if (res.updated && res.title) {
+          const current = this.filesSubject.value.map(f => f.id === fileId ? { ...f, title: res.title } : f);
+          this.filesSubject.next(current);
+        }
+      }),
       catchError(this.handleError)
     );
   }
@@ -299,12 +323,52 @@ export class KnowledgebaseService {
     this.filesSubject.next(updatedFiles);
   }
 
+  // Poll the backend for file details until we see READY and metadata populated
+  private refreshFileUntilReady(fileId: string, maxAttempts: number = 80, intervalMs: number = 1500): Observable<KnowledgeFile | null> {
+    return new Observable<KnowledgeFile | null>((subscriber) => {
+      let attempts = 0;
+      const tick = () => {
+        attempts += 1;
+        this.getFile(fileId).subscribe({
+          next: (file) => {
+            // Update the file in the list
+            const current = this.filesSubject.value.map(f => f.id === file.id ? {
+              ...f,
+              ...file
+            } : f);
+            this.filesSubject.next(current);
+            const ready = String(file.status).toLowerCase() === 'ready';
+            const metaPresent = !!(file.embeddingModel) && (file.chunkCount !== undefined);
+            if ((ready && metaPresent) || attempts >= maxAttempts) {
+              subscriber.next(file);
+              subscriber.complete();
+            } else {
+              setTimeout(tick, intervalMs);
+            }
+          },
+          error: () => {
+            if (attempts >= maxAttempts) {
+              subscriber.next(null);
+              subscriber.complete();
+            } else {
+              setTimeout(tick, intervalMs);
+            }
+          }
+        });
+      };
+      tick();
+    });
+  }
+
   private handleError(error: any): Observable<any> {
     console.error('Knowledgebase service error:', error);
     // Instead of throwing error, return empty data for development
     if (error.status === 404 || error.status === 0) {
       console.warn('API endpoint not available, returning empty data');
       return of([]);
+    }
+    if (error.status === 409) {
+      return throwError(() => ({ ...error, message: 'duplicate' }));
     }
     return throwError(() => error);
   }

@@ -62,9 +62,10 @@ async def process_uploaded_file(
     mime_type: str,
     description: Optional[str],
     is_global: bool,
+    file_hash: Optional[str] = None,
 ) -> str:
-    # Read file content
-    text = await _extract_text(storage_path, mime_type)
+    # Read file content and attempt to infer a document title
+    title, text = await _extract_title_and_text(storage_path, mime_type)
     client = _get_openai_client()
 
     # Optionally generate a short description from content when not provided
@@ -86,10 +87,12 @@ async def process_uploaded_file(
         storage_path=storage_path,
         description=description or auto_description,
         is_global=is_global,
+        title=title,
+        file_hash=file_hash,
     )
 
     # Compute a document-level embedding from title/description or first chunk
-    title_desc = f"{original_name}\n\n{(description or auto_description or '')}".strip()
+    title_desc = f"{(title or original_name)}\n\n{(description or auto_description or '')}".strip()
     if title_desc:
         doc_embeds = await _embed_texts(client, [title_desc])
         if doc_embeds:
@@ -187,6 +190,100 @@ async def _extract_text(path: str, mime_type: str) -> str:
             return f.read()
     except Exception:
         return ""
+
+
+async def _extract_title_and_text(path: str, mime_type: str) -> Tuple[Optional[str], str]:
+    """Best-effort extraction of a human-friendly title and full text.
+
+    - For PDFs, prefer metadata title; otherwise use the first non-empty line on page 1.
+    - For DOCX, use the first non-empty paragraph as title.
+    - For plain text, use the first non-empty line.
+    - Fallback to None when we cannot derive a title.
+    """
+    title: Optional[str] = None
+
+    # PDF path (try metadata and first page headers)
+    if mime_type == "application/pdf":
+        try:
+            from pypdf import PdfReader  # type: ignore
+
+            reader = PdfReader(path)
+            # Extract text across all pages
+            pages_text: List[str] = []
+            first_page_text: str = ""
+            for idx, page in enumerate(reader.pages):
+                try:
+                    page_text = page.extract_text() or ""
+                    pages_text.append(page_text)
+                    if idx == 0:
+                        first_page_text = page_text
+                except Exception:
+                    continue
+
+            # Title from metadata if present
+            try:
+                meta = getattr(reader, "metadata", None)
+                meta_title = None
+                if meta is not None:
+                    meta_title = getattr(meta, "title", None)
+                if isinstance(meta_title, str):
+                    cleaned = meta_title.strip()
+                    title = cleaned if cleaned else None
+            except Exception:
+                title = None
+
+            # Fallback: first non-empty reasonably short line from first page
+            if not title and first_page_text:
+                for line in (first_page_text.splitlines() or []):
+                    candidate = (line or "").strip()
+                    if 3 <= len(candidate) <= 140:
+                        title = candidate
+                        break
+
+            return title, "\n".join(pages_text)
+        except Exception:
+            # Fall through to generic extraction
+            pass
+
+    # DOCX path
+    if mime_type in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"):
+        try:
+            import docx  # type: ignore
+
+            doc = docx.Document(path)
+            paragraphs = [p.text for p in doc.paragraphs]
+            text = "\n".join(paragraphs)
+            for p in paragraphs:
+                candidate = (p or "").strip()
+                if candidate:
+                    title = candidate[:140]
+                    break
+            return title, text
+        except Exception:
+            pass
+
+    # Plain text and everything else: best-effort
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        if content:
+            for line in content.splitlines():
+                candidate = (line or "").strip()
+                if candidate:
+                    title = candidate[:140]
+                    break
+        return title, content
+    except Exception:
+        return None, ""
+
+
+async def reextract_title_for_document(*, storage_path: str, mime_type: str) -> Optional[str]:
+    """Re-extract a best-effort title from the stored document without re-embedding.
+
+    Returns the new title if found, otherwise None.
+    """
+    title, _ = await _extract_title_and_text(storage_path, mime_type)
+    return title
 
 
 async def retrieve_context(

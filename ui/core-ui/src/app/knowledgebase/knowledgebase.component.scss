@@ -18,6 +18,11 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
   background: linear-gradient(135deg, rgba($deep-forest, 0.03) 0%, rgba($secondary-teal, 0.03) 100%);
   position: relative;
   
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    color: rgba($neutral-dark, 0.65);
+  }
+  
   // Global mat-icon baseline styling
   ::ng-deep mat-icon {
     display: inline-flex;
@@ -299,7 +304,7 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
         // Grid View
         .files-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          grid-template-columns: repeat(4, 1fr);
           gap: 1.5rem;
           
           .file-card {
@@ -349,32 +354,63 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
                 gap: 0.5rem;
                 
                 .file-type-icon {
-                  font-size: 2rem;
-                  width: 2.25rem;
-                  height: 2.25rem;
+                  font-size: 1.75rem;
+                  width: 2rem;
+                  height: 2rem;
                   display: inline-flex;
                   align-items: center;
                   justify-content: center;
-                  margin-right: 0.5rem;
+                  margin-right: 0.35rem;
                   vertical-align: middle;
                 }
 
-                .mat-mdc-card-header-text {
-                  margin-left: 0.1rem;
-                }
                 .mat-mdc-card-title {
-                  display: inline-flex;
-                  align-items: center;
                   line-height: 1.2;
                   margin: 0;
+                  font-weight: 600;
+                  padding-right: 2.25rem; // space for tools
+                  max-width: 100%;
+                  overflow: hidden;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 2;
+                  line-clamp: 2;
+                  -webkit-box-orient: vertical;
                 }
               }
               
               .mat-mdc-card-content {
                 .file-description {
-                  color: rgba($neutral-dark, 0.8);
+                  color: #ffffff;
                   margin: 0.5rem 0;
-                  line-height: 1.3;
+                  font-size: 1rem;
+                  line-height: 1.4;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 5;
+                  line-clamp: 5;
+                  -webkit-box-orient: vertical;
+                  overflow: hidden;
+                }
+
+                .meta-row {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                  gap: 0.5rem 1rem;
+                  margin: 0.5rem 0 0.75rem 0;
+                  color: #e8f0ff;
+                  border-top: 1px solid rgba($primary-green, 0.25);
+                  padding-top: 0.5rem;
+                  margin: 1rem;
+                  
+                  .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    min-width: 0; // for ellipsis
+                    
+                    mat-icon { font-size: 1rem; width: 1rem; height: 1rem; color: rgba(255,255,255,0.9); }
+                    .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                    .nowrap { white-space: nowrap; }
+                  }
                 }
                 
                 .status-indicator {
@@ -419,11 +455,35 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
                 }
               }
 
-              .file-actions {
+              .header-main {
                 display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                width: 100%;
+                gap: 0.75rem;
+
+                .header-tools {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 0.35rem;
+                  .copy-title { width: 2rem; height: 2rem; border-radius: 50%; background: rgba(255,255,255,0.05); display:inline-flex; align-items:center; justify-content:center; }
+                  .header-right {
+                    width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+                    &.status-processing { background: rgba($secondary-teal, 0.18); color: $secondary-teal; }
+                    &.status-ready { background: rgba($primary-green, 0.18); color: $primary-green; }
+                    &.status-error { background: rgba(#f44336, 0.18); color: #f44336; }
+                    mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; line-height: 1; }
+                  }
+                }
+              }
+
+              .file-actions {
+                display: grid;
+                grid-template-columns: auto auto 1fr auto;
                 align-items: center;
                 gap: 0.5rem;
                 padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+                border-top: 1px solid rgba($primary-green, 0.25);
 
                 button.mat-icon-button {
                   width: 2.25rem;
@@ -454,8 +514,8 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
                     --mdc-icon-button-icon-color: #{$accent-gold};
                   }
                   &.action-delete {
-                    color: $warm-orange !important;
-                    --mdc-icon-button-icon-color: #{$warm-orange};
+                    color: #f44336 !important;
+                    --mdc-icon-button-icon-color: #f44336;
                   }
 
                   &:hover {
@@ -468,13 +528,14 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
                 /* Stronger icon color override to beat MDC defaults */
                 ::ng-deep .file-actions .action-embed mat-icon { color: $secondary-teal !important; }
                 ::ng-deep .file-actions .action-info mat-icon { color: $accent-gold !important; }
-                ::ng-deep .file-actions .action-delete mat-icon { color: $warm-orange !important; }
+                ::ng-deep .file-actions .action-delete mat-icon { color: #f44336 !important; }
 
                 /* Attribute-based fallback in case classes are altered */
                 ::ng-deep .file-actions button[data-color="teal"] mat-icon { color: $secondary-teal !important; }
                 ::ng-deep .file-actions button[data-color="gold"] mat-icon { color: $accent-gold !important; }
-                ::ng-deep .file-actions button[data-color="orange"] mat-icon { color: $warm-orange !important; }
+                ::ng-deep .file-actions button[data-color="orange"] mat-icon { color: #f44336 !important; }
               }
+              .footer-meta { display: inline-flex; gap: 1rem; color: #e8f0ff; .footer-label { font-size: 0.85rem; } }
             }
           }
         }
@@ -483,10 +544,17 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
         .files-list {
           .files-table {
             width: 100%;
-            background: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, rgba($deep-forest, 0.15) 0%, rgba($secondary-teal, 0.08) 100%);
             border-radius: 0.75rem;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            
+            ::ng-deep .mat-mdc-header-row {
+              background: rgba(255,255,255,0.04) !important;
+              color: #e8f0ff !important;
+            }
+            ::ng-deep .mat-mdc-row { background: transparent !important; color: #ffffff !important; }
+            ::ng-deep .mat-mdc-cell, ::ng-deep .mat-mdc-header-cell { color: #ffffff !important; }
             
             .file-name-cell {
               display: flex;
@@ -498,6 +566,11 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
               }
             }
           }
+        }
+        
+        ::ng-deep .mat-mdc-paginator {
+          margin-top: 0.75rem;
+          background: transparent;
         }
       }
       
@@ -683,21 +756,24 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
       }
     }
   }
-  
-  // Floating Semantic Search Button
-  .semantic-search-fab {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: $solarpunk-gradient;
-    
-    &:hover {
-      transform: scale(1.1);
-      box-shadow: 0 8px 30px rgba($primary-green, 0.4);
+
+  // Active filters bar
+  .active-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.25rem 0.25rem 0.25rem;
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: rgba($neutral-dark, 0.7);
     }
-    
-    mat-icon {
-      animation: sparkle 3s ease-in-out infinite;
+
+    ::ng-deep .mat-mdc-chip {
+      background: rgba($light-moss, 0.6);
+      color: $deep-forest;
     }
   }
   
@@ -844,6 +920,16 @@ $organic-gradient: radial-gradient(circle at 30% 30%, rgba($accent-gold, 0.2) 0%
 }
 
 // Responsive Design
+@media (max-width: 1200px) {
+  .knowledgebase-container { .files-grid { grid-template-columns: repeat(3, 1fr); } }
+}
+@media (max-width: 900px) {
+  .knowledgebase-container { .files-grid { grid-template-columns: repeat(2, 1fr); } }
+}
+@media (max-width: 600px) {
+  .knowledgebase-container { .files-grid { grid-template-columns: 1fr; } }
+}
+
 @media (max-width: 768px) {
   .knowledgebase-container {
     .knowledgebase-header {
