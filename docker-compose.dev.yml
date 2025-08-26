@@ -14,6 +14,7 @@ services:
       - CORE_ENV=development
       - DATABASE_URL=postgresql://core_user:core_password@postgres:5432/core_db
       - REDIS_URL=redis://redis:6379
+      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - ./backend:/app
       - backend-data:/app/data
@@ -22,6 +23,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - ollama
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -68,10 +70,34 @@ services:
       timeout: 10s
       retries: 3
 
+  # Local LLM Inference - Ollama (for local models)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: core-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      # - ollama-data:/root/.ollama
+      # To reuse host-installed models, replace the line above with a bind mount to your host models directory.
+      - C:/Users/Owner/.ollama:/root/.ollama
+      # On Windows (adjust user name if needed):
+      # - C:/Users/Owner/.ollama:/root/.ollama
+      # On macOS/Linux:
+      # - ~/.ollama:/root/.ollama
+    networks:
+      - core-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   backend-data:
   postgres-data:
   redis-data:
+  ollama-data:
 
 networks:
   core-network:

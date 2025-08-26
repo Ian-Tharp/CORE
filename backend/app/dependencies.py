@@ -53,6 +53,16 @@ def _get_openai_client() -> AsyncOpenAI:
 
 
 @lru_cache()
+def _get_ollama_base_url() -> str:
+    """Return the base URL for the Ollama service.
+
+    Defaults to the Docker service name `ollama` on the standard port when not
+    explicitly configured via the ``OLLAMA_BASE_URL`` environment variable.
+    """
+    return os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+
+
+@lru_cache()
 def _get_anthropic_client() -> anthropic.Anthropic:
     """Create and return an authenticated Anthropic SDK client instance."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -300,4 +310,91 @@ async def setup_db_schema() -> None:
                     FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE SET NULL
                 )
                 """
+            )
+
+            # -----------------------------------------------------------------
+            # Knowledgebase: documents and chunk embeddings (RAG)
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS kb_documents (
+                    id UUID PRIMARY KEY,
+                    filename VARCHAR(512) NOT NULL,
+                    original_name VARCHAR(512) NOT NULL,
+                    size BIGINT NOT NULL,
+                    mime_type VARCHAR(128) NOT NULL,
+                    description TEXT,
+                    is_global BOOLEAN DEFAULT FALSE,
+                    source VARCHAR(64) DEFAULT 'user_upload',
+                    status VARCHAR(32) DEFAULT 'ready',
+                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    storage_path VARCHAR(1024) NOT NULL,
+                    doc_embedding JSONB,
+                    embedding_model VARCHAR(128),
+                    embedding_dimensions INTEGER
+                )
+                """
+            )
+
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS kb_chunks (
+                    id UUID PRIMARY KEY,
+                    document_id UUID NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    embedding JSONB NOT NULL,
+                    embedding_model VARCHAR(128) NOT NULL,
+                    embedding_dimensions INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (document_id) REFERENCES kb_documents(id) ON DELETE CASCADE
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_document_id ON kb_chunks(document_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_upload_date ON kb_documents(upload_date)"
+            )
+
+            # -----------------------------------------------------------------
+            # Knowledgebase: incremental schema upgrades
+            # -----------------------------------------------------------------
+            # Add human-friendly title column for documents
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS title VARCHAR(512)"
+            )
+
+            # Add file hash for duplicate detection
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS file_hash VARCHAR(128)"
+            )
+            await conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_kb_documents_file_hash ON kb_documents(file_hash) WHERE file_hash IS NOT NULL"
+            )
+
+            # Activity log for knowledgebase operations (uploads, deletes, processing, etc.)
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS kb_activity (
+                    id UUID PRIMARY KEY,
+                    action VARCHAR(32) NOT NULL,
+                    document_id UUID,
+                    file_name VARCHAR(512),
+                    user_id VARCHAR(128),
+                    details TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_kb_activity_document
+                        FOREIGN KEY (document_id)
+                        REFERENCES kb_documents(id)
+                        ON DELETE SET NULL
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_activity_timestamp ON kb_activity(timestamp)"
             )

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, AsyncGenerator
+from typing import List, AsyncGenerator, Optional
 import logging
 
 from app.services.chat_service import chat_service
@@ -9,6 +9,7 @@ from app.repository.conversation_repository import (
     create_conversation,
     append_message,
 )
+from app.services import knowledgebase_service as kb_svc
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -24,6 +25,10 @@ class ChatRequest(BaseModel):
     messages: List[Message]
     conversation_id: str | None = None
     stream: bool = True  # Default to streaming
+    provider: Optional[str] = "openai"  # "openai" | "anthropic" | "ollama" (local)
+    # Optional knowledgebase RAG configuration
+    kb_mode: Optional[str] = None  # 'all' | 'file'
+    kb_file_id: Optional[str] = None
 
 
 @router.post(
@@ -57,9 +62,21 @@ async def chat_stream(request: ChatRequest):
     async def event_stream() -> AsyncGenerator[str, None]:
         assistant_accum = ""
 
+        # Optionally augment messages with RAG context from knowledgebase
+        final_messages = [msg.dict() for msg in request.messages]
+        if request.kb_mode in {"all", "file"}:
+            user_msg = request.messages[-1].content if request.messages else ""
+            ctx = await kb_svc.retrieve_context(
+                query=user_msg,
+                mode=request.kb_mode,
+                file_id=request.kb_file_id,
+            )
+            final_messages = kb_svc.build_rag_messages(final_messages, context_chunks=ctx.get("chunks", []))
+
         async for chunk in chat_service(
             model=request.model,
-            messages=[msg.dict() for msg in request.messages],
+            messages=final_messages,
+            provider=request.provider or "openai",
         ):
             logger.debug("Received chunk: %s", chunk)
 

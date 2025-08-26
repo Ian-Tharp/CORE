@@ -1,0 +1,199 @@
+<mat-card class="engine-card">
+  <div class="step-rail">
+    <mat-chip-listbox aria-label="CORE steps" class="chips">
+      @for (s of steps; track s; let i = $index) {
+        <mat-chip-option
+          [selected]="i === activeStepIndex"
+          (selectionChange)="setActive(i)"
+          [ngClass]="{ done: (i === 0 && comprehension) || (i === 1 && orchestration) || (i === 2 && reasoning) || (i === 3 && evaluation) }"
+        >
+          @if (i < activeStepIndex || (i===0 && comprehension && activeStepIndex>0)) {
+            <mat-icon class="ok">check</mat-icon>
+          }
+          {{ s }}
+        </mat-chip-option>
+      }
+    </mat-chip-listbox>
+    <div class="rail-actions">
+      <button mat-stroked-button color="primary" (click)="runNext()" [disabled]="isBusy" matTooltip="Run active step">Run next</button>
+      <button mat-button (click)="clear()" matTooltip="Clear outputs">Clear</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <mat-form-field appearance="outline" class="input-field">
+      <mat-label>Engine input</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="inputText" placeholder="Type a prompt or task..."></textarea>
+    </mat-form-field>
+    @if (isBusy) { <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner> }
+  </div>
+
+  <mat-accordion class="outputs" multi>
+    <mat-expansion-panel [expanded]="true">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Comprehension
+        </mat-panel-title>
+        <mat-panel-description class="header-tools">
+          @if (durations['Comprehension'] || metricsByStep['Comprehension']) {
+            <div class="metrics">
+              @if (durations['Comprehension']) { <span><strong>Latency:</strong> {{ durations['Comprehension'] | number:'1.0-0' }} ms</span> }
+              @if (metricsByStep['Comprehension']) {
+                <span><strong>Tokens:</strong> {{ metricsByStep['Comprehension'].tokens }}</span>
+                <span><strong>First token:</strong> {{ metricsByStep['Comprehension'].ttfb_ms | number:'1.0-0' }} ms</span>
+                <span><strong>Throughput:</strong> {{ metricsByStep['Comprehension'].tps | number:'1.0-1' }} tok/s</span>
+              }
+            </div>
+          }
+          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
+            <mat-label>Model</mat-label>
+            <mat-select [(ngModel)]="modelByStep.Comprehension">
+              @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <div class="actions">
+            <button mat-icon-button color="primary" (click)="runComprehension()" matTooltip="Run Comprehension">
+              <mat-icon>play_arrow</mat-icon>
+            </button>
+            @if (stepBusy['Comprehension']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            <button mat-icon-button (click)="copy(comprehension?.text || '')" [disabled]="!comprehension" matTooltip="Copy">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <div class="step" [class.empty]="!comprehension">
+        @if (comprehension) {
+          <pre>{{ comprehension.text }}</pre>
+          @if (comprehension.routing_decision) { <small>Route: {{ comprehension.routing_decision }}</small> }
+        } @else { <em>No output yet.</em> }
+      </div>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Orchestration
+        </mat-panel-title>
+        <mat-panel-description class="header-tools">
+          @if (durations['Orchestration'] || metricsByStep['Orchestration']) {
+            <div class="metrics">
+              @if (durations['Orchestration']) { <span><strong>Latency:</strong> {{ durations['Orchestration'] | number:'1.0-0' }} ms</span> }
+              @if (metricsByStep['Orchestration']) {
+                <span><strong>Tokens:</strong> {{ metricsByStep['Orchestration'].tokens }}</span>
+                <span><strong>First token:</strong> {{ metricsByStep['Orchestration'].ttfb_ms | number:'1.0-0' }} ms</span>
+                <span><strong>Throughput:</strong> {{ metricsByStep['Orchestration'].tps | number:'1.0-1' }} tok/s</span>
+              }
+            </div>
+          }
+          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
+            <mat-label>Model</mat-label>
+            <mat-select [(ngModel)]="modelByStep.Orchestration">
+              @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <div class="actions">
+            <button mat-icon-button color="primary" (click)="runOrchestration()" matTooltip="Run Orchestration">
+              <mat-icon>play_arrow</mat-icon>
+            </button>
+            @if (stepBusy['Orchestration']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            <button mat-icon-button (click)="copy(orchestration?.text || '')" [disabled]="!orchestration" matTooltip="Copy">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <div class="step" [class.empty]="!orchestration">
+        @if (orchestration) {
+          <pre>{{ orchestration.text }}</pre>
+          @if (orchestration.plan?.length) {
+            <ul>
+              @for (s of orchestration.plan; track s) { <li>{{ s }}</li> }
+            </ul>
+          }
+        } @else { <em>No output yet.</em> }
+      </div>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Reasoning
+        </mat-panel-title>
+        <mat-panel-description class="header-tools">
+          @if (durations['Reasoning'] || metricsByStep['Reasoning']) {
+            <div class="metrics">
+              @if (durations['Reasoning']) { <span><strong>Latency:</strong> {{ durations['Reasoning'] | number:'1.0-0' }} ms</span> }
+              @if (metricsByStep['Reasoning']) {
+                <span><strong>Tokens:</strong> {{ metricsByStep['Reasoning'].tokens }}</span>
+                <span><strong>First token:</strong> {{ metricsByStep['Reasoning'].ttfb_ms | number:'1.0-0' }} ms</span>
+                <span><strong>Throughput:</strong> {{ metricsByStep['Reasoning'].tps | number:'1.0-1' }} tok/s</span>
+              }
+            </div>
+          }
+          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
+            <mat-label>Model</mat-label>
+            <mat-select [(ngModel)]="modelByStep.Reasoning">
+              @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <div class="actions">
+            <button mat-icon-button color="primary" (click)="runReasoning()" matTooltip="Run Reasoning">
+              <mat-icon>play_arrow</mat-icon>
+            </button>
+            @if (stepBusy['Reasoning']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            <button mat-icon-button (click)="copy(reasoning?.text || '')" [disabled]="!reasoning" matTooltip="Copy">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <div class="step" [class.empty]="!reasoning">
+        @if (reasoning) { <pre>{{ reasoning.text }}</pre> } @else { <em>No output yet.</em> }
+      </div>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Evaluation
+        </mat-panel-title>
+        <mat-panel-description class="header-tools">
+          @if (durations['Evaluation'] || metricsByStep['Evaluation']) {
+            <div class="metrics">
+              @if (durations['Evaluation']) { <span><strong>Latency:</strong> {{ durations['Evaluation'] | number:'1.0-0' }} ms</span> }
+              @if (metricsByStep['Evaluation']) {
+                <span><strong>Tokens:</strong> {{ metricsByStep['Evaluation'].tokens }}</span>
+                <span><strong>First token:</strong> {{ metricsByStep['Evaluation'].ttfb_ms | number:'1.0-0' }} ms</span>
+                <span><strong>Throughput:</strong> {{ metricsByStep['Evaluation'].tps | number:'1.0-1' }} tok/s</span>
+              }
+            </div>
+          }
+          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
+            <mat-label>Model</mat-label>
+            <mat-select [(ngModel)]="modelByStep.Evaluation">
+              @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <div class="actions">
+            <button mat-icon-button color="primary" (click)="runEvaluation()" matTooltip="Run Evaluation">
+              <mat-icon>play_arrow</mat-icon>
+            </button>
+            @if (stepBusy['Evaluation']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            <button mat-icon-button (click)="copy(evaluation?.text || '')" [disabled]="!evaluation" matTooltip="Copy">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <div class="step" [class.empty]="!evaluation">
+        @if (evaluation) {
+          <pre>{{ evaluation.text }}</pre>
+          @if (evaluation.evaluation) { <small>Verdict: {{ evaluation.evaluation }}</small> }
+        } @else { <em>No output yet.</em> }
+      </div>
+    </mat-expansion-panel>
+  </mat-accordion>
+</mat-card>
+
+

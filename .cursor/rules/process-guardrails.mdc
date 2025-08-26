@@ -31,3 +31,7 @@ alwaysApply: true
 ## Always verify before changing
 - Re-read relevant files you are about to edit. Run linters/tests after substantive edits. Keep changeset focused; avoid unrelated reformatting.
 
+## See also
+- `.cursor/rules/repo-reality.mdc` — current repo snapshot and alignment tips
+- `.cursor/rules/procedural-worlds.mdc` — worlds, sim boundary, SSE, and collaboration rules
+

@@ -13,6 +13,7 @@ services:
       - PYTHONPATH=/app
       - CORE_ENV=development
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OLLAMA_BASE_URL=http://ollama:11434
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=core_db
@@ -90,10 +91,28 @@ services:
       timeout: 10s
       retries: 3
 
+  # Local LLM Inference - Ollama
+  ollama:
+    image: ollama/ollama:latest
+    container_name: core-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - core-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   backend-data:
   postgres-data:
   redis-data:
+  ollama-data:
 
 networks:
   core-network:

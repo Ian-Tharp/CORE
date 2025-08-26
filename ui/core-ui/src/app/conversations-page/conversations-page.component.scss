@@ -148,6 +148,13 @@
   justify-content: center;
   align-items: flex-start;
 
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    width: 100%;
+  }
+
   .chat-card {
     flex: 1 1 auto;
     width: 100%;

@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { EngineService } from './engine/engine.service';
-import { HexWorldService, TerrainState, BiomeState, ResourceState } from './engine/hex-world.service';
+import { TileGridService, TerrainState, BiomeState, ResourceState } from './engine/tile-grid.service';
 import { ProjectService } from './engine/project.service';
 import { WorldsService } from '../../services/worlds/worlds.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -22,7 +22,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly engine = inject(EngineService);
-  private readonly hexWorld = inject(HexWorldService);
+  private readonly tileGrid = inject(TileGridService);
   private readonly projects = inject(ProjectService);
   private readonly worlds = inject(WorldsService);
   private readonly dialog = inject(MatDialog);
@@ -31,10 +31,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   isInitialized = false;
   projectName = 'My World';
-  public worldConfig: { radius: number; gridWidth: number; gridHeight: number; elevation: number } = {
-    radius: 1,
-    gridWidth: 50,
-    gridHeight: 50,
+  public gridConfig: { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number } = {
+    cellRadius: 1.2,
+    gridWidth: 20,
+    gridHeight: 20,
     elevation: 0.1
   };
   public seed: string = '';
@@ -46,25 +46,25 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   layerVisibility: { terrain: boolean; biome: boolean; resources: boolean } = { terrain: true, biome: true, resources: true };
   brush = 1;
   outlinesVisible = false;
-  hoveredInfo: { index: number; q: number; r: number; s: number; x: number; y: number; z: number; terrain: string; biome: string; resource: string } | null = null;
-  contextMenu: { visible: boolean; x: number; y: number; index: number | null; q?: number; r?: number } = { visible: false, x: 0, y: 0, index: null };
+  hoveredInfo: { index: number; x: number; y: number; worldX: number; worldY: number; worldZ: number; terrain: string; biome: string; resource: string } | null = null;
+  contextMenu: { visible: boolean; x: number; y: number; index: number | null; gridX?: number; gridY?: number } = { visible: false, x: 0, y: 0, index: null };
   isEditMode = true;
-  selectedInfo: { index: number; q: number; r: number; s: number; x: number; y: number; z: number; terrain: string; biome: string; resource: string } | null = null;
+  selectedInfo: { index: number; x: number; y: number; worldX: number; worldY: number; worldZ: number; terrain: string; biome: string; resource: string } | null = null;
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
     this.engine.initialize(canvas);
-    this.hexWorld.initialize(this.engine);
-    this.hexWorld.onHoverChanged().subscribe((h) => { this.hoveredInfo = h; });
-    this.hexWorld.onSelectedChanged().subscribe((s) => { this.selectedInfo = s; });
-    this.hexWorld.onTileContext((ctx) => {
-      this.contextMenu = { visible: true, x: ctx.screen.x, y: ctx.screen.y, index: ctx.index, q: ctx.q, r: ctx.r };
+    this.tileGrid.initialize(this.engine);
+    this.tileGrid.onHoverChanged().subscribe((h) => { this.hoveredInfo = h; });
+    this.tileGrid.onSelectedChanged().subscribe((s) => { this.selectedInfo = s; });
+    this.tileGrid.onTileContext((ctx) => {
+      this.contextMenu = { visible: true, x: ctx.screen.x, y: ctx.screen.y, index: ctx.index, gridX: ctx.x, gridY: ctx.y };
     });
-    this.hexWorld.createHexPlane(this.worldConfig);
+    this.tileGrid.createTileGrid(this.gridConfig);
     this.engine.start();
     this.isInitialized = true;
     // defaults
-    this._syncWorldStateToService();
+    this._syncGridStateToService();
 
     this.destroyRef.onDestroy(() => this.ngOnDestroy());
 
@@ -75,7 +75,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       const snap = this.projects.load(pid);
       if (snap) {
         this.projectName = snap.name;
-        this.hexWorld.restore(snap.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+        this.gridConfig = this.convertToGridConfig(snap.config);
+        this.tileGrid.restore(snap.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
       }
     } else {
       const worldId = params.get('worldId');
@@ -83,7 +84,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         this.worlds.getLatestSnapshot(worldId).subscribe({
           next: (snap) => {
             this.projectName = 'World';
-            this.hexWorld.restore('World', { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+            this.gridConfig = this.convertToGridConfig(snap.config);
+            this.tileGrid.restore('World', { config: snap.config, tiles: snap.tiles, layers: snap.layers });
           }
         });
       } else {
@@ -99,8 +101,19 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.engine.dispose();
   }
 
+  // Convert legacy hex world config to tile grid config
+  private convertToGridConfig(config: any): { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number } {
+    if (config.cellRadius) return config; // Already converted
+    return {
+      cellRadius: config.radius || 1,
+      gridWidth: config.gridWidth || 50,
+      gridHeight: config.gridHeight || 50,
+      elevation: config.elevation || 0.1
+    };
+  }
+
   onSave(): void {
-    const snap = this.hexWorld.snapshot(this.projectName);
+    const snap = this.tileGrid.snapshot(this.projectName);
     this.projects.save({ name: snap.name, config: snap.config, layers: (snap as any).layers });
     // Fire-and-forget remote persistence (prototype)
     this._capturePreview((preview) => {
@@ -120,7 +133,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
           this.worlds.getLatestSnapshot(world.id).subscribe({
             next: (snap) => {
               this.projectName = world.name;
-              this.hexWorld.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+              this.gridConfig = this.convertToGridConfig(snap.config);
+              this.tileGrid.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
             },
             error: () => this._loadLatestLocal()
           });
@@ -137,12 +151,13 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     const latest = all[0];
     if (latest) {
       this.projectName = latest.name;
-      this.hexWorld.restore(latest.name, { config: latest.config, tiles: latest.tiles, layers: latest.layers });
+      this.gridConfig = this.convertToGridConfig(latest.config);
+      this.tileGrid.restore(latest.name, { config: latest.config, tiles: latest.tiles, layers: latest.layers });
     }
   }
 
   public onSaveAs(): void {
-    const snap = this.hexWorld.snapshot(this.projectName);
+    const snap = this.tileGrid.snapshot(this.projectName);
     const dialogRef = this.dialog.open(SaveWorldDialogComponent, { data: { defaultName: snap.name }, panelClass: 'glass-dialog' });
     dialogRef.afterClosed().subscribe((name?: string) => {
       if (!name) return;
@@ -157,10 +172,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   private _capturePreview(cb: (dataUrl: string) => void): void {
     const canvas = this.canvasRef.nativeElement;
     const prev = this.outlinesVisible;
-    this.hexWorld.setOutlinesVisible(true);
+    this.tileGrid.setOutlinesVisible(true);
     requestAnimationFrame(() => {
       const dataUrl = canvas.toDataURL('image/png');
-      this.hexWorld.setOutlinesVisible(prev);
+      this.tileGrid.setOutlinesVisible(prev);
       cb(dataUrl);
     });
   }
@@ -172,7 +187,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       this.worlds.getLatestSnapshot(world.id).subscribe({
         next: (snap) => {
           this.projectName = world.name;
-          this.hexWorld.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+          this.gridConfig = this.convertToGridConfig(snap.config);
+          this.tileGrid.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
         },
         error: (err) => {
           this.ui.showError('No snapshot found for that world yet. Try Quick Save from Command Center.');
@@ -181,22 +197,22 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  public onApplyWorldConfig(): void {
-    this.hexWorld.createHexPlane(this.worldConfig);
-    this._syncWorldStateToService();
+  public onApplyGridConfig(): void {
+    this.tileGrid.createTileGrid(this.gridConfig);
+    this._syncGridStateToService();
   }
 
   public onApplySeed(): void {
     const trimmed = (this.seed ?? '').toString().trim();
-    this.hexWorld.setRandomSeed(trimmed.length > 0 ? trimmed : null);
+    this.tileGrid.setRandomSeed(trimmed.length > 0 ? trimmed : null);
   }
 
   onRandomize(): void {
-    this.hexWorld.randomize();
+    this.tileGrid.randomize();
   }
 
   onClear(): void {
-    this.hexWorld.clear();
+    this.tileGrid.clear();
   }
 
   onCloseContextMenu(): void {
@@ -213,50 +229,50 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   onActiveLayerChange(next: 'terrain' | 'biome' | 'resources'): void {
     this.activeLayer = next;
-    this.hexWorld.setActiveLayer(next);
+    this.tileGrid.setActiveLayer(next);
   }
 
   onTerrainToolChange(next: TerrainState): void {
     this.terrainTool = next;
-    this.hexWorld.setTerrainTool(next);
+    this.tileGrid.setTerrainTool(next);
   }
   onBiomeToolChange(next: BiomeState): void {
     this.biomeTool = next;
-    this.hexWorld.setBiomeTool(next);
+    this.tileGrid.setBiomeTool(next);
   }
   onResourceToolChange(next: ResourceState | 'erase'): void {
     this.resourceTool = next;
-    this.hexWorld.setResourceTool(next);
+    this.tileGrid.setResourceTool(next);
   }
   onToggleLayerVisibility(layer: 'terrain' | 'biome' | 'resources', value: boolean): void {
     this.layerVisibility[layer] = value;
-    this.hexWorld.setLayerVisibility(layer, value);
+    this.tileGrid.setLayerVisibility(layer, value);
   }
 
   onToggleEditMode(): void {
     this.isEditMode = !this.isEditMode;
-    this.hexWorld.setEditMode(this.isEditMode);
+    this.tileGrid.setEditMode(this.isEditMode);
     // Hide context menu when entering edit mode
     if (this.isEditMode) this.contextMenu.visible = false;
   }
 
-  private _syncWorldStateToService(): void {
-    this.hexWorld.setActiveLayer(this.activeLayer);
-    this.hexWorld.setTerrainTool(this.terrainTool);
-    this.hexWorld.setBiomeTool(this.biomeTool);
-    this.hexWorld.setResourceTool(this.resourceTool);
-    this.hexWorld.setEditMode(this.isEditMode);
+  private _syncGridStateToService(): void {
+    this.tileGrid.setActiveLayer(this.activeLayer);
+    this.tileGrid.setTerrainTool(this.terrainTool);
+    this.tileGrid.setBiomeTool(this.biomeTool);
+    this.tileGrid.setResourceTool(this.resourceTool);
+    this.tileGrid.setEditMode(this.isEditMode);
     // explicitly sync visibility to service to avoid any initial template-driven toggle mismatch
-    this.hexWorld.setLayerVisibility('terrain', this.layerVisibility.terrain);
-    this.hexWorld.setLayerVisibility('biome', this.layerVisibility.biome);
-    this.hexWorld.setLayerVisibility('resources', this.layerVisibility.resources);
-    this.hexWorld.setOutlinesVisible(this.outlinesVisible);
+    this.tileGrid.setLayerVisibility('terrain', this.layerVisibility.terrain);
+    this.tileGrid.setLayerVisibility('biome', this.layerVisibility.biome);
+    this.tileGrid.setLayerVisibility('resources', this.layerVisibility.resources);
+    this.tileGrid.setOutlinesVisible(this.outlinesVisible);
   }
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(e: KeyboardEvent): void {
     if (e.key === 'h' || e.key === 'H') {
-      this.hexWorld.setOutlinesVisible(!(this as any)._outlinesVisibleInternal);
+      this.tileGrid.setOutlinesVisible(!(this as any)._outlinesVisibleInternal);
       (this as any)._outlinesVisibleInternal = !(this as any)._outlinesVisibleInternal;
     } else if (e.key === '+' || e.key === '=') {
       this.brush = Math.min(6, this.brush + 1);
@@ -274,11 +290,11 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   onBrushChange(next: number): void {
-    this.hexWorld.setBrushRadius(next);
+    this.tileGrid.setBrushRadius(next);
   }
 
   onToggleOutlines(value: boolean): void {
     this.outlinesVisible = value;
-    this.hexWorld.setOutlinesVisible(value);
+    this.tileGrid.setOutlinesVisible(value);
   }
 }
