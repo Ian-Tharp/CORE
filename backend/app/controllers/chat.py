@@ -29,6 +29,8 @@ class ChatRequest(BaseModel):
     # Optional knowledgebase RAG configuration
     kb_mode: Optional[str] = None  # 'all' | 'file'
     kb_file_id: Optional[str] = None
+    kb_embedding_provider: Optional[str] = None  # 'openai' | 'local'
+    kb_local_model: Optional[str] = None
 
 
 @router.post(
@@ -38,6 +40,9 @@ async def chat_stream(request: ChatRequest):
     """
     Stream chat responses from OpenAI's /v1/chat/completions endpoint.
     """
+    # RSI TODO: Add request-level correlation id and include in logs + response headers for traceability.
+    # RSI TODO: Enforce provider/model allowlist via config; validate inputs and size limits.
+    # RSI TODO: Surface structured error events with codes; add rate limiting/backpressure.
 
     # -------------------------------------------------------------------
     # 1. Ensure we have a conversation id and persist the incoming user msg
@@ -70,6 +75,8 @@ async def chat_stream(request: ChatRequest):
                 query=user_msg,
                 mode=request.kb_mode,
                 file_id=request.kb_file_id,
+                provider=(request.kb_embedding_provider or "openai"),
+                local_model=request.kb_local_model,
             )
             final_messages = kb_svc.build_rag_messages(final_messages, context_chunks=ctx.get("chunks", []))
 

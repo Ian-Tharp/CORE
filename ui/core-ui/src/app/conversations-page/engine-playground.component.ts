@@ -28,6 +28,10 @@ import { EngineService, StepResponse, StepStreamEvent } from '../services/engine
   ]
 })
 export class EnginePlaygroundComponent {
+  // RSI TODO: Add explicit `public`/`private` modifiers for all fields/methods; prefix private with `_`.
+  // RSI TODO: Persist per-step model selections to local storage or user settings service.
+  // RSI TODO: Add cancel/abort support for in-flight streams; expose an unsubscribe/stop action per step.
+  // RSI TODO: Drive visible CORE steps from backend capabilities schema to avoid duplication.
   public inputText = '';
   public isBusy = false;
 

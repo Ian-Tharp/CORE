@@ -54,7 +54,7 @@ services:
 
   # Database - PostgreSQL (for future persistence)
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: core-postgres
     environment:
       - POSTGRES_DB=core_db
@@ -98,7 +98,15 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
+      - C:/Users/Owner/.ollama:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     networks:
       - core-network
     restart: unless-stopped

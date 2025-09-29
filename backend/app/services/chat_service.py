@@ -48,6 +48,9 @@ async def chat_service(
     """
 
     try:
+        # RSI TODO: Add per-provider telemetry (latency, ttfb, tokens/sec) and structured logs.
+        # RSI TODO: Implement provider abstraction layer and circuit breakers/retries.
+        # RSI TODO: Enforce max tokens/messages and redact PII before sending to providers - ollama is fine since it's local.
         if provider.lower() in {"ollama", "local", "local-ollama"}:
             async for sse in _stream_from_ollama(model=model, messages=messages):
                 yield sse
@@ -108,4 +111,5 @@ async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> 
                     if obj.get("done") is True:
                         break
         except httpx.HTTPError as http_err:
+            # RSI TODO: Map errors to structured SSE error events with codes; include model/provider for diagnostics.
             yield f"event: error\ndata: {json.dumps({'error': str(http_err)})}\n\n"

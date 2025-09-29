@@ -18,6 +18,9 @@ export class ChatService {
    * Base URL for the backend FastAPI service. In a real-world application this would
    * come from an environment file but is hard-coded here for brevity.
    */
+  // RSI TODO: Move API base URL to Angular environment config or an AppConfigService and inject it.
+  // RSI TODO: Consider switching to EventSource for SSE for built-in reconnection and lower overhead.
+  // RSI TODO: Track messages per `conversationId` (map of streams) instead of a single list for multi-chat tabs.
   private readonly _apiUrl = 'http://localhost:8001';
 
   constructor() {}
@@ -62,7 +65,7 @@ export class ChatService {
     content: string,
     model: string,
     conversationId?: string,
-    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local' }
+    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local'; kbEmbeddingProvider?: 'openai' | 'local'; kbLocalModel?: string }
   ): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };
@@ -86,6 +89,12 @@ export class ChatService {
       payload["kb_mode"] = options.kbMode;
       if (options.kbMode === 'file' && options.kbFileId) {
         payload["kb_file_id"] = options.kbFileId;
+      }
+      if (options.kbEmbeddingProvider) {
+        payload["kb_embedding_provider"] = options.kbEmbeddingProvider;
+      }
+      if (options.kbLocalModel) {
+        payload["kb_local_model"] = options.kbLocalModel;
       }
     }
 

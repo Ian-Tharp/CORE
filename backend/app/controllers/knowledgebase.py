@@ -23,6 +23,8 @@ class UploadData(BaseModel):
     isGlobal: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     processImmediately: Optional[bool] = True
+    embeddingProvider: Optional[str] = None  # 'openai' | 'local'
+    localModel: Optional[str] = None
 
 
 @router.get("/files")
@@ -37,6 +39,8 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None) ->
             "chunkCount": d.get("chunk_count", 0),
             "embeddingModel": d.get("embedding_model"),
             "embeddingDimensions": d.get("embedding_dimensions"),
+            "localEmbeddingModel": d.get("local_embedding_model"),
+            "localEmbeddingDimensions": d.get("local_embedding_dimensions"),
             "size": d["size"],
             "mimeType": d["mime_type"],
             "uploadDate": d["upload_date"],
@@ -63,6 +67,8 @@ async def get_file(file_id: str) -> Dict[str, Any]:
         "chunkCount": doc.get("chunk_count", 0),
         "embeddingModel": doc.get("embedding_model"),
         "embeddingDimensions": doc.get("embedding_dimensions"),
+        "localEmbeddingModel": doc.get("local_embedding_model"),
+        "localEmbeddingDimensions": doc.get("local_embedding_dimensions"),
         "size": doc["size"],
         "mimeType": doc["mime_type"],
         "uploadDate": doc["upload_date"],
@@ -143,6 +149,8 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
             description=payload.description,
             is_global=bool(payload.isGlobal),
             file_hash=file_hash,
+            embedding_provider=(payload.embeddingProvider or 'openai'),
+            local_model=payload.localModel,
         )
         doc = await repo.get_document(doc_id)
         # Log upload activity
@@ -215,11 +223,19 @@ async def process_file(file_id: str) -> Dict[str, Any]:
 class SemanticSearchRequest(BaseModel):
     query: str
     limit: int = 10
+    provider: str | None = None  # 'openai' | 'local'
+    localModel: str | None = None
 
 
 @router.post("/semantic-search")
 async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]]:
-    ctx = await svc.retrieve_context(query=payload.query, mode="all", max_docs=payload.limit)
+    ctx = await svc.retrieve_context(
+        query=payload.query,
+        mode="all",
+        max_docs=payload.limit,
+        provider=(payload.provider or "openai"),
+        local_model=payload.localModel,
+    )
     doc_ids = set(ctx.get("doc_ids", []))
     out: List[Dict[str, Any]] = []
     for doc_id in doc_ids:
@@ -247,6 +263,34 @@ async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]
             }
         )
     return out
+
+
+@router.post("/files/{file_id}/embed-local")
+async def embed_local(file_id: str, model: str) -> Dict[str, Any]:
+    doc = await repo.get_document(file_id)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    await svc.embed_document_locally(document_id=file_id, model=model)
+    updated = await repo.get_document(file_id)
+    return {
+        "fileId": file_id,
+        "status": "ok",
+        "localEmbeddingModel": updated.get("local_embedding_model") if updated else None,
+        "localEmbeddingDimensions": updated.get("local_embedding_dimensions") if updated else None,
+    }
+
+
+@router.post("/reindex-local")
+async def reindex_local(model: str, only_missing: bool = True) -> Dict[str, Any]:
+    """Re-embed all documents using a local model. When only_missing is true, skip docs that already have local vectors."""
+    docs = await repo.list_documents()
+    count = 0
+    for d in docs:
+        if only_missing and d.get("local_embedding_model"):
+            continue
+        await svc.embed_document_locally(document_id=d["id"], model=model)
+        count += 1
+    return {"status": "ok", "processed": count}
 
 
 @router.get("/activity")

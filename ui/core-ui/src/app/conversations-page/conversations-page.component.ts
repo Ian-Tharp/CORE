@@ -43,6 +43,9 @@ interface ConversationSummary {
   ]
 })
 export class ConversationsPageComponent implements OnInit {
+  // RSI TODO: Extract API base URL to a centralized config/environment service and avoid hard-coding.
+  // RSI TODO: Move conversations fetching/updating into a dedicated `ConversationsService` for testability and reuse.
+  // RSI TODO: Convert state to Angular Signals for simpler change detection and performance tuning.
   conversations: ConversationSummary[] = [];
   selectedConversationId?: string;
   editingConversationId?: string;
@@ -84,10 +87,12 @@ export class ConversationsPageComponent implements OnInit {
         if (data.length > 0 || this.connectionError === '') {
           this.isConnected = true;
         }
+        // RSI TODO: Remove duplicate connectivity logic above; compute once based on response/error.
       });
   }
 
   private getErrorMessage(error: any): string {
+    // RSI TODO: Surface more specific diagnostics (e.g., CORS, DNS, ECONNREFUSED) and add retry/backoff.
     if (error.status === 0) {
       return 'Unable to connect to the backend service. Please ensure the Python backend is running on localhost:8001.';
     } else if (error.status >= 500) {

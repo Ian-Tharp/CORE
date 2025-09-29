@@ -34,6 +34,7 @@ async def get_conversations() -> List[dict]:
         return result
     except Exception:
         # Fail gracefully in dev if DB is unavailable
+        # RSI TODO: Log exception details with context; return proper error in non-dev environments.
         return []
 
 
@@ -65,6 +66,7 @@ async def get_single_conversation(conv_id: str):
 @router.patch("/{conv_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def patch_conversation(conv_id: str, payload: dict):
     """Update mutable fields of a conversation (currently only title)."""
+    # RSI TODO: Add payload validation schema (Pydantic model) and title length/charset constraints.
     title = payload.get("title")
     if not title:
         raise HTTPException(status_code=400, detail="'title' is required")

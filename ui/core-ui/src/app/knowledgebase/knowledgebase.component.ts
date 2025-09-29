@@ -132,6 +132,11 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
   private tagIdToName: Record<string, string> = {};
   recentActivity: ActivityLog[] = [];
 
+  // Embedding provider/model selection
+  embeddingProvider: 'openai' | 'local' = 'openai';
+  localEmbeddingModels: string[] = ['nomic-embed-text', 'mxbai-embed-large', 'embedding-gemma'];
+  selectedLocalEmbeddingModel: string = this.localEmbeddingModels[0];
+
   // Filtered files observable - will be initialized in setupFilteredFiles()
   filteredFiles$!: Observable<KnowledgeFile[]>;
   // Grid pagination
@@ -318,7 +323,9 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
       file,
       isGlobal,
       tags,
-      processImmediately: true
+      processImmediately: true,
+      embeddingProvider: this.embeddingProvider === 'local' ? 'local' : 'openai',
+      localModel: this.embeddingProvider === 'local' ? this.selectedLocalEmbeddingModel : undefined
     }).subscribe({
       next: (result) => {
         if (result) {
@@ -599,7 +606,9 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
     if (!query.trim()) return;
     
     this.isLoading = true;
-    this.knowledgebaseService.semanticSearch(query).subscribe({
+    const provider = this.embeddingProvider;
+    const localModel = provider === 'local' ? this.selectedLocalEmbeddingModel : undefined;
+    this.knowledgebaseService.semanticSearch(query, 10, provider, localModel).subscribe({
       next: (results) => {
         // Results will be shown in the UI
         this.isLoading = false;
@@ -609,6 +618,19 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
           duration: 5000
         });
         this.isLoading = false;
+      }
+    });
+  }
+
+  // Trigger local embedding for a specific file using the selected model
+  embedFileLocally(file: KnowledgeFile): void {
+    const model = this.selectedLocalEmbeddingModel;
+    this.knowledgebaseService.embedLocal(file.id, model).subscribe({
+      next: () => {
+        this.snackBar.open(`Local embedding started (${model})`, 'Close', { duration: 3000 });
+      },
+      error: () => {
+        this.snackBar.open('Failed to start local embedding', 'Close', { duration: 5000 });
       }
     });
   }

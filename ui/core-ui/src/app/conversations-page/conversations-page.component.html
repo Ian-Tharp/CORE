@@ -1,3 +1,5 @@
+<!-- RSI TODO: Migrate remaining *ngIf usages to Angular 19 control flow (@if/@else) for consistency. -->
+<!-- RSI TODO: Add skeleton loaders and empty states with ARIA roles for improved accessibility. -->
 <div class="conversations-page-layout">
   <aside class="conversation-list">
     <button mat-raised-button color="primary" (click)="startNewConversation()" class="new-conv-btn" [disabled]="!isConnected">
@@ -41,6 +43,7 @@
               (click)="selectConversation(conv.id)"
               [ngClass]="{ selected: conv.id === selectedConversationId }"
             >
+              <!-- RSI TODO: Replace this *ngIf with @if once template logic is refactored. -->
               <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
                 <div matLine class="title-line">
                   {{ conv.title || (conv.id | slice:0:8) }}
@@ -78,6 +81,7 @@
 
   <section class="chat-section">
     <div class="two-col">
+      <!-- RSI TODO: Remove always-true *ngIf; use structural conditions only when needed. -->
       <mat-card class="chat-card" *ngIf="true">
         <app-chat-window
           [conversationId]="selectedConversationId"

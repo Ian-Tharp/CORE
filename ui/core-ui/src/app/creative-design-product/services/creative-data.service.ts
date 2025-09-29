@@ -3,7 +3,10 @@ import { Injectable } from '@angular/core';
 export interface BoardCard { id: string; title: string; imageUrl?: string; notes?: string; createdAt: string; }
 export interface Board { id: string; worldId?: string; title: string; cards: BoardCard[]; createdAt: string; }
 
-export interface WikiPage { id: string; worldId?: string; title: string; content: string; createdAt: string; updatedAt: string; }
+export interface MediaItem { id: string; url: string; type: 'image' | 'video' | 'audio'; caption?: string; }
+export type WikiPageType = 'Lore' | 'Factions' | 'Biomes' | 'Items' | 'Technology';
+export interface WikiPageMetadata { type?: WikiPageType; tags?: string[]; template?: string; connections?: string[]; color?: string; icon?: string; }
+export interface WikiPage { id: string; worldId?: string; title: string; content: string; richContent?: any; media?: MediaItem[]; metadata?: WikiPageMetadata; createdAt: string; updatedAt: string; }
 
 @Injectable({ providedIn: 'root' })
 export class CreativeDataService {
@@ -11,7 +14,7 @@ export class CreativeDataService {
   private wikiKey = 'creative.wiki.v1';
 
   private read<T>(key: string): T[] { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } }
-  private write<T>(key: string, value: T[]): void { localStorage.setItem(key, JSON.stringify(value)); }
+  public write<T>(key: string, value: T[]): void { localStorage.setItem(key, JSON.stringify(value)); }
 
   listBoards(worldId?: string): Board[] {
     const all = this.read<Board>(this.boardsKey);
@@ -33,8 +36,19 @@ export class CreativeDataService {
     this.write(this.wikiKey, all);
   }
   createWiki(worldId: string | undefined, title: string): WikiPage {
-    const page: WikiPage = { id: crypto.randomUUID(), worldId, title, content: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    this.upsertWiki(page); return page;
+    const page: WikiPage = {
+      id: crypto.randomUUID(),
+      worldId,
+      title,
+      content: '',
+      richContent: null,
+      media: [],
+      metadata: { tags: [], connections: [] },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.upsertWiki(page);
+    return page;
   }
 }
 

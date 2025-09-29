@@ -129,6 +129,13 @@ async def setup_db_schema() -> None:
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
+            # Enable pgvector extension for vector similarity search
+            try:
+                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            except Exception:
+                # Non-fatal if extension creation fails; may be handled by image
+                pass
+
             # Conversations table
             await conn.execute(
                 """
@@ -398,3 +405,41 @@ async def setup_db_schema() -> None:
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_kb_activity_timestamp ON kb_activity(timestamp)"
             )
+
+            # -----------------------------------------------------------------
+            # Knowledgebase: add local embedding support with pgvector columns
+            # -----------------------------------------------------------------
+            # Documents: local embedding metadata and vector
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS local_embedding_model VARCHAR(128)"
+            )
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS local_embedding_dimensions INTEGER"
+            )
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS doc_embedding_vec_local vector(3072)"
+            )
+
+            # Chunks: local embedding metadata and vector
+            await conn.execute(
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS local_embedding_model VARCHAR(128)"
+            )
+            await conn.execute(
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS local_embedding_dimensions INTEGER"
+            )
+            await conn.execute(
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS embedding_vec_local vector(3072)"
+            )
+
+            # Try to create a HNSW index for cosine similarity; fallback to IVFFLAT
+            try:
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_hnsw ON kb_chunks USING hnsw (embedding_vec_local vector_cosine_ops)"
+                )
+            except Exception:
+                try:
+                    await conn.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_ivfflat ON kb_chunks USING ivfflat (embedding_vec_local vector_cosine_ops) WITH (lists = 100)"
+                    )
+                except Exception:
+                    pass

@@ -37,6 +37,7 @@ async def list_conversations() -> List[Dict[str, Any]]:
     Shape matches controller expectations: `{id, title, messages}` where
     `messages` is the count of messages in the conversation.
     """
+    # RSI TODO: Add pagination and optional search/sort parameters (e.g., by last_activity).
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -173,6 +174,7 @@ async def _insert_messages(conn: asyncpg.Connection, conv_id: str, messages: Lis
         return
 
     # Use executemany for efficiency
+    # RSI TODO: Add index on (conversation_id, timestamp) if not present; consider batching and COPY for high throughput.
     await conn.executemany(
         """
         INSERT INTO messages (conversation_id, role, content)

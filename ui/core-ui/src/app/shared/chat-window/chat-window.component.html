@@ -23,6 +23,24 @@
       </mat-form-field>
     }
 
+    @if (kbMode !== 'none') {
+      <mat-form-field appearance="outline" class="kb-select">
+        <mat-select [(ngModel)]="ragEmbeddingProvider" name="ragProvider" panelClass="model-dropdown-panel">
+          <mat-option value="openai">RAG: OpenAI Embeddings</mat-option>
+          <mat-option value="local">RAG: Local (Ollama)</mat-option>
+        </mat-select>
+      </mat-form-field>
+      @if (ragEmbeddingProvider === 'local') {
+        <mat-form-field appearance="outline" class="kb-file-select">
+          <mat-select [(ngModel)]="ragSelectedLocalModel" name="ragLocalModel">
+            @for (m of ragLocalModels; track m) {
+              <mat-option [value]="m">{{ m }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+    }
+
     <mat-form-field appearance="outline" class="model-select">
       <mat-select [(ngModel)]="selectedProvider" name="provider" (selectionChange)="onProviderChange()" panelClass="model-dropdown-panel">
         <mat-option value="openai">OpenAI</mat-option>
@@ -79,8 +97,9 @@
         (keydown.enter)="onEnterKey($event)"
       ></textarea>
     </div>
-    <button mat-icon-button color="primary" type="submit" aria-label="Send message">
+    <button mat-icon-button color="primary" type="submit" aria-label="Send message" [disabled]="isStreaming">
       <mat-icon>send</mat-icon>
     </button>
+    <mat-icon *ngIf="isStreaming" class="spinning" style="margin-left:0.5rem">sync</mat-icon>
   </form>
 </div>

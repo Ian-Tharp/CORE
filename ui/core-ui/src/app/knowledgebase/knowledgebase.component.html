@@ -69,6 +69,20 @@
           </mat-form-field>
           
           <div class="action-buttons">
+            <!-- Embedding provider/model selectors -->
+            <mat-form-field appearance="outline" style="width: 14rem; margin-right: 0.5rem;">
+              <mat-label>Embedding Provider</mat-label>
+              <mat-select [(ngModel)]="embeddingProvider" name="kbEmbeddingProvider">
+                <mat-option value="openai">OpenAI</mat-option>
+                <mat-option value="local">Local (Ollama)</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field *ngIf="embeddingProvider === 'local'" appearance="outline" style="width: 16rem; margin-right: 1rem;">
+              <mat-label>Local Embedding Model</mat-label>
+              <mat-select [(ngModel)]="selectedLocalEmbeddingModel" name="kbLocalEmbeddingModel">
+                <mat-option *ngFor="let m of localEmbeddingModels" [value]="m">{{ m }}</mat-option>
+              </mat-select>
+            </mat-form-field>
             <!-- Upload Button -->
             <input #fileInput type="file" multiple hidden (change)="onFileSelect($event)">
             <button mat-raised-button color="primary" 
@@ -267,6 +281,11 @@
                         (click)="processEmbeddings(file); $event.stopPropagation()">
                   <mat-icon style="color:#00acc1">memory</mat-icon>
                 </button>
+                <button mat-icon-button class="action-embed-local" *ngIf="embeddingProvider === 'local'"
+                        matTooltip="Embed locally with selected model"
+                        (click)="embedFileLocally(file); $event.stopPropagation()">
+                  <mat-icon style="color:#26a69a">bolt</mat-icon>
+                </button>
                 
                 <button mat-icon-button class="action-info" data-color="gold"
                         matTooltip="Re-extract title"
@@ -278,6 +297,10 @@
                   <div class="footer-block" *ngIf="file.embeddingModel">
                     <div class="footer-title">Embedding Model:</div>
                     <div class="footer-value">{{ file.embeddingModel }}</div>
+                  </div>
+                  <div class="footer-block" *ngIf="file.localEmbeddingModel">
+                    <div class="footer-title">Local Embedding:</div>
+                    <div class="footer-value">{{ file.localEmbeddingModel }} ({{ file.localEmbeddingDimensions || '?' }})</div>
                   </div>
                   <div class="footer-block" *ngIf="file.chunkCount !== undefined">
                     <div class="footer-title">Chunks:</div>

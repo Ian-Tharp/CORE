@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnChanges, SimpleChanges, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -38,6 +38,7 @@ export class ChatWindowComponent implements OnChanges {
 
   messages: { sender: 'user' | 'assistant'; text: string }[] = [];
   newMessage = '';
+  isStreaming = false;
 
   // Provider + model selection
   readonly providers: Array<'openai' | 'ollama'> = ['openai', 'ollama'];
@@ -52,6 +53,11 @@ export class ChatWindowComponent implements OnChanges {
   kbFiles: KnowledgeFile[] = [];
   kbFileId?: string;
 
+  // RAG embeddings provider/model (independent of chat provider)
+  ragEmbeddingProvider: 'openai' | 'local' = 'openai';
+  ragLocalModels: string[] = ['nomic-embed-text', 'mxbai-embed-large', 'embedding-gemma'];
+  ragSelectedLocalModel: string = this.ragLocalModels[0];
+
   // Reference to the scrolling container so we can auto-scroll.
   @ViewChild('scrollContainer', { static: false })
   private scrollContainer?: ElementRef<HTMLDivElement>;
@@ -65,7 +71,8 @@ export class ChatWindowComponent implements OnChanges {
   constructor(
     private readonly chatService: ChatService,
     private readonly http: HttpClient,
-    private readonly kbService: KnowledgebaseService
+    private readonly kbService: KnowledgebaseService,
+    private readonly zone: NgZone
   ) {
     // Load knowledgebase files for selection
     this.kbService.files$.subscribe(files => {
@@ -201,34 +208,47 @@ export class ChatWindowComponent implements OnChanges {
 
       const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
 
+      this.isStreaming = true;
       this.chatService
         .sendMessage(content, this.selectedModel, convId ?? this.conversationId, {
           kbMode: this.kbMode,
           kbFileId: this.kbMode === 'file' ? this.kbFileId : undefined,
           provider: this.selectedProvider,
+          kbEmbeddingProvider: this.kbMode !== 'none' ? this.ragEmbeddingProvider : undefined,
+          kbLocalModel: this.kbMode !== 'none' && this.ragEmbeddingProvider === 'local' ? this.ragSelectedLocalModel : undefined,
         })
         .subscribe({
           next: (jsonStr) => {
-            try {
-              const data = JSON.parse(jsonStr);
+            this.zone.run(() => {
+              try {
+                const data = JSON.parse(jsonStr);
 
-              if (data?.meta?.conversation_id) {
-                this.conversationId = data.meta.conversation_id;
-                this.conversationIdChange.emit(this.conversationId);
-                return;
+                if (data?.meta?.conversation_id) {
+                  this.conversationId = data.meta.conversation_id;
+                  this.conversationIdChange.emit(this.conversationId);
+                  return;
+                }
+
+                const token = data?.delta ?? '';
+                this.messages[assistantIdx].text += token;
+              } catch {
+                /* ignore malformed chunks */
               }
-
-              const token = data?.delta ?? '';
-              this.messages[assistantIdx].text += token;
-            } catch {
-              /* ignore malformed chunks */
-            }
+            });
           },
           error: (err) => {
-            this.messages[assistantIdx].text = `[error] ${err}`;
-            this.scrollToBottom();
+            this.zone.run(() => {
+              this.messages[assistantIdx].text = `[error] ${err}`;
+              this.isStreaming = false;
+              this.scrollToBottom();
+            });
           },
-          complete: () => this.scrollToBottom(),
+          complete: () => {
+            this.zone.run(() => {
+              this.isStreaming = false;
+              this.scrollToBottom();
+            });
+          },
         });
 
       this.scrollToBottom();

@@ -33,7 +33,7 @@ services:
 
   # Database - PostgreSQL
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: core-postgres
     environment:
       - POSTGRES_DB=core_db
@@ -84,6 +84,14 @@ services:
       # - C:/Users/Owner/.ollama:/root/.ollama
       # On macOS/Linux:
       # - ~/.ollama:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     networks:
       - core-network
     restart: unless-stopped
