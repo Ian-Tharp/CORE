@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { HttpClient } from '@angular/common/http';
+import { ConversationsService } from '../services/conversations/conversations.service';
 import { EnginePlaygroundComponent } from './engine-playground.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -56,9 +56,7 @@ export class ConversationsPageComponent implements OnInit {
   isConnected: boolean = true;
   connectionError: string = '';
 
-  private readonly _apiUrl = 'http://localhost:8001';
-
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly conversationsSvc: ConversationsService) {}
 
   ngOnInit(): void {
     this.refreshList();
@@ -68,8 +66,8 @@ export class ConversationsPageComponent implements OnInit {
     this.isLoading = true;
     this.connectionError = '';
     
-    this.http
-      .get<ConversationSummary[]>(`${this._apiUrl}/conversations/`)
+    this.conversationsSvc
+      .list()
       .pipe(
         catchError((error) => {
           console.error('Failed to load conversations:', error);
@@ -140,10 +138,8 @@ export class ConversationsPageComponent implements OnInit {
     const previousTitle = conv.title;
     conv.title = newTitle;
 
-    this.http
-      .patch(`${this._apiUrl}/conversations/${conv.id}`, {
-        title: newTitle,
-      })
+    this.conversationsSvc
+      .updateTitle(conv.id, newTitle)
       .pipe(
         catchError((error) => {
           console.error('Failed to update conversation title:', error);

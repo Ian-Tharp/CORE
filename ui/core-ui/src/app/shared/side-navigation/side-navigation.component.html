@@ -7,7 +7,11 @@
         <button mat-icon-button class="nav-item" [routerLink]="['/dashboard']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Dashboard" matTooltipPosition="right">
           <mat-icon>dashboard</mat-icon>
         </button>
-
+        
+        <button mat-icon-button class="nav-item" [routerLink]="['/communication']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Communication Commons" matTooltipPosition="right">
+          <mat-icon>forum</mat-icon>
+        </button>
+        
         <button mat-icon-button class="nav-item" [routerLink]="['/command-center']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Command Center" matTooltipPosition="right">
           <mat-icon>grid_on</mat-icon>
         </button>
@@ -42,6 +46,7 @@
         <button mat-icon-button class="nav-item" [routerLink]="['/conversations']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Conversations" matTooltipPosition="right">
           <mat-icon>chat</mat-icon>
         </button>
+
 
         <!-- Creative Design (Worlds/Boards/Wiki/Marketplace) -->
         <button mat-icon-button class="nav-item" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="creativeMenu" #creativeMenuTrigger="matMenuTrigger" matTooltip="Creative Design" matTooltipPosition="right" (click)="openMenu('creative')">

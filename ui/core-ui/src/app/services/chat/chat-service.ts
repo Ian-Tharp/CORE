@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 import { UserInput } from '../../models/UserInput';
+import { AppConfigService } from '../config/app-config.service';
 
 export type ChatMessage = UserInput & {
   id: string;
@@ -21,7 +22,7 @@ export class ChatService {
   // RSI TODO: Move API base URL to Angular environment config or an AppConfigService and inject it.
   // RSI TODO: Consider switching to EventSource for SSE for built-in reconnection and lower overhead.
   // RSI TODO: Track messages per `conversationId` (map of streams) instead of a single list for multi-chat tabs.
-  private readonly _apiUrl = 'http://localhost:8001';
+  private readonly _cfg = inject(AppConfigService);
 
   constructor() {}
 
@@ -105,10 +106,12 @@ export class ChatService {
     }
 
     return new Observable<string>((observer) => {
-      fetch(`${this._apiUrl}/chat/stream`, {
+      const controller = new AbortController();
+      fetch(this._cfg.chatStreamUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
         .then((response) => {
           if (!response.ok || !response.body) {
@@ -156,6 +159,10 @@ export class ChatService {
           readChunk();
         })
         .catch((err) => observer.error(err));
+
+      return () => {
+        try { controller.abort(); } catch { /* ignore */ }
+      };
     });
   }
 }

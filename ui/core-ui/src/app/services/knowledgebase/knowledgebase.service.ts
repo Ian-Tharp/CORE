@@ -15,14 +15,16 @@ import {
   FileSource,
   ActivityLog
 } from '../../models/knowledgebase.models';
+import { AppConfigService } from '../config/app-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class KnowledgebaseService {
   private http = inject(HttpClient);
+  private cfg = inject(AppConfigService);
   // RSI TODO: Externalize base URL into environment configuration; avoid hard-coded localhost.
-  private apiUrl = 'http://localhost:8001/knowledgebase';
+  private apiUrl = this.cfg.knowledgebaseUrl;
 
   // State management
   private filesSubject = new BehaviorSubject<KnowledgeFile[]>([]);

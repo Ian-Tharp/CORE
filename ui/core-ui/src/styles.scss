@@ -326,10 +326,34 @@ body {
     border: 1px solid rgba(0, 255, 255, 0.3) !important;
     font-size: 0.875rem !important;
     padding: 8px 12px !important;
-    box-shadow: 
+    box-shadow:
       0 4px 16px rgba(0, 0, 0, 0.8),
       0 0 10px rgba(0, 255, 255, 0.2) !important;
   }
+}
+
+/* Material Badge Styling - Global */
+.mat-badge-content {
+  font-weight: 700;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.mat-badge-accent .mat-badge-content {
+  background: var(--mdc-sys-color-tertiary);
+  color: var(--mdc-sys-color-on-tertiary);
+}
+
+.mat-badge-primary .mat-badge-content {
+  background: var(--mdc-sys-color-primary);
+  color: var(--mdc-sys-color-on-primary);
+}
+
+.mat-badge-warn .mat-badge-content {
+  background: var(--mdc-sys-color-error);
+  color: var(--mdc-sys-color-on-error);
 }
 
 /* Ensure tooltip has no transparency */

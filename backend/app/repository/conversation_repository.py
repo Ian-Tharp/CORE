@@ -31,7 +31,7 @@ class _Conversation(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-async def list_conversations() -> List[Dict[str, Any]]:
+async def list_conversations(*, page: int = 1, page_size: int = 50) -> List[Dict[str, Any]]:
     """Return list of conversations with message counts.
 
     Shape matches controller expectations: `{id, title, messages}` where
@@ -50,7 +50,10 @@ async def list_conversations() -> List[Dict[str, Any]]:
             LEFT JOIN messages m ON m.conversation_id = c.conversation_id
             GROUP BY c.conversation_id, c.title
             ORDER BY last_activity DESC NULLS LAST
-            """
+            LIMIT $1 OFFSET $2
+            """,
+            page_size,
+            max(0, (page - 1) * page_size),
         )
         # Do not expose last_activity field to the controller response shape
         return [{"id": r["id"], "title": r["title"], "messages": r["messages"]} for r in rows]

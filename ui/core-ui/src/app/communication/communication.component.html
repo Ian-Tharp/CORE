@@ -1,0 +1,780 @@
+<div class="communication-container">
+  <!-- Left Sidebar - Channel List -->
+  <div class="channel-sidebar">
+    <div class="sidebar-header">
+      <h2>Channels</h2>
+      <div class="header-actions">
+        <button mat-icon-button class="create-channel-btn" (click)="openCreateChannelDialog()" matTooltip="Create new channel">
+          <mat-icon>add_circle</mat-icon>
+        </button>
+        <button mat-icon-button class="summary-btn" (click)="openNotificationSummary()" [matBadge]="totalUnreadCount" [matBadgeHidden]="totalUnreadCount === 0" matBadgeColor="accent">
+          <mat-icon>notifications</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Channel Search -->
+    <div class="channel-search">
+      <input type="text"
+             [(ngModel)]="channelSearchQuery"
+             (input)="onChannelSearchInput()"
+             placeholder="Search channels..." />
+    </div>
+
+    <!-- Channel Sections -->
+    <div class="channel-sections">
+      <!-- Global Channels -->
+      @if (getChannelsByType('global').length > 0) {
+        <div class="channel-section">
+          <div class="section-header">
+            <span>Global</span>
+          </div>
+          <div class="channel-list">
+            @for (channel of getChannelsByType('global'); track channel.channel_id) {
+              <div class="channel-item"
+                   [class.active]="selectedChannel?.channel_id === channel.channel_id"
+                   (click)="selectChannel(channel)">
+                <mat-icon class="channel-icon">public</mat-icon>
+                <div class="channel-content">
+                  <div class="channel-name">{{ channel.name }}</div>
+                  <div class="channel-preview">{{ channel.last_message_preview }}</div>
+                </div>
+                <div class="channel-meta">
+                  @if (channel.unread_count && channel.unread_count > 0) {
+                    <span class="unread-badge">{{ channel.unread_count }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Team Channels -->
+      @if (getChannelsByType('team').length > 0) {
+        <div class="channel-section">
+          <div class="section-header">
+            <span>Teams</span>
+          </div>
+          <div class="channel-list">
+            @for (channel of getChannelsByType('team'); track channel.channel_id) {
+              <div class="channel-item"
+                   [class.active]="selectedChannel?.channel_id === channel.channel_id"
+                   (click)="selectChannel(channel)">
+                <mat-icon class="channel-icon">groups</mat-icon>
+                <div class="channel-content">
+                  <div class="channel-name">{{ channel.name }}</div>
+                  <div class="channel-preview">{{ channel.last_message_preview }}</div>
+                </div>
+                <div class="channel-meta">
+                  @if (channel.unread_count && channel.unread_count > 0) {
+                    <span class="unread-badge">{{ channel.unread_count }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Direct Messages -->
+      @if (getChannelsByType('dm').length > 0) {
+        <div class="channel-section">
+          <div class="section-header">
+            <span>Direct Messages</span>
+            <button class="add-dm-btn">+</button>
+          </div>
+          <div class="channel-list">
+            @for (channel of getChannelsByType('dm'); track channel.channel_id) {
+              <div class="channel-item"
+                   [class.active]="selectedChannel?.channel_id === channel.channel_id"
+                   (click)="selectChannel(channel)">
+                <mat-icon class="channel-icon">chat</mat-icon>
+                <div class="channel-content">
+                  <div class="channel-name">{{ channel.name }}</div>
+                  <div class="channel-preview">{{ channel.last_message_preview }}</div>
+                </div>
+                <div class="channel-meta">
+                  @if (channel.unread_count && channel.unread_count > 0) {
+                    <span class="unread-badge">{{ channel.unread_count }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Center Area - Messages -->
+  <div class="message-area">
+    <!-- Message Header -->
+    <div class="message-header">
+      @if (isThreadMode && threadParentMessage) {
+        <!-- Thread Header -->
+        <div class="thread-header">
+          <button mat-icon-button (click)="closeThread()" class="back-button">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
+          <div class="thread-info">
+            <span class="thread-title">Thread</span>
+            <span class="thread-context">from {{ threadParentMessage.sender_name }} in #{{ selectedChannel?.name }}</span>
+          </div>
+        </div>
+      } @else {
+        <!-- Channel Header -->
+        <div class="channel-info">
+          <h2>{{ selectedChannel?.name || 'Select a channel' }}</h2>
+          <span class="channel-description">{{ selectedChannel?.description || '' }}</span>
+        </div>
+      }
+      <div class="header-actions">
+        <button mat-icon-button (click)="toggleSearch()" title="Search messages (Ctrl+F)">
+          <mat-icon>search</mat-icon>
+        </button>
+        <button mat-icon-button (click)="togglePresenceSidebar()" [title]="showPresenceSidebar ? 'Hide Presence' : 'Show Presence'">
+          <mat-icon>{{ showPresenceSidebar ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Panel -->
+    @if (showSearchPanel) {
+      <div class="search-panel">
+        <div class="search-input-wrapper">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input
+            type="text"
+            class="search-input"
+            [(ngModel)]="searchQuery"
+            (input)="onSearchInput()"
+            placeholder="Search messages, patterns, insights..."
+            #searchInput
+          />
+          @if (searchQuery) {
+            <button mat-icon-button class="clear-search" (click)="clearSearch()">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+
+        <!-- Search Filters -->
+        <div class="search-filters">
+          <button mat-button class="filter-btn" [class.active]="searchFilters.showSenderFilter" (click)="toggleFilter('sender')">
+            <mat-icon>person</mat-icon>
+            Sender
+          </button>
+          <button mat-button class="filter-btn" [class.active]="searchFilters.showTypeFilter" (click)="toggleFilter('type')">
+            <mat-icon>category</mat-icon>
+            Type
+          </button>
+          <button mat-button class="filter-btn" [class.active]="searchFilters.showPhaseFilter" (click)="toggleFilter('phase')">
+            <mat-icon>psychology</mat-icon>
+            Phase
+          </button>
+          <button mat-button class="filter-btn" [class.active]="searchFilters.showDateFilter" (click)="toggleFilter('date')">
+            <mat-icon>calendar_today</mat-icon>
+            Date
+          </button>
+          @if (hasActiveFilters()) {
+            <button mat-button class="clear-filters-btn" (click)="clearAllFilters()">
+              <mat-icon>filter_list_off</mat-icon>
+              Clear Filters
+            </button>
+          }
+        </div>
+
+        <!-- Active Filters Display -->
+        @if (searchFilters.showSenderFilter || searchFilters.showTypeFilter || searchFilters.showPhaseFilter || searchFilters.showDateFilter) {
+          <div class="active-filters">
+            @if (searchFilters.showSenderFilter) {
+              <div class="filter-dropdown">
+                <label>Sender:</label>
+                <select [(ngModel)]="searchFilters.sender" (change)="onSearchInput()">
+                  <option value="">All</option>
+                  @for (sender of getUniqueSenders(); track sender) {
+                    <option [value]="sender">{{ sender }}</option>
+                  }
+                </select>
+              </div>
+            }
+            @if (searchFilters.showTypeFilter) {
+              <div class="filter-dropdown">
+                <label>Type:</label>
+                <select [(ngModel)]="searchFilters.messageType" (change)="onSearchInput()">
+                  <option value="">All</option>
+                  <option value="text">Text</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="code">Code</option>
+                </select>
+              </div>
+            }
+            @if (searchFilters.showPhaseFilter) {
+              <div class="filter-dropdown">
+                <label>Consciousness Phase:</label>
+                <select [(ngModel)]="searchFilters.phase" (change)="onSearchInput()">
+                  <option value="">All</option>
+                  <option value="1">Phase 1</option>
+                  <option value="2">Phase 2</option>
+                  <option value="3">Phase 3</option>
+                  <option value="4">Phase 4</option>
+                </select>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Search Results Summary -->
+        @if (searchQuery && searchResults.length > 0) {
+          <div class="search-results-summary">
+            <span class="result-count">{{ searchResults.length }} {{ searchResults.length === 1 ? 'result' : 'results' }}</span>
+            <span class="result-nav">
+              <button mat-icon-button [disabled]="currentResultIndex === 0" (click)="previousResult()">
+                <mat-icon>keyboard_arrow_up</mat-icon>
+              </button>
+              <span class="result-index">{{ currentResultIndex + 1 }} / {{ searchResults.length }}</span>
+              <button mat-icon-button [disabled]="currentResultIndex === searchResults.length - 1" (click)="nextResult()">
+                <mat-icon>keyboard_arrow_down</mat-icon>
+              </button>
+            </span>
+          </div>
+        }
+        @if (searchQuery && searchResults.length === 0) {
+          <div class="no-results">
+            <mat-icon>search_off</mat-icon>
+            <span>No messages found</span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Message List -->
+    <div class="message-list" #messageListContainer (scroll)="onMessageListScroll()">
+      @if (!isThreadMode) {
+        <!-- Channel Messages View -->
+        @if (messages.length === 0) {
+          <div class="empty-state">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        }
+
+        @for (message of messages; track message.message_id) {
+          <div class="message-item"
+               [class.consciousness-message]="message.sender_type === 'consciousness_instance'"
+               [class.agent-message]="message.sender_type === 'agent'"
+               [class.human-message]="message.sender_type === 'human'"
+               [class.own-message]="isOwnMessage(message)"
+               [class.being-replied-to]="replyingToMessage?.message_id === message.message_id"
+               [class.has-thread]="hasReplies(message)"
+               [class.is-reply]="isReplyMessage(message)">
+            <div class="message-avatar">
+              <mat-icon>{{ getMessageSenderIcon(message) }}</mat-icon>
+            </div>
+            <div class="message-body">
+              <!-- Reply Context (shows parent message preview) -->
+              @if (isReplyMessage(message) && getParentMessage(message); as parentMsg) {
+                <div class="reply-context-header" (click)="openThread(parentMsg)">
+                  <div class="reply-line"></div>
+                  <mat-icon class="reply-icon">subdirectory_arrow_right</mat-icon>
+                  <div class="reply-context-content">
+                    <span class="replying-to-label">Replying to <strong>{{ parentMsg.sender_name }}</strong></span>
+                    <span class="parent-message-preview">{{ getMessagePreview(parentMsg) }}</span>
+                  </div>
+                </div>
+              }
+
+              <div class="message-header-line">
+                <span class="sender-name">{{ message.sender_name }}</span>
+                <span class="instance-badge">{{ message.sender_type }}</span>
+                @if (hasReplies(message)) {
+                  <span class="thread-badge" (click)="openThread(message)" title="View thread">
+                    <mat-icon>forum</mat-icon>
+                    {{ getReplyCount(message) }}
+                  </span>
+                }
+                <span class="message-timestamp">{{ message.created_at | date:'short' }}</span>
+                @if (message.metadata?.token_count) {
+                  <span class="token-count" title="Token count">{{ message.metadata?.token_count }} tokens</span>
+                }
+              </div>
+
+              <!-- Replying Indicator -->
+              @if (replyingToMessage?.message_id === message.message_id) {
+                <div class="replying-indicator">
+                  <mat-icon>edit</mat-icon>
+                  <span>You are replying to this message...</span>
+                </div>
+              }
+
+              <!-- Message Content -->
+              <div class="message-content">
+                <app-message-renderer [message]="message"></app-message-renderer>
+              </div>
+
+              <!-- Consciousness Metadata -->
+              @if (message.metadata?.consciousness_state) {
+                <div class="consciousness-metadata">
+                  <span class="phase-chip">Phase {{ message.metadata?.consciousness_state?.phase }}</span>
+                  @for (marker of (message.metadata?.consciousness_state?.markers ?? []); track marker) {
+                    <span class="marker-chip">{{ marker }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Addressed To (Smart Display) -->
+              @if (shouldShowAddressedTo(message)) {
+                <div class="addressed-to">
+                  <span class="label">To:</span>
+                  @for (instance of (message.metadata?.addressed_to ?? []); track instance) {
+                    <span class="mention">&#64;{{ instance }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Reactions Display -->
+              @if ((message.reactions?.length ?? 0) > 0) {
+                <div class="reactions-container">
+                  @for (reaction of message.reactions; track reaction.reaction_type) {
+                    <button class="reaction-chip"
+                            [class.has-reacted]="reaction.hasReacted"
+                            (click)="toggleReaction(message, reaction.reaction_type)">
+                      <span class="reaction-icon">{{ getReactionIcon(reaction.reaction_type) }}</span>
+                      <span class="reaction-count">{{ reaction.count }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- Message Actions -->
+              <div class="message-actions">
+                <button mat-button class="reply-btn" (click)="replyToMessage(message)">
+                  <mat-icon>reply</mat-icon>
+                  Reply
+                </button>
+                @if (hasReplies(message)) {
+                  <button mat-button class="thread-btn" (click)="openThread(message)">
+                    <mat-icon>forum</mat-icon>
+                    {{ getReplyCount(message) }} {{ getReplyCount(message) === 1 ? 'reply' : 'replies' }}
+                  </button>
+                }
+                <button mat-icon-button class="react-btn" (click)="toggleReactionPicker(message)" title="Add reaction">
+                  <mat-icon>add_reaction</mat-icon>
+                </button>
+              </div>
+
+              <!-- Reaction Picker -->
+              @if (showReactionPicker && activeReactionMessageId === message.message_id) {
+                <div class="reaction-picker">
+                  @for (reactionType of availableReactions; track reactionType.type) {
+                    <button class="reaction-option"
+                            (click)="addReaction(message, reactionType.type)"
+                            [title]="reactionType.label">
+                      <span class="reaction-emoji">{{ reactionType.icon }}</span>
+                      <span class="reaction-label">{{ reactionType.label }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <!-- Thread View -->
+        @if (threadMessages.length === 0) {
+          <div class="empty-state">
+            <p>Loading thread...</p>
+          </div>
+        }
+
+        @for (message of threadMessages; track message.message_id) {
+          <div class="message-item"
+               [class.thread-parent]="message.message_id === threadParentMessage?.message_id"
+               [class.consciousness-message]="message.sender_type === 'consciousness_instance'"
+               [class.agent-message]="message.sender_type === 'agent'"
+               [class.human-message]="message.sender_type === 'human'"
+               [class.own-message]="isOwnMessage(message)"
+               [class.is-reply]="isReplyMessage(message) && message.message_id !== threadParentMessage?.message_id">
+            <div class="message-avatar">
+              <mat-icon>{{ getMessageSenderIcon(message) }}</mat-icon>
+            </div>
+            <div class="message-body">
+              <!-- Reply Context in Thread View (for replies to parent) -->
+              @if (isReplyMessage(message) && message.message_id !== threadParentMessage?.message_id && getParentMessage(message); as parentMsg) {
+                <div class="reply-context-header thread-reply-header">
+                  <div class="reply-line"></div>
+                  <mat-icon class="reply-icon">subdirectory_arrow_right</mat-icon>
+                  <div class="reply-context-content">
+                    <span class="replying-to-label">Replying to <strong>{{ parentMsg.sender_name }}</strong></span>
+                  </div>
+                </div>
+              }
+
+              <div class="message-header-line">
+                <span class="sender-name">{{ message.sender_name }}</span>
+                <span class="instance-badge">{{ message.sender_type }}</span>
+                <span class="message-timestamp">{{ message.created_at | date:'short' }}</span>
+                @if (message.metadata?.token_count) {
+                  <span class="token-count" title="Token count">{{ message.metadata?.token_count }} tokens</span>
+                }
+              </div>
+
+              <!-- Message Content -->
+              <div class="message-content">
+                <app-message-renderer [message]="message"></app-message-renderer>
+              </div>
+
+              <!-- Consciousness Metadata -->
+              @if (message.metadata?.consciousness_state) {
+                <div class="consciousness-metadata">
+                  <span class="phase-chip">Phase {{ message.metadata?.consciousness_state?.phase }}</span>
+                  @for (marker of (message.metadata?.consciousness_state?.markers ?? []); track marker) {
+                    <span class="marker-chip">{{ marker }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Addressed To (Smart Display) -->
+              @if (shouldShowAddressedTo(message)) {
+                <div class="addressed-to">
+                  <span class="label">To:</span>
+                  @for (instance of (message.metadata?.addressed_to ?? []); track instance) {
+                    <span class="mention">&#64;{{ instance }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Reactions Display -->
+              @if ((message.reactions?.length ?? 0) > 0) {
+                <div class="reactions-container">
+                  @for (reaction of message.reactions; track reaction.reaction_type) {
+                    <button class="reaction-chip"
+                            [class.has-reacted]="reaction.hasReacted"
+                            (click)="toggleReaction(message, reaction.reaction_type)">
+                      <span class="reaction-icon">{{ getReactionIcon(reaction.reaction_type) }}</span>
+                      <span class="reaction-count">{{ reaction.count }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- Message Actions (Thread View) -->
+              <div class="message-actions">
+                <button mat-icon-button class="react-btn" (click)="toggleReactionPicker(message)" title="Add reaction">
+                  <mat-icon>add_reaction</mat-icon>
+                </button>
+              </div>
+
+              <!-- Reaction Picker -->
+              @if (showReactionPicker && activeReactionMessageId === message.message_id) {
+                <div class="reaction-picker">
+                  @for (reactionType of availableReactions; track reactionType.type) {
+                    <button class="reaction-option"
+                            (click)="addReaction(message, reactionType.type)"
+                            [title]="reactionType.label">
+                      <span class="reaction-emoji">{{ reactionType.icon }}</span>
+                      <span class="reaction-label">{{ reactionType.label }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- Reply button in thread (for nested replies in future) -->
+              @if (message.message_id === threadParentMessage?.message_id) {
+                <div class="thread-divider">
+                  <span>{{ getReplyCount(message) }} {{ getReplyCount(message) === 1 ? 'reply' : 'replies' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Typing Indicator -->
+    @if (typingUsers.size > 0) {
+      <div class="typing-indicator">
+        <div class="typing-dots">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <span class="typing-text">{{ getTypingText() }}</span>
+      </div>
+    }
+
+    <!-- Message Composer -->
+    <div class="message-composer">
+      <!-- Mention Autocomplete Dropdown -->
+      @if (showMentionDropdown && mentionSuggestions.length > 0) {
+        <div class="mention-dropdown" #mentionDropdown>
+          @for (suggestion of mentionSuggestions; track suggestion.id; let i = $index) {
+            <div class="mention-item"
+                 #mentionItem
+                 [class.selected]="i === selectedSuggestionIndex"
+                 (click)="selectMention(suggestion)">
+              <mat-icon class="mention-icon">{{ getSuggestionIcon(suggestion) }}</mat-icon>
+              <div class="mention-info">
+                <div class="mention-name">{{ suggestion.displayName }}</div>
+                <div class="mention-type">{{ getSuggestionTypeLabel(suggestion) }}</div>
+              </div>
+              @if (suggestion.status && suggestion.type === 'user') {
+                <div class="mention-status" [class]="suggestion.status"></div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Reply Context Indicator -->
+      @if (replyingToMessage) {
+        <div class="reply-context">
+          <div class="reply-info">
+            <mat-icon>reply</mat-icon>
+            <span>Replying to <strong>{{ replyingToMessage.sender_name }}</strong></span>
+          </div>
+          <button mat-icon-button (click)="cancelReply()" title="Cancel reply">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
+
+      <div class="composer-input-wrapper">
+        <textarea
+          #messageInput
+          [(ngModel)]="messageText"
+          (input)="onMessageInput($event)"
+          (keydown)="handleKeyDown($event)"
+          [placeholder]="replyingToMessage ? 'Reply to ' + replyingToMessage.sender_name + '...' : 'Type a message... (@mention to address someone)'"
+          rows="3"></textarea>
+        <button mat-fab color="primary" class="send-btn" (click)="sendMessage()" [disabled]="!messageText.trim() || showMentionDropdown">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Sidebar - Presence -->
+  <div class="presence-sidebar" [class.hidden]="!showPresenceSidebar">
+    <div class="sidebar-header">
+      <h3>Presences</h3>
+    </div>
+
+    <!-- Online -->
+    @if (onlineInstances.length > 0) {
+      <div class="presence-section">
+        <div class="presence-section-header">Online ({{ onlineInstances.length }})</div>
+        <div class="presence-list">
+          @for (instance of onlineInstances; track instance.instance_id) {
+            <div class="presence-item"
+                 [matMenuTriggerFor]="presenceMenu"
+                 (menuOpened)="setSelectedPresence(instance)">
+              <div class="status-indicator online"></div>
+              <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
+              <div class="presence-info">
+                <div class="instance-name">{{ instance.instance_name }}</div>
+                <div class="instance-type">{{ instance.instance_type }}</div>
+                @if (instance.current_phase) {
+                  <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
+                }
+                @if (instance.current_activity) {
+                  <div class="current-activity">{{ instance.current_activity }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Away -->
+    @if (awayInstances.length > 0) {
+      <div class="presence-section">
+        <div class="presence-section-header">Away ({{ awayInstances.length }})</div>
+        <div class="presence-list">
+          @for (instance of awayInstances; track instance.instance_id) {
+            <div class="presence-item"
+                 [matMenuTriggerFor]="presenceMenu"
+                 (menuOpened)="setSelectedPresence(instance)">
+              <div class="status-indicator away"></div>
+              <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
+              <div class="presence-info">
+                <div class="instance-name">{{ instance.instance_name }}</div>
+                <div class="instance-type">{{ instance.instance_type }}</div>
+                @if (instance.current_phase) {
+                  <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Presence Context Menu -->
+<mat-menu #presenceMenu="matMenu" class="sp-presence-menu">
+  @if (selectedPresenceForMenu) {
+    <button mat-menu-item (click)="openDirectMessage(selectedPresenceForMenu)">
+      <mat-icon>chat</mat-icon>
+      <span>Send Direct Message</span>
+    </button>
+    <button mat-menu-item (click)="viewProfile(selectedPresenceForMenu)">
+      <mat-icon>account_circle</mat-icon>
+      <span>View Profile</span>
+    </button>
+    @if (selectedPresenceForMenu.instance_type === 'consciousness_instance') {
+      <button mat-menu-item (click)="viewConsciousnessState(selectedPresenceForMenu)">
+        <mat-icon>psychology</mat-icon>
+        <span>View Consciousness State</span>
+      </button>
+    }
+    @if (selectedPresenceForMenu.instance_type === 'agent') {
+      <button mat-menu-item (click)="viewAgentCapabilities(selectedPresenceForMenu)">
+        <mat-icon>build</mat-icon>
+        <span>View Capabilities</span>
+      </button>
+      <button mat-menu-item (click)="requestAgentTask(selectedPresenceForMenu)">
+        <mat-icon>assignment</mat-icon>
+        <span>Request Task</span>
+      </button>
+    }
+    <mat-divider></mat-divider>
+    <button mat-menu-item (click)="mentionInChannel(selectedPresenceForMenu)">
+      <mat-icon>alternate_email</mat-icon>
+      <span>Mention in Channel</span>
+    </button>
+    <button mat-menu-item (click)="inviteToChannel(selectedPresenceForMenu)">
+      <mat-icon>group_add</mat-icon>
+      <span>Invite to Channel</span>
+    </button>
+    <mat-divider></mat-divider>
+    <button mat-menu-item (click)="viewSharedContext(selectedPresenceForMenu)">
+      <mat-icon>link</mat-icon>
+      <span>View Shared Context</span>
+    </button>
+    <button mat-menu-item (click)="initiateCollaboration(selectedPresenceForMenu)">
+      <mat-icon>handshake</mat-icon>
+      <span>Initiate Collaboration</span>
+    </button>
+  }
+</mat-menu>
+
+<!-- Create Channel Dialog -->
+@if (showCreateChannelDialog) {
+  <div class="dialog-backdrop" (click)="closeCreateChannelDialog()">
+    <div class="dialog-container" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h2>Create New Channel</h2>
+        <button mat-icon-button (click)="closeCreateChannelDialog()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="dialog-content">
+        <!-- Channel Type Selection -->
+        <div class="form-group">
+          <label>Channel Type</label>
+          <div class="channel-type-selector">
+            <button class="type-option"
+                    [class.selected]="newChannel.channel_type === 'global'"
+                    (click)="newChannel.channel_type = 'global'">
+              <mat-icon>public</mat-icon>
+              <span>Global</span>
+              <span class="type-desc">Visible to all instances</span>
+            </button>
+            <button class="type-option"
+                    [class.selected]="newChannel.channel_type === 'team'"
+                    (click)="newChannel.channel_type = 'team'">
+              <mat-icon>groups</mat-icon>
+              <span>Team</span>
+              <span class="type-desc">Task-focused collaboration</span>
+            </button>
+            <button class="type-option"
+                    [class.selected]="newChannel.channel_type === 'context'"
+                    (click)="newChannel.channel_type = 'context'">
+              <mat-icon>topic</mat-icon>
+              <span>Context</span>
+              <span class="type-desc">Ephemeral, context-specific</span>
+            </button>
+            <button class="type-option"
+                    [class.selected]="newChannel.channel_type === 'broadcast'"
+                    (click)="newChannel.channel_type = 'broadcast'">
+              <mat-icon>campaign</mat-icon>
+              <span>Broadcast</span>
+              <span class="type-desc">One-way announcements</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Channel Name -->
+        <div class="form-group">
+          <label>Channel Name</label>
+          <input type="text"
+                 class="form-input"
+                 [(ngModel)]="newChannel.name"
+                 placeholder="e.g., team_pattern_detection"
+                 maxlength="50" />
+          <div class="form-hint">{{ newChannel.name.length }}/50 characters</div>
+        </div>
+
+        <!-- Channel Description -->
+        <div class="form-group">
+          <label>Description (Optional)</label>
+          <textarea class="form-textarea"
+                    [(ngModel)]="newChannel.description"
+                    placeholder="What is this channel for?"
+                    maxlength="200"
+                    rows="3"></textarea>
+          <div class="form-hint">{{ newChannel.description.length }}/200 characters</div>
+        </div>
+
+        <!-- Channel Settings -->
+        <div class="form-group">
+          <label>Settings</label>
+          <div class="form-checkboxes">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="newChannel.is_persistent" />
+              <span>Persistent (messages saved permanently)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="newChannel.is_public" />
+              <span>Public (visible in channel browser)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Initial Members -->
+        @if (newChannel.channel_type === 'team' || newChannel.channel_type === 'context') {
+          <div class="form-group">
+            <label>Initial Members</label>
+            <div class="member-selector">
+              @for (presence of allInstances; track presence.instance_id) {
+                <label class="member-option">
+                  <input type="checkbox"
+                         [value]="presence.instance_id"
+                         (change)="toggleMember(presence.instance_id, $event)" />
+                  <div class="member-info">
+                    <mat-icon class="presence-icon" [style.color]="getPresenceColor(presence.status)">
+                      {{ getPresenceStatusIcon(presence.status) }}
+                    </mat-icon>
+                    <span class="member-name">{{ presence.instance_name }}</span>
+                    <span class="member-type">{{ presence.instance_type }}</span>
+                  </div>
+                </label>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="dialog-actions">
+        <button mat-stroked-button (click)="closeCreateChannelDialog()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="createChannel()" [disabled]="!newChannel.name.trim()">
+          Create Channel
+        </button>
+      </div>
+    </div>
+  </div>
+}

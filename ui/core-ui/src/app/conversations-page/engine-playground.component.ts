@@ -56,7 +56,21 @@ export class EnginePlaygroundComponent {
   reasoning?: StepResponse;
   evaluation?: StepResponse;
 
-  constructor(private readonly engine: EngineService) {}
+  private _subs: Partial<Record<'Comprehension' | 'Orchestration' | 'Reasoning' | 'Evaluation', import('rxjs').Subscription>> = {};
+
+  constructor(private readonly engine: EngineService) {
+    try {
+      const saved = window.localStorage.getItem('engine.models');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        this.modelByStep = { ...this.modelByStep, ...parsed };
+      }
+    } catch { /* ignore */ }
+  }
+
+  private _persistModels() {
+    try { window.localStorage.setItem('engine.models', JSON.stringify(this.modelByStep)); } catch { /* ignore */ }
+  }
 
   private _payload() { return { message_id: crypto.randomUUID(), user_input: this.inputText }; }
   private _markStart(step: string) { (this as any)._t0 = performance.now(); this.isBusy = true; this.stepBusy[step] = true; this.activeStepIndex = this.steps.indexOf(step as any) ?? 0; }
@@ -76,7 +90,8 @@ export class EnginePlaygroundComponent {
   runComprehension() {
     this._markStart('Comprehension');
     this.comprehension = { step: 'Comprehension', text: '' } as StepResponse;
-    this.engine.comprehensionStream({ ...this._payload(), model: this.modelByStep.Comprehension }).subscribe({
+    this._persistModels();
+    this._subs['Comprehension'] = this.engine.comprehensionStream({ ...this._payload(), model: this.modelByStep.Comprehension }).subscribe({
       next: (evt: StepStreamEvent) => {
         if (evt.type === 'chunk') {
           this.comprehension!.text += evt.text;
@@ -94,7 +109,8 @@ export class EnginePlaygroundComponent {
   runOrchestration() {
     this._markStart('Orchestration');
     this.orchestration = { step: 'Orchestration', text: '' } as StepResponse;
-    this.engine.orchestrationStream({
+    this._persistModels();
+    this._subs['Orchestration'] = this.engine.orchestrationStream({
       ...this._payload(),
       model: this.modelByStep.Orchestration,
       comprehension_text: this.comprehension?.text,
@@ -117,7 +133,8 @@ export class EnginePlaygroundComponent {
   runReasoning() {
     this._markStart('Reasoning');
     this.reasoning = { step: 'Reasoning', text: '' } as StepResponse;
-    this.engine.reasoningStream({
+    this._persistModels();
+    this._subs['Reasoning'] = this.engine.reasoningStream({
       ...this._payload(),
       model: this.modelByStep.Reasoning,
       comprehension_text: this.comprehension?.text,
@@ -141,7 +158,8 @@ export class EnginePlaygroundComponent {
   runEvaluation() {
     this._markStart('Evaluation');
     this.evaluation = { step: 'Evaluation', text: '' } as StepResponse;
-    this.engine.evaluationStream({
+    this._persistModels();
+    this._subs['Evaluation'] = this.engine.evaluationStream({
       ...this._payload(),
       model: this.modelByStep.Evaluation,
       comprehension_text: this.comprehension?.text,
@@ -171,6 +189,17 @@ export class EnginePlaygroundComponent {
   public copy(text: string) {
     if (navigator?.clipboard && text) {
       navigator.clipboard.writeText(text).catch(() => {});
+    }
+  }
+
+  public stop(step: 'Comprehension' | 'Orchestration' | 'Reasoning' | 'Evaluation') {
+    const sub = this._subs[step];
+    if (sub) {
+      try { sub.unsubscribe(); } catch { /* ignore */ }
+      this.stepBusy[step] = false;
+      if (!this.stepBusy['Comprehension'] && !this.stepBusy['Orchestration'] && !this.stepBusy['Reasoning'] && !this.stepBusy['Evaluation']) {
+        this.isBusy = false;
+      }
     }
   }
 }

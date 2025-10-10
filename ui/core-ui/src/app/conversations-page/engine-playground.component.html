@@ -55,7 +55,12 @@
             <button mat-icon-button color="primary" (click)="runComprehension()" matTooltip="Run Comprehension">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Comprehension']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Comprehension']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Comprehension')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(comprehension?.text || '')" [disabled]="!comprehension" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -96,7 +101,12 @@
             <button mat-icon-button color="primary" (click)="runOrchestration()" matTooltip="Run Orchestration">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Orchestration']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Orchestration']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Orchestration')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(orchestration?.text || '')" [disabled]="!orchestration" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -141,7 +151,12 @@
             <button mat-icon-button color="primary" (click)="runReasoning()" matTooltip="Run Reasoning">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Reasoning']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Reasoning']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Reasoning')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(reasoning?.text || '')" [disabled]="!reasoning" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -179,7 +194,12 @@
             <button mat-icon-button color="primary" (click)="runEvaluation()" matTooltip="Run Evaluation">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Evaluation']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Evaluation']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Evaluation')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(evaluation?.text || '')" [disabled]="!evaluation" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>

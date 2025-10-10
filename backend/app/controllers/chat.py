@@ -1,8 +1,9 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, AsyncGenerator, Optional
 import logging
+import uuid
 
 from app.services.chat_service import chat_service
 from app.repository.conversation_repository import (
@@ -14,6 +15,8 @@ from app.services import knowledgebase_service as kb_svc
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+ALLOWED_PROVIDERS = {"openai", "anthropic", "ollama", "local"}
+ALLOWED_MODELS = {"gpt-5", "gpt-4.1", "gpt-4o", "gpt-4o-mini", "o3-mini", "claude-3-5"}
 
 class Message(BaseModel):
     role: str
@@ -43,6 +46,16 @@ async def chat_stream(request: ChatRequest):
     # RSI TODO: Add request-level correlation id and include in logs + response headers for traceability.
     # RSI TODO: Enforce provider/model allowlist via config; validate inputs and size limits.
     # RSI TODO: Surface structured error events with codes; add rate limiting/backpressure.
+
+    # Correlation id for tracing
+    correlation_id = str(uuid.uuid4())
+    logger.info("chat_stream start correlation_id=%s provider=%s model=%s", correlation_id, request.provider, request.model)
+
+    # Provider/model validation
+    if request.provider and request.provider not in ALLOWED_PROVIDERS:
+        raise HTTPException(status_code=400, detail="Unsupported provider")
+    if request.model and request.model not in ALLOWED_MODELS:
+        raise HTTPException(status_code=400, detail="Unsupported model")
 
     # -------------------------------------------------------------------
     # 1. Ensure we have a conversation id and persist the incoming user msg
@@ -80,28 +93,31 @@ async def chat_stream(request: ChatRequest):
             )
             final_messages = kb_svc.build_rag_messages(final_messages, context_chunks=ctx.get("chunks", []))
 
-        async for chunk in chat_service(
-            model=request.model,
-            messages=final_messages,
-            provider=request.provider or "openai",
-        ):
-            logger.debug("Received chunk: %s", chunk)
+        try:
+            async for chunk in chat_service(
+                model=request.model,
+                messages=final_messages,
+                provider=request.provider or "openai",
+            ):
+                logger.debug("Received chunk: %s", chunk)
 
-            # Try to accumulate the assistant message content from the SSE
-            # payload.  We purposefully do *not* parse the JSON with Pydantic
-            # here for performance. The payload looks like::
-            #   data: {"delta": "text"}
-            try:
-                import json as _json
+                # Try to accumulate the assistant message content from the SSE
+                try:
+                    import json as _json
 
-                if chunk.startswith("data:"):
-                    data_str = chunk.partition(":")[2].strip()
-                    data_json = _json.loads(data_str)
-                    assistant_accum += data_json.get("delta", "")
-            except Exception:  # noqa: BLE001
-                pass
+                    if chunk.startswith("data:"):
+                        data_str = chunk.partition(":")[2].strip()
+                        data_json = _json.loads(data_str)
+                        assistant_accum += data_json.get("delta", "")
+                except Exception:  # noqa: BLE001
+                    pass
 
-            yield chunk
+                yield chunk
+        except Exception as exc:  # noqa: BLE001
+            import json as _json
+            logger.error("chat_stream error correlation_id=%s error=%s", correlation_id, str(exc))
+            err = {"code": "stream_error", "message": str(exc), "correlation_id": correlation_id}
+            yield f"event: error\ndata: {_json.dumps(err)}\n\n"
 
         # Persist the assistant reply once the OpenAI stream ends.
         if assistant_accum:
@@ -121,6 +137,7 @@ async def chat_stream(request: ChatRequest):
         "Transfer-Encoding": "chunked",
         "X-Vercel-AI-Data-Stream": "v1",
         "X-Conversation-Id": conv_id,
+        "X-Correlation-Id": correlation_id,
         # Explicit CORS headers to avoid browser blocking even on SSE streams
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "*",

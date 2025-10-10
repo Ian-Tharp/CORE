@@ -43,13 +43,11 @@
               (click)="selectConversation(conv.id)"
               [ngClass]="{ selected: conv.id === selectedConversationId }"
             >
-              <!-- RSI TODO: Replace this *ngIf with @if once template logic is refactored. -->
-              <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
+              @if (editingConversationId !== conv.id) {
                 <div matLine class="title-line">
                   {{ conv.title || (conv.id | slice:0:8) }}
                 </div>
-              </ng-container>
-              <ng-template #editTitle>
+              } @else {
                 <input
                   type="text"
                   class="title-edit-input"
@@ -59,7 +57,7 @@
                   (click)="$event.stopPropagation()"
                   autofocus
                 />
-              </ng-template>
+              }
 
               <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
 
@@ -81,8 +79,8 @@
 
   <section class="chat-section">
     <div class="two-col">
-      <!-- RSI TODO: Remove always-true *ngIf; use structural conditions only when needed. -->
-      <mat-card class="chat-card" *ngIf="true">
+      <!-- RSI TODO: Remove always-true *ngIf; using direct render. -->
+      <mat-card class="chat-card">
         <app-chat-window
           [conversationId]="selectedConversationId"
           (conversationIdChange)="onConversationCreated($event)"
