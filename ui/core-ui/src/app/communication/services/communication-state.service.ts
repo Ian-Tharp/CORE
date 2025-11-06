@@ -7,8 +7,16 @@ import { Channel, InstancePresence } from '../models/communication.models';
 })
 export class CommunicationStateService {
   private selectedChannelSubject = new BehaviorSubject<Channel | null>(null);
+
+  // Generate unique instance ID per window/tab to support multiple connections
+  private generateInstanceId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 9);
+    return `human_ian_${timestamp}_${random}`;
+  }
+
   private currentUserSubject = new BehaviorSubject<InstancePresence>({
-    instance_id: 'human_ian',
+    instance_id: this.generateInstanceId(),
     instance_name: 'Ian',
     instance_type: 'human',
     status: 'online',

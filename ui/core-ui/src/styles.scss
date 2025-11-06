@@ -3,6 +3,7 @@
 /* Angular Material Theme Configuration */
 @use '@angular/material' as mat;
 @use './solarpunk-theme' as solarpunk;
+@use './styles/agents/components' as *;
 
 // Include the common styles for Angular Material
 @include mat.core();
@@ -70,6 +71,20 @@ body {
   border-radius: 8px !important;
 }
 
+/* Ensure consistent border radius across all Material button variants */
+.mat-mdc-button-base,
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-stroked-button {
+  border-radius: 0.5rem !important;
+}
+
+/* Icon buttons: keep rounded corners matching the system */
+.mat-mdc-icon-button {
+  border-radius: 0.5rem !important;
+}
+
 .mat-mdc-raised-button {
   box-shadow: 
     0 3px 12px rgba(0, 0, 0, 0.3),
@@ -93,6 +108,12 @@ body {
 .mat-mdc-standard-chip {
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(5px);
+  border-radius: 0.75rem !important;
+}
+
+/* Icon vertical alignment consistency */
+.mat-icon {
+  vertical-align: middle;
 }
 
 /* --- Next-Gen Glass Inputs & Selects (global) ------------------------ */

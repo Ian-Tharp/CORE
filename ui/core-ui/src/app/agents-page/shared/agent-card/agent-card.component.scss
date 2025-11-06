@@ -1,0 +1,37 @@
+.agent-card {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+    .icon { font-size: 2rem; color: #00ff88; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+    .status-dot { position: absolute; top: -0.2rem; right: -0.2rem; }
+
+    .title-wrap { flex: 1; }
+    .name { margin: 0; font-size: 1.1rem; color: #fff; }
+    .meta { margin: 0; color: rgba(255,255,255,0.7); font-size: 0.875rem; }
+    .header-actions { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .header-actions .mat-mdc-icon-button { border-radius: 0.5rem; }
+  }
+
+  .desc { color: rgba(255,255,255,0.85); margin: 0; line-height: 1.5; }
+
+  .tags { margin-top: 0.25rem; }
+
+  .meta {
+    display: flex; align-items: center; gap: 0.75rem; color: rgba(255,255,255,0.7);
+    .instances { display: inline-flex; align-items: center; gap: 0.25rem; }
+    mat-icon { font-size: 1rem; height: 1rem; width: 1rem; }
+  }
+
+  .actions { margin-top: 0.25rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .actions .mat-mdc-raised-button { border-radius: 0.5rem; }
+}
+
+

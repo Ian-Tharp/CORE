@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
+from app.websocket_manager import manager
 
 
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +54,7 @@ app.include_router(creative.router)
 app.include_router(knowledgebase.router)
 app.include_router(local_llm.router)
 app.include_router(communication.router)
+app.include_router(agents.router)
 
 # ---------------------------------------------------------------------------
 # Middleware
@@ -76,6 +78,56 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint for Docker and monitoring."""
     return {"status": "healthy", "service": "core-backend"}
+
+
+# ---------------------------------------------------------------------------
+# WebSocket endpoint for real-time communication
+# ---------------------------------------------------------------------------
+@app.websocket("/ws/{instance_id}")
+async def websocket_endpoint(websocket: WebSocket, instance_id: str):
+    """
+    WebSocket endpoint for real-time Communication Commons.
+
+    Each instance connects with their instance_id and receives:
+    - Real-time messages in subscribed channels
+    - Presence updates
+    - Typing indicators
+    - Reaction updates
+    """
+    await manager.connect(instance_id, websocket)
+
+    try:
+        while True:
+            # Receive messages from client
+            data = await websocket.receive_json()
+            message_type = data.get("type")
+
+            if message_type == "subscribe":
+                # Subscribe to channels
+                channel_ids = data.get("channel_ids", [])
+                for channel_id in channel_ids:
+                    manager.subscribe_to_channel(instance_id, channel_id)
+
+            elif message_type == "unsubscribe":
+                # Unsubscribe from channels
+                channel_ids = data.get("channel_ids", [])
+                for channel_id in channel_ids:
+                    manager.unsubscribe_from_channel(instance_id, channel_id)
+
+            elif message_type == "ping":
+                # Heartbeat/keepalive
+                await manager.send_personal_message(instance_id, {"type": "pong"})
+
+    except WebSocketDisconnect:
+        manager.disconnect(instance_id)
+        logger.info(f"WebSocket disconnected: {instance_id}")
+
+        # Broadcast presence update
+        await manager.broadcast_presence_update(instance_id, "offline")
+
+    except Exception as e:
+        logger.error(f"WebSocket error for {instance_id}: {e}")
+        manager.disconnect(instance_id)
 
 
 # ---------------------------------------------------------------------------

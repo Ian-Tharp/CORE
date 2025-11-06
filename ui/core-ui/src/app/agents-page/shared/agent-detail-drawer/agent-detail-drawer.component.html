@@ -1,0 +1,53 @@
+@if (open && agent) {
+  <div class="drawer-backdrop" (click)="onBackdrop()"></div>
+  <aside class="drawer glass-morphism" (click)="$event.stopPropagation()">
+    <header class="head sticky">
+      <div class="title">
+        <mat-icon>hub</mat-icon>
+        <div>
+          <h3 class="name">{{ agent.displayName }}</h3>
+          <p class="sub">v{{ agent.version }} · {{ agent.category }}</p>
+        </div>
+      </div>
+      <div class="head-actions">
+        <button mat-icon-button [attr.aria-label]="agent.favorite ? 'Unfavorite' : 'Favorite'" (click)="favoriteToggled.emit(agent)"><mat-icon color="warn">{{ agent.favorite ? 'favorite' : 'favorite_border' }}</mat-icon></button>
+        <button mat-icon-button [attr.aria-label]="agent.enabled ? 'Disable' : 'Enable'" (click)="enableToggled.emit(agent)"><mat-icon>{{ agent.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon></button>
+        <button mat-icon-button (click)="closed.emit()"><mat-icon>close</mat-icon></button>
+      </div>
+    </header>
+
+    <mat-tab-group>
+      <mat-tab label="Overview">
+        <div class="section">
+          <p>{{ agent.longDescription || agent.description }}</p>
+          <div class="chips">
+            <mat-chip-set>
+              @for (tag of agent.tags; track tag) { <mat-chip>{{ tag }}</mat-chip> }
+            </mat-chip-set>
+          </div>
+        </div>
+      </mat-tab>
+      <mat-tab label="Capabilities">
+        <div class="section">
+          @for (cap of agent.capabilities; track cap.name) {
+            <div class="cap">
+              <mat-icon>{{ cap.icon }}</mat-icon>
+              <div>
+                <div class="cap-name">{{ cap.name }}</div>
+                <div class="cap-desc">{{ cap.description }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <footer class="foot sticky">
+      <button mat-stroked-button color="primary" (click)="exportClicked.emit(agent)"><mat-icon>download</mat-icon> Export</button>
+      <button mat-stroked-button (click)="duplicateClicked.emit(agent)"><mat-icon>content_copy</mat-icon> Duplicate</button>
+      <button mat-stroked-button color="warn" (click)="deleteClicked.emit(agent)"><mat-icon>delete</mat-icon> Delete</button>
+    </footer>
+  </aside>
+}
+
+

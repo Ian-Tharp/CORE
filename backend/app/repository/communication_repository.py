@@ -308,6 +308,40 @@ async def create_message(
 # REACTIONS
 # =============================================================================
 
+async def get_message(message_id: str) -> Optional[Dict[str, Any]]:
+    """Get a single message by ID."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT
+                message_id,
+                channel_id,
+                sender_id,
+                sender_name,
+                sender_type,
+                content,
+                message_type,
+                parent_message_id,
+                thread_id,
+                created_at,
+                edited_at,
+                metadata
+            FROM communication_messages
+            WHERE message_id = $1
+            """,
+            message_id
+        )
+        if not row:
+            return None
+
+        result = dict(row)
+        for key, value in result.items():
+            if hasattr(value, 'isoformat'):
+                result[key] = value.isoformat()
+        return result
+
+
 async def get_message_reactions(message_id: str) -> List[Dict[str, Any]]:
     """Get all reactions for a message with counts."""
     pool = await get_db_pool()

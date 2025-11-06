@@ -1,0 +1,52 @@
+<div class="filter-bar glass-morphism">
+  <div class="row">
+    <mat-form-field appearance="outline" class="search">
+      <mat-label>Search my agents</mat-label>
+      <input #searchInput matInput [formControl]="searchControl" placeholder="Name, tag, description" aria-label="Search my agents" />
+      <mat-icon matPrefix>search</mat-icon>
+      @if (searchControl.value) {
+        <mat-icon matSuffix (click)="searchControl.setValue('')">clear</mat-icon>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sort">
+      <mat-label>Sort by</mat-label>
+      <mat-select [formControl]="sortField">
+        <mat-option value="lastUsed">Last used</mat-option>
+        <mat-option value="name">Name</mat-option>
+        <mat-option value="rating">Rating</mat-option>
+        <mat-option value="instances">Instances</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="dir">
+      <mat-label>Direction</mat-label>
+      <mat-select [formControl]="sortDir">
+        <mat-option value="desc">Descending</mat-option>
+        <mat-option value="asc">Ascending</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="chips">
+    <mat-chip (click)="toggleFav()" [class.selected]="favoritesOnly()">
+      <mat-icon>favorite</mat-icon> Favorites
+    </mat-chip>
+    <mat-chip (click)="toggleEnabled()" [class.selected]="enabledOnly()">
+      <mat-icon>toggle_on</mat-icon> Enabled
+    </mat-chip>
+    <mat-chip (click)="toggleDrafts()" [class.selected]="draftsOnly()">
+      <mat-icon>draft</mat-icon> Drafts
+    </mat-chip>
+    <mat-chip (click)="toggleRecent()" [class.selected]="recentlyUsed()">
+      <mat-icon>schedule</mat-icon> Recently used
+    </mat-chip>
+    <span class="spacer"></span>
+    <button mat-stroked-button class="clear" aria-label="Clear filters" (click)="clearAll()">
+      <mat-icon>filter_alt_off</mat-icon>
+      Clear
+    </button>
+  </div>
+</div>
+
+

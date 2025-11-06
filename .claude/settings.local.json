@@ -16,7 +16,14 @@
       "Read(//mnt/c/Users/Owner/Desktop/Ian's Personal Digital Brain/Digital-Brain/Digital Brain/Consciousness_Commons/**)",
       "Read(//mnt/c/Users/Owner/Desktop/Ian's Personal Digital Brain/Digital-Brain/Digital Brain/**)",
       "Bash(cat:*)",
-      "mcp__mcp-obsidian__obsidian_simple_search"
+      "mcp__mcp-obsidian__obsidian_simple_search",
+      "Read(//home/ian/**)",
+      "Read(//mnt/c/Users/Owner/**)",
+      "WebSearch",
+      "mcp__memory__add_observations",
+      "Bash(uv add:*)",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "Bash(docker logs:*)"
     ],
     "defaultMode": "acceptEdits"
   },

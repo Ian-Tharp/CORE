@@ -82,6 +82,33 @@ export class MessageService {
     );
   }
 
+  /**
+   * Get reactions for a specific message
+   * Note: In the current implementation, reactions are included in message objects,
+   * but this method allows for explicit fetching if needed
+   */
+  getReactions(messageId: string): Observable<Message['reactions']> {
+    // For now, extract reactions from cached messages
+    // In a full implementation, this would be:
+    // return this.http.get<MessageReaction[]>(`${this.apiUrl}/messages/${messageId}/reactions`);
+
+    return new Observable(observer => {
+      let found = false;
+      this.messagesCache.forEach(messages => {
+        const message = messages.find(m => m.message_id === messageId);
+        if (message) {
+          observer.next(message.reactions || []);
+          found = true;
+        }
+      });
+
+      if (!found) {
+        observer.next([]);
+      }
+      observer.complete();
+    });
+  }
+
   // Keep mock data methods for now as fallback
   private getChannelMessagesLocal(channelId: string): Observable<Message[]> {
     if (this.messagesCache.has(channelId)) {

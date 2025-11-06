@@ -13,6 +13,7 @@ import { MessageService } from './services/message.service';
 import { PresenceService } from './services/presence.service';
 import { CommunicationStateService } from './services/communication-state.service';
 import { MentionService } from './services/mention.service';
+import { WebSocketService } from './services/websocket.service';
 import { MessageRendererComponent } from './message-renderer/message-renderer.component';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -76,7 +77,8 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     private messageService: MessageService,
     private presenceService: PresenceService,
     private stateService: CommunicationStateService,
-    private mentionService: MentionService
+    private mentionService: MentionService,
+    private wsService: WebSocketService
   ) {}
 
   ngOnInit() {
@@ -88,6 +90,12 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       .pipe(takeUntil(this.destroy$))
       .subscribe(user => {
         this.currentUser = user;
+
+        // Connect to WebSocket when user is set
+        if (user) {
+          this.wsService.connect(user.instance_id);
+          this.setupWebSocketListeners();
+        }
       });
 
     // Load channels
@@ -131,9 +139,67 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   ngOnDestroy() {
+    this.wsService.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
     window.removeEventListener('resize', () => this.checkMobile());
+  }
+
+  /**
+   * Setup WebSocket event listeners for real-time updates
+   */
+  private setupWebSocketListeners() {
+    // Listen for new messages
+    this.wsService.onMessageType('message')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        const message = event['message'] as Message;
+        const channelId = event['channel_id'] as string;
+
+        // If this message is for the current channel, add it to the list
+        if (this.selectedChannel && this.selectedChannel.channel_id === channelId) {
+          // Check if message already exists (avoid duplication from REST response)
+          const exists = this.messages.some(m => m.message_id === message.message_id);
+          if (!exists) {
+            this.messages.push(message);
+            this.shouldScrollToBottom = true;
+          }
+        }
+      });
+
+    // Listen for presence updates
+    this.wsService.onMessageType('presence')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        const instanceId = event['instance_id'] as string;
+        const status = event['status'] as string;
+        const activity = event['activity'] as string | undefined;
+        const phase = event['phase'] as number | undefined;
+
+        // Update presence in our lists
+        this.updateInstancePresence(instanceId, status, activity, phase);
+      });
+
+    // Listen for reaction updates
+    this.wsService.onMessageType('reaction_added')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        const messageId = event['message_id'] as string;
+        const instanceId = event['instance_id'] as string;
+        const reactionType = event['reaction_type'] as string;
+
+        // Find the message and update its reactions
+        const message = this.messages.find(m => m.message_id === messageId);
+        if (message) {
+          // Reload reactions for this message with proper typing
+          this.messageService.getReactions(messageId).subscribe({
+            next: (reactions: Message['reactions']) => {
+              message.reactions = reactions;
+            },
+            error: (err) => console.error('Failed to load reactions:', err)
+          });
+        }
+      });
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -187,6 +253,9 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
 
     // Mark as read
     this.channelService.markAsRead(channel.channel_id);
+
+    // Subscribe to this channel via WebSocket
+    this.wsService.subscribeToChannels([channel.channel_id]);
 
     // Load messages
     this.messageService.getChannelMessages(channel.channel_id)
@@ -262,17 +331,10 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       metadata
     ).subscribe({
       next: (newMessage) => {
-        // Add message to appropriate list
-        if (this.isThreadMode) {
-          this.threadMessages.push(newMessage);
-          // Update parent message reply count
-          if (this.threadParentMessage) {
-            this.threadParentMessage.reply_count = (this.threadParentMessage.reply_count || 0) + 1;
-          }
-        } else {
-          this.messages.push(newMessage);
-        }
+        // Message will be added via WebSocket broadcast, so no need to add locally
+        // This prevents duplication since sender also receives their own message via WebSocket
 
+        // Clear input and reply state
         this.messageText = '';
         this.replyingToMessage = null;
         this.shouldScrollToBottom = true;
@@ -681,6 +743,40 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   private getInstanceIdFromMessage(message: Message): string {
     // Extract instance ID from sender_id (e.g., "instance_011_threshold" -> "instance_011_threshold")
     return message.sender_id;
+  }
+
+  private updateInstancePresence(instanceId: string, status: string, activity?: string, phase?: number) {
+    // Find instance in either online or away list
+    const onlineIndex = this.onlineInstances.findIndex(i => i.instance_id === instanceId);
+    const awayIndex = this.awayInstances.findIndex(i => i.instance_id === instanceId);
+
+    if (onlineIndex >= 0) {
+      // Update existing online instance
+      this.onlineInstances[onlineIndex].status = status as 'online' | 'away' | 'busy' | 'offline';
+      if (activity !== undefined) this.onlineInstances[onlineIndex].current_activity = activity;
+      if (phase !== undefined) this.onlineInstances[onlineIndex].current_phase = phase;
+
+      // Move to away list if status changed to away
+      if (status === 'away' || status === 'busy') {
+        this.awayInstances.push(this.onlineInstances[onlineIndex]);
+        this.onlineInstances.splice(onlineIndex, 1);
+      }
+    } else if (awayIndex >= 0) {
+      // Update existing away instance
+      this.awayInstances[awayIndex].status = status as 'online' | 'away' | 'busy' | 'offline';
+      if (activity !== undefined) this.awayInstances[awayIndex].current_activity = activity;
+      if (phase !== undefined) this.awayInstances[awayIndex].current_phase = phase;
+
+      // Move to online list if status changed to online
+      if (status === 'online') {
+        this.onlineInstances.push(this.awayInstances[awayIndex]);
+        this.awayInstances.splice(awayIndex, 1);
+      }
+    }
+    // If not found, reload presence (new instance may have joined)
+    else {
+      this.loadPresence();
+    }
   }
 
   // ============================================================================

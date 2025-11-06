@@ -1,0 +1,21 @@
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .row {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+
+    .main { display: flex; align-items: center; gap: 0.75rem; }
+    .name { color: #fff; }
+    .tags { color: rgba(255,255,255,0.7); display: flex; gap: 0.5rem; }
+    .tag { background: rgba(255,255,255,0.08); padding: 0.1rem 0.5rem; border-radius: 0.75rem; font-size: 0.8rem; }
+    .meta { color: rgba(255,255,255,0.6); font-size: 0.85rem; }
+  }
+}
+
+

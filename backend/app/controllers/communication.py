@@ -12,6 +12,8 @@ from typing import List, Optional, Dict, Any
 import uuid
 
 from app.repository import communication_repository as comm_repo
+from app.websocket_manager import manager
+from app.services.agent_response_service import get_agent_response_service
 
 router = APIRouter(prefix="/communication", tags=["communication"])
 
@@ -178,7 +180,27 @@ async def send_message(
     reactions = await comm_repo.get_message_reactions(message_id)
     message['reactions'] = reactions
 
-    # TODO: Broadcast message via WebSocket to all channel subscribers
+    # Broadcast message via WebSocket to all channel subscribers
+    await manager.broadcast_to_channel(
+        channel_id=channel_id,
+        message={
+            "type": "message",
+            "channel_id": channel_id,
+            "message": message
+        }
+    )
+
+    # Process message for agent mentions (async, non-blocking)
+    # This checks for @mentions and triggers agent responses
+    import asyncio
+    asyncio.create_task(
+        get_agent_response_service().process_message(
+            message_id=message_id,
+            channel_id=channel_id,
+            content=request.content,
+            sender_id=sender_id
+        )
+    )
 
     return message
 
@@ -200,7 +222,19 @@ async def add_reaction(
         reaction_type=request.reaction_type
     )
 
-    # TODO: Broadcast reaction update via WebSocket
+    # Get the message to find which channel to broadcast to
+    message = await comm_repo.get_message(message_id)
+    if message:
+        # Broadcast reaction update via WebSocket
+        await manager.broadcast_to_channel(
+            channel_id=message['channel_id'],
+            message={
+                "type": "reaction_added",
+                "message_id": message_id,
+                "instance_id": instance_id,
+                "reaction_type": request.reaction_type
+            }
+        )
 
     return {"message": "Reaction added"}
 
@@ -259,6 +293,12 @@ async def update_presence(
         phase=request.phase
     )
 
-    # TODO: Broadcast presence update via WebSocket
+    # Broadcast presence update via WebSocket
+    await manager.broadcast_presence_update(
+        instance_id=instance_id,
+        status=request.status or "online",
+        activity=request.activity,
+        phase=request.phase
+    )
 
     return None

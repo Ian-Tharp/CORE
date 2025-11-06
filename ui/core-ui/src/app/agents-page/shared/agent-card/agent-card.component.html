@@ -1,0 +1,55 @@
+<div class="agent-card glass-morphism hover-lift" tabindex="0" role="button" (click)="onSelect()" (keydown.enter)="onSelect()" (keydown.space)="$event.preventDefault(); onSelect()">
+  <div class="card-header">
+    <div class="icon-wrap" aria-hidden="true">
+      <mat-icon class="icon">hub</mat-icon>
+      <span class="status-dot" [style.color]="agent.enabled ? '#00ff88' : '#ff5252'"></span>
+    </div>
+    <div class="title-wrap">
+      <h3 class="name">{{ agent.displayName }}</h3>
+      <p class="meta">v{{ agent.version }} · {{ agent.category }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-icon-button [attr.aria-label]="agent.favorite ? 'Remove from favorites' : 'Add to favorites'" [matTooltip]="agent.favorite ? 'Unfavorite' : 'Favorite'" (click)="onToggleFavorite($event)">
+        <mat-icon color="warn">{{ agent.favorite ? 'favorite' : 'favorite_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button [attr.aria-label]="agent.enabled ? 'Disable agent' : 'Enable agent'" [matTooltip]="agent.enabled ? 'Disable' : 'Enable'" (click)="onToggleEnabled($event)">
+        <mat-icon>{{ agent.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      </button>
+      <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="More actions" (click)="$event.stopPropagation()">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="onExport($event)"><mat-icon>download</mat-icon><span>Export</span></button>
+        <button mat-menu-item (click)="onDuplicate($event)"><mat-icon>content_copy</mat-icon><span>Duplicate</span></button>
+        <button mat-menu-item (click)="onDelete($event)"><mat-icon>delete</mat-icon><span>Delete</span></button>
+      </mat-menu>
+    </div>
+  </div>
+
+  <p class="desc">{{ agent.description }}</p>
+
+  <div class="tags">
+    <mat-chip-set>
+      @for (tag of agent.tags.slice(0, 3); track tag) {
+        <mat-chip class="tag-chip" (click)="onTag($event, tag)" [attr.aria-label]="'Filter by tag ' + tag">{{ tag }}</mat-chip>
+      }
+      @if (agent.tags.length > 3) {
+        <mat-chip>+{{ agent.tags.length - 3 }}</mat-chip>
+      }
+    </mat-chip-set>
+  </div>
+
+  <div class="meta">
+    <span class="last">{{ agent.lastUsed ? (agent.lastUsed | date:'short') : '—' }}</span>
+    <span class="instances" aria-label="Instance count"><mat-icon>layers</mat-icon>{{ agent.instances }}</span>
+  </div>
+
+  <div class="actions">
+    <button mat-raised-button color="primary" (click)="onOpen($event)" aria-label="Open agent">
+      <mat-icon>open_in_new</mat-icon>
+      Open
+    </button>
+  </div>
+</div>
+
+
