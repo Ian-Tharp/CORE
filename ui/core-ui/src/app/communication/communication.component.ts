@@ -16,6 +16,7 @@ import { MentionService } from './services/mention.service';
 import { WebSocketService } from './services/websocket.service';
 import { MessageRendererComponent } from './message-renderer/message-renderer.component';
 import { Subject } from 'rxjs';
+import { AgentToolsService, AgentToolDto } from '../services/agent-tools.service';
 import { takeUntil } from 'rxjs/operators';
 
 @Component({
@@ -65,6 +66,10 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   threadMessages: Message[] = [];
   replyingToMessage: Message | null = null;
 
+  // Inline thread expansion state
+  private expandedThreadIds: Set<string> = new Set<string>();
+  private inlineThreadCache: Map<string, Message[]> = new Map<string, Message[]>();
+
   // Mention autocomplete state
   showMentionDropdown = false;
   mentionSuggestions: MentionSuggestion[] = [];
@@ -78,7 +83,8 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     private presenceService: PresenceService,
     private stateService: CommunicationStateService,
     private mentionService: MentionService,
-    private wsService: WebSocketService
+    private wsService: WebSocketService,
+    private agentTools: AgentToolsService
   ) {}
 
   ngOnInit() {
@@ -127,6 +133,47 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     this.loadPresence();
   }
 
+  // Agent tools hover handling
+  private toolsHoverTimers: Map<string, any> = new Map();
+  private visibleToolsMenus: Set<string> = new Set();
+  private toolsCacheLocal: Map<string, AgentToolDto[]> = new Map();
+
+  onAgentToolsHover(message: Message) {
+    if (message.sender_type !== 'agent') return;
+    const id = message.sender_id;
+    if (this.toolsHoverTimers.has(id)) return;
+    const timer = setTimeout(() => {
+      this.visibleToolsMenus.add(id);
+      // Always refresh once when opening to ensure full list (handles first-time partials)
+      this.agentTools.refreshTools(id).subscribe({
+        next: tools => this.toolsCacheLocal.set(id, tools),
+        error: () => this.toolsCacheLocal.set(id, [])
+      });
+      this.toolsHoverTimers.delete(id);
+    }, 1000);
+    this.toolsHoverTimers.set(id, timer);
+  }
+
+  onAgentToolsHoverLeave(message: Message) {
+    const id = message.sender_id;
+    const t = this.toolsHoverTimers.get(id);
+    if (t) clearTimeout(t);
+    this.toolsHoverTimers.delete(id);
+    this.visibleToolsMenus.delete(id);
+  }
+
+  getAgentToolCount(agentId: string): number {
+    return (this.toolsCacheLocal.get(agentId) || []).length;
+  }
+
+  shouldShowAgentToolsMenu(message: Message): boolean {
+    return this.visibleToolsMenus.has(message.sender_id);
+  }
+
+  getAgentTools(agentId: string): AgentToolDto[] {
+    return this.toolsCacheLocal.get(agentId) || [];
+  }
+
   private updateTotalUnreadCount() {
     this.totalUnreadCount = this.channels.reduce((sum, channel) => sum + (channel.unread_count || 0), 0);
   }
@@ -154,11 +201,27 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       .pipe(takeUntil(this.destroy$))
       .subscribe(event => {
         const message = event['message'] as Message;
-        const channelId = event['channel_id'] as string;
+        const channelId = (event['channel_id'] as string) || (message?.channel_id as string);
 
         // If this message is for the current channel, add it to the list
         if (this.selectedChannel && this.selectedChannel.channel_id === channelId) {
           // Check if message already exists (avoid duplication from REST response)
+          const exists = this.messages.some(m => m.message_id === message.message_id);
+          if (!exists) {
+            this.messages.push(message);
+            this.shouldScrollToBottom = true;
+          }
+        }
+      });
+
+    // Listen for legacy new_message events during migration
+    this.wsService.onMessageType('new_message')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        const message = event['message'] as Message;
+        const channelId = (event['channel_id'] as string) || (message?.channel_id as string);
+
+        if (this.selectedChannel && this.selectedChannel.channel_id === channelId) {
           const exists = this.messages.some(m => m.message_id === message.message_id);
           if (!exists) {
             this.messages.push(message);
@@ -192,6 +255,22 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
         const message = this.messages.find(m => m.message_id === messageId);
         if (message) {
           // Reload reactions for this message with proper typing
+          this.messageService.getReactions(messageId).subscribe({
+            next: (reactions: Message['reactions']) => {
+              message.reactions = reactions;
+            },
+            error: (err) => console.error('Failed to load reactions:', err)
+          });
+        }
+      });
+
+    // Listen for reaction removals
+    this.wsService.onMessageType('reaction_removed')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        const messageId = event['message_id'] as string;
+        const message = this.messages.find(m => m.message_id === messageId);
+        if (message) {
           this.messageService.getReactions(messageId).subscribe({
             next: (reactions: Message['reactions']) => {
               message.reactions = reactions;
@@ -328,7 +407,9 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       this.selectedChannel.channel_id,
       this.messageText,
       'text',
-      metadata
+      metadata,
+      parentMessageId,
+      threadId
     ).subscribe({
       next: (newMessage) => {
         // Message will be added via WebSocket broadcast, so no need to add locally
@@ -555,18 +636,22 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     );
 
     if (!dmChannel) {
-      // Create new DM channel using the full instance ID
-      const dmChannelId = `dm_${instance.instance_id}`;
-      dmChannel = {
-        channel_id: dmChannelId,
-        channel_type: 'dm',
-        name: instance.instance_name,
+      // Create new DM channel on backend
+      const request = {
+        channel_type: 'dm' as const,
+        name: `DM with ${instance.instance_name}`,
         description: `Direct message with ${instance.instance_name}`,
         is_persistent: true,
         is_public: false,
-        created_at: new Date().toISOString()
+        initial_members: [instance.instance_id]
       };
-      this.channels.push(dmChannel);
+      this.channelService.createChannel(request).subscribe({
+        next: (created) => {
+          this.selectChannel(created);
+        },
+        error: (err) => console.error('Failed to create DM channel', err)
+      });
+      return;
     }
 
     // Select the DM channel
@@ -678,6 +763,46 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
         this.messageInput.nativeElement.focus();
       }
     }, 100);
+
+    // Prefill @mention for continuation
+    const mention = `@${message.sender_name} `;
+    if (!this.messageText.startsWith(mention)) {
+      this.messageText = mention + this.messageText;
+      // Move cursor to end
+      setTimeout(() => {
+        if (this.messageInput) {
+          const el = this.messageInput.nativeElement;
+          el.setSelectionRange(this.messageText.length, this.messageText.length);
+        }
+      }, 0);
+    }
+  }
+
+  /** Toggle inline thread expansion in channel view */
+  toggleInlineThread(message: Message) {
+    const threadId = message.thread_id || message.message_id;
+    if (!threadId) return;
+    if (this.expandedThreadIds.has(threadId)) {
+      this.expandedThreadIds.delete(threadId);
+      return;
+    }
+    this.expandedThreadIds.add(threadId);
+    if (!this.inlineThreadCache.has(threadId)) {
+      this.messageService.getThreadMessages(threadId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(msgs => this.inlineThreadCache.set(threadId, msgs));
+    }
+  }
+
+  isInlineExpanded(message: Message): boolean {
+    const threadId = message.thread_id || message.message_id;
+    return !!threadId && this.expandedThreadIds.has(threadId);
+  }
+
+  getInlineThreadMessages(message: Message): Message[] {
+    const threadId = message.thread_id || message.message_id;
+    if (!threadId) return [];
+    return this.inlineThreadCache.get(threadId) || [];
   }
 
   /**

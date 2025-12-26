@@ -8,9 +8,10 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from openai import AsyncOpenAI
 import anthropic
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+# Load .env from current or parent directories if present (safe no-op if absent)
+load_dotenv(find_dotenv(usecwd=True))
 
 
 @lru_cache()
@@ -129,12 +130,25 @@ async def setup_db_schema() -> None:
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
+            # Helper to run risky DDL in an isolated savepoint so failures
+            # don't poison the outer transaction.
+            async def _safe_exec(sql: str) -> None:
+                tr = conn.transaction()
+                await tr.start()
+                try:
+                    await conn.execute(sql)
+                except Exception:
+                    await tr.rollback()
+                else:
+                    await tr.commit()
+
             # Enable pgvector extension for vector similarity search
-            try:
-                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-            except Exception:
-                # Non-fatal if extension creation fails; may be handled by image
-                pass
+            # Guard with catalog check to avoid exceptions.
+            has_vector = await conn.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')"
+            )
+            if not has_vector:
+                await _safe_exec("CREATE EXTENSION IF NOT EXISTS vector")
 
             # Conversations table
             await conn.execute(
@@ -432,17 +446,12 @@ async def setup_db_schema() -> None:
             )
 
             # Try to create a HNSW index for cosine similarity; fallback to IVFFLAT
-            try:
-                await conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_hnsw ON kb_chunks USING hnsw (embedding_vec_local vector_cosine_ops)"
-                )
-            except Exception:
-                try:
-                    await conn.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_ivfflat ON kb_chunks USING ivfflat (embedding_vec_local vector_cosine_ops) WITH (lists = 100)"
-                    )
-                except Exception:
-                    pass
+            await _safe_exec(
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_hnsw ON kb_chunks USING hnsw (embedding_vec_local vector_cosine_ops)"
+            )
+            await _safe_exec(
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_ivfflat ON kb_chunks USING ivfflat (embedding_vec_local vector_cosine_ops) WITH (lists = 100)"
+            )
 
             # -----------------------------------------------------------------
             # Agent Library: agent configurations for dynamic instantiation
@@ -498,15 +507,12 @@ async def setup_db_schema() -> None:
             )
 
             # GIN indexes for JSONB and array fields
-            try:
-                await conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_agents_interests ON agents USING GIN(interests)"
-                )
-                await conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_agents_capabilities ON agents USING GIN(capabilities)"
-                )
-            except Exception:
-                pass  # Non-fatal if GIN index creation fails
+            await _safe_exec(
+                "CREATE INDEX IF NOT EXISTS idx_agents_interests ON agents USING GIN(interests)"
+            )
+            await _safe_exec(
+                "CREATE INDEX IF NOT EXISTS idx_agents_capabilities ON agents USING GIN(capabilities)"
+            )
 
             # Seed initial agents if table is empty
             count = await conn.fetchval("SELECT COUNT(*) FROM agents")

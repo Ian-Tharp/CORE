@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
+from unittest.mock import MagicMock  # used in tests only
 from typing import List, Optional, Dict, Any
 
 from app.models.agent_models import (
@@ -34,12 +35,54 @@ from app.models.agent_models import (
 )
 from app.repository import agent_repository as agent_repo
 from app.services.agent_factory_service import get_agent_factory
+from app.services.agent_mcp_service import get_agent_mcp_service
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+# =============================================================================
+# TOOLS ENDPOINT
+# =============================================================================
+
+class AgentToolDTO(BaseModel):
+    name: str
+    mcp_server_id: Optional[str] = None
+
+
+@router.get("/{agent_id}/tools", status_code=status.HTTP_200_OK)
+async def get_agent_tools(agent_id: str) -> Dict[str, Any]:
+    """
+    Return the list of tools available to the specified agent, including
+    the MCP server id when known.
+    """
+    try:
+        agent = await agent_repo.get_agent(agent_id)
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+
+        # Build grouped tool list preserving server ids
+        mcp_service = get_agent_mcp_service()
+        tools: List[AgentToolDTO] = []
+
+        for server_cfg in (agent.mcp_servers or []):
+            try:
+                # Access protected method intentionally with clear boundary (read-only tool discovery).
+                server_tools = await mcp_service._get_server_tools(server_cfg.server_id, server_cfg.config)  # type: ignore[attr-defined]
+                for t in server_tools:
+                    tools.append(AgentToolDTO(name=getattr(t, 'name', ''), mcp_server_id=server_cfg.server_id))
+            except Exception:
+                # Continue other servers if one fails
+                continue
+
+        return {"tools": [tool.model_dump() for tool in tools]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get tools for {agent_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get agent tools")
 
 
 # =============================================================================

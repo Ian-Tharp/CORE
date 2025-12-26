@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, Subject, timer } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { retryWhen, tap, delayWhen } from 'rxjs/operators';
+import { AppConfigService } from '../../services/config/app-config.service';
 
 export interface WebSocketMessage {
   type: string;
@@ -23,7 +24,7 @@ export class WebSocketService {
   private currentInstanceId: string | null = null;
   private isConnected = false;
 
-  constructor() {}
+  constructor(private config: AppConfigService) {}
 
   /**
    * Connect to WebSocket server
@@ -35,7 +36,7 @@ export class WebSocketService {
     }
 
     this.currentInstanceId = instanceId;
-    const wsUrl = `ws://localhost:8001/ws/${instanceId}`;
+    const wsUrl = this.buildWebSocketUrl(instanceId);
 
     console.log('Connecting to WebSocket:', wsUrl);
 
@@ -164,5 +165,15 @@ export class WebSocketService {
         this.connect(this.currentInstanceId);
       }
     }, delay);
+  }
+  private buildWebSocketUrl(instanceId: string): string {
+    const base = this.config.apiBaseUrl; // e.g., http://localhost:8001
+    // Convert http(s) → ws(s)
+    let wsBase = base.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+    // Ensure no trailing slash
+    if (wsBase.endsWith('/')) {
+      wsBase = wsBase.slice(0, -1);
+    }
+    return `${wsBase}/ws/${instanceId}`;
   }
 }

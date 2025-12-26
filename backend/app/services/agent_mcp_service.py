@@ -139,11 +139,14 @@ class AgentMCPService:
                     config=mcp_config.config
                 )
 
-                # Filter to only allowed tools
-                filtered_tools = [
-                    tool for tool in server_tools
-                    if tool.name in allowed_tools
-                ]
+                # Filter to only allowed tools; if none specified, include all
+                if not allowed_tools:
+                    filtered_tools = server_tools
+                else:
+                    filtered_tools = [
+                        tool for tool in server_tools
+                        if tool.name in allowed_tools
+                    ]
 
                 all_tools.extend(filtered_tools)
 
@@ -265,14 +268,18 @@ class AgentMCPService:
         # TODO: Load from MCP registry or config file
 
         server_configs = {
-            # Obsidian MCP server (stdio transport)
+            # Obsidian MCP server (stdio transport via uvx)
             "mcp-obsidian": {
-                "command": "npx",
+                "command": "uvx",
                 "args": [
-                    "-y",
-                    "@modelcontextprotocol/server-obsidian",
-                    agent_config.get("vault_path", "/mnt/c/Users/Owner/Desktop/Ian's Personal Digital Brain/Digital-Brain/Digital Brain")
+                    "mcp-obsidian"
                 ],
+                # Pass secrets/paths via environment only
+                "env": {
+                    # Read at runtime from process env; fallback to agent_config for overrides
+                    "OBSIDIAN_API_KEY": agent_config.get("OBSIDIAN_API_KEY") or __import__("os").getenv("OBSIDIAN_API_KEY", ""),
+                    "OBSIDIAN_VAULT_PATH": agent_config.get("vault_path") or __import__("os").getenv("OBSIDIAN_VAULT_PATH", "")
+                },
                 "transport": "stdio"
             },
 
@@ -306,6 +313,10 @@ class AgentMCPService:
                 f"Unknown server_id '{server_id}', using agent config"
             )
             config = agent_config
+
+        # Remove any empty env vars to avoid passing blank secrets
+        if isinstance(config, dict) and "env" in config and isinstance(config["env"], dict):
+            config["env"] = {k: v for k, v in config["env"].items() if v}
 
         return config
 

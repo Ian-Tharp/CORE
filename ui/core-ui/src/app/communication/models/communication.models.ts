@@ -51,6 +51,8 @@ export interface Message {
     file_type?: string;
     file_size?: number;
     file_url?: string;
+    // Tools used by agent
+    tools_used?: { name: string; mcp_server_id?: string }[];
   };
   reactions?: MessageReaction[];
   reply_count?: number;

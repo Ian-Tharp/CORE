@@ -252,7 +252,18 @@ async def remove_reaction(
         reaction_type=reaction_type
     )
 
-    # TODO: Broadcast reaction update via WebSocket
+    # Broadcast reaction removal via WebSocket
+    message = await comm_repo.get_message(message_id)
+    if message:
+        await manager.broadcast_to_channel(
+            channel_id=message['channel_id'],
+            message={
+                "type": "reaction_removed",
+                "message_id": message_id,
+                "instance_id": instance_id,
+                "reaction_type": reaction_type
+            }
+        )
 
     return None
 

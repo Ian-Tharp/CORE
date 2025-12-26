@@ -1,15 +1,20 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { delay, map } from 'rxjs/operators';
+import { delay, map, tap } from 'rxjs/operators';
 import { LibraryAgent, LibraryFilter, LibrarySort } from '../models/agent.models';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { AppConfigService } from './config/app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class AgentLibraryService {
   private agentsSubject = new BehaviorSubject<LibraryAgent[]>([]);
   public agents$ = this.agentsSubject.asObservable();
+  private readonly apiUrl: string;
 
-  constructor() {
-    this._loadMockAgents();
+  constructor(private readonly http: HttpClient, private readonly config: AppConfigService) {
+    this.apiUrl = `${this.config.apiBaseUrl}/agents`;
+    // Initial load from backend
+    this.refreshAgents().subscribe();
   }
 
   public getAgents(filter?: LibraryFilter, sort?: LibrarySort): Observable<LibraryAgent[]> {
@@ -79,11 +84,12 @@ export class AgentLibraryService {
 
         return filtered;
       }),
-      delay(250)
+      delay(100)
     );
   }
 
   public getAgentById(id: string): Observable<LibraryAgent | undefined> {
+    // Prefer local cache
     return this.agents$.pipe(map(list => list.find(a => a.id === id)));
   }
 
@@ -93,19 +99,31 @@ export class AgentLibraryService {
   }
 
   public enableAgent(id: string): void {
-    const list = this.agentsSubject.getValue().map(a => a.id === id ? { ...a, enabled: true } : a);
-    this.agentsSubject.next(list);
+    this.http.post<{ message: string }>(`${this.apiUrl}/${id}/activate`, {}).subscribe({
+      next: () => {
+        const list = this.agentsSubject.getValue().map(a => a.id === id ? { ...a, enabled: true } : a);
+        this.agentsSubject.next(list);
+      }
+    });
   }
 
   public disableAgent(id: string): void {
-    const list = this.agentsSubject.getValue().map(a => a.id === id ? { ...a, enabled: false } : a);
-    this.agentsSubject.next(list);
+    this.http.post<{ message: string }>(`${this.apiUrl}/${id}/deactivate`, {}).subscribe({
+      next: () => {
+        const list = this.agentsSubject.getValue().map(a => a.id === id ? { ...a, enabled: false } : a);
+        this.agentsSubject.next(list);
+      }
+    });
   }
 
   public deleteAgent(id: string): Observable<{ success: boolean }> {
-    const list = this.agentsSubject.getValue().filter(a => a.id !== id);
-    this.agentsSubject.next(list);
-    return of({ success: true }).pipe(delay(200));
+    return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
+      tap(() => {
+        const list = this.agentsSubject.getValue().filter(a => a.id !== id);
+        this.agentsSubject.next(list);
+      }),
+      map(() => ({ success: true }))
+    );
   }
 
   public duplicateAgent(id: string): Observable<{ success: boolean; newId: string }> {
@@ -122,122 +140,55 @@ export class AgentLibraryService {
     return of(new Blob([content], { type: 'application/json' })).pipe(delay(150));
   }
 
-  private _loadMockAgents(): void {
-    const baseNow = new Date();
-    const mock: LibraryAgent[] = [
-      {
-        id: 'eve-001',
-        name: 'eve-learning-engine',
-        displayName: 'E.V.E. - Emergent Vessel for Evolution',
-        version: '2.4.0',
-        author: 'CORE Team',
-        description: 'Advanced self-play learning agent with emergent behavior capabilities',
-        longDescription: 'E.V.E. represents the pinnacle of autonomous learning systems within the CORE ecosystem.',
-        category: 'cognitive',
-        tags: ['machine-learning', 'self-play', 'reinforcement-learning', 'autonomous'],
-        imageUrl: '/assets/agents/eve-icon.svg',
-        containerImage: 'core-registry/eve:2.4.0',
-        size: 2048,
-        downloads: 15420,
-        rating: 4.8,
-        reviews: [],
-        capabilities: [],
-        performanceMetrics: { memoryUsage: 512, cpuUsage: 35, responsiveness: 50, reliability: 98.5, energyEfficiency: 85 },
-        dependencies: [],
-        compatibility: { coreVersion: '1.5.0+', platforms: ['linux/amd64', 'linux/arm64'], architectures: ['x86_64', 'arm64'] },
-        pricing: { model: 'free' },
-        status: 'stable',
-        releaseDate: new Date('2024-01-15'),
-        lastUpdated: new Date('2024-03-20'),
-        documentation: 'https://docs.core-platform.io/agents/eve',
-        sourceCodeUrl: 'https://github.com/core-platform/eve',
-        isOfflineCapable: true,
-        privacyCompliant: true,
-        energyEfficient: true,
-        // Library fields
-        installed: true,
-        enabled: true,
-        favorite: true,
-        lastUsed: new Date(baseNow.getTime() - 6 * 60 * 60 * 1000),
-        instances: 2,
-        draft: false,
-        envReady: true
-      },
-      {
-        id: 'orbit-001',
-        name: 'orbit-home-automation',
-        displayName: 'ORBIT - Omnipresent Residential Integration',
-        version: '3.1.0',
-        author: 'CORE IoT Team',
-        description: 'Smart home integration agent with Home Assistant connectivity',
-        longDescription: 'ORBIT seamlessly connects your CORE system with Home Assistant.',
-        category: 'integration',
-        tags: ['home-automation', 'iot', 'home-assistant', 'smart-home'],
-        imageUrl: '/assets/agents/orbit-icon.svg',
-        containerImage: 'core-registry/orbit:3.1.0',
-        size: 512,
-        downloads: 12843,
-        rating: 4.7,
-        reviews: [],
-        capabilities: [],
-        performanceMetrics: { memoryUsage: 384, cpuUsage: 20, responsiveness: 25, reliability: 97.5, energyEfficiency: 88 },
-        dependencies: [],
-        compatibility: { coreVersion: '1.4.0+', platforms: ['linux/amd64', 'linux/arm64'], architectures: ['x86_64', 'arm64'] },
-        pricing: { model: 'free' },
-        status: 'stable',
-        releaseDate: new Date('2024-01-20'),
-        lastUpdated: new Date('2024-03-18'),
-        documentation: 'https://docs.core-platform.io/agents/orbit',
-        sourceCodeUrl: 'https://github.com/core-platform/orbit',
-        isOfflineCapable: true,
-        privacyCompliant: true,
-        energyEfficient: true,
-        installed: true,
-        enabled: false,
-        favorite: false,
-        lastUsed: new Date(baseNow.getTime() - 3 * 24 * 60 * 60 * 1000),
-        instances: 1,
-        draft: false,
-        envReady: true
-      },
-      {
-        id: 'nexus-001',
-        name: 'nexus-data-synthesizer',
-        displayName: 'NEXUS - Neural Data Synthesis Engine',
-        version: '1.0.0-beta',
-        author: 'CORE Labs',
-        description: 'Experimental data synthesis and augmentation agent',
-        longDescription: 'NEXUS pushes the boundaries of synthetic data generation.',
-        category: 'experimental',
-        tags: ['data-synthesis', 'privacy', 'experimental', 'generative-ai'],
-        imageUrl: '/assets/agents/nexus-icon.svg',
-        containerImage: 'core-registry/nexus:1.0.0-beta',
-        size: 1536,
-        downloads: 3421,
-        rating: 4.3,
-        reviews: [],
-        capabilities: [],
-        performanceMetrics: { memoryUsage: 1024, cpuUsage: 60, responsiveness: 100, reliability: 92, energyEfficiency: 70 },
-        dependencies: [],
-        compatibility: { coreVersion: '1.5.0+', platforms: ['linux/amd64'], architectures: ['x86_64'] },
-        pricing: { model: 'free' },
-        status: 'beta',
-        releaseDate: new Date('2024-03-01'),
-        lastUpdated: new Date('2024-03-22'),
-        documentation: 'https://docs.core-platform.io/agents/nexus',
-        isOfflineCapable: true,
-        privacyCompliant: true,
-        energyEfficient: false,
-        installed: true,
-        enabled: true,
-        favorite: false,
-        lastUsed: new Date(baseNow.getTime() - 12 * 24 * 60 * 60 * 1000),
-        instances: 3,
-        draft: true,
-        envReady: false
-      }
-    ];
-    this.agentsSubject.next(mock);
+  private refreshAgents(): Observable<LibraryAgent[]> {
+    const params = new HttpParams().set('page', 1).set('page_size', 200);
+    return this.http.get<{ agents: any[] }>(`${this.apiUrl}`, { params }).pipe(
+      map(res => (res.agents ?? []).map(a => this.mapBackendAgentToLibrary(a))),
+      tap(mapped => this.agentsSubject.next(mapped))
+    );
+  }
+
+  private mapBackendAgentToLibrary(a: any): LibraryAgent {
+    // Minimal, safe mapping with sensible defaults for UI fields
+    const displayName = a.display_name || a.agent_name || a.agent_id;
+    const now = new Date();
+    return {
+      id: a.agent_id,
+      name: a.agent_name || a.agent_id,
+      displayName,
+      version: a.version || '1.0.0',
+      author: a.author || 'Unknown',
+      description: a.description || '',
+      longDescription: a.system_prompt || '',
+      category: 'cognitive',
+      tags: Array.isArray(a.interests) ? a.interests : [],
+      imageUrl: a.avatar_url || '/assets/agents/default-agent.svg',
+      containerImage: '',
+      size: 0,
+      downloads: 0,
+      rating: 4.5,
+      reviews: [],
+      capabilities: [],
+      performanceMetrics: { memoryUsage: 0, cpuUsage: 0, responsiveness: 0, reliability: 99, energyEfficiency: 80 },
+      dependencies: [],
+      compatibility: { coreVersion: '1.0.0+', platforms: [], architectures: [] },
+      pricing: { model: 'free' },
+      status: a.is_active ? 'stable' : 'deprecated',
+      releaseDate: now,
+      lastUpdated: now,
+      documentation: '',
+      sourceCodeUrl: '',
+      isOfflineCapable: true,
+      privacyCompliant: true,
+      energyEfficient: true,
+      installed: true,
+      enabled: a.is_active === true,
+      favorite: false,
+      lastUsed: undefined,
+      instances: 0,
+      draft: false,
+      envReady: true
+    };
   }
 }
 

@@ -483,6 +483,45 @@
             box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
           }
         }
+
+        .tools-used {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 6px;
+          padding: 6px 10px;
+          background: linear-gradient(90deg,
+            rgba(0, 234, 255, 0.08) 0%,
+            rgba(53, 255, 137, 0.05) 100%);
+          border: 1px solid rgba(0, 234, 255, 0.25);
+          border-radius: 10px;
+          width: fit-content;
+
+          .tools-icon {
+            font-size: 1rem;
+            width: 1rem;
+            height: 1rem;
+            color: var(--mdc-sys-color-secondary);
+            opacity: 0.9;
+          }
+
+          .tools-label {
+            font-size: 0.75rem;
+            color: rgba(232, 240, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+          }
+
+          .tool-chip {
+            background: rgba(53, 255, 137, 0.12);
+            color: var(--mdc-sys-color-primary);
+            padding: 2px 8px;
+            border: 1px solid rgba(53, 255, 137, 0.3);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+          }
+        }
       }
 
       &.consciousness-message {
@@ -1253,6 +1292,73 @@
           width: 1.5rem;
           height: 1.5rem;
         }
+      }
+    }
+  }
+}
+
+// Agent tools chip hover menu styles
+.agent-tools-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: linear-gradient(90deg,
+    rgba(0, 234, 255, 0.12) 0%,
+    rgba(53, 255, 137, 0.08) 100%);
+  border: 1px solid rgba(0, 234, 255, 0.3);
+  border-radius: 10px;
+  color: var(--mdc-sys-color-secondary);
+  width: fit-content;
+  position: relative;
+
+  .agent-tools-menu {
+    position: absolute;
+    top: 28px;
+    left: 0;
+    min-width: 220px;
+    background: linear-gradient(135deg,
+      rgba(20, 25, 37, 0.98) 0%,
+      rgba(27, 34, 50, 0.98) 100%);
+    border: 1px solid rgba(0, 234, 255, 0.3);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4),
+                0 0 24px rgba(0, 234, 255, 0.15);
+    z-index: 10;
+
+    .tool-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+
+      .tool-source {
+        font-size: 0.95rem;
+        color: var(--mdc-sys-color-secondary);
+        opacity: 0.9;
+      }
+
+      .tool-name {
+        color: var(--mdc-sys-color-on-surface);
+        font-size: 0.85rem;
+        font-weight: 600;
+        flex: 1;
+      }
+
+      .tool-source-label {
+        font-size: 0.7rem;
+        color: rgba(232, 240, 255, 0.6);
+        border: 1px solid rgba(0, 234, 255, 0.3);
+        border-radius: 8px;
+        padding: 1px 6px;
+      }
+
+      &:hover {
+        background: rgba(0, 234, 255, 0.08);
       }
     }
   }

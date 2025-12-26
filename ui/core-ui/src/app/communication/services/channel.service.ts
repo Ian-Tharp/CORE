@@ -3,19 +3,22 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, BehaviorSubject } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { Channel, CreateChannelRequest } from '../models/communication.models';
+import { AppConfigService } from '../../services/config/app-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChannelService {
-  private apiUrl = 'http://localhost:8001/communication';
+  private apiUrl: string;
   private channelsSubject = new BehaviorSubject<Channel[]>([]);
   channels$ = this.channelsSubject.asObservable();
 
   // Default instance ID - in production this would come from auth service
   private currentInstanceId = 'human_ian';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {
+    this.apiUrl = `${this.config.apiBaseUrl}/communication`;
+  }
 
   getChannels(): Observable<Channel[]> {
     const params = new HttpParams().set('instance_id', this.currentInstanceId);

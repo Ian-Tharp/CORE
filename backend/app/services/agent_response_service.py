@@ -58,6 +58,10 @@ from app.websocket_manager import manager as websocket_manager
 logger = logging.getLogger(__name__)
 
 
+# Feature flag: during migration, emit both legacy "new_message" and canonical "message" events
+# Set to False after UI fully migrates.
+DUAL_WS_MESSAGE_EVENT = True
+
 class AgentResponseService:
     """
     Service for handling agent mentions and generating responses.
@@ -419,6 +423,23 @@ class AgentResponseService:
             # Last message is the agent's response
             response_content = response["messages"][-1].content
 
+            # Extract tool call metadata when present
+            tools_used: list[dict[str, str]] = []
+            try:
+                for msg in response.get("messages", []):
+                    name = getattr(msg, "name", None) or getattr(msg, "tool", None) or None
+                    if name:
+                        tools_used.append({"name": str(name)})
+                    # OpenAI-style tool_calls on message.additional_kwargs
+                    additional = getattr(msg, "additional_kwargs", None)
+                    if additional and isinstance(additional, dict):
+                        for tc in additional.get("tool_calls", []) or []:
+                            tfn = tc.get("function", {}).get("name")
+                            if tfn:
+                                tools_used.append({"name": str(tfn)})
+            except Exception:
+                pass
+
             logger.info(
                 f"Agent {agent.agent_name} generated response: "
                 f"{response_content[:100]}..."
@@ -429,7 +450,8 @@ class AgentResponseService:
                 agent=agent,
                 channel_id=channel_id,
                 content=response_content,
-                reply_to=context["trigger_message_id"]
+                reply_to=context["trigger_message_id"],
+                tools_used=tools_used
             )
 
         except Exception as e:
@@ -491,7 +513,8 @@ Please respond naturally to the conversation, staying true to your personality a
         agent: AgentConfig,
         channel_id: str,
         content: str,
-        reply_to: Optional[str] = None
+        reply_to: Optional[str] = None,
+        tools_used: Optional[list[dict[str, str]]] = None
     ) -> None:
         """
         Post agent's response as a new message in the channel.
@@ -521,8 +544,9 @@ Please respond naturally to the conversation, staying true to your personality a
                 sender_name=agent.agent_name,
                 sender_type="agent",
                 content=content,
-                message_type="agent_response",
+                message_type="text",
                 parent_message_id=reply_to,
+                metadata={"tools_used": tools_used} if tools_used else None,
             )
 
             logger.info(
@@ -531,10 +555,12 @@ Please respond naturally to the conversation, staying true to your personality a
             )
 
             # Broadcast via WebSocket using the created message dict
+            # Canonical event
             await websocket_manager.broadcast_to_channel(
                 channel_id=channel_id,
                 message={
-                    "type": "new_message",
+                    "type": "message",
+                    "channel_id": channel_id,
                     "message": {
                         "message_id": created.get("message_id"),
                         "channel_id": created.get("channel_id"),
@@ -549,6 +575,27 @@ Please respond naturally to the conversation, staying true to your personality a
                     },
                 },
             )
+
+            # Legacy event (optional, for migration period)
+            if DUAL_WS_MESSAGE_EVENT:
+                await websocket_manager.broadcast_to_channel(
+                    channel_id=channel_id,
+                    message={
+                        "type": "new_message",
+                        "message": {
+                            "message_id": created.get("message_id"),
+                            "channel_id": created.get("channel_id"),
+                            "sender_id": created.get("sender_id"),
+                            "sender_name": created.get("sender_name"),
+                            "sender_type": created.get("sender_type"),
+                            "content": created.get("content"),
+                            "message_type": created.get("message_type"),
+                            "created_at": created.get("created_at"),
+                            "parent_message_id": created.get("parent_message_id"),
+                            "thread_id": created.get("thread_id"),
+                        },
+                    },
+                )
 
         except Exception as e:
             logger.error(

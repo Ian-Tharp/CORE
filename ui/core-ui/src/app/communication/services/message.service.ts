@@ -3,12 +3,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, BehaviorSubject } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { Message } from '../models/communication.models';
+import { AppConfigService } from '../../services/config/app-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MessageService {
-  private apiUrl = 'http://localhost:8001/communication';
+  private apiUrl: string;
   private messagesCache: Map<string, Message[]> = new Map();
 
   // Default sender info - in production this would come from auth service
@@ -16,7 +17,9 @@ export class MessageService {
   private currentInstanceName = 'Ian';
   private currentInstanceType = 'human';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {
+    this.apiUrl = `${this.config.apiBaseUrl}/communication`;
+  }
 
   getChannelMessages(channelId: string, page: number = 1): Observable<Message[]> {
     const params = new HttpParams()
@@ -36,18 +39,22 @@ export class MessageService {
     channelId: string,
     content: string,
     messageType: string = 'text',
-    metadata?: any
+    metadata?: any,
+    parentMessageId?: string,
+    threadId?: string
   ): Observable<Message> {
     const params = new HttpParams()
       .set('sender_id', this.currentInstanceId)
       .set('sender_name', this.currentInstanceName)
       .set('sender_type', this.currentInstanceType);
 
-    const body = {
+    const body: any = {
       content,
       message_type: messageType,
       metadata
     };
+    if (parentMessageId) body.parent_message_id = parentMessageId;
+    if (threadId) body.thread_id = threadId;
 
     return this.http.post<Message>(
       `${this.apiUrl}/channels/${channelId}/messages`,

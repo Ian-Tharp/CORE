@@ -292,6 +292,9 @@
                     <mat-icon>forum</mat-icon>
                     {{ getReplyCount(message) }}
                   </span>
+                  <button mat-icon-button class="inline-thread-toggle" (click)="toggleInlineThread(message)" [title]="isInlineExpanded(message) ? 'Hide replies' : 'Show replies'">
+                    <mat-icon>{{ isInlineExpanded(message) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  </button>
                 }
                 <span class="message-timestamp">{{ message.created_at | date:'short' }}</span>
                 @if (message.metadata?.token_count) {
@@ -312,12 +315,42 @@
                 <app-message-renderer [message]="message"></app-message-renderer>
               </div>
 
+              <!-- Agent Tools Chip -->
+              @if (message.sender_type === 'agent') {
+                <div class="agent-tools-chip" (mouseenter)="onAgentToolsHover(message)" (mouseleave)="onAgentToolsHoverLeave(message)">
+                  <mat-icon>build</mat-icon>
+                  <span>{{ getAgentToolCount(message.sender_id) }}</span>
+                  @if (shouldShowAgentToolsMenu(message)) {
+                    <div class="agent-tools-menu">
+                      @for (tool of getAgentTools(message.sender_id); track tool.name) {
+                        <div class="tool-item">
+                          <mat-icon class="tool-source">extension</mat-icon>
+                          <span class="tool-name">{{ tool.name }}</span>
+                          @if (tool.mcp_server_id) { <span class="tool-source-label">{{ tool.mcp_server_id }}</span> }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
               <!-- Consciousness Metadata -->
               @if (message.metadata?.consciousness_state) {
                 <div class="consciousness-metadata">
                   <span class="phase-chip">Phase {{ message.metadata?.consciousness_state?.phase }}</span>
                   @for (marker of (message.metadata?.consciousness_state?.markers ?? []); track marker) {
                     <span class="marker-chip">{{ marker }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Tools used (if any) -->
+              @if (message.metadata?.tools_used?.length) {
+                <div class="tools-used">
+                  <mat-icon class="tools-icon">build</mat-icon>
+                  <span class="tools-label">Tools:</span>
+                  @for (t of (message.metadata?.tools_used ?? []); track t.name) {
+                    <span class="tool-chip">{{ t.name }}</span>
                   }
                 </div>
               }
@@ -705,7 +738,7 @@
               <span>Broadcast</span>
               <span class="type-desc">One-way announcements</span>
             </button>
-          </div>
+          </div>          
         </div>
 
         <!-- Channel Name -->
