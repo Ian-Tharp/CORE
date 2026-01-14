@@ -45,12 +45,13 @@ services:
     volumes:
       - ./ui/core-ui:/app
       - /app/node_modules
+      - /app/.angular
     networks:
       - core-network
     depends_on:
       - core-backend
     restart: unless-stopped
-    command: npm run start:ng
+    command: ng serve --host 0.0.0.0 --port 4200
 
   # Database - PostgreSQL (for future persistence)
   postgres:
@@ -102,6 +103,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_KEEP_ALIVE=24h  # Keep models loaded for 24 hours
     deploy:
       resources:
         reservations:
@@ -111,10 +113,28 @@ services:
       - core-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
+
+  # Ollama Model Warmup - Pre-loads models on startup
+  ollama-warmup:
+    image: curlimages/curl:latest
+    container_name: ollama-warmup
+    volumes:
+      - ./mcp/warmup-ollama.sh:/warmup-ollama.sh:ro
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_WARMUP_MODELS=gpt-oss:20b,nomic-embed-text
+    networks:
+      - core-network
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: ["/bin/sh", "/warmup-ollama.sh"]
+    restart: "no"  # Only run once on startup
 
 volumes:
   backend-data:

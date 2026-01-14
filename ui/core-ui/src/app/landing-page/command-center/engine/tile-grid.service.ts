@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { Subject } from 'rxjs';
 import type { EngineService } from './engine.service';
 import type { TileGridSnapshot } from './project.service';
+import { WorldConnection, CONNECTION_STYLES, ConnectionType } from './tile-metadata.model';
 
 export interface TileGridConfig {
   cellRadius: number; // octagon radius in world units
@@ -75,6 +76,10 @@ export class TileGridService {
   private outlinesVisible = true;
   private rng?: () => number;
   private showConnectors = false;
+
+  // Connection visualization
+  private connectionLinesGroup?: THREE.Group;
+  private connectionsVisible = true;
 
   constructor() {}
 
@@ -685,11 +690,11 @@ export class TileGridService {
   private selectFromHits(hits: THREE.Intersection[]): void {
     if (!this.instancedMesh) return;
     const hit = hits.find((h) => h.object === this.instancedMesh);
-    if (!hit || (hit.instanceId ?? -1) < 0) { 
-      this.selected$.next(null); 
-      return; 
+    if (!hit || (hit.instanceId ?? -1) < 0) {
+      this.selected$.next(null);
+      return;
     }
-    
+
     const index = hit.instanceId as number;
     const tile = this.tiles[index];
     const payload = {
@@ -704,12 +709,126 @@ export class TileGridService {
       resource: this.resourceStates.get(index) ?? 'none',
     };
     this.selected$.next(payload);
-    
+
     // Show selection outline
     this.selectedIndex = index;
     if (this.selectedOutline) {
       this.selectedOutline.position.set(tile.worldX, 0.0, tile.worldZ);
       this.selectedOutline.visible = true;
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Connection Visualization
+  // ─────────────────────────────────────────────────────────────
+
+  setConnectionsVisible(visible: boolean): void {
+    this.connectionsVisible = visible;
+    if (this.connectionLinesGroup) {
+      this.connectionLinesGroup.visible = visible;
+    }
+  }
+
+  updateConnections(connections: WorldConnection[]): void {
+    if (!this.engine) return;
+
+    // Remove existing connection lines
+    if (this.connectionLinesGroup) {
+      this.engine.remove(this.connectionLinesGroup);
+      this.connectionLinesGroup.traverse((obj) => {
+        if (obj instanceof THREE.Line) {
+          obj.geometry.dispose();
+          (obj.material as THREE.Material).dispose();
+        }
+      });
+      this.connectionLinesGroup = undefined;
+    }
+
+    if (connections.length === 0) return;
+
+    // Create new group for connection lines
+    this.connectionLinesGroup = new THREE.Group();
+    this.connectionLinesGroup.renderOrder = 5;
+
+    for (const conn of connections) {
+      const fromTile = this.tiles[conn.fromTileIndex];
+      const toTile = this.tiles[conn.toTileIndex];
+      if (!fromTile || !toTile) continue;
+
+      const line = this.createConnectionLine(
+        fromTile.worldX, fromTile.worldZ,
+        toTile.worldX, toTile.worldZ,
+        conn.type,
+        conn.bidirectional
+      );
+      this.connectionLinesGroup.add(line);
+    }
+
+    this.connectionLinesGroup.visible = this.connectionsVisible;
+    this.engine.add(this.connectionLinesGroup);
+  }
+
+  private createConnectionLine(
+    x1: number, z1: number,
+    x2: number, z2: number,
+    type: ConnectionType,
+    bidirectional: boolean
+  ): THREE.Line {
+    const style = CONNECTION_STYLES[type];
+    const color = new THREE.Color(style.color);
+
+    // Create curved line (quadratic bezier for visual interest)
+    const midX = (x1 + x2) / 2;
+    const midZ = (z1 + z2) / 2;
+
+    // Add slight curve offset perpendicular to the line
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const curveAmount = len * 0.15;
+    const perpX = -dz / len * curveAmount;
+    const perpZ = dx / len * curveAmount;
+
+    // Create curve points
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(x1, 0.05, z1),
+      new THREE.Vector3(midX + perpX, 0.08, midZ + perpZ),
+      new THREE.Vector3(x2, 0.05, z2)
+    );
+
+    const points = curve.getPoints(20);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+    let material: THREE.LineBasicMaterial | THREE.LineDashedMaterial;
+
+    if (style.dashPattern) {
+      material = new THREE.LineDashedMaterial({
+        color,
+        dashSize: style.dashPattern[0] * 0.05,
+        gapSize: style.dashPattern[1] * 0.05,
+        transparent: true,
+        opacity: 0.8
+      });
+    } else {
+      material = new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.8
+      });
+    }
+
+    const line = new THREE.Line(geometry, material);
+
+    if (style.dashPattern) {
+      line.computeLineDistances();
+    }
+
+    return line;
+  }
+
+  getTileWorldPosition(index: number): { x: number; z: number } | null {
+    const tile = this.tiles[index];
+    if (!tile) return null;
+    return { x: tile.worldX, z: tile.worldZ };
   }
 }

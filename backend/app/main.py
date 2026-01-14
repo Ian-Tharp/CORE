@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 
@@ -55,6 +55,8 @@ app.include_router(knowledgebase.router)
 app.include_router(local_llm.router)
 app.include_router(communication.router)
 app.include_router(agents.router)
+app.include_router(engine.router)  # CORE cognitive engine endpoint
+app.include_router(test_core.router)  # Test endpoints
 
 # ---------------------------------------------------------------------------
 # Middleware

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, switchMap } from 'rxjs';
+import { Observable, map, of, switchMap, catchError } from 'rxjs';
 
 export interface HexWorldConfigDto {
   radius: number;
@@ -13,6 +13,14 @@ export interface LayersDto {
   terrain: Array<{ index: number; state: string }>;
   biome: Array<{ index: number; state: string }>;
   resources: Array<{ index: number; state: string }>;
+}
+
+export interface WorldRecord {
+  id: string;
+  name: string;
+  origin?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,9 +45,16 @@ export class WorldsService {
     return this.http.get<Array<{ id: string; name: string; updated_at: string }>>(`${this.apiUrl}/worlds`, { params: { limit, offset } as any });
   }
 
-  saveFromHexSnapshot(name: string, hexSnapshot: { config: HexWorldConfigDto; layers?: LayersDto; preview?: string }): Observable<{ worldId: string; snapshotId: string }> {
-    return this.createWorld(name, hexSnapshot.config, 'human').pipe(
-      switchMap((world) => this.createSnapshot(world.id, { config: hexSnapshot.config, layers: hexSnapshot.layers, preview: hexSnapshot.preview }).pipe(
+  saveFromHexSnapshot(name: string, hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string }): Observable<{ worldId: string; snapshotId: string }> {
+    // Convert frontend TileGridConfig (cellRadius) to backend HexWorldConfigDto (radius)
+    const config: HexWorldConfigDto = {
+      radius: 'cellRadius' in hexSnapshot.config ? hexSnapshot.config.cellRadius : hexSnapshot.config.radius,
+      gridWidth: hexSnapshot.config.gridWidth,
+      gridHeight: hexSnapshot.config.gridHeight,
+      elevation: hexSnapshot.config.elevation
+    };
+    return this.createWorld(name, config, 'human').pipe(
+      switchMap((world) => this.createSnapshot(world.id, { config, layers: hexSnapshot.layers, preview: hexSnapshot.preview }).pipe(
         map((snap) => ({ worldId: world.id, snapshotId: snap.id }))
       ))
     );
@@ -51,6 +66,66 @@ export class WorldsService {
 
   deleteSnapshot(worldId: string, snapshotId: string): Observable<{ status: string }> {
     return this.http.delete<{ status: string }>(`${this.apiUrl}/worlds/${worldId}/snapshots/${snapshotId}`);
+  }
+
+  /**
+   * Find a world by its name (case-insensitive).
+   * Returns null if no world with that name exists.
+   */
+  getWorldByName(name: string): Observable<WorldRecord | null> {
+    return this.http.get<WorldRecord | null>(`${this.apiUrl}/worlds/by-name/${encodeURIComponent(name)}`).pipe(
+      catchError(() => of(null))
+    );
+  }
+
+  /**
+   * Rename an existing world.
+   */
+  renameWorld(worldId: string, newName: string): Observable<{ status: string }> {
+    return this.http.patch<{ status: string }>(`${this.apiUrl}/worlds/${worldId}`, { name: newName });
+  }
+
+  /**
+   * Update an existing world by creating a new snapshot.
+   * Optionally rename the world if the name has changed.
+   */
+  updateExistingWorld(
+    worldId: string,
+    name: string,
+    hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string }
+  ): Observable<{ worldId: string; snapshotId: string }> {
+    const config: HexWorldConfigDto = {
+      radius: 'cellRadius' in hexSnapshot.config ? hexSnapshot.config.cellRadius : hexSnapshot.config.radius,
+      gridWidth: hexSnapshot.config.gridWidth,
+      gridHeight: hexSnapshot.config.gridHeight,
+      elevation: hexSnapshot.config.elevation
+    };
+
+    return this.createSnapshot(worldId, { config, layers: hexSnapshot.layers, preview: hexSnapshot.preview }).pipe(
+      map((snap) => ({ worldId, snapshotId: snap.id }))
+    );
+  }
+
+  /**
+   * Smart save: Updates existing world if worldId is provided, otherwise creates new.
+   * Returns the worldId and snapshotId.
+   */
+  saveWorld(
+    name: string,
+    hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string },
+    existingWorldId?: string
+  ): Observable<{ worldId: string; snapshotId: string; isNew: boolean }> {
+    if (existingWorldId) {
+      // Update existing world
+      return this.updateExistingWorld(existingWorldId, name, hexSnapshot).pipe(
+        map((result) => ({ ...result, isNew: false }))
+      );
+    } else {
+      // Create new world
+      return this.saveFromHexSnapshot(name, hexSnapshot).pipe(
+        map((result) => ({ ...result, isNew: true }))
+      );
+    }
   }
 }
 

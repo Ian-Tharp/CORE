@@ -6,7 +6,7 @@ from typing import Optional
 import asyncpg
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
 import anthropic
 from dotenv import load_dotenv, find_dotenv
 
@@ -61,6 +61,76 @@ def _get_ollama_base_url() -> str:
     explicitly configured via the ``OLLAMA_BASE_URL`` environment variable.
     """
     return os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+
+
+@lru_cache()
+def get_ollama_client() -> AsyncOpenAI:
+    """
+    Create and return an OpenAI-compatible async client for Ollama.
+
+    Ollama implements the OpenAI API, so we can use the OpenAI SDK
+    by pointing it to the Ollama base URL.
+
+    This is the local-first, privacy-preserving option for CORE.
+    """
+    base_url = _get_ollama_base_url()
+    # Ollama doesn't require an API key, but the SDK expects one
+    return AsyncOpenAI(
+        base_url=f"{base_url}/v1",
+        api_key="ollama"  # Dummy key, Ollama doesn't check it
+    )
+
+
+@lru_cache()
+def get_ollama_client_sync() -> OpenAI:
+    """
+    Create and return a synchronous OpenAI-compatible client for Ollama.
+
+    Use this for synchronous agent methods that are called from asyncio.to_thread().
+    """
+    base_url = _get_ollama_base_url()
+    return OpenAI(
+        base_url=f"{base_url}/v1",
+        api_key="ollama"  # Dummy key, Ollama doesn't check it
+    )
+
+
+# Convenience function to get the right client based on preference
+def get_openai_client(use_ollama: bool = True):
+    """
+    Get an OpenAI-compatible async client.
+
+    Args:
+        use_ollama: If True (default), use local Ollama. If False, use OpenAI API.
+
+    Returns:
+        AsyncOpenAI client configured for either Ollama or OpenAI API
+
+    Note: CORE defaults to local-first with Ollama for privacy and offline capability.
+    """
+    if use_ollama:
+        return get_ollama_client()
+    else:
+        return _get_openai_client()
+
+
+def get_openai_client_sync(use_ollama: bool = True):
+    """
+    Get a synchronous OpenAI-compatible client.
+
+    Use this in agent methods that are called from asyncio.to_thread().
+
+    Args:
+        use_ollama: If True (default), use local Ollama. If False, use OpenAI API.
+
+    Returns:
+        OpenAI client configured for either Ollama or OpenAI API
+    """
+    if use_ollama:
+        return get_ollama_client_sync()
+    else:
+        # For now, only Ollama sync client is implemented
+        raise NotImplementedError("Synchronous OpenAI API client not yet implemented")
 
 
 @lru_cache()

@@ -246,13 +246,27 @@ export class EngineService {
   }
 
   private handleKeyDown = (e: KeyboardEvent): void => {
-    if (!this.isActive) return;
+    if (!this.isActive || this.isTypingInInput()) return;
     this.pressed.add(e.code);
   };
   private handleKeyUp = (e: KeyboardEvent): void => {
-    if (!this.isActive) return;
+    if (!this.isActive || this.isTypingInInput()) return;
     this.pressed.delete(e.code);
   };
+
+  /** Check if user is typing in an input, textarea, or contenteditable element */
+  private isTypingInInput(): boolean {
+    const active = document.activeElement;
+    if (!active) return false;
+    const tagName = active.tagName.toLowerCase();
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+      return true;
+    }
+    if (active.hasAttribute('contenteditable') && active.getAttribute('contenteditable') !== 'false') {
+      return true;
+    }
+    return false;
+  }
   private updateMovement(): void {
     if (!this.camera || !this.controls || !this.isActive) return;
     const speed = 0.6 * (1 / (this.camera.zoom || 1));

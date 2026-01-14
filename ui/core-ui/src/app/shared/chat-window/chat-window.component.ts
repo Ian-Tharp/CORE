@@ -13,6 +13,7 @@ import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
 import { ViewEncapsulation } from '@angular/core';
 import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-chat-window',
@@ -30,15 +31,38 @@ import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
   ],
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss',
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  animations: [
+    trigger('slideDown', [
+      transition(':enter', [
+        style({ height: 0, opacity: 0, overflow: 'hidden' }),
+        animate('200ms ease-out', style({ height: '*', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        style({ height: '*', opacity: 1, overflow: 'hidden' }),
+        animate('200ms ease-in', style({ height: 0, opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class ChatWindowComponent implements OnChanges {
   @Input() conversationId?: string;
+  @Input() showTitle = true; // Show title in header (true for dashboard, false for conversations page)
   @Output() conversationIdChange = new EventEmitter<string>();
 
-  messages: { sender: 'user' | 'assistant'; text: string }[] = [];
+  conversationTitle = ''; // Generated conversation title
+  isTitleGenerating = false; // Loading state for title generation
+  messages: {
+    sender: 'user' | 'assistant';
+    text: string;
+    thinking?: string; // AI reasoning process
+    isStatus?: boolean;
+    thinkingExpanded?: boolean; // UI state for thinking section
+  }[] = [];
   newMessage = '';
   isStreaming = false;
+  statusMessage = ''; // For displaying loading/heartbeat status
+  defaultThinkingExpanded = false; // Global preference for showing thinking
 
   // Provider + model selection
   readonly providers: Array<'openai' | 'ollama'> = ['openai', 'ollama'];
@@ -80,6 +104,12 @@ export class ChatWindowComponent implements OnChanges {
     });
     // Kick off initial load
     this.kbService.loadFiles().subscribe();
+
+    // Load thinking preference from localStorage
+    const savedPref = localStorage.getItem('core-thinking-expanded');
+    if (savedPref !== null) {
+      this.defaultThinkingExpanded = savedPref === 'true';
+    }
   }
 
   onProviderChange(): void {
@@ -116,7 +146,7 @@ export class ChatWindowComponent implements OnChanges {
       },
       error: () => {
         // Surface a lightweight inline message for visibility
-        this.messages.push({ sender: 'assistant', text: 'Local LLM service is not reachable. Start Docker or select OpenAI.' });
+        this.messages.push({ sender: 'assistant', text: 'Local LLM service is not reachable. Start Docker or select OpenAI.', thinking: '', thinkingExpanded: false });
       },
     });
   }
@@ -125,15 +155,15 @@ export class ChatWindowComponent implements OnChanges {
     if (this.selectedProvider !== 'ollama' || !this.selectedModel || this.isPullingModel) return;
     this.isPullingModel = true;
     const name = this.selectedModel;
-    this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …` });
+    this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …`, thinking: '', thinkingExpanded: false });
     this.http.post<{ status: string }>(`${this._apiUrl}/local-llm/pull`, { name }).subscribe({
       next: () => {
-        this.messages.push({ sender: 'assistant', text: `Model ready: ${name}` });
+        this.messages.push({ sender: 'assistant', text: `Model ready: ${name}`, thinking: '', thinkingExpanded: false });
         this.isPullingModel = false;
         this.loadLocalModels();
       },
       error: (err) => {
-        this.messages.push({ sender: 'assistant', text: `Model pull failed: ${err?.error || err}` });
+        this.messages.push({ sender: 'assistant', text: `Model pull failed: ${err?.error || err}`, thinking: '', thinkingExpanded: false });
         this.isPullingModel = false;
       }
     });
@@ -144,11 +174,11 @@ export class ChatWindowComponent implements OnChanges {
     const name = (this.newLocalModelName || '').trim();
     if (!name) return;
     this.isPullingModel = true;
-    this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …` });
+    this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …`, thinking: '', thinkingExpanded: false });
     this.http.post<{ status: string; already_present?: boolean }>(`${this._apiUrl}/local-llm/pull`, { name }).subscribe({
       next: (res) => {
         const suffix = res?.already_present ? ' (already present)' : '';
-        this.messages.push({ sender: 'assistant', text: `Model ready: ${name}${suffix}` });
+        this.messages.push({ sender: 'assistant', text: `Model ready: ${name}${suffix}`, thinking: '', thinkingExpanded: false });
         // Ensure it appears in the dropdown and select it
         if (!this.models.includes(name)) {
           this.models = [name, ...this.models];
@@ -158,7 +188,7 @@ export class ChatWindowComponent implements OnChanges {
         this.newLocalModelName = '';
       },
       error: (err) => {
-        this.messages.push({ sender: 'assistant', text: `Model pull failed: ${err?.error || err}` });
+        this.messages.push({ sender: 'assistant', text: `Model pull failed: ${err?.error || err}`, thinking: '', thinkingExpanded: false });
         this.isPullingModel = false;
       }
     });
@@ -173,12 +203,17 @@ export class ChatWindowComponent implements OnChanges {
       // If a valid conversation id is provided, load its history.
       if (this.conversationId) {
         this.http
-          .get<{ id: string; messages: { role: string; content: string }[] }>(`${this._apiUrl}/conversations/${this.conversationId}`)
+          .get<{ id: string; title?: string; messages: { role: string; content: string; thinking?: string }[] }>(`${this._apiUrl}/conversations/${this.conversationId}`)
           .subscribe((data) => {
             const mapped = data.messages.map((m) => ({
               sender: m.role as 'user' | 'assistant',
               text: m.content,
+              thinking: m.thinking || '',
+              thinkingExpanded: this.defaultThinkingExpanded,
             }));
+
+            // Update conversation title
+            this.conversationTitle = data.title || '';
 
             // Update local display
             this.messages = mapped;
@@ -203,10 +238,15 @@ export class ChatWindowComponent implements OnChanges {
     const content = this.newMessage.trim();
     if (!content) return;
     const run = (convId?: string) => {
-      this.messages.push({ sender: 'user', text: content });
+      this.messages.push({ sender: 'user', text: content, thinking: '', thinkingExpanded: false });
       this.newMessage = '';
 
-      const assistantIdx = this.messages.push({ sender: 'assistant', text: '' }) - 1;
+      const assistantIdx = this.messages.push({
+        sender: 'assistant',
+        text: '',
+        thinking: '',
+        thinkingExpanded: this.defaultThinkingExpanded
+      }) - 1;
 
       this.isStreaming = true;
       this.chatService
@@ -221,18 +261,61 @@ export class ChatWindowComponent implements OnChanges {
           next: (jsonStr) => {
             this.zone.run(() => {
               try {
-                const data = JSON.parse(jsonStr);
+                const event = JSON.parse(jsonStr);
+                const eventType = event.type || 'message';
+                const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-                if (data?.meta?.conversation_id) {
-                  this.conversationId = data.meta.conversation_id;
+                // Handle conversation ID metadata
+                if (eventData?.meta?.conversation_id) {
+                  this.conversationId = eventData.meta.conversation_id;
                   this.conversationIdChange.emit(this.conversationId);
                   return;
                 }
 
-                const token = data?.delta ?? '';
-                this.messages[assistantIdx].text += token;
-              } catch {
-                /* ignore malformed chunks */
+                // Handle different event types
+                switch (eventType) {
+                  case 'message':
+                    // Regular message delta (actual response content)
+                    const token = eventData?.delta ?? '';
+                    this.messages[assistantIdx].text += token;
+                    this.statusMessage = ''; // Clear status once we get content
+                    break;
+
+                  case 'thinking':
+                    // AI reasoning process delta
+                    const thinkingToken = eventData?.delta ?? '';
+                    if (!this.messages[assistantIdx].thinking) {
+                      this.messages[assistantIdx].thinking = '';
+                    }
+                    this.messages[assistantIdx].thinking! += thinkingToken;
+                    break;
+
+                  case 'status':
+                    // Status update (e.g., "Connecting to model...")
+                    this.statusMessage = eventData?.message || 'Processing...';
+                    break;
+
+                  case 'heartbeat':
+                    // Periodic heartbeat during slow operations
+                    this.statusMessage = eventData?.message || `Generating response... (${eventData?.elapsed || 0}s)`;
+                    break;
+
+                  case 'warning':
+                    // Non-fatal warning (e.g., KB retrieval failed)
+                    console.warn('Chat warning:', eventData?.message);
+                    // Could show a toast notification here
+                    break;
+
+                  case 'error':
+                    // Error event
+                    this.messages[assistantIdx].text = `[error] ${eventData?.message || eventData?.error || 'Unknown error'}`;
+                    this.statusMessage = '';
+                    break;
+                }
+
+                this.scrollToBottom();
+              } catch (err) {
+                console.error('Failed to parse SSE event:', err, jsonStr);
               }
             });
           },
@@ -240,13 +323,21 @@ export class ChatWindowComponent implements OnChanges {
             this.zone.run(() => {
               this.messages[assistantIdx].text = `[error] ${err}`;
               this.isStreaming = false;
+              this.statusMessage = '';
               this.scrollToBottom();
             });
           },
           complete: () => {
             this.zone.run(() => {
               this.isStreaming = false;
+              this.statusMessage = '';
               this.scrollToBottom();
+
+              // After first response completes, poll for title
+              if (this.messages.filter(m => m.sender === 'assistant').length === 1) {
+                this.isTitleGenerating = true;
+                this.pollForTitle();
+              }
             });
           },
         });
@@ -278,6 +369,56 @@ export class ChatWindowComponent implements OnChanges {
       event.preventDefault();
       this.sendMessage();
     }
+  }
+
+  toggleThinking(messageIndex: number): void {
+    const msg = this.messages[messageIndex];
+    if (msg) {
+      msg.thinkingExpanded = !msg.thinkingExpanded;
+    }
+  }
+
+  toggleGlobalThinkingPreference(): void {
+    this.defaultThinkingExpanded = !this.defaultThinkingExpanded;
+    localStorage.setItem('core-thinking-expanded', String(this.defaultThinkingExpanded));
+
+    // Apply to all existing messages
+    this.messages.forEach(msg => {
+      if (msg.sender === 'assistant' && msg.thinking) {
+        msg.thinkingExpanded = this.defaultThinkingExpanded;
+      }
+    });
+  }
+
+  private pollForTitle(): void {
+    if (!this.conversationId) return;
+
+    // Poll for title every 2 seconds for up to 30 seconds
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const interval = setInterval(() => {
+      attempts++;
+
+      this.http
+        .get<{ id: string; title?: string }>(`${this._apiUrl}/conversations/${this.conversationId}`)
+        .subscribe({
+          next: (data) => {
+            if (data.title && data.title !== 'New Conversation') {
+              this.conversationTitle = data.title;
+              this.isTitleGenerating = false;
+              clearInterval(interval);
+            } else if (attempts >= maxAttempts) {
+              this.isTitleGenerating = false;
+              clearInterval(interval);
+            }
+          },
+          error: () => {
+            this.isTitleGenerating = false;
+            clearInterval(interval);
+          }
+        });
+    }, 2000);
   }
 
   private scrollToBottom(): void {

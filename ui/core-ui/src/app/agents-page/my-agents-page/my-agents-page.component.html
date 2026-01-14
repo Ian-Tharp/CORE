@@ -86,12 +86,43 @@
         />
       } @else {
         <div class="empty">
-          <mat-icon>search_off</mat-icon>
-          <h3>No agents found</h3>
-          <p>Try clearing filters or visit the Marketplace to add agents.</p>
+          <div class="empty-icon-container">
+            <mat-icon class="empty-icon">smart_toy</mat-icon>
+            <div class="icon-glow"></div>
+          </div>
+
+          <h3 class="empty-title">Your AI Workforce Awaits</h3>
+
+          <p class="empty-description">
+            Agents are autonomous AI assistants that automate tasks, analyze data,
+            and supercharge your workflows. Start by creating your first agent or
+            browse the marketplace for pre-built solutions.
+          </p>
+
+          <div class="empty-features">
+            <div class="feature-item">
+              <mat-icon>psychology</mat-icon>
+              <span>Intelligent Reasoning</span>
+            </div>
+            <div class="feature-item">
+              <mat-icon>auto_awesome</mat-icon>
+              <span>Task Automation</span>
+            </div>
+            <div class="feature-item">
+              <mat-icon>hub</mat-icon>
+              <span>Seamless Integration</span>
+            </div>
+          </div>
+
           <div class="cta">
-            <a mat-raised-button color="primary" routerLink="/agents/marketplace"><mat-icon>hub</mat-icon> Go to Marketplace</a>
-            <a mat-stroked-button routerLink="/agents"><mat-icon>add</mat-icon> Create Agent</a>
+            <a mat-raised-button color="primary" routerLink="/agents" class="primary-cta">
+              <mat-icon>add_circle</mat-icon>
+              <span>Create Your First Agent</span>
+            </a>
+            <a mat-stroked-button routerLink="/agents/marketplace" class="secondary-cta">
+              <mat-icon>storefront</mat-icon>
+              <span>Browse Marketplace</span>
+            </a>
           </div>
         </div>
       }

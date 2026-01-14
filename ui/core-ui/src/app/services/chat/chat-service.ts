@@ -144,12 +144,26 @@ export class ChatService {
               // SSE chunks are separated by double newlines
               for (const part of text.split('\n\n')) {
                 const trimmed = part.trim();
-                if (!trimmed.startsWith('data:')) continue;
+                if (!trimmed) continue;
 
-                const jsonStr = trimmed.replace(/^data:\s*/, '');
-                if (jsonStr === '[DONE]') continue;
+                // Parse SSE format: can be "data: ..." or "event: type\ndata: ..."
+                const lines = trimmed.split('\n');
+                let eventType = 'message'; // default SSE event type
+                let dataLine = '';
 
-                observer.next(jsonStr);
+                for (const line of lines) {
+                  if (line.startsWith('event:')) {
+                    eventType = line.replace(/^event:\s*/, '').trim();
+                  } else if (line.startsWith('data:')) {
+                    dataLine = line.replace(/^data:\s*/, '');
+                  }
+                }
+
+                if (!dataLine || dataLine === '[DONE]') continue;
+
+                // Emit as { type, data } so consumers can handle different event types
+                const eventData = JSON.stringify({ type: eventType, data: dataLine });
+                observer.next(eventData);
               }
 
               readChunk();

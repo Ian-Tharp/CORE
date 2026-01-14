@@ -1,4 +1,18 @@
 <div class="chat-window-container">
+  <!-- Conversation Title (only shown on dashboard) -->
+  @if (showTitle && (conversationTitle || isTitleGenerating)) {
+    <div class="conversation-title-header">
+      @if (isTitleGenerating) {
+        <span class="title-loading">
+          <mat-icon class="loading-icon">psychology</mat-icon>
+          <span class="loading-dots">Generating title</span>
+        </span>
+      } @else {
+        <span class="title-text">{{ conversationTitle }}</span>
+      }
+    </div>
+  }
+
   <!-- Header containing tools and model-select icons aligned to the far right -->
   <div class="header">
     <button mat-icon-button aria-label="Tools" class="tools-btn">
@@ -73,10 +87,46 @@
     @for (msg of messages; track $index) {
       <div class="message" [class]="msg.sender">
         @if (msg.sender === 'assistant') {
-          <markdown [data]="msg.text"></markdown>
+          <!-- Thinking Section (if present) -->
+          @if (msg.thinking && msg.thinking.trim()) {
+            <div class="thinking-section" [class.expanded]="msg.thinkingExpanded">
+              <button
+                class="thinking-toggle"
+                (click)="toggleThinking($index)"
+                mat-button>
+                <mat-icon class="thinking-icon">psychology</mat-icon>
+                <span class="thinking-label">
+                  {{ msg.thinkingExpanded ? 'Hide' : 'Show' }} reasoning process
+                </span>
+                <mat-icon class="expand-icon">
+                  {{ msg.thinkingExpanded ? 'expand_less' : 'expand_more' }}
+                </mat-icon>
+              </button>
+
+              <!-- Thinking content (collapsible) -->
+              @if (msg.thinkingExpanded) {
+                <div class="thinking-content" [@slideDown]>
+                  <div class="thinking-text">{{ msg.thinking }}</div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Actual Response Content -->
+          <div class="response-content">
+            <markdown [data]="msg.text"></markdown>
+          </div>
         } @else {
           <span class="msg-text">{{ msg.text }}</span>
         }
+      </div>
+    }
+
+    <!-- Loading indicator with status message -->
+    @if (isStreaming && statusMessage) {
+      <div class="status-indicator">
+        <mat-icon class="spinner">refresh</mat-icon>
+        <span class="status-text">{{ statusMessage }}</span>
       </div>
     }
   </div>

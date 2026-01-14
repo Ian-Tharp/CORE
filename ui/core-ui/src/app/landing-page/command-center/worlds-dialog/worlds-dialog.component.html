@@ -1,24 +1,44 @@
 <div class="dialog">
-  <h3>Worlds</h3>
+  <div class="dialog-header">
+    <h3>Your Worlds</h3>
+    <p class="dialog-subtitle">Select a world to open or continue creating</p>
+  </div>
+
   @if (!isLoading) {
-    <mat-nav-list>
-      @for (w of worlds; track w.id) {
-        <a mat-list-item (click)="onSelect(w)" [attr.aria-label]="'Open world ' + w.name">
-          <span matListItemTitle>{{ w.name }}</span>
-          <span matListItemLine>{{ w.updated_at | date:'medium' }}</span>
-          <button mat-icon-button (click)="$event.stopPropagation(); onDelete(w)"><mat-icon>delete</mat-icon></button>
-        </a>
-      }
-    </mat-nav-list>
-    @if (worlds.length === 0) {
-      <div class="empty">No worlds yet.</div>
+    @if (worlds.length > 0) {
+      <div class="worlds-list">
+        @for (w of worlds; track w.id) {
+          <div class="world-item" (click)="onSelect(w)">
+            <span class="world-icon">&#127758;</span>
+            <div class="world-info">
+              <span class="world-name">{{ w.name }}</span>
+              <span class="world-date">{{ w.updated_at | date:'medium' }}</span>
+            </div>
+            <button
+              class="world-delete"
+              (click)="$event.stopPropagation(); onDelete(w)"
+              title="Delete world"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <span class="empty-icon">&#127759;</span>
+        <p class="empty-text">No worlds yet</p>
+        <p class="empty-hint">Create your first world using Quick Save</p>
+      </div>
     }
   } @else {
-    <div class="loading"><mat-icon>hourglass_empty</mat-icon> Loading...</div>
+    <div class="loading-state">
+      <span class="loading-icon">&#9881;</span>
+      <p class="loading-text">Loading worlds...</p>
+    </div>
   }
+
   <div class="actions">
-    <button mat-button (click)="onCancel()">Cancel</button>
+    <button class="btn-cancel" (click)="onCancel()">Cancel</button>
   </div>
-  </div>
-
-
+</div>

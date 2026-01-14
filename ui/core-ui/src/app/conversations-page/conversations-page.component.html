@@ -83,6 +83,7 @@
       <mat-card class="chat-card">
         <app-chat-window
           [conversationId]="selectedConversationId"
+          [showTitle]="false"
           (conversationIdChange)="onConversationCreated($event)"
         ></app-chat-window>
       </mat-card>

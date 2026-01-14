@@ -1,5 +1,5 @@
 @if (view === 'grid') {
-  <div class="agent-grid">
+  <div class="agent-grid view-grid">
     @for (agent of list(); track agent.id) {
       <app-agent-card
         [agent]="agent"

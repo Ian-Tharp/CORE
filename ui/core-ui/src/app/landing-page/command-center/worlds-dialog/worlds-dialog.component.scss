@@ -1,14 +1,186 @@
 .dialog {
-  min-width: 24rem;
+  min-width: 28rem;
+  max-width: 36rem;
+  padding: 1.5rem;
 }
+
+.dialog-header {
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #e0fff8;
+  letter-spacing: 0.03rem;
+}
+
+.dialog-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(200, 255, 240, 0.6);
+}
+
+// World list styling
+.worlds-list {
+  max-height: 20rem;
+  overflow-y: auto;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+
+  &::-webkit-scrollbar {
+    width: 0.4rem;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 200, 0.2);
+    border-radius: 0.2rem;
+  }
+}
+
+.world-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 20, 25, 0.4);
+  border: 1px solid rgba(0, 255, 200, 0.1);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 255, 200, 0.08);
+    border-color: rgba(0, 255, 200, 0.25);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.world-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.world-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.world-name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #b0ffe8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.world-date {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(200, 255, 240, 0.5);
+  margin-top: 0.2rem;
+}
+
+.world-delete {
+  flex-shrink: 0;
+  padding: 0.4rem;
+  background: transparent;
+  border: 1px solid rgba(255, 100, 100, 0.2);
+  border-radius: 0.4rem;
+  color: rgba(255, 150, 150, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+
+  .world-item:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    background: rgba(255, 100, 100, 0.15);
+    border-color: rgba(255, 100, 100, 0.4);
+    color: #ff8888;
+  }
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+// Empty and loading states
+.empty-state,
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-icon,
+.loading-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+.empty-text,
+.loading-text {
+  font-size: 0.9rem;
+  color: rgba(200, 255, 240, 0.6);
+}
+
+.empty-hint {
+  font-size: 0.8rem;
+  color: rgba(200, 255, 240, 0.4);
+  margin-top: 0.25rem;
+}
+
+// Loading animation
+.loading-icon {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// Footer actions
 .actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
-}
-.loading, .empty {
-  padding: 1rem;
-  opacity: 0.9;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 255, 200, 0.1);
 }
 
+.btn-cancel {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(200, 255, 240, 0.2);
+  color: rgba(200, 255, 240, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
 
+  &:hover {
+    background: rgba(200, 255, 240, 0.05);
+    border-color: rgba(200, 255, 240, 0.3);
+  }
+}

@@ -18,6 +18,7 @@ from app.dependencies import get_db_pool
 class _Message(TypedDict):
     role: str
     content: str
+    thinking: str | None  # Optional thinking/reasoning process from AI
 
 
 class _Conversation(TypedDict):
@@ -76,7 +77,7 @@ async def get_conversation(conv_id: str) -> Optional[_Conversation]:
 
         msg_rows = await conn.fetch(
             """
-            SELECT role, content
+            SELECT role, content, thinking
             FROM messages
             WHERE conversation_id = $1
             ORDER BY timestamp ASC, id ASC
@@ -87,7 +88,7 @@ async def get_conversation(conv_id: str) -> Optional[_Conversation]:
         return {
             "id": conv_row["id"],
             "title": conv_row["title"],
-            "messages": [{"role": r["role"], "content": r["content"]} for r in msg_rows],
+            "messages": [{"role": r["role"], "content": r["content"], "thinking": r["thinking"]} for r in msg_rows],
         }
 
 
@@ -180,8 +181,8 @@ async def _insert_messages(conn: asyncpg.Connection, conv_id: str, messages: Lis
     # RSI TODO: Add index on (conversation_id, timestamp) if not present; consider batching and COPY for high throughput.
     await conn.executemany(
         """
-        INSERT INTO messages (conversation_id, role, content)
-        VALUES ($1, $2, $3)
+        INSERT INTO messages (conversation_id, role, content, thinking)
+        VALUES ($1, $2, $3, $4)
         """,
-        [(conv_id, m["role"], m["content"]) for m in messages],
+        [(conv_id, m["role"], m["content"], m.get("thinking")) for m in messages],
     )

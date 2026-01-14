@@ -260,10 +260,18 @@ body {
 /* Glass dialog theming for dark solarpunk UI */
 .glass-dialog .mdc-dialog__surface,
 .glass-dialog .mat-mdc-dialog-surface {
-  background: linear-gradient(135deg, rgba(8, 28, 35, 0.85), rgba(20, 60, 70, 0.65)) !important;
+  background: linear-gradient(135deg, rgb(8, 28, 35), rgb(14, 45, 55)) !important;
   color: #c8fff0 !important;
-  border: 1px solid rgba(0,255,200,0.18) !important;
-  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.5) !important;
+  border: 1px solid rgba(0,255,200,0.25) !important;
+  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.6), 0 0 1rem rgba(0, 255, 200, 0.1) !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Ensure dialog backdrop fully obscures the background */
+.glass-dialog + .cdk-overlay-backdrop,
+.cdk-overlay-dark-backdrop {
+  background: rgba(0, 10, 15, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
 }
 
 /* Toolbar customization */

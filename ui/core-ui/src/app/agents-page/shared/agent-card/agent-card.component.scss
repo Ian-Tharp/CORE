@@ -1,37 +1,649 @@
 .agent-card {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  position: relative;
+  padding: 1.5rem;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 
-  .card-header {
+  // Base glassmorphism
+  background: linear-gradient(
+    135deg,
+    rgba(13, 20, 33, 0.85) 0%,
+    rgba(26, 26, 46, 0.85) 100%
+  );
+
+  // Hover state
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+
+    .status-pulse {
+      animation-duration: 1.5s !important;
+    }
+
+    .click-hint {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ffff;
+    outline-offset: 2px;
+  }
+
+  // ==========================================
+  // CATEGORY-SPECIFIC AESTHETICS
+  // ==========================================
+
+  &.category-cognitive {
+    border-left: 3px solid #00d4ff;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 212, 255, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(0, 212, 255, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #00d4ff;
+    }
+  }
+
+  &.category-automation {
+    border-left: 3px solid #00ff88;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 255, 136, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #00ff88;
+    }
+  }
+
+  &.category-analytics {
+    border-left: 3px solid #a855f7;
+    background: linear-gradient(
+      135deg,
+      rgba(168, 85, 247, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #a855f7;
+    }
+  }
+
+  &.category-integration {
+    border-left: 3px solid #fb923c;
+    background: linear-gradient(
+      135deg,
+      rgba(251, 146, 60, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(251, 146, 60, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #fb923c;
+    }
+  }
+
+  &.category-security {
+    border-left: 3px solid #ef4444;
+    background: linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #ef4444;
+    }
+  }
+
+  &.category-experimental {
+    border-left: 3px solid #fbbf24;
+    background: linear-gradient(
+      135deg,
+      rgba(251, 191, 36, 0.08) 0%,
+      rgba(13, 20, 33, 0.85) 40%
+    );
+
+    .icon-background {
+      background: radial-gradient(circle, rgba(251, 191, 36, 0.25), transparent);
+    }
+
+    .agent-icon {
+      color: #fbbf24;
+    }
+  }
+
+  // ==========================================
+  // STATUS AURA (Ambient background glow)
+  // ==========================================
+
+  .status-aura {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    z-index: 0;
+
+    &.aura-running {
+      opacity: 1;
+      background: radial-gradient(
+        ellipse at top left,
+        rgba(0, 255, 136, 0.15) 0%,
+        transparent 60%
+      );
+    }
+
+    &.aura-error {
+      opacity: 1;
+      background: radial-gradient(
+        ellipse at top left,
+        rgba(239, 68, 68, 0.12) 0%,
+        transparent 60%
+      );
+    }
+  }
+
+  // ==========================================
+  // AGENT ICON & STATUS PULSE
+  // ==========================================
+
+  .agent-icon-container {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-
-    .icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-    .icon { font-size: 2rem; color: #00ff88; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-    .status-dot { position: absolute; top: -0.2rem; right: -0.2rem; }
-
-    .title-wrap { flex: 1; }
-    .name { margin: 0; font-size: 1.1rem; color: #fff; }
-    .meta { margin: 0; color: rgba(255,255,255,0.7); font-size: 0.875rem; }
-    .header-actions { display: inline-flex; align-items: center; gap: 0.25rem; }
-    .header-actions .mat-mdc-icon-button { border-radius: 0.5rem; }
+    justify-content: center;
+    z-index: 1;
   }
 
-  .desc { color: rgba(255,255,255,0.85); margin: 0; line-height: 1.5; }
-
-  .tags { margin-top: 0.25rem; }
-
-  .meta {
-    display: flex; align-items: center; gap: 0.75rem; color: rgba(255,255,255,0.7);
-    .instances { display: inline-flex; align-items: center; gap: 0.25rem; }
-    mat-icon { font-size: 1rem; height: 1rem; width: 1rem; }
+  .icon-background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    filter: blur(12px);
   }
 
-  .actions { margin-top: 0.25rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-  .actions .mat-mdc-raised-button { border-radius: 0.5rem; }
+  .agent-icon {
+    position: relative;
+    font-size: 42px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+
+  .status-pulse {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    bottom: 4px;
+    right: 4px;
+    z-index: 2;
+
+    &.pulse-running {
+      background: #00ff88;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.8);
+      animation: pulse-running 2s ease-in-out infinite;
+    }
+
+    &.pulse-ready {
+      background: #00d4ff;
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+
+    &.pulse-idle {
+      background: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+
+    &.pulse-error {
+      background: #ef4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+      animation: pulse-error 1.5s ease-in-out infinite;
+    }
+
+    &.pulse-disabled {
+      background: rgba(100, 100, 100, 0.5);
+      box-shadow: none;
+    }
+  }
+
+  @keyframes pulse-running {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.3);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+    }
+    50% {
+      box-shadow: 0 0 16px rgba(0, 212, 255, 1);
+    }
+  }
+
+  @keyframes pulse-error {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+  }
+
+  // ==========================================
+  // AGENT IDENTITY
+  // ==========================================
+
+  .agent-identity {
+    text-align: center;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .agent-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem;
+    letter-spacing: 0.3px;
+  }
+
+  .agent-status-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .status-text {
+    font-weight: 500;
+  }
+
+  .workflow-count {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #00ff88;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  // ==========================================
+  // CAPABILITIES & EFFICIENCY
+  // ==========================================
+
+  .agent-metrics {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .capabilities {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .capability-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+  }
+
+  .efficiency-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #00ff88;
+    }
+  }
+
+  // ==========================================
+  // HEALTH BAR
+  // ==========================================
+
+  .health-bar {
+    position: relative;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    z-index: 1;
+  }
+
+  .health-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #00ff88 0%, #00d4ff 100%);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  }
+
+  .health-label {
+    position: absolute;
+    top: -20px;
+    right: 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+  }
+
+  // ==========================================
+  // DESCRIPTION
+  // ==========================================
+
+  .agent-description {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 1rem;
+    position: relative;
+    z-index: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  // ==========================================
+  // TAGS
+  // ==========================================
+
+  .tag-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .tag-pill {
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+  }
+
+  .tag-more {
+    padding: 0.25rem 0.75rem;
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  // ==========================================
+  // TOP-RIGHT CARD ACTIONS (Always Visible)
+  // ==========================================
+
+  .card-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 3;
+    background: rgba(13, 20, 33, 0.9);
+    padding: 0.25rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(13, 20, 33, 0.95);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      color: rgba(255, 255, 255, 0.7);
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+      }
+
+      &.favorite-btn.active {
+        color: #ef4444;
+
+        &:hover {
+          color: #ff5252;
+          background: rgba(239, 68, 68, 0.15);
+        }
+      }
+
+      &.toggle-btn.active {
+        color: #00ff88;
+
+        &:hover {
+          color: #00ffaa;
+          background: rgba(0, 255, 136, 0.15);
+        }
+      }
+
+      &.menu-btn {
+        &:hover {
+          background: rgba(255, 255, 255, 0.08);
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // CLICK HINT (Bottom of Card)
+  // ==========================================
+
+  .click-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 1;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  // ==========================================
+  // STATUS-SPECIFIC STYLES
+  // ==========================================
+
+  &.status-disabled {
+    opacity: 0.6;
+    filter: grayscale(0.3);
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  &.status-error {
+    .health-fill {
+      background: linear-gradient(90deg, #ef4444 0%, #fb923c 100%);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+  }
 }
 
+// ==========================================
+// GLOBAL: Agent Menu Dropdown Styling
+// ==========================================
 
+::ng-deep .agent-menu {
+  background: linear-gradient(
+    135deg,
+    rgba(13, 20, 33, 0.98) 0%,
+    rgba(26, 26, 46, 0.98) 100%
+  );
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  margin-top: 8px;
+  padding: 0.5rem;
+
+  .mat-mdc-menu-content {
+    padding: 0;
+  }
+
+  .mat-mdc-menu-item {
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 2px 0;
+    padding: 10px 12px;
+    min-height: 40px;
+    transition: all 0.2s ease;
+
+    mat-icon {
+      color: rgba(255, 255, 255, 0.7);
+      margin-right: 12px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.delete-action {
+      color: #ef4444;
+
+      mat-icon {
+        color: #ef4444;
+      }
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.15);
+      }
+    }
+  }
+
+  mat-divider {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+  }
+}

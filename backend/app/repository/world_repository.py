@@ -93,14 +93,15 @@ async def create_snapshot(
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
+            # Pass dicts directly - asyncpg serializes to JSONB properly
             await conn.execute(
                 """
                 INSERT INTO world_snapshots (id, world_id, config, layers, tiles, preview)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6)
                 """,
                 snapshot_id,
                 world_id,
-                json.dumps(config),
+                json.dumps(config),  # Cast to jsonb in query
                 json.dumps(layers) if layers is not None else None,
                 json.dumps(tiles) if tiles is not None else None,
                 preview,
@@ -114,6 +115,18 @@ async def create_snapshot(
                 world_id,
             )
     return snapshot_id
+
+
+def _parse_jsonb_field(value: Any) -> Any:
+    """Parse a JSONB field that might be a string (legacy) or already a dict."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+    return value
 
 
 async def get_latest_snapshot(world_id: str) -> Optional[Dict[str, Any]]:
@@ -135,9 +148,9 @@ async def get_latest_snapshot(world_id: str) -> Optional[Dict[str, Any]]:
         return {
             "id": str(row["id"]),
             "created_at": row["created_at"].isoformat() if row["created_at"] else "",
-            "config": row["config"],
-            "layers": row["layers"],
-            "tiles": row["tiles"],
+            "config": _parse_jsonb_field(row["config"]),
+            "layers": _parse_jsonb_field(row["layers"]),
+            "tiles": _parse_jsonb_field(row["tiles"]),
             "preview": row["preview"],
         }
 
@@ -195,5 +208,29 @@ async def update_world_name(world_id: str, name: str) -> None:
             world_id,
             name,
         )
+
+
+async def get_world_by_name(name: str) -> Optional[WorldRecord]:
+    """Find a world by its exact name (case-insensitive). Returns None if not found."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT id, name, origin, created_at, updated_at
+            FROM worlds
+            WHERE LOWER(name) = LOWER($1)
+            LIMIT 1
+            """,
+            name,
+        )
+        if row is None:
+            return None
+        return {
+            "id": str(row["id"]),
+            "name": row["name"],
+            "origin": row["origin"] or "human",
+            "created_at": row["created_at"].isoformat() if row["created_at"] else "",
+            "updated_at": row["updated_at"].isoformat() if row["updated_at"] else "",
+        }
 
 

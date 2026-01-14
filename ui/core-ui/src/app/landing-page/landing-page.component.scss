@@ -622,8 +622,7 @@
 .chat-section {
   width: 100%;
   max-width: 340px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; // Let chat window handle its own scrolling
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -632,8 +631,9 @@
   z-index: 2;
 
   app-chat-window {
-    flex: 1 0 auto;
-    max-height: 89vh;
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0; // Allow flexbox shrinking
   }
 }
 

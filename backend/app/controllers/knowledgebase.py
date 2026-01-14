@@ -339,3 +339,49 @@ async def reextract_title(file_id: str) -> Dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+
+# RSI TODO: Implement full stats aggregation with file type breakdown, source distribution, and processing queue metrics
+@router.get("/stats")
+async def get_stats() -> Dict[str, Any]:
+    """Return knowledgebase statistics. Currently returns stub data with basic file count."""
+    try:
+        docs = await repo.list_documents()
+        total_files = len(docs)
+        total_size = sum(d.get("size", 0) for d in docs)
+
+        # RSI TODO: Aggregate by file type and source for richer stats
+        return {
+            "totalFiles": total_files,
+            "totalSize": total_size,
+            "filesByType": {},  # RSI TODO: Implement file type aggregation
+            "filesBySource": {},  # RSI TODO: Implement source aggregation
+            "totalEmbeddings": 0,  # RSI TODO: Query pgvector table for embedding count
+            "processingQueue": 0,  # RSI TODO: Count files with status='processing'
+            "recentActivity": []  # RSI TODO: Link to /activity endpoint or aggregate here
+        }
+    except Exception:
+        # Return safe defaults to keep UI functional
+        return {
+            "totalFiles": 0,
+            "totalSize": 0,
+            "filesByType": {},
+            "filesBySource": {},
+            "totalEmbeddings": 0,
+            "processingQueue": 0,
+            "recentActivity": []
+        }
+
+
+# RSI TODO: Implement full tag management with usage counts and hierarchical tag structures
+@router.get("/tags")
+async def get_tags() -> List[Dict[str, Any]]:
+    """Return available file tags. Currently returns empty list as tags are stored inline with files."""
+    try:
+        # RSI TODO: Query tags table or extract unique tags from document metadata
+        # RSI TODO: Include usage counts per tag for better UX
+        # RSI TODO: Support tag hierarchies/categories (e.g., 'project:core', 'topic:ai')
+        return []
+    except Exception:
+        # Return empty list to keep UI functional
+        return []
+
