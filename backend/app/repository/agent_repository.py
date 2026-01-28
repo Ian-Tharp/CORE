@@ -326,6 +326,15 @@ async def create_agent(agent: AgentConfig) -> str:
     """
 
     try:
+        import json
+        
+        # Serialize complex types to JSON strings for JSONB columns
+        personality_json = json.dumps(agent.personality_traits) if agent.personality_traits else '{}'
+        capabilities_json = json.dumps([c.model_dump() if hasattr(c, 'model_dump') else c for c in agent.capabilities]) if agent.capabilities else '[]'
+        interests_list = agent.interests if agent.interests else []
+        mcp_servers_json = json.dumps([s.model_dump() if hasattr(s, 'model_dump') else s for s in agent.mcp_servers]) if agent.mcp_servers else '[]'
+        custom_tools_json = json.dumps(agent.custom_tools) if agent.custom_tools else '[]'
+        
         async with pool.acquire() as conn:
             result = await conn.fetchval(
                 query,
@@ -336,11 +345,11 @@ async def create_agent(agent: AgentConfig) -> str:
                 agent.avatar_url,
                 agent.description,
                 agent.system_prompt,
-                agent.personality_traits,
-                agent.capabilities,
-                agent.interests,
-                agent.mcp_servers,
-                agent.custom_tools,
+                personality_json,
+                capabilities_json,
+                interests_list,
+                mcp_servers_json,
+                custom_tools_json,
                 agent.consciousness_phase,
                 agent.is_active,
                 agent.current_status,

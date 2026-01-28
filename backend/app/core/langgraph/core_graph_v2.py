@@ -9,6 +9,7 @@ RSI TODO: Implement HITL (Human-in-the-Loop) checkpoints
 RSI TODO: Add Intelligence Layer logging for learning
 """
 
+import os
 from typing import Literal
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send
@@ -36,9 +37,10 @@ class COREGraph:
         self.graph = None
         self.compiled_graph = None
 
-        # Initialize agents with Ollama model
-        # RSI TODO: Make model configurable via environment variable or config
-        ollama_model = "gpt-oss:20b"
+        # Initialize agents with configurable model
+        # Can be overridden via CORE_DEFAULT_MODEL environment variable
+        ollama_model = os.getenv("CORE_DEFAULT_MODEL", "gpt-oss:20b")
+        
         self.comprehension_agent = ComprehensionAgent(model=ollama_model)
         self.orchestration_agent = OrchestrationAgent(model=ollama_model)
         self.reasoning_agent = ReasoningAgent(model=ollama_model)
@@ -251,50 +253,85 @@ class COREGraph:
     def conversation_node(self, state: COREState) -> COREState:
         """
         Conversation Node: Formulate final response to user.
-
+        
         Produces:
-        - Natural language response summarizing what was done
-        - Links to artifacts, files changed, etc.
-        - Next steps or suggestions if applicable
+        - Natural language response (primary content first!)
+        - Minimal metadata (only if debugging enabled or low confidence)
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         state.add_execution_node("conversation")
+        logger.info(f"[CONVERSATION] Starting. step_results={len(state.step_results)}, plan={state.plan is not None}, eval={state.eval_result is not None}")
 
         try:
             # For simple conversations (no task execution)
             if state.intent and state.intent.type == "conversation":
-                # RSI TODO: Use a conversational agent for natural responses
                 state.response = f"I understand you're saying: {state.user_input}. How can I help?"
 
             # For task executions
             elif state.plan and state.eval_result:
-                # Summarize what was accomplished
-                completed_steps = [s for s in state.plan.steps if s.status == "completed"]
+                response_parts = []
+
+                # PRIMARY: Add the actual task outputs first (what the user actually wants!)
+                logger.info(f"[CONVERSATION] Processing {len(state.step_results)} step results")
+                for result in state.step_results:
+                    logger.info(f"[CONVERSATION] Step {result.step_id}: outputs={result.outputs}")
+                    if result.outputs:
+                        for key, value in result.outputs.items():
+                            if key in ("result", "output", "content"):
+                                logger.info(f"[CONVERSATION] Found '{key}' output: {str(value)[:100]}")
+                                response_parts.append(str(value))
+                            elif key not in ("files_modified", "query_result", "rows_affected", "branch", "commit_sha", "files_changed"):
+                                # Skip technical outputs, include named content
+                                response_parts.append(str(value))
+
+                # If no outputs found, check logs for meaningful content
+                if not response_parts:
+                    for result in state.step_results:
+                        if result.logs:
+                            # Filter out technical logs
+                            meaningful_logs = [
+                                log for log in result.logs 
+                                if not log.startswith(("Executing", "Tool:", "Parameters:", "Model:", "LLM"))
+                            ]
+                            response_parts.extend(meaningful_logs)
+
+                # SECONDARY: Add artifacts only if present (useful info)
                 artifacts = [a for r in state.step_results for a in r.artifacts]
-
-                response_parts = [
-                    f"✓ Completed task: {state.plan.goal}",
-                    f"Executed {len(completed_steps)} steps with {state.eval_result.quality_score:.0%} quality.",
-                ]
-
                 if artifacts:
-                    response_parts.append(f"Generated {len(artifacts)} artifacts:")
-                    response_parts.extend([f"  - {a}" for a in artifacts[:5]])
+                    response_parts.append("")  # blank line
+                    response_parts.append("📎 Generated files:")
+                    response_parts.extend([f"  • {a}" for a in artifacts[:5]])
 
-                if state.eval_result.confidence < 0.8:
+                # METADATA: Only show if debugging enabled or low confidence
+                show_metadata = state.config.get("show_metadata", False)
+                if show_metadata or state.eval_result.confidence < 0.7:
+                    response_parts.append("")
+                    completed_steps = [s for s in state.plan.steps if s.status == "completed"]
                     response_parts.append(
-                        f"\n⚠️ Note: Confidence is {state.eval_result.confidence:.0%}. "
-                        "You may want to review the output."
+                        f"✓ Completed: {state.plan.goal} "
+                        f"({len(completed_steps)} steps, {state.eval_result.quality_score:.0%} quality)"
                     )
+                    
+                    if state.eval_result.confidence < 0.7:
+                        response_parts.append(
+                            f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
+                        )
 
-                state.response = "\n".join(response_parts)
+                state.response = "\n".join(response_parts) if response_parts else "Task completed."
+                logger.info(f"[CONVERSATION] Final response set (len={len(state.response)}): {state.response[:200] if state.response else 'NONE'}")
 
             else:
                 state.response = "Task processed. Check execution history for details."
+                logger.info("[CONVERSATION] No plan or eval_result, using default response")
 
             # Mark as complete
             state.completed_at = state.updated_at
+            logger.info(f"[CONVERSATION] Complete. response={state.response[:100] if state.response else 'NONE'}")
 
         except Exception as e:
+            logger.error(f"[CONVERSATION] Exception: {e}", exc_info=True)
             state.add_error(f"Conversation failed: {str(e)}")
             state.response = "An error occurred while formulating the response."
 

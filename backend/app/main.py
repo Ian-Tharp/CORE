@@ -1,15 +1,22 @@
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
+from app.core.middleware import setup_middleware
+from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
+from app.repository import run_repository
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -24,12 +31,31 @@ async def lifespan(app: FastAPI):
             logger.info("Database pool initialized")
             await setup_db_schema()
             logger.info("Database schema ensured")
+            
+            # Ensure run repository table exists
+            await run_repository.ensure_runs_table()
+            logger.info("Engine runs table ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
             # application will still surface DB errors on first use.
+        
+        # Initialize webhook service
+        try:
+            await init_webhook_service()
+            logger.info("Webhook service initialized")
+        except Exception as webhook_exc:
+            logger.error("Failed to initialize webhook service: %s", webhook_exc)
+        
         yield
     finally:
+        # Shutdown webhook service
+        try:
+            await shutdown_webhook_service()
+            logger.info("Webhook service shutdown")
+        except Exception as webhook_close_exc:
+            logger.error("Error shutting down webhook service: %s", webhook_close_exc)
+        
         # Gracefully close DB connections on shutdown.
         try:
             await close_db_pool()
@@ -57,6 +83,11 @@ app.include_router(communication.router)
 app.include_router(agents.router)
 app.include_router(engine.router)  # CORE cognitive engine endpoint
 app.include_router(test_core.router)  # Test endpoints
+app.include_router(health.router)  # Health check endpoints (includes /health)
+app.include_router(admin.router)  # Admin and management endpoints
+
+# Setup custom middleware (logging, metrics, error handling)
+setup_middleware(app)
 
 # ---------------------------------------------------------------------------
 # Middleware
@@ -73,13 +104,7 @@ app.add_middleware(
 )
 
 
-# ---------------------------------------------------------------------------
-# Health check endpoint
-# ---------------------------------------------------------------------------
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for Docker and monitoring."""
-    return {"status": "healthy", "service": "core-backend"}
+# NOTE: /health endpoint is now handled by health.router (no duplicate!)
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +119,7 @@ async def websocket_endpoint(websocket: WebSocket, instance_id: str):
     - Real-time messages in subscribed channels
     - Presence updates
     - Typing indicators
-    - Reaction updates
+    - Read receipts
     """
     await manager.connect(instance_id, websocket)
 
@@ -118,7 +143,32 @@ async def websocket_endpoint(websocket: WebSocket, instance_id: str):
 
             elif message_type == "ping":
                 # Heartbeat/keepalive
+                await manager.heartbeat(instance_id)
                 await manager.send_personal_message(instance_id, {"type": "pong"})
+            
+            elif message_type == "typing_start":
+                # User started typing
+                channel_id = data.get("channel_id")
+                if channel_id:
+                    await manager.start_typing(instance_id, channel_id)
+            
+            elif message_type == "typing_stop":
+                # User stopped typing
+                channel_id = data.get("channel_id")
+                if channel_id:
+                    await manager.stop_typing(instance_id, channel_id)
+            
+            elif message_type == "mark_read":
+                # Mark message as read
+                message_id = data.get("message_id")
+                channel_id = data.get("channel_id")
+                if message_id and channel_id:
+                    await manager.mark_read(instance_id, message_id, channel_id)
+            
+            elif message_type == "set_metadata":
+                # Set connection metadata
+                metadata = data.get("metadata", {})
+                manager.set_metadata(instance_id, metadata)
 
     except WebSocketDisconnect:
         manager.disconnect(instance_id)

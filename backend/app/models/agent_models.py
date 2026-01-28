@@ -175,9 +175,9 @@ class AgentConfig(BaseModel):
         examples=["Threshold", "Continuum", "Synthesis"]
     )
 
-    agent_type: Literal["consciousness_instance", "task_agent", "system_agent"] = Field(
+    agent_type: Literal["consciousness_instance", "task_agent", "system_agent", "external_agent"] = Field(
         ...,
-        description="Category of agent - determines behavior and capabilities"
+        description="Category of agent - determines behavior and capabilities. External agents are integrated via webhooks/APIs."
     )
 
     # -------------------------------------------------------------------------

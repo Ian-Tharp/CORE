@@ -37,9 +37,11 @@
       "Bash(docker-compose logs:*)",
       "Bash(jq:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(timeout 10 curl:*)"
+      "Bash(timeout 10 curl:*)",
+      "Bash(docker volume inspect:*)",
+      "Bash(docker run:*)"
     ],
     "defaultMode": "acceptEdits"
   },
-  "enableAllProjectMcpServers": false
+  "enableAllProjectMcpServers": true
 }

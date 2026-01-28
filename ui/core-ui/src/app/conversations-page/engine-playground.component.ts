@@ -301,17 +301,17 @@ export class EnginePlaygroundComponent {
       }
 
       case 'step_executed': {
-        let label = `⚙️ Step: ${event.step_id} → ${event.status} (${event.duration_seconds.toFixed(2)}s)\n`;
+        let label = `⚙️ Step: ${event.step_id} → ${event.status} (${event.duration_seconds?.toFixed(2) ?? '?'}s)\n`;
         if (event.error) {
           label += `   ❌ Error: ${event.error}\n`;
         }
-        if (Object.keys(event.outputs).length > 0) {
+        if (event.outputs && Object.keys(event.outputs).length > 0) {
           label += `   📤 Outputs: ${JSON.stringify(event.outputs, null, 2)}\n`;
         }
-        if (event.artifacts.length > 0) {
+        if (event.artifacts?.length > 0) {
           label += `   📎 Artifacts: ${event.artifacts.join(', ')}\n`;
         }
-        if (event.logs.length > 0) {
+        if (event.logs?.length > 0) {
           label += `   📝 Logs:\n`;
           event.logs.forEach(log => {
             label += `      ${log}\n`;

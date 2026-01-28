@@ -13,10 +13,14 @@ RSI TODO: Integrate with Knowledge Base for context retrieval during execution
 """
 
 import time
+import logging
 from typing import List, Optional
 from datetime import datetime
 
+from app.dependencies import get_openai_client_sync
 from app.models.core_state import ExecutionPlan, PlanStep, StepResult
+
+logger = logging.getLogger(__name__)
 
 
 class ReasoningAgent:
@@ -86,22 +90,33 @@ class ReasoningAgent:
             step.status = "running"
             step.started_at = datetime.utcnow()
 
-            # RSI TODO: Replace simulation with actual tool execution
-            if enable_tools and step.tool:
-                # Simulate tool execution
+            # Execute the step based on tool type
+            if not enable_tools:
+                # Dry-run mode
+                outputs = {"result": f"Simulated execution of: {step.description}"}
+                artifacts = []
+                logs = [f"Dry-run: Would execute {step.name}"]
+            elif step.tool and step.tool in ["file_operations", "git", "database", "web_research"]:
+                # RSI TODO: Implement actual tool execution
+                # For now, simulate these tools
                 outputs = self._simulate_tool_call(step.tool, step.params)
                 artifacts = self._simulate_artifacts(step.tool)
                 logs = [
                     f"Executing {step.name}",
                     f"Tool: {step.tool}",
                     f"Parameters: {step.params}",
-                    "Execution completed successfully"
+                    "Execution completed successfully (simulated)"
                 ]
             else:
-                # No tool needed or dry-run mode
-                outputs = {"result": f"Simulated execution of: {step.description}"}
+                # No specific tool or content generation task - use LLM
+                logger.info(f"Reasoning executing step via LLM: {step.name}")
+                outputs = self._execute_with_llm(step)
                 artifacts = []
-                logs = [f"Dry-run: Would execute {step.name}"]
+                logs = [
+                    f"Executing {step.name} with LLM",
+                    f"Model: {self.model}",
+                    "LLM generation completed"
+                ]
 
             duration = time.time() - start_time
 
@@ -126,6 +141,49 @@ class ReasoningAgent:
                 error=str(e),
                 duration_seconds=duration
             )
+
+    def _execute_with_llm(self, step: PlanStep) -> dict:
+        """
+        Execute a step using the LLM for content generation.
+
+        This is used when no specific tool is needed, typically for:
+        - Content generation (jokes, stories, explanations)
+        - Analysis and reasoning tasks
+        - Question answering
+        """
+        try:
+            client = get_openai_client_sync()
+
+            # Build prompt from step info
+            prompt = f"""You are executing a step in a larger plan.
+
+Step: {step.name}
+Description: {step.description}
+
+Please complete this step and provide the result. Be concise and direct."""
+
+            logger.info(f"LLM prompt for step '{step.name}': {prompt}")
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are the Reasoning layer of CORE. Execute the given step and provide the requested output."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,  # Creative but not too random
+            )
+
+            content = response.choices[0].message.content
+            logger.info(f"LLM response for step '{step.name}': {content}")
+
+            if not content:
+                return {"result": f"Empty LLM response for: {step.description}"}
+
+            return {"result": content}
+
+        except Exception as e:
+            logger.error(f"LLM execution failed for step '{step.name}': {e}", exc_info=True)
+            return {"result": f"Error executing with LLM: {str(e)}"}
 
     def _simulate_tool_call(self, tool_name: str, params: dict) -> dict:
         """

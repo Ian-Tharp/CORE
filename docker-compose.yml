@@ -13,7 +13,13 @@ services:
       - PYTHONPATH=/app
       - CORE_ENV=development
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CORE_API_KEY=${CORE_API_KEY:-core_dev_key}
+      - CORE_AUTH_DISABLED=${CORE_AUTH_DISABLED:-true}
+      - CORE_RATE_LIMIT_DISABLED=${CORE_RATE_LIMIT_DISABLED:-true}
       - OLLAMA_BASE_URL=http://ollama:11434
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=core_db

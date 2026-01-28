@@ -1,4 +1,7 @@
 .claude/settings.local.json
+# MCP Configuration (contains API keys)
+.mcp.json
+
 # Environments
 .env
 .venv
