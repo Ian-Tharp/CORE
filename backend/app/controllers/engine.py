@@ -382,6 +382,27 @@ def _sse_event(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
+# NOTE: /runs/stats must be defined BEFORE /runs/{run_id} to avoid route matching issues
+@router.get("/runs/stats")
+async def get_run_stats() -> Dict[str, Any]:
+    """
+    Get run statistics from the database.
+    
+    Returns aggregate stats like total runs, completion rate, etc.
+    """
+    try:
+        stats = await run_repository.get_run_stats()
+        stats["active_in_memory"] = len(_active_runs)
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get run stats: {e}")
+        return {
+            "total_runs": len(_active_runs),
+            "active_in_memory": len(_active_runs),
+            "error": str(e)
+        }
+
+
 @router.get("/runs/{run_id}")
 async def get_run(run_id: str) -> COREState:
     """
@@ -393,13 +414,39 @@ async def get_run(run_id: str) -> COREState:
     Returns:
         COREState object with full execution state
     """
-    if run_id not in _active_runs:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found"
-        )
+    # Check in-memory cache first (for active runs)
+    if run_id in _active_runs:
+        return _active_runs[run_id]
+    
+    # Fall back to database for completed/historical runs
+    try:
+        db_run = await run_repository.get_run(run_id)
+        if db_run:
+            # Reconstruct COREState from database state
+            state_data = db_run.get("state")
+            if state_data:
+                # state is already a dict from JSONB
+                if isinstance(state_data, str):
+                    import json
+                    state_data = json.loads(state_data)
+                return COREState(**state_data)
+            else:
+                # Fallback: build minimal state from fields
+                return COREState(
+                    run_id=db_run["run_id"],
+                    user_input=db_run.get("user_input", ""),
+                    conversation_id=db_run.get("conversation_id"),
+                    user_id=db_run.get("user_id"),
+                    response=db_run.get("response"),
+                    current_node=db_run.get("current_node")
+                )
+    except Exception as e:
+        logger.warning(f"Failed to fetch run {run_id} from database: {e}")
 
-    return _active_runs[run_id]
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Run {run_id} not found"
+    )
 
 
 @router.get("/runs/{run_id}/stream")
@@ -637,11 +684,32 @@ async def _stream_graph_execution(graph, state: COREState):
 @router.delete("/runs/{run_id}")
 async def delete_run(run_id: str) -> Dict[str, str]:
     """
-    Delete a completed run from memory.
+    Delete a run from memory and database.
     """
+    from app.dependencies import get_db_pool
+    
+    deleted_from = []
+    
+    # Remove from in-memory cache
     if run_id in _active_runs:
         del _active_runs[run_id]
-        return {"message": f"Run {run_id} deleted"}
+        deleted_from.append("memory")
+    
+    # Remove from database
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM core_runs WHERE run_id = $1",
+                run_id
+            )
+            if "DELETE 1" in result:
+                deleted_from.append("database")
+    except Exception as e:
+        logger.warning(f"Failed to delete run {run_id} from database: {e}")
+    
+    if deleted_from:
+        return {"message": f"Run {run_id} deleted from: {', '.join(deleted_from)}"}
     else:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -650,18 +718,63 @@ async def delete_run(run_id: str) -> Dict[str, str]:
 
 
 @router.get("/runs")
-async def list_runs() -> Dict[str, Any]:
+async def list_runs(
+    user_id: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    include_db: bool = True
+) -> Dict[str, Any]:
     """
-    List all active runs.
+    List runs (in-memory active + persisted in database).
+    
+    Args:
+        user_id: Filter by user ID (optional)
+        status_filter: Filter by status (optional)
+        limit: Maximum number of results
+        include_db: Whether to include database results (default True)
     """
     runs = {}
+    
+    # Add in-memory active runs
     for run_id, state in _active_runs.items():
+        run_status = "completed" if state.is_complete() else "running"
+        
+        # Apply filters
+        if user_id and state.user_id != user_id:
+            continue
+        if status_filter and run_status != status_filter:
+            continue
+            
         runs[run_id] = {
-            "status": "completed" if state.is_complete() else "running",
+            "status": run_status,
             "current_node": state.current_node,
+            "user_input": state.user_input[:100] + "..." if len(state.user_input) > 100 else state.user_input,
             "started_at": state.started_at.isoformat(),
-            "completed_at": state.completed_at.isoformat() if state.completed_at else None
+            "completed_at": state.completed_at.isoformat() if state.completed_at else None,
+            "source": "memory"
         }
+    
+    # Include database runs for persistence across restarts
+    if include_db:
+        try:
+            db_runs = await run_repository.list_runs(
+                user_id=user_id,
+                status=status_filter,
+                limit=limit
+            )
+            for db_run in db_runs:
+                rid = db_run["run_id"]
+                if rid not in runs:  # Don't duplicate in-memory runs
+                    runs[rid] = {
+                        "status": db_run.get("status", "unknown"),
+                        "current_node": db_run.get("current_node"),
+                        "user_input": (db_run.get("user_input", "")[:100] + "...") if db_run.get("user_input") and len(db_run.get("user_input", "")) > 100 else db_run.get("user_input", ""),
+                        "started_at": db_run["created_at"].isoformat() if db_run.get("created_at") else None,
+                        "completed_at": db_run["completed_at"].isoformat() if db_run.get("completed_at") else None,
+                        "source": "database"
+                    }
+        except Exception as e:
+            logger.warning(f"Failed to fetch runs from database: {e}")
 
     return {
         "total_runs": len(runs),

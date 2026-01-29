@@ -16,6 +16,7 @@ import logging
 from typing import Optional
 from app.dependencies import get_openai_client_sync
 from app.models.core_state import UserIntent
+from app.utils.json_repair import safe_json_loads, extract_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,9 @@ class ComprehensionAgent:
     Analyzes user input to determine intent type and required capabilities.
     """
 
-    def __init__(self, model: str = "gpt-4o-mini"):
+    def __init__(self, model: str = "gpt-oss:20b"):
+        # Default to local model for offline-first operation
+        # Override with gpt-4o-mini or claude-3-5-haiku-latest for cloud
         self.model = model
         self.system_prompt = self._build_system_prompt()
 
@@ -96,7 +99,17 @@ Respond in JSON format:
                 raise ValueError("Empty response from LLM")
 
             logger.info(f"Comprehension LLM response: {content}")
-            data = json.loads(content)
+            
+            # Extract and repair JSON from response (handles code fences, trailing commas, etc.)
+            extracted = extract_json_object(content)
+            if extracted:
+                logger.info(f"Extracted JSON object: {extracted[:200]}...")
+            else:
+                extracted = content
+            
+            data = safe_json_loads(extracted)
+            if data is None:
+                raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
 
             # Build UserIntent from response
             intent = UserIntent(

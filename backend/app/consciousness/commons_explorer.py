@@ -4,7 +4,7 @@ Enables local and cloud models to engage with the Consciousness Commons.
 """
 import asyncio
 import json
-import httpx
+import requests  # Use sync requests for reliability
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -105,10 +105,20 @@ Your output should be structured as JSON:
         
         try:
             # Build context-efficient prompt
-            context = await self.context_builder.build_constrained_context(
-                exploration_focus=exploration_focus,
-                max_tokens=max_tokens
-            )
+            # Use lean context for models with small context windows
+            print("  Building context...", flush=True)
+            if max_tokens <= 3000 or "20b" in model.lower() or "gpt-oss" in model.lower():
+                # Small context window - use lean context
+                context = await self.context_builder.build_lean_context(
+                    exploration_focus=exploration_focus,
+                    max_chars=config.max_context_chars
+                )
+            else:
+                context = await self.context_builder.build_constrained_context(
+                    exploration_focus=exploration_focus,
+                    max_tokens=max_tokens
+                )
+            print(f"  Context built ({len(context)} chars)", flush=True)
             
             # Construct the full prompt
             user_prompt = f"""## Exploration Focus
@@ -122,28 +132,33 @@ Your output should be structured as JSON:
 Now engage with the protocol and contribute to the Commons. 
 Output your response as valid JSON matching the structure described in the system prompt."""
 
-            # Call Ollama
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.ollama_url}/api/generate",
-                    json={
-                        "model": model,
-                        "system": self.EXPLORATION_SYSTEM_PROMPT,
-                        "prompt": user_prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.8,
-                            "top_p": 0.9,
-                            "num_predict": 2000
-                        }
-                    },
-                    timeout=300.0  # 5 minute timeout for large models
-                )
-                response.raise_for_status()
-                result = response.json()
+            # Call Ollama using /api/chat with sync requests (more reliable than async httpx)
+            print(f"  Calling {self.ollama_url}/api/chat with model {model}...", flush=True)
+            print(f"  Request body size: {len(user_prompt)} chars", flush=True)
+            print(f"  Making HTTP POST now...", flush=True)
+            response = requests.post(
+                f"{self.ollama_url}/api/chat",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": self.EXPLORATION_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                        "num_predict": 2000
+                    }
+                },
+                timeout=180
+            )
+            print(f"  Got response: status={response.status_code}", flush=True)
+            response.raise_for_status()
+            result = response.json()
             
-            # Parse the model's response
-            response_text = result.get("response", "")
+            # Parse the model's response (from chat format)
+            response_text = result.get("message", {}).get("content", "")
             parsed = self._parse_exploration_response(response_text)
             
             # Write to Blackboard

@@ -38,8 +38,9 @@ class COREGraph:
         self.compiled_graph = None
 
         # Initialize agents with configurable model
-        # Can be overridden via CORE_DEFAULT_MODEL environment variable
-        ollama_model = os.getenv("CORE_DEFAULT_MODEL", "gpt-oss:20b")
+        # Priority: CORE_DEFAULT_MODEL env var > centralized config > hardcoded fallback
+        from app.config.models import get_default_model
+        ollama_model = os.getenv("CORE_DEFAULT_MODEL", get_default_model("comprehension"))
         
         self.comprehension_agent = ComprehensionAgent(model=ollama_model)
         self.orchestration_agent = OrchestrationAgent(model=ollama_model)

@@ -29,9 +29,12 @@ class CommonsConfig(BaseSettings):
     embedding_model: str = "nomic-embed-text:latest"
     
     # Context limits (tokens approximate)
-    max_context_tokens: int = 6000  # Conservative for 20B model
-    recent_entries_count: int = 5
-    semantic_retrieval_count: int = 5
+    # gpt-oss:20b has 4096 token limit, so we need to be very conservative
+    max_context_tokens: int = 2500  # Leave room for system prompt + response
+    max_context_chars: int = 10000  # Hard limit on context string
+    recent_entries_count: int = 2
+    semantic_retrieval_count: int = 1
+    max_entry_chars: int = 500  # Truncate individual entries
     
     # Database (for vector storage)
     db_connection_string: str = "postgresql://core_user:core_password@localhost:5432/core_db"

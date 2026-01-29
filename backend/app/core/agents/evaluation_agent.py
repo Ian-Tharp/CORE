@@ -22,6 +22,7 @@ from app.models.core_state import (
     StepResult,
     EvaluationResult
 )
+from app.utils.json_repair import safe_json_loads, extract_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +190,16 @@ Execution results:
             if not content:
                 raise ValueError("Empty response from LLM")
 
-            data = json.loads(content)
+            # Extract and repair JSON from response
+            extracted = extract_json_object(content)
+            if extracted:
+                logger.info(f"Evaluation: Extracted JSON object")
+            else:
+                extracted = content
+            
+            data = safe_json_loads(extracted)
+            if data is None:
+                raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
 
             return EvaluationResult(
                 overall_status=data.get("overall_status", "success"),

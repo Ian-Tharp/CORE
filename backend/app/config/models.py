@@ -76,6 +76,24 @@ class ModelConfig(BaseModel):
 # Pre-configured models
 MODELS: Dict[str, ModelConfig] = {
     # Local Ollama models
+    "phi3:mini": ModelConfig(
+        provider=ModelProvider.OLLAMA,
+        model_name="phi3:mini",
+        display_name="Phi-3 Mini (Local - Balanced)",
+        default_temperature=0.7,
+        max_tokens=4096,
+        avg_tokens_per_second=30,  # Good balance of speed and quality
+        recommended_for=["development", "testing", "structured_output"],
+    ),
+    "tinyllama": ModelConfig(
+        provider=ModelProvider.OLLAMA,
+        model_name="tinyllama",
+        display_name="TinyLlama (Local - Fast)",
+        default_temperature=0.7,
+        max_tokens=2048,
+        avg_tokens_per_second=100,  # Very fast inference
+        recommended_for=["quick_testing", "simple_tasks"],
+    ),
     "gpt-oss:20b": ModelConfig(
         provider=ModelProvider.OLLAMA,
         model_name="gpt-oss:20b",
@@ -153,12 +171,13 @@ MODELS: Dict[str, ModelConfig] = {
 
 
 # Default model for each use case
+# phi3:mini is faster; JSON repair utility handles occasional malformed output
 DEFAULT_MODELS = {
-    "comprehension": "gpt-oss:20b",  # Use local for dev
-    "orchestration": "gpt-oss:20b",
-    "reasoning": "gpt-oss:20b",
-    "evaluation": "gpt-oss:20b",
-    "conversation": "gpt-oss:20b",
+    "comprehension": "phi3:mini",
+    "orchestration": "phi3:mini",
+    "reasoning": "phi3:mini",
+    "evaluation": "phi3:mini",
+    "conversation": "phi3:mini",
     "embeddings": "nomic-embed-text",
 }
 
