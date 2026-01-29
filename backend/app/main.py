@@ -10,7 +10,7 @@ from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
-from app.repository import run_repository
+from app.repository import run_repository, council_repository
 
 
 logging.basicConfig(
@@ -35,6 +35,10 @@ async def lifespan(app: FastAPI):
             # Ensure run repository table exists
             await run_repository.ensure_runs_table()
             logger.info("Engine runs table ensured")
+            
+            # Ensure council tables exist
+            await council_repository.ensure_council_tables()
+            logger.info("Council tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
