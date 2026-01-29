@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
@@ -85,6 +85,7 @@ app.include_router(engine.router)  # CORE cognitive engine endpoint
 app.include_router(test_core.router)  # Test endpoints
 app.include_router(health.router)  # Health check endpoints (includes /health)
 app.include_router(admin.router)  # Admin and management endpoints
+app.include_router(council.router)  # Council of Perspectives deliberation system
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
