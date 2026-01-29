@@ -58,6 +58,11 @@ body {
   background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface) 90%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface-high) 90%, transparent) 100%) !important;
 }
 
+/* Standardized card header padding - ensures consistent spacing between header and content */
+.mat-mdc-card .mat-mdc-card-header {
+  padding-bottom: 16px;
+}
+
 /* Ensure readable text within cards globally */
 .mat-mdc-card .mat-mdc-card-content,
 .mat-mdc-card .mat-mdc-card-content p {
