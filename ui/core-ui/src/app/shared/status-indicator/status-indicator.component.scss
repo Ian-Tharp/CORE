@@ -1,0 +1,199 @@
+// Status Indicator Component Styles
+// Follows Solarpunk design system
+
+// Status Colors
+$status-completed: #35ff89;     // Bio Green - success
+$status-awaiting-hitl: #ff9800; // Orange - needs attention
+$status-pending: #ffc82e;       // Solar Gold - waiting
+$status-error: #ff5757;         // Error red
+$status-running: #00eaff;       // Neon Teal - active/cyan
+
+// Size configurations
+$sizes: (
+  sm: (
+    icon: 16px,
+    font: 0.75rem,
+    gap: 4px
+  ),
+  md: (
+    icon: 20px,
+    font: 0.875rem,
+    gap: 6px
+  ),
+  lg: (
+    icon: 28px,
+    font: 1rem,
+    gap: 8px
+  )
+);
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  // Size variants
+  @each $size, $config in $sizes {
+    &[data-size="#{$size}"] {
+      gap: map-get($config, gap);
+
+      .status-icon {
+        width: map-get($config, icon);
+        height: map-get($config, icon);
+
+        svg {
+          width: map-get($config, icon);
+          height: map-get($config, icon);
+        }
+      }
+
+      .status-label {
+        font-size: map-get($config, font);
+      }
+    }
+  }
+}
+
+.status-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+
+  svg {
+    transition: all 0.3s ease;
+  }
+}
+
+.status-label {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+// Pulse animation ring for running status
+.pulse-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+// Status-specific styles
+.status-completed {
+  color: $status-completed;
+
+  .status-icon {
+    filter: drop-shadow(0 0 6px rgba($status-completed, 0.5));
+  }
+
+  .status-label {
+    color: $status-completed;
+  }
+}
+
+.status-awaiting_hitl {
+  color: $status-awaiting-hitl;
+
+  .status-icon {
+    filter: drop-shadow(0 0 6px rgba($status-awaiting-hitl, 0.5));
+    animation: attention-pulse 2s ease-in-out infinite;
+  }
+
+  .status-label {
+    color: $status-awaiting-hitl;
+  }
+}
+
+@keyframes attention-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.status-pending {
+  color: $status-pending;
+
+  .status-icon {
+    filter: drop-shadow(0 0 6px rgba($status-pending, 0.4));
+  }
+
+  .status-label {
+    color: $status-pending;
+  }
+}
+
+.status-error {
+  color: $status-error;
+
+  .status-icon {
+    filter: drop-shadow(0 0 8px rgba($status-error, 0.6));
+    animation: error-shake 0.5s ease-in-out;
+  }
+
+  .status-label {
+    color: $status-error;
+  }
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-2px);
+  }
+  40%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+.status-running {
+  color: $status-running;
+
+  .status-icon {
+    filter: drop-shadow(0 0 8px rgba($status-running, 0.6));
+
+    svg {
+      animation: spin-slow 3s linear infinite;
+    }
+  }
+
+  .status-label {
+    color: $status-running;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Hover effects (for interactive contexts)
+.status-indicator:hover {
+  .status-icon {
+    transform: scale(1.1);
+  }
+}
