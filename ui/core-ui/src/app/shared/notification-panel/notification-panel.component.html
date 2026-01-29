@@ -1,0 +1,122 @@
+<div class="notification-panel" [class.open]="isOpen" [class.has-notifications]="hasNotifications">
+  <!-- Panel Header -->
+  <div class="panel-header" (click)="togglePanel()">
+    <div class="header-content">
+      <svg class="header-icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+      </svg>
+      <span class="header-title">{{ title }}</span>
+      @if (mergedConfig.showBadge && unreadCount > 0) {
+        <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+      }
+    </div>
+    <div class="header-actions">
+      @if (hasNotifications) {
+        <button 
+          class="clear-all-btn" 
+          (click)="clearAllNotifications(); $event.stopPropagation()"
+          title="Clear all notifications">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+          </svg>
+        </button>
+      }
+      <svg class="toggle-icon" [class.rotated]="isOpen" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Panel Content -->
+  @if (isOpen) {
+    <div class="panel-content">
+      @if (!hasNotifications) {
+        <div class="empty-state">
+          <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+          </svg>
+          <span class="empty-text">No notifications</span>
+          <span class="empty-subtext">You're all caught up!</span>
+        </div>
+      } @else {
+        <div class="notification-groups">
+          @for (group of groups; track trackByType($index, group)) {
+            <div class="notification-group" [class.expanded]="group.expanded">
+              <!-- Group Header -->
+              <div class="group-header" (click)="toggleGroup(group)">
+                <div class="group-info">
+                  <svg class="group-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path [attr.d]="typeIcons[group.type]"/>
+                  </svg>
+                  <span class="group-label">{{ group.label }}</span>
+                  <span class="group-count">{{ group.notifications.length }}</span>
+                </div>
+                <div class="group-actions">
+                  <button 
+                    class="clear-group-btn" 
+                    (click)="clearGroup(group.type); $event.stopPropagation()"
+                    title="Clear {{ group.label | lowercase }}">
+                    Clear
+                  </button>
+                  <svg class="expand-icon" [class.rotated]="group.expanded" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Group Notifications -->
+              @if (group.expanded) {
+                <div class="notification-list">
+                  @for (notification of group.notifications; track trackById($index, notification)) {
+                    <div 
+                      class="notification-item"
+                      [class.unread]="!notification.read"
+                      [class]="getPriorityClass(notification)"
+                      (click)="onNotificationClick(notification)">
+                      
+                      <div class="notification-status">
+                        <app-status-indicator 
+                          [status]="notification.status" 
+                          size="sm">
+                        </app-status-indicator>
+                      </div>
+
+                      <div class="notification-content">
+                        @if (notification.title) {
+                          <div class="notification-title">{{ notification.title }}</div>
+                        }
+                        <div class="notification-message">{{ notification.message }}</div>
+                        <div class="notification-meta">
+                          <span class="notification-time">{{ formatTimestamp(notification.timestamp) }}</span>
+                          @if (notification.source) {
+                            <span class="notification-source">· {{ notification.source }}</span>
+                          }
+                        </div>
+                        @if (notification.actionLabel && notification.actionId) {
+                          <button 
+                            class="notification-action-btn"
+                            (click)="onActionClick(notification); $event.stopPropagation()">
+                            {{ notification.actionLabel }}
+                          </button>
+                        }
+                      </div>
+
+                      <button 
+                        class="dismiss-btn"
+                        (click)="dismissNotification(notification.id); $event.stopPropagation()"
+                        title="Dismiss">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

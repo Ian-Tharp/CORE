@@ -1,0 +1,503 @@
+// Notification Panel Component Styles
+// Solarpunk Design System - Dark background with cyan accents
+
+// ============================================================================
+// Design Tokens
+// ============================================================================
+
+// Core Colors
+$bg-primary: #0d1117;           // Deep dark background
+$bg-secondary: #161b22;         // Slightly lighter panels
+$bg-tertiary: #21262d;          // Card/item backgrounds
+$bg-hover: #30363d;             // Hover state
+
+// Accent Colors (Solarpunk Palette)
+$accent-cyan: #00eaff;          // Primary accent - Neon Teal
+$accent-green: #35ff89;         // Bio Green - success
+$accent-gold: #ffc82e;          // Solar Gold - warning
+$accent-orange: #ff9800;        // Attention orange
+$accent-red: #ff5757;           // Error red
+
+// Text Colors
+$text-primary: #e6edf3;         // Primary text
+$text-secondary: #8b949e;       // Secondary/muted text
+$text-muted: #6e7681;           // Timestamps, meta
+
+// Borders & Shadows
+$border-subtle: rgba($accent-cyan, 0.1);
+$border-accent: rgba($accent-cyan, 0.3);
+$glow-cyan: 0 0 20px rgba($accent-cyan, 0.15);
+$glow-cyan-strong: 0 0 30px rgba($accent-cyan, 0.25);
+
+// Priority Colors
+$priority-urgent: $accent-red;
+$priority-high: $accent-orange;
+$priority-normal: $accent-cyan;
+$priority-low: $text-secondary;
+
+// ============================================================================
+// Panel Container
+// ============================================================================
+
+.notification-panel {
+  width: 100%;
+  max-width: 400px;
+  background: $bg-primary;
+  border: 1px solid $border-subtle;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: $glow-cyan;
+  transition: all 0.3s ease;
+
+  &.has-notifications {
+    border-color: $border-accent;
+  }
+
+  &.open {
+    box-shadow: $glow-cyan-strong;
+  }
+}
+
+// ============================================================================
+// Panel Header
+// ============================================================================
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: $bg-secondary;
+  border-bottom: 1px solid $border-subtle;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: $bg-tertiary;
+  }
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-icon {
+  width: 22px;
+  height: 22px;
+  color: $accent-cyan;
+  filter: drop-shadow(0 0 6px rgba($accent-cyan, 0.5));
+}
+
+.header-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-primary;
+  letter-spacing: 0.02em;
+}
+
+.notification-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: $accent-cyan;
+  color: $bg-primary;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba($accent-cyan, 0.5);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clear-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid $border-subtle;
+  border-radius: 6px;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba($accent-red, 0.1);
+    border-color: $accent-red;
+    color: $accent-red;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.toggle-icon {
+  width: 20px;
+  height: 20px;
+  color: $text-secondary;
+  transition: transform 0.3s ease;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+// ============================================================================
+// Panel Content
+// ============================================================================
+
+.panel-content {
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: $border-accent $bg-secondary;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $bg-secondary;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $border-accent;
+    border-radius: 3px;
+  }
+}
+
+// ============================================================================
+// Empty State
+// ============================================================================
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  color: $text-muted;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: $text-secondary;
+  margin-bottom: 4px;
+}
+
+.empty-subtext {
+  font-size: 0.875rem;
+  color: $text-muted;
+}
+
+// ============================================================================
+// Notification Groups
+// ============================================================================
+
+.notification-groups {
+  padding: 8px 0;
+}
+
+.notification-group {
+  border-bottom: 1px solid $border-subtle;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: $bg-secondary;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: $bg-tertiary;
+  }
+}
+
+.group-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-icon {
+  width: 18px;
+  height: 18px;
+  color: $accent-cyan;
+}
+
+.group-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.group-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: $bg-tertiary;
+  color: $text-secondary;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.group-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clear-group-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid $border-subtle;
+  border-radius: 4px;
+  color: $text-secondary;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba($accent-red, 0.1);
+    border-color: $accent-red;
+    color: $accent-red;
+  }
+}
+
+.expand-icon {
+  width: 18px;
+  height: 18px;
+  color: $text-secondary;
+  transition: transform 0.3s ease;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+// ============================================================================
+// Notification List & Items
+// ============================================================================
+
+.notification-list {
+  padding: 4px 8px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  margin: 4px 0;
+  background: $bg-tertiary;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: $bg-hover;
+    border-color: $border-accent;
+  }
+
+  &.unread {
+    background: rgba($accent-cyan, 0.05);
+    border-left: 3px solid $accent-cyan;
+
+    .notification-title {
+      color: $accent-cyan;
+    }
+  }
+
+  // Priority styles
+  &.priority-urgent {
+    border-left: 3px solid $priority-urgent;
+    
+    &.unread {
+      background: rgba($priority-urgent, 0.05);
+    }
+  }
+
+  &.priority-high {
+    border-left: 3px solid $priority-high;
+    
+    &.unread {
+      background: rgba($priority-high, 0.05);
+    }
+  }
+
+  &.priority-normal {
+    // Default styling
+  }
+
+  &.priority-low {
+    opacity: 0.85;
+  }
+}
+
+.notification-status {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.notification-message {
+  font-size: 0.8125rem;
+  color: $text-secondary;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.notification-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: $text-muted;
+}
+
+.notification-time {
+  color: $text-muted;
+}
+
+.notification-source {
+  color: $accent-cyan;
+  opacity: 0.7;
+}
+
+.notification-action-btn {
+  margin-top: 10px;
+  padding: 6px 14px;
+  background: rgba($accent-cyan, 0.1);
+  border: 1px solid $accent-cyan;
+  border-radius: 6px;
+  color: $accent-cyan;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: $accent-cyan;
+    color: $bg-primary;
+    box-shadow: 0 0 15px rgba($accent-cyan, 0.4);
+  }
+}
+
+.dismiss-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: $text-muted;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+
+  .notification-item:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    background: rgba($accent-red, 0.1);
+    color: $accent-red;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// ============================================================================
+// Animations
+// ============================================================================
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.notification-item {
+  animation: slide-in 0.3s ease-out;
+}
+
+// ============================================================================
+// Responsive Adjustments
+// ============================================================================
+
+@media (max-width: 480px) {
+  .notification-panel {
+    max-width: 100%;
+    border-radius: 0;
+  }
+
+  .panel-header {
+    padding: 12px;
+  }
+
+  .notification-item {
+    padding: 10px;
+  }
+}
