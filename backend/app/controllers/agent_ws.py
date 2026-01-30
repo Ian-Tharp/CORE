@@ -24,7 +24,7 @@ CORE → Agent Messages:
 import asyncio
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
 
