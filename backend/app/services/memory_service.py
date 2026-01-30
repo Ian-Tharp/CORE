@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from langmem import create_memory_manager
-from langchain_postgres import AsyncPostgresStore
+from langgraph.store.memory import InMemoryStore
 from pydantic import BaseModel
 
 from app.dependencies import get_db_pool
@@ -86,23 +86,10 @@ class MemoryService:
             # Set up LangMem PostgreSQL store
             pool = await get_db_pool()
             
-            # Get connection string from pool config
-            # This is a workaround since asyncpg pool doesn't expose connection string
-            db_config = {
-                'host': 'postgres',  # Docker service name
-                'port': 5432,
-                'database': 'core_db',
-                'user': 'core_user',
-                'password': 'core_password'
-            }
-            
-            connection_string = f"postgresql+asyncpg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
-            
-            # Create LangMem store
-            self.store = AsyncPostgresStore(
-                connection_string=connection_string,
-                namespace=("core_memory",)
-            )
+            # Create LangMem store — using InMemoryStore as the LangMem coordination layer.
+            # All persistent memory operations go through our custom pgvector repository,
+            # so this store is only used for LangMem's internal state management.
+            self.store = InMemoryStore()
             
             # Initialize LangMem memory manager
             # Note: Using a lightweight schema since we're primarily using our custom repository

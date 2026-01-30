@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
             await task_repository.ensure_task_tables()
             logger.info("Task tables ensured")
 
-            # Ensure memory tables exist
+            # Ensure memory tables exist (LangMem three-tier system)
             await memory_repository.ensure_memory_tables()
             logger.info("Memory tables ensured")
         except Exception as init_exc:  # noqa: BLE001
@@ -128,7 +128,7 @@ app.include_router(admin.router)  # Admin and management endpoints
 app.include_router(council.router)  # Council of Perspectives deliberation system
 app.include_router(instances.router)  # Instance management and container orchestration
 app.include_router(tasks.router)  # Task Routing Engine for CORE orchestration
-app.include_router(memory.router)  # Three-tier memory system (LangMem integration)
+app.include_router(memory.router)  # LangMem three-tier memory system
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
