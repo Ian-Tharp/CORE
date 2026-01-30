@@ -8,6 +8,7 @@ Provides the API layer for the InstanceManager service.
 import logging
 from typing import Dict, List, Any, Optional
 from uuid import UUID
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel, Field
@@ -614,3 +615,169 @@ async def _resolve_to_database_id(instance_id: str) -> UUID:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Instance with container ID {instance_id} not found"
             )
+
+
+# =============================================================================
+# AGENT REGISTRATION ENDPOINTS (REST Fallbacks)
+# =============================================================================
+
+class AgentRegistrationRequest(BaseModel):
+    """REST request for agent registration (fallback when WebSocket unavailable)."""
+    container_id: str = Field(..., description="Docker container ID")
+    role: str = Field(..., description="Agent role")
+    capabilities: List[str] = Field(default_factory=list, description="Agent capabilities")
+    version: str = Field(..., description="Agent version")
+
+
+class AgentConfigResponse(BaseModel):
+    """Response containing agent configuration."""
+    agent_id: str
+    model: str
+    tools: List[str]
+    memory_config: Dict[str, Any]
+
+
+class AgentHeartbeatRequest(BaseModel):
+    """REST request for agent heartbeat (fallback when WebSocket unavailable)."""
+    status: str = Field(..., description="Current agent status")
+    current_task: Optional[str] = Field(None, description="Current task ID")
+    resource_usage: Dict[str, Any] = Field(default_factory=dict, description="Resource usage metrics")
+
+
+class ConnectedAgentInfo(BaseModel):
+    """Information about a connected agent."""
+    agent_id: str
+    container_id: str
+    role: str
+    status: str
+    capabilities: List[str]
+    last_heartbeat: str
+    websocket_connected: bool
+
+
+@router.post("/agents/register", status_code=status.HTTP_200_OK, response_model=AgentConfigResponse)
+async def register_agent_rest(request: AgentRegistrationRequest) -> AgentConfigResponse:
+    """
+    REST fallback for agent registration when WebSocket is unavailable.
+    
+    Agents should prefer WebSocket registration for real-time communication,
+    but can use this endpoint if WebSocket connection fails.
+    """
+    try:
+        from app.services.agent_registry import agent_registry, AgentRegistrationPayload
+        
+        registration = AgentRegistrationPayload(
+            container_id=request.container_id,
+            role=request.role,
+            capabilities=request.capabilities,
+            version=request.version
+        )
+        
+        config = await agent_registry.register_agent(registration)
+        
+        logger.info(f"Agent registered via REST: {config.agent_id} (container: {request.container_id[:12]})")
+        
+        return AgentConfigResponse(
+            agent_id=config.agent_id,
+            model=config.model,
+            tools=config.tools,
+            memory_config=config.memory_config
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Registration failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to register agent via REST: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
+
+
+@router.post("/agents/{agent_id}/heartbeat", status_code=status.HTTP_200_OK)
+async def send_heartbeat_rest(agent_id: str, request: AgentHeartbeatRequest) -> Dict[str, Any]:
+    """
+    REST fallback for agent heartbeat when WebSocket is unavailable.
+    
+    Agents should prefer WebSocket heartbeats for real-time communication,
+    but can use this endpoint if WebSocket connection is lost.
+    """
+    try:
+        from app.services.agent_registry import agent_registry, AgentHeartbeatData
+        
+        heartbeat_data = AgentHeartbeatData(
+            status=request.status,
+            current_task=request.current_task,
+            resource_usage=request.resource_usage
+        )
+        
+        response = await agent_registry.handle_heartbeat(agent_id, heartbeat_data)
+        
+        return {
+            "message": "Heartbeat processed",
+            "response": response,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Heartbeat failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to process heartbeat via REST: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Heartbeat failed: {str(e)}"
+        )
+
+
+@router.get("/agents/connected", status_code=status.HTTP_200_OK)
+async def list_connected_agents() -> Dict[str, Any]:
+    """
+    List currently connected agents with WebSocket status.
+    
+    Shows both agents connected via WebSocket and those registered via REST,
+    along with their current status and capabilities.
+    """
+    try:
+        from app.services.agent_registry import agent_registry
+        from app.controllers.agent_ws import agent_ws_manager
+        
+        # Get active agents from registry
+        active_agents = []
+        websocket_connections = agent_ws_manager.get_connected_agents()
+        
+        for agent_id in agent_registry.list_active_agents():
+            agent_info = agent_registry.get_agent_info(agent_id)
+            if agent_info:
+                active_agents.append(ConnectedAgentInfo(
+                    agent_id=agent_id,
+                    container_id=agent_info["container_id"],
+                    role=agent_info["role"],
+                    status=agent_info["current_status"],
+                    capabilities=agent_info["capabilities"],
+                    last_heartbeat=agent_info["last_heartbeat"].isoformat(),
+                    websocket_connected=agent_id in websocket_connections
+                ))
+        
+        # Get connection stats
+        ws_stats = agent_ws_manager.get_connection_stats()
+        
+        return {
+            "agents": active_agents,
+            "total_agents": len(active_agents),
+            "websocket_stats": ws_stats,
+            "healthy_agents": len(agent_registry.get_healthy_agents()),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to list connected agents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list connected agents: {str(e)}"
+        )

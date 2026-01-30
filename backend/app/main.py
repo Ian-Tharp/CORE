@@ -6,10 +6,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances
+from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
+from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.repository import run_repository, council_repository, instance_repository
 
 
@@ -55,6 +57,13 @@ async def lifespan(app: FastAPI):
         except Exception as webhook_exc:
             logger.error("Failed to initialize webhook service: %s", webhook_exc)
         
+        # Initialize agent registry
+        try:
+            await initialize_agent_registry()
+            logger.info("Agent registry initialized")
+        except Exception as agent_exc:
+            logger.error("Failed to initialize agent registry: %s", agent_exc)
+        
         yield
     finally:
         # Shutdown webhook service
@@ -63,6 +72,13 @@ async def lifespan(app: FastAPI):
             logger.info("Webhook service shutdown")
         except Exception as webhook_close_exc:
             logger.error("Error shutting down webhook service: %s", webhook_close_exc)
+        
+        # Shutdown agent registry
+        try:
+            await shutdown_agent_registry()
+            logger.info("Agent registry shutdown")
+        except Exception as agent_close_exc:
+            logger.error("Error shutting down agent registry: %s", agent_close_exc)
         
         # Gracefully close DB connections on shutdown.
         try:
@@ -190,6 +206,27 @@ async def websocket_endpoint(websocket: WebSocket, instance_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for {instance_id}: {e}")
         manager.disconnect(instance_id)
+
+
+# ---------------------------------------------------------------------------
+# Agent WebSocket endpoint for container registration and communication
+# ---------------------------------------------------------------------------
+@app.websocket("/ws/agent/{agent_id}")
+async def websocket_agent_endpoint(websocket: WebSocket, agent_id: str):
+    """
+    WebSocket endpoint for agent registration and communication.
+
+    Separate from Communication Commons WebSocket - this is specifically
+    for containerized agents to register, send heartbeats, and receive tasks.
+    
+    Each agent connects with their agent_id and can:
+    - Register with capabilities and version
+    - Send periodic heartbeats with status and resource usage
+    - Report task completion or refusal
+    - Receive task assignments and configuration updates
+    - Gracefully deregister on shutdown
+    """
+    await agent_websocket_endpoint(websocket, agent_id)
 
 
 # ---------------------------------------------------------------------------
