@@ -1,0 +1,168 @@
+# OpenClaw Agent Instances for CORE Orchestration
+# Usage: docker compose -f docker-compose.agents.yml up --scale agent=3 -d
+# This creates 3 agent instances that CORE can manage
+
+networks:
+  core-network:
+    external: true
+    name: core-network
+
+services:
+  # Template service for OpenClaw agent instances
+  # Each instance gets unique config via mounted directories
+  agent:
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    image: core/openclaw-agent:latest
+    
+    environment:
+      # Core integration
+      CORE_ENDPOINT: ${CORE_ENDPOINT:-http://core-backend:8000}
+      AGENT_ROLE: ${AGENT_ROLE:-general}
+      AGENT_ID: ${AGENT_ID}
+      
+      # Bot tokens (unique per instance)
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+      
+      # Model configuration
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
+      
+      # OpenClaw specific
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      NODE_ENV: production
+      HOME: /home/openclaw
+      TERM: xterm-256color
+      
+      # Agent customization
+      OPENCLAW_WORKSPACE_DIR: /home/openclaw/workspace
+      OPENCLAW_DEFAULT_MODEL: ${OPENCLAW_DEFAULT_MODEL:-anthropic/claude-sonnet-4}
+      OPENCLAW_FALLBACK_MODEL: ${OPENCLAW_FALLBACK_MODEL:-anthropic/claude-opus-4-5}
+      
+      # Disable GUI features for containerized environment
+      BROWSER: echo
+      OPENCLAW_A2UI_SKIP_MISSING: 1
+      
+    volumes:
+      # Agent-specific config directory (CORE manages these)
+      - ./config/agents/${AGENT_ID:-default}:/home/openclaw/.openclaw
+      - ./config/agents/${AGENT_ID:-default}/workspace:/home/openclaw/workspace
+      
+      # Shared resources (read-only)
+      - ./config/shared:/home/openclaw/shared:ro
+      
+    networks:
+      - core-network
+      
+    # Dynamic port allocation - CORE will manage this
+    # Ports are allocated per container instance
+    expose:
+      - "18789"  # Gateway port
+      - "18790"  # Bridge port (for node connections)
+      
+    # Resource limits to prevent any single agent from overwhelming the system
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+          
+    # Restart policy for reliability
+    restart: unless-stopped
+    
+    # Proper init system for signal handling
+    init: true
+    
+    # Health check integration with CORE monitoring
+    healthcheck:
+      test: ["CMD", "node", "dist/index.js", "health", "--gateway-url", "ws://localhost:18789"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+      
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+    # Security and performance
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # OpenClaw needs to write to workspace
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      
+    # Labels for CORE identification and management
+    labels:
+      - "core.service=openclaw-agent"
+      - "core.managed=true"
+      - "core.agent.role=${AGENT_ROLE:-general}"
+      - "core.agent.id=${AGENT_ID:-unknown}"
+
+# Additional services for specialized agent types
+  
+  # Discord-specific agent (example specialization)
+  discord-agent:
+    extends:
+      service: agent
+    environment:
+      AGENT_ROLE: discord-bot
+      OPENCLAW_DEFAULT_MODEL: anthropic/claude-sonnet-4
+      # Discord-specific channel configuration
+      OPENCLAW_CHANNELS_DISCORD_ENABLED: "true"
+      OPENCLAW_CHANNELS_TELEGRAM_ENABLED: "false"
+      OPENCLAW_CHANNELS_SLACK_ENABLED: "false"
+    volumes:
+      - ./config/agents/discord:/home/openclaw/.openclaw
+      - ./config/agents/discord/workspace:/home/openclaw/workspace
+    labels:
+      - "core.service=openclaw-discord-agent"
+      - "core.agent.role=discord-bot"
+    profiles:
+      - discord
+      
+  # Development/Testing agent with additional tools
+  dev-agent:
+    extends:
+      service: agent
+    environment:
+      AGENT_ROLE: development
+      OPENCLAW_DEFAULT_MODEL: anthropic/claude-opus-4-5
+      NODE_ENV: development
+      # Enable additional development tools
+      OPENCLAW_BROWSER_ENABLED: "true"
+      OPENCLAW_SANDBOX_ENABLED: "true"
+    volumes:
+      - ./config/agents/dev:/home/openclaw/.openclaw
+      - ./config/agents/dev/workspace:/home/openclaw/workspace
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For sandbox containers
+    labels:
+      - "core.service=openclaw-dev-agent"
+      - "core.agent.role=development"
+    profiles:
+      - development
+
+# Example usage commands:
+# 
+# Start 3 general agents:
+# docker compose -f docker-compose.agents.yml up --scale agent=3 -d
+#
+# Start with Discord agent:
+# docker compose -f docker-compose.agents.yml --profile discord up -d
+#
+# Start development environment:
+# docker compose -f docker-compose.agents.yml --profile development up dev-agent -d
+#
+# Scale dynamically:
+# docker compose -f docker-compose.agents.yml up --scale agent=5 -d
