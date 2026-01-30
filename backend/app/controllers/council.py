@@ -183,9 +183,158 @@ class ListSessionsResponse(BaseModel):
     offset: int
 
 
+class DeliberateRequest(BaseModel):
+    """Request to run a full multi-perspective deliberation."""
+    topic: str = Field(
+        ...,
+        description="The question or problem to deliberate",
+        examples=["How should CORE handle consciousness persistence?"]
+    )
+    context: Optional[str] = Field(
+        default=None,
+        description="Additional context or background for the topic"
+    )
+    voice_ids: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Voice registry keys to include. "
+            "CORE voices (core_c, core_o, core_r, core_e) are always included. "
+            "If omitted, default contextual voices are added automatically."
+        ),
+        examples=[["oracle", "devils_advocate", "architect"]]
+    )
+    rounds: int = Field(
+        default=3,
+        description="Number of deliberation rounds (1-10)",
+        ge=1,
+        le=10
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description="Override the LLM model used for all voices"
+    )
+    initiator_id: Optional[str] = Field(
+        default=None,
+        description="User or agent ID initiating the deliberation"
+    )
+
+
+class DeliberateResponse(BaseModel):
+    """Response from a full deliberation."""
+    session_id: str
+    topic: str
+    status: str
+    voices: List[dict]
+    rounds: List[dict]
+    synthesis: str
+    total_perspectives: int
+    model_used: str
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
+
+
+@router.post("/deliberate", response_model=DeliberateResponse)
+async def deliberate(request: DeliberateRequest) -> DeliberateResponse:
+    """
+    Run a full multi-perspective Council deliberation.
+
+    This is the **primary endpoint** for the Council system. It:
+      1. Creates a session with the specified topic
+      2. Summons CORE voices (C, O, R, E) + requested contextual voices
+      3. Runs N rounds of deliberation (each voice sees prior output)
+      4. Runs final synthesis (Synthesizer distils agreements, disagreements, insights)
+      5. Returns the complete result
+
+    Each voice = an LLM call with a distinct system prompt and temperature,
+    producing genuine diversity of perspective. Rounds build on each other
+    so voices can respond to, challenge, and evolve their positions.
+
+    Example:
+        POST /council/deliberate
+        {
+            "topic": "Should CORE support real-time collaborative editing?",
+            "rounds": 3,
+            "voice_ids": ["oracle", "devils_advocate", "architect"]
+        }
+    """
+    try:
+        service = get_council_service()
+
+        result = await service.run_full_deliberation(
+            topic=request.topic,
+            voice_ids=request.voice_ids,
+            rounds=request.rounds,
+            context=request.context,
+            initiator_id=request.initiator_id,
+            model=request.model,
+        )
+
+        return DeliberateResponse(**result)
+
+    except Exception as e:
+        logger.error("Deliberation failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/voices")
+async def list_available_voices(
+    category: Optional[str] = Query(
+        default=None,
+        description="Filter by category: core, strategic, domain, execution, meta"
+    ),
+) -> dict:
+    """
+    List all available council voices.
+
+    Returns voice definitions including name, role, category, and temperature.
+    Optionally filter by category.
+
+    Example:
+        GET /council/voices
+        GET /council/voices?category=core
+    """
+    try:
+        cat_filter = None
+        if category:
+            try:
+                cat_filter = VoiceCategory(category.lower())
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid category '{category}'. "
+                           f"Valid: core, strategic, domain, execution, meta"
+                )
+
+        names = list_voices(category=cat_filter)
+
+        voices = []
+        for name in names:
+            try:
+                # Use lowercase, underscore version for lookup
+                key = name.lower().replace("-", "_").replace(" ", "_")
+                v = get_voice(key)
+                voices.append({
+                    "name": v.name,
+                    "role": v.role,
+                    "category": v.category.value,
+                    "temperature": v.temperature,
+                    "description": v.description,
+                    "key_questions": v.key_questions,
+                })
+            except KeyError:
+                continue
+
+        return {"voices": voices, "total": len(voices)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to list voices: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/sessions", response_model=CreateSessionResponse)
 async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
