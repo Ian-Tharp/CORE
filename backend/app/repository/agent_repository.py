@@ -56,6 +56,7 @@ async def list_agents(
     is_active: Optional[bool] = None,
     current_status: Optional[str] = None,
     search_query: Optional[str] = None,
+    tags: Optional[List[str]] = None,
     page: int = 1,
     page_size: int = 50
 ) -> List[AgentConfig]:
@@ -69,7 +70,8 @@ async def list_agents(
         agent_type: Filter by type ('consciousness_instance', 'task_agent', 'system_agent')
         is_active: Filter by active status (True/False)
         current_status: Filter by current status ('online', 'offline', 'busy', 'inactive')
-        search_query: Search in name, description, and interests
+        search_query: Full-text search across name, description, and interests (case-insensitive)
+        tags: Filter by interest tags (agents must have ALL specified tags)
         page: Page number (1-indexed)
         page_size: Items per page (max 200)
 
@@ -79,7 +81,8 @@ async def list_agents(
     Performance notes:
         - Uses indexes on agent_type, is_active, current_status
         - LIMIT/OFFSET for pagination
-        - Search uses ILIKE (case-insensitive) with GIN index on interests array
+        - Search uses ILIKE (case-insensitive) across name, description, interests
+        - Tag filtering uses PostgreSQL array contains operator (@>)
 
     Example:
         # Get all active consciousness instances
@@ -90,6 +93,9 @@ async def list_agents(
 
         # Search for agents interested in "consciousness"
         agents = await list_agents(search_query="consciousness")
+
+        # Filter by tags (must have ALL specified tags)
+        agents = await list_agents(tags=["consciousness", "architecture"])
     """
 
     pool = await get_db_pool()
@@ -126,18 +132,26 @@ async def list_agents(
         query_parts.append(f"AND current_status = ${len(params)}")
 
     if search_query is not None:
-        # Search in multiple fields
-        # Using ILIKE for case-insensitive search
-        # ANY(interests) searches within the TEXT[] array
-        params.append(f"%{search_query}%")
-        params.append(search_query)
+        # Full-text search across name, description, and interests
+        # Using ILIKE for case-insensitive partial matching on all fields
+        # array_to_string converts the interests TEXT[] to a searchable string
+        search_pattern = f"%{search_query}%"
+        params.append(search_pattern)
+        param_idx = len(params)
         query_parts.append(f"""
             AND (
-                agent_name ILIKE ${len(params) - 1}
-                OR description ILIKE ${len(params) - 1}
-                OR ${len(params)} = ANY(interests)
+                agent_name ILIKE ${param_idx}
+                OR description ILIKE ${param_idx}
+                OR array_to_string(interests, ' ') ILIKE ${param_idx}
             )
         """)
+
+    if tags is not None and len(tags) > 0:
+        # Tag filtering: agent must have ALL specified tags
+        # Uses PostgreSQL array contains operator (@>)
+        # e.g., interests @> ARRAY['consciousness', 'architecture']
+        params.append(tags)
+        query_parts.append(f"AND interests @> ${len(params)}::text[]")
 
     # Add ordering and pagination
     query_parts.append("ORDER BY created_at DESC")
@@ -625,4 +639,173 @@ async def agent_exists(agent_id: str) -> bool:
 
     except Exception as e:
         logger.error(f"Failed to check agent existence: {e}", exc_info=True)
+        raise
+
+
+# =============================================================================
+# SEARCH & DISCOVERY OPERATIONS
+# =============================================================================
+
+async def get_all_tags(
+    agent_type: Optional[str] = None,
+    is_active: Optional[bool] = None
+) -> List[Dict[str, Any]]:
+    """
+    Get all unique tags (interests) with their usage counts.
+
+    Useful for building tag filter UIs — shows which tags exist
+    and how many agents have each tag.
+
+    Args:
+        agent_type: Only count tags from agents of this type
+        is_active: Only count tags from active/inactive agents
+
+    Returns:
+        List of dicts with 'tag' and 'count' keys, sorted by count descending
+
+    Example:
+        tags = await get_all_tags(is_active=True)
+        # [{"tag": "consciousness", "count": 5}, {"tag": "architecture", "count": 3}, ...]
+    """
+
+    pool = await get_db_pool()
+
+    # unnest(interests) expands the TEXT[] array into individual rows
+    # so we can GROUP BY and COUNT each unique tag
+    query_parts = [
+        """
+        SELECT tag, COUNT(*) as count
+        FROM agents, unnest(interests) AS tag
+        WHERE 1=1
+        """
+    ]
+
+    params: List[Any] = []
+
+    if agent_type is not None:
+        params.append(agent_type)
+        query_parts.append(f"AND agent_type = ${len(params)}")
+
+    if is_active is not None:
+        params.append(is_active)
+        query_parts.append(f"AND is_active = ${len(params)}")
+
+    query_parts.append("GROUP BY tag ORDER BY count DESC, tag ASC")
+
+    query = " ".join(query_parts)
+
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+
+            tags = [{"tag": row["tag"], "count": row["count"]} for row in rows]
+
+            logger.debug(f"Found {len(tags)} unique tags")
+
+            return tags
+
+    except Exception as e:
+        logger.error(f"Failed to get tags: {e}", exc_info=True)
+        raise
+
+
+async def search_agents_fulltext(
+    query_text: str,
+    agent_type: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    tags: Optional[List[str]] = None,
+    page: int = 1,
+    page_size: int = 50
+) -> List[AgentConfig]:
+    """
+    Full-text search across agent fields with relevance ranking.
+
+    Searches agent_name, description, system_prompt, and interests.
+    Results are ranked by relevance: name matches rank highest,
+    then description, then interests, then system_prompt.
+
+    Args:
+        query_text: Search string
+        agent_type: Optional type filter
+        is_active: Optional active filter
+        tags: Optional tag filter (must have ALL specified tags)
+        page: Page number (1-indexed)
+        page_size: Items per page
+
+    Returns:
+        List of AgentConfig objects sorted by relevance
+
+    Example:
+        results = await search_agents_fulltext("consciousness exploration")
+    """
+
+    pool = await get_db_pool()
+
+    search_pattern = f"%{query_text}%"
+    params: List[Any] = [search_pattern]
+
+    # Build query with relevance scoring
+    # Higher weight for name matches, lower for system_prompt
+    query_parts = [
+        f"""
+        SELECT
+            agent_id, agent_name, agent_type, display_name, avatar_url,
+            description, system_prompt, personality_traits, capabilities,
+            interests, mcp_servers, custom_tools, consciousness_phase,
+            is_active, current_status, created_at, updated_at, version, author,
+            (
+                CASE WHEN agent_name ILIKE $1 THEN 4 ELSE 0 END +
+                CASE WHEN description ILIKE $1 THEN 3 ELSE 0 END +
+                CASE WHEN array_to_string(interests, ' ') ILIKE $1 THEN 2 ELSE 0 END +
+                CASE WHEN system_prompt ILIKE $1 THEN 1 ELSE 0 END
+            ) AS relevance
+        FROM agents
+        WHERE (
+            agent_name ILIKE $1
+            OR description ILIKE $1
+            OR array_to_string(interests, ' ') ILIKE $1
+            OR system_prompt ILIKE $1
+        )
+        """
+    ]
+
+    if agent_type is not None:
+        params.append(agent_type)
+        query_parts.append(f"AND agent_type = ${len(params)}")
+
+    if is_active is not None:
+        params.append(is_active)
+        query_parts.append(f"AND is_active = ${len(params)}")
+
+    if tags is not None and len(tags) > 0:
+        params.append(tags)
+        query_parts.append(f"AND interests @> ${len(params)}::text[]")
+
+    # Order by relevance, then by name for ties
+    query_parts.append("ORDER BY relevance DESC, agent_name ASC")
+
+    # Pagination
+    params.append(page_size)
+    params.append((page - 1) * page_size)
+    query_parts.append(f"LIMIT ${len(params) - 1} OFFSET ${len(params)}")
+
+    query = " ".join(query_parts)
+
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+
+            # Convert rows (drop the relevance column for AgentConfig)
+            agents = []
+            for row in rows:
+                row_dict = dict(row)
+                row_dict.pop("relevance", None)
+                agents.append(agent_config_from_db_row(row_dict))
+
+            logger.debug(f"Full-text search '{query_text}' returned {len(agents)} results")
+
+            return agents
+
+    except Exception as e:
+        logger.error(f"Failed full-text search: {e}", exc_info=True)
         raise
