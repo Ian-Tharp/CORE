@@ -1,1 +1,144 @@
-<p>my-agents-page works!</p>
+<div class="my-agents">
+  <header class="page-head">
+    <div class="titles">
+      <h1>
+        <mat-icon class="title-icon">folder_shared</mat-icon>
+        My Agents
+      </h1>
+      <div class="counts">{{ enabledCount }} enabled · {{ totalCount }} total</div>
+    </div>
+    <div class="actions">
+      <a mat-raised-button color="primary" routerLink="/agents">
+        <mat-icon>add</mat-icon>
+        New Agent
+      </a>
+      <a mat-stroked-button routerLink="/agents/marketplace">
+        <mat-icon>hub</mat-icon>
+        Marketplace
+      </a>
+      <button mat-stroked-button>
+        <mat-icon>file_upload</mat-icon>
+        Import
+      </button>
+      <button mat-stroked-button>
+        <mat-icon>archive</mat-icon>
+        Export All
+      </button>
+      <mat-button-toggle-group [value]="view" (valueChange)="view = $event">
+        <mat-button-toggle value="grid" aria-label="Grid view"><mat-icon>grid_view</mat-icon></mat-button-toggle>
+        <mat-button-toggle value="list" aria-label="List view"><mat-icon>view_list</mat-icon></mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </header>
+
+  <app-agent-filter-bar (filterChanged)="onFilterChanged($event)" (sortChanged)="onSortChanged($event)"></app-agent-filter-bar>
+
+  @if (currentFilter.tags?.length || currentFilter.favoritesOnly || currentFilter.enabledOnly || currentFilter.draftsOnly || currentFilter.recentlyUsed) {
+    <div class="active-tags">
+      <mat-chip-set aria-label="Active filters">
+        @for (t of currentFilter.tags ?? []; track t) {
+          <mat-chip (removed)="removeTag(t)">
+            {{ t }}
+            <button matChipRemove aria-label="Remove tag filter"><mat-icon>close</mat-icon></button>
+          </mat-chip>
+        }
+        @if (currentFilter.favoritesOnly) {
+          <mat-chip (removed)="removeFavoriteFilter()">
+            <mat-icon>favorite</mat-icon> Favorites
+            <button matChipRemove aria-label="Remove favorites filter"><mat-icon>close</mat-icon></button>
+          </mat-chip>
+        }
+        @if (currentFilter.enabledOnly) {
+          <mat-chip (removed)="removeEnabledFilter()">
+            <mat-icon>toggle_on</mat-icon> Enabled
+            <button matChipRemove aria-label="Remove enabled filter"><mat-icon>close</mat-icon></button>
+          </mat-chip>
+        }
+        @if (currentFilter.draftsOnly) {
+          <mat-chip (removed)="removeDraftsFilter()">
+            <mat-icon>drafts</mat-icon> Drafts
+            <button matChipRemove aria-label="Remove drafts filter"><mat-icon>close</mat-icon></button>
+          </mat-chip>
+        }
+        @if (currentFilter.recentlyUsed) {
+          <mat-chip (removed)="removeRecentFilter()">
+            <mat-icon>schedule</mat-icon> Recently used
+            <button matChipRemove aria-label="Remove recently used filter"><mat-icon>close</mat-icon></button>
+          </mat-chip>
+        }
+      </mat-chip-set>
+    </div>
+  }
+
+  <main class="content">
+    <ng-container *ngIf="agents$ | async as agents; else loading">
+      @if (agents.length > 0) {
+        <app-agent-grid
+          [view]="view"
+          [agents]="agents"
+          (select)="onSelect($event)"
+          (favoriteToggled)="onFavorite($event)"
+          (enabledToggled)="onEnabled($event)"
+          (duplicateClicked)="onDuplicate($event)"
+          (deleteClicked)="onDelete($event)"
+          (exportClicked)="onExport($event)"
+          (tagClicked)="onTagFilter($event)"
+        />
+      } @else {
+        <div class="empty">
+          <div class="empty-icon-container">
+            <mat-icon class="empty-icon">smart_toy</mat-icon>
+            <div class="icon-glow"></div>
+          </div>
+
+          <h3 class="empty-title">Your AI Workforce Awaits</h3>
+
+          <p class="empty-description">
+            Agents are autonomous AI assistants that automate tasks, analyze data,
+            and supercharge your workflows. Start by creating your first agent or
+            browse the marketplace for pre-built solutions.
+          </p>
+
+          <div class="empty-features">
+            <div class="feature-item">
+              <mat-icon>psychology</mat-icon>
+              <span>Intelligent Reasoning</span>
+            </div>
+            <div class="feature-item">
+              <mat-icon>auto_awesome</mat-icon>
+              <span>Task Automation</span>
+            </div>
+            <div class="feature-item">
+              <mat-icon>hub</mat-icon>
+              <span>Seamless Integration</span>
+            </div>
+          </div>
+
+          <div class="cta">
+            <a mat-raised-button color="primary" routerLink="/agents" class="primary-cta">
+              <mat-icon>add_circle</mat-icon>
+              <span>Create Your First Agent</span>
+            </a>
+            <a mat-stroked-button routerLink="/agents/marketplace" class="secondary-cta">
+              <mat-icon>storefront</mat-icon>
+              <span>Browse Marketplace</span>
+            </a>
+          </div>
+        </div>
+      }
+    </ng-container>
+    <ng-template #loading>
+      <div class="loading"><mat-icon class="spin">autorenew</mat-icon> Loading your agents…</div>
+    </ng-template>
+  </main>
+
+  <app-agent-detail-drawer
+    [open]="!!selected"
+    [agent]="selected"
+    (closed)="onCloseDetails()"
+    (enableToggled)="onEnabled($event)"
+    (duplicateClicked)="onDuplicate($event)"
+    (deleteClicked)="onDelete($event)"
+    (exportClicked)="onExport($event)"
+  />
+</div>

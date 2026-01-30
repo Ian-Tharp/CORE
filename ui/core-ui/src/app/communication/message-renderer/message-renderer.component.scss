@@ -1,0 +1,349 @@
+@import 'highlight.js/styles/tokyo-night-dark.css';
+
+// Force styles through Angular view encapsulation
+:host ::ng-deep {
+  .markdown-content pre {
+    position: relative !important;
+    background: linear-gradient(135deg,
+      rgba(45, 60, 80, 0.92) 0%,
+      rgba(38, 52, 72, 0.92) 100%) !important;
+    border: 1px solid rgba(53, 255, 137, 0.4) !important;
+    border-radius: 10px !important;
+    padding: 1.2em 1.2em 1.2em 1.5em !important;
+    overflow-x: auto !important;
+    margin: 1em 0 !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(53, 255, 137, 0.12),
+                inset 0 2px 6px rgba(0, 0, 0, 0.3),
+                inset 0 -1px 0 rgba(53, 255, 137, 0.15) !important;
+    backdrop-filter: blur(8px) !important;
+
+    &::before {
+      content: '' !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 4px !important;
+      background: linear-gradient(180deg,
+        rgba(53, 255, 137, 0.6) 0%,
+        rgba(0, 234, 255, 0.5) 50%,
+        rgba(53, 255, 137, 0.6) 100%) !important;
+      border-radius: 8px 0 0 8px !important;
+      box-shadow: 0 0 10px rgba(53, 255, 137, 0.3) !important;
+    }
+  }
+
+  .markdown-content pre code {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    color: rgba(236, 244, 255, 0.98) !important;
+    font-size: 0.875em !important;
+    line-height: 1.6 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+.message-renderer {
+  width: 100%;
+
+  // Text Content
+  .text-content {
+    color: var(--mdc-sys-color-on-surface);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  // Markdown Content
+  .markdown-content {
+    color: var(--mdc-sys-color-on-surface);
+    line-height: 1.6;
+
+    // Headers
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0.75em 0 0.5em 0;
+      color: var(--mdc-sys-color-primary);
+      font-weight: 600;
+    }
+
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.3em; }
+    h3 { font-size: 1.15em; }
+    h4, h5, h6 { font-size: 1em; }
+
+    // Paragraphs
+    p {
+      margin: 0.5em 0;
+    }
+
+    // Lists
+    ul, ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+
+      li {
+        margin: 0.25em 0;
+      }
+    }
+
+    // Links
+    a {
+      color: var(--mdc-sys-color-secondary);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(0, 234, 255, 0.3);
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: var(--mdc-sys-color-primary);
+        border-bottom-color: var(--mdc-sys-color-primary);
+      }
+    }
+
+    // Inline Code
+    code {
+      background: rgba(53, 255, 137, 0.1);
+      color: var(--mdc-sys-color-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 0.9em;
+      border: 1px solid rgba(53, 255, 137, 0.2);
+    }
+
+    // Code Blocks (rendered by markdown)
+    pre {
+      position: relative !important;
+      background: linear-gradient(135deg,
+        rgba(45, 60, 80, 0.92) 0%,
+        rgba(38, 52, 72, 0.92) 100%) !important;
+      border: 1px solid rgba(53, 255, 137, 0.4) !important;
+      border-radius: 10px !important;
+      padding: 1.2em 1.2em 1.2em 1.5em !important;
+      overflow-x: auto !important;
+      margin: 1em 0 !important;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6),
+                  0 0 20px rgba(53, 255, 137, 0.12),
+                  inset 0 2px 6px rgba(0, 0, 0, 0.3),
+                  inset 0 -1px 0 rgba(53, 255, 137, 0.15) !important;
+      backdrop-filter: blur(8px) !important;
+
+      // Terminal-style left accent bar
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg,
+          rgba(53, 255, 137, 0.6) 0%,
+          rgba(0, 234, 255, 0.5) 50%,
+          rgba(53, 255, 137, 0.6) 100%);
+        border-radius: 8px 0 0 8px;
+        box-shadow: 0 0 10px rgba(53, 255, 137, 0.3);
+      }
+
+      code {
+        background: none;
+        border: none;
+        padding: 0;
+        color: rgba(236, 244, 255, 0.98);
+        font-size: 0.875em;
+        line-height: 1.6;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    // Blockquotes
+    blockquote {
+      margin: 0.75em 0;
+      padding-left: 1em;
+      border-left: 3px solid var(--mdc-sys-color-primary);
+      background: rgba(53, 255, 137, 0.05);
+      padding: 0.5em 1em;
+      border-radius: 0 8px 8px 0;
+      color: rgba(232, 240, 255, 0.9);
+      font-style: italic;
+    }
+
+    // Horizontal Rules
+    hr {
+      border: none;
+      border-top: 1px solid rgba(53, 255, 137, 0.2);
+      margin: 1em 0;
+    }
+
+    // Tables
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0.75em 0;
+
+      th, td {
+        border: 1px solid rgba(53, 255, 137, 0.2);
+        padding: 0.5em;
+        text-align: left;
+      }
+
+      th {
+        background: rgba(53, 255, 137, 0.1);
+        color: var(--mdc-sys-color-primary);
+        font-weight: 600;
+      }
+
+      tr:nth-child(even) {
+        background: rgba(53, 255, 137, 0.02);
+      }
+    }
+  }
+
+  // Code Block (dedicated code message type)
+  .code-block {
+    position: relative;
+    background: linear-gradient(135deg,
+      rgba(45, 60, 80, 0.92) 0%,
+      rgba(38, 52, 72, 0.92) 100%);
+    border: 1px solid rgba(53, 255, 137, 0.4);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 0.5em 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(53, 255, 137, 0.12),
+                inset 0 2px 6px rgba(0, 0, 0, 0.3),
+                inset 0 -1px 0 rgba(53, 255, 137, 0.15);
+    backdrop-filter: blur(8px);
+
+    // Left accent bar
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg,
+        rgba(53, 255, 137, 0.6) 0%,
+        rgba(0, 234, 255, 0.5) 50%,
+        rgba(53, 255, 137, 0.6) 100%);
+      box-shadow: 0 0 10px rgba(53, 255, 137, 0.3);
+      z-index: 1;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: linear-gradient(90deg, rgba(53, 255, 137, 0.15) 0%, rgba(0, 234, 255, 0.1) 100%);
+      border-bottom: 1px solid rgba(53, 255, 137, 0.2);
+
+      .code-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .code-icon {
+          font-size: 1.2rem;
+          width: 1.2rem;
+          height: 1.2rem;
+          color: var(--mdc-sys-color-primary);
+        }
+
+        .code-language {
+          font-family: 'Fira Code', monospace;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: var(--mdc-sys-color-primary);
+          letter-spacing: 0.5px;
+        }
+
+        .code-filename {
+          font-family: 'Fira Code', monospace;
+          font-size: 0.75rem;
+          color: rgba(232, 240, 255, 0.6);
+          margin-left: 8px;
+          padding-left: 8px;
+          border-left: 1px solid rgba(53, 255, 137, 0.3);
+        }
+      }
+
+      .copy-btn {
+        width: 32px;
+        height: 32px;
+        color: rgba(232, 240, 255, 0.7);
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: var(--mdc-sys-color-primary);
+          background: rgba(53, 255, 137, 0.1);
+        }
+
+        mat-icon {
+          font-size: 1rem;
+          width: 1rem;
+          height: 1rem;
+        }
+      }
+    }
+
+    .code-content {
+      padding: 1em 1em 1em 1.5em;
+      margin: 0;
+      overflow-x: auto;
+      background: linear-gradient(135deg,
+        rgba(40, 54, 72, 0.95) 0%,
+        rgba(35, 48, 66, 0.95) 100%);
+      border-top: 1px solid rgba(53, 255, 137, 0.25);
+
+      code {
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 0.875em;
+        line-height: 1.6;
+        color: rgba(236, 244, 255, 0.98);
+        display: block;
+        white-space: pre;
+
+        // Highlight.js styling overrides for solarpunk theme
+        .hljs-keyword,
+        .hljs-selector-tag,
+        .hljs-title,
+        .hljs-section,
+        .hljs-doctag,
+        .hljs-name,
+        .hljs-strong {
+          color: var(--mdc-sys-color-primary);
+          font-weight: 600;
+        }
+
+        .hljs-string,
+        .hljs-title,
+        .hljs-section,
+        .hljs-built_in,
+        .hljs-literal,
+        .hljs-type,
+        .hljs-addition,
+        .hljs-tag,
+        .hljs-quote,
+        .hljs-name,
+        .hljs-selector-id,
+        .hljs-selector-class {
+          color: var(--mdc-sys-color-secondary);
+        }
+
+        .hljs-comment,
+        .hljs-quote {
+          color: rgba(232, 240, 255, 0.4);
+          font-style: italic;
+        }
+
+        .hljs-number,
+        .hljs-literal {
+          color: var(--mdc-sys-color-tertiary);
+        }
+      }
+    }
+  }
+}

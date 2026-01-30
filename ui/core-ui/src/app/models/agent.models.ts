@@ -82,3 +82,26 @@ export interface AgentSort {
   field: 'downloads' | 'rating' | 'name' | 'releaseDate' | 'size';
   direction: 'asc' | 'desc';
 } 
+
+// Library-specific models for personal agents
+export interface LibraryAgent extends MarketplaceAgent {
+  installed: boolean;
+  enabled: boolean;
+  favorite: boolean;
+  lastUsed?: Date;
+  instances: number;
+  draft?: boolean;
+  envReady?: boolean;
+}
+
+export interface LibraryFilter extends AgentFilter {
+  favoritesOnly?: boolean;
+  enabledOnly?: boolean;
+  draftsOnly?: boolean;
+  recentlyUsed?: boolean; // e.g., last 7 days
+}
+
+export type LibrarySort = {
+  field: AgentSort['field'] | 'lastUsed' | 'instances';
+  direction: 'asc' | 'desc';
+};

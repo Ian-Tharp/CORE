@@ -13,6 +13,7 @@ import { MarketplaceComponent } from './creative-design-product/marketplace/mark
 import { WikiComponent } from './creative-design-product/wiki/wiki.component';
 import { WorldDetailComponent } from './creative-design-product/world-detail/world-detail.component';
 import { CreativeBoardsComponent } from './creative-design-product/boards/creative-boards.component';
+import { CommunicationComponent } from './communication/communication.component';
 
 export const routes: Routes = [
   {
@@ -26,6 +27,10 @@ export const routes: Routes = [
   {
     path: 'conversations',
     component: ConversationsPageComponent,
+  },
+  {
+    path: 'communication',
+    component: CommunicationComponent
   },
   {
     path: 'knowledge',

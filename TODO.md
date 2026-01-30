@@ -1,8 +1,8 @@
 # TODO.md
 
 ## UI
-- Need to update padding on .mdc-card-header to have a padding-bottom of 16px to match
-    - alternatively could do this on the .mdc-card-content for padding-top
+- ~~Need to update padding on .mdc-card-header to have a padding-bottom of 16px to match~~
+    - ✅ DONE - Added global `.mat-mdc-card .mat-mdc-card-header { padding-bottom: 16px; }` in styles.scss
 - Need to create web components and modular design especially for styling so SCSS files don't continue to duplicate values that could be centralized and only declared once.
 
 - Need to update notification left hand panel to ensure that statuses are taken into consideration for the display of what icon is available

@@ -1,0 +1,32 @@
+@if (view === 'grid') {
+  <div class="agent-grid view-grid">
+    @for (agent of list(); track agent.id) {
+      <app-agent-card
+        [agent]="agent"
+        (select)="select.emit($event)"
+        (openClicked)="select.emit($event)"
+        (favoriteToggled)="favoriteToggled.emit($event)"
+        (enabledToggled)="enabledToggled.emit($event)"
+        (duplicateClicked)="duplicateClicked.emit($event)"
+        (deleteClicked)="deleteClicked.emit($event)"
+        (exportClicked)="exportClicked.emit($event)"
+        (tagClicked)="tagClicked.emit($event)"
+      />
+    }
+  </div>
+} @else {
+  <div class="agent-list">
+    @for (agent of list(); track agent.id) {
+      <div class="row glass-morphism hover-lift" (click)="select.emit(agent)">
+        <div class="main">
+          <span class="dot status-dot" [style.color]="agent.enabled ? '#00ff88' : '#ff5252'"></span>
+          <span class="name">{{ agent.displayName }}</span>
+          <span class="tags">@for (t of agent.tags.slice(0,2); track t) { <span class="tag">{{ t }}</span> }</span>
+        </div>
+        <div class="meta">{{ agent.lastUsed ? (agent.lastUsed | date:'short') : '—' }}</div>
+      </div>
+    }
+  </div>
+}
+
+

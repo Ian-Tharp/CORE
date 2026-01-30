@@ -48,6 +48,9 @@ async def chat_service(
     """
 
     try:
+        # RSI TODO: Add per-provider telemetry (latency, ttfb, tokens/sec) and structured logs.
+        # RSI TODO: Implement provider abstraction layer and circuit breakers/retries.
+        # RSI TODO: Enforce max tokens/messages and redact PII before sending to providers - ollama is fine since it's local.
         if provider.lower() in {"ollama", "local", "local-ollama"}:
             async for sse in _stream_from_ollama(model=model, messages=messages):
                 yield sse
@@ -77,6 +80,9 @@ async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> 
 
     This uses Ollama's native REST API `/api/chat` with streaming enabled and
     rewraps incremental message content as `{ "delta": "..." }` SSE events.
+
+    Sends periodic heartbeat/status events during model loading to keep connection alive
+    and provide user feedback.
     """
     base_url = _get_ollama_base_url()
     url = f"{base_url}/api/chat"
@@ -86,26 +92,65 @@ async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> 
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=None) as client:
+    # Timeout for the entire request (2 minutes should be enough even for cold model loads)
+    timeout_config = httpx.Timeout(120.0, connect=10.0)
+    async with httpx.AsyncClient(timeout=timeout_config) as client:
         try:
+            # Send initial status event
+            yield f"event: status\ndata: {json.dumps({'message': 'Connecting to model...'})}\n\n"
+
             async with client.stream("POST", url, json=payload) as resp:
                 resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line:
-                        continue
+
+                # Send status after connection established
+                yield f"event: status\ndata: {json.dumps({'message': 'Waiting for model response...'})}\n\n"
+
+                # Simple approach: use asyncio.wait_for with periodic timeouts to send heartbeats
+                line_iterator = resp.aiter_lines()
+                heartbeat_seconds = 0
+
+                while True:
                     try:
-                        obj = json.loads(line)
-                    except json.JSONDecodeError:
-                        # Some Ollama versions may send partial lines; skip until valid
-                        continue
+                        # Wait up to 5 seconds for next line
+                        line = await asyncio.wait_for(anext(line_iterator), timeout=5.0)
 
-                    # Incremental assistant content
-                    delta = obj.get("message", {}).get("content") or ""
-                    if delta:
-                        yield f"data: {json.dumps({'delta': delta})}\n\n"
+                        if not line:
+                            continue
 
-                    # Stop when the stream signals completion
-                    if obj.get("done") is True:
+                        try:
+                            obj = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+
+                        # Separate thinking from content for progressive disclosure in UI
+                        message = obj.get("message", {})
+
+                        # Send thinking as separate event type
+                        thinking = message.get("thinking", "")
+                        if thinking:
+                            yield f"event: thinking\ndata: {json.dumps({'delta': thinking})}\n\n"
+
+                        # Send content as regular message
+                        content = message.get("content", "")
+                        if content:
+                            yield f"data: {json.dumps({'delta': content})}\n\n"
+
+                        # Stop when the stream signals completion
+                        if obj.get("done") is True:
+                            break
+
+                    except asyncio.TimeoutError:
+                        # No response in 5 seconds - send heartbeat
+                        heartbeat_seconds += 5
+                        logger.debug("Sending heartbeat after %ds of silence", heartbeat_seconds)
+                        yield f"event: heartbeat\ndata: {json.dumps({'elapsed': heartbeat_seconds, 'message': f'Generating response... ({heartbeat_seconds}s)'})}\n\n"
+                    except StopAsyncIteration:
+                        # Stream ended
                         break
+
+        except httpx.TimeoutException as timeout_err:
+            logger.error("Ollama request timeout: %s", timeout_err)
+            yield f"event: error\ndata: {json.dumps({'error': 'Request timeout - model may still be loading. Please try again.', 'code': 'timeout'})}\n\n"
         except httpx.HTTPError as http_err:
-            yield f"event: error\ndata: {json.dumps({'error': str(http_err)})}\n\n"
+            logger.error("Ollama HTTP error: %s", http_err)
+            yield f"event: error\ndata: {json.dumps({'error': str(http_err), 'code': 'http_error'})}\n\n"

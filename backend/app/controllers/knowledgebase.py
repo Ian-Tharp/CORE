@@ -23,6 +23,8 @@ class UploadData(BaseModel):
     isGlobal: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     processImmediately: Optional[bool] = True
+    embeddingProvider: Optional[str] = None  # 'openai' | 'local'
+    localModel: Optional[str] = None
 
 
 @router.get("/files")
@@ -37,6 +39,8 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None) ->
             "chunkCount": d.get("chunk_count", 0),
             "embeddingModel": d.get("embedding_model"),
             "embeddingDimensions": d.get("embedding_dimensions"),
+            "localEmbeddingModel": d.get("local_embedding_model"),
+            "localEmbeddingDimensions": d.get("local_embedding_dimensions"),
             "size": d["size"],
             "mimeType": d["mime_type"],
             "uploadDate": d["upload_date"],
@@ -63,6 +67,8 @@ async def get_file(file_id: str) -> Dict[str, Any]:
         "chunkCount": doc.get("chunk_count", 0),
         "embeddingModel": doc.get("embedding_model"),
         "embeddingDimensions": doc.get("embedding_dimensions"),
+        "localEmbeddingModel": doc.get("local_embedding_model"),
+        "localEmbeddingDimensions": doc.get("local_embedding_dimensions"),
         "size": doc["size"],
         "mimeType": doc["mime_type"],
         "uploadDate": doc["upload_date"],
@@ -143,6 +149,8 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
             description=payload.description,
             is_global=bool(payload.isGlobal),
             file_hash=file_hash,
+            embedding_provider=(payload.embeddingProvider or 'openai'),
+            local_model=payload.localModel,
         )
         doc = await repo.get_document(doc_id)
         # Log upload activity
@@ -215,11 +223,19 @@ async def process_file(file_id: str) -> Dict[str, Any]:
 class SemanticSearchRequest(BaseModel):
     query: str
     limit: int = 10
+    provider: str | None = None  # 'openai' | 'local'
+    localModel: str | None = None
 
 
 @router.post("/semantic-search")
 async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]]:
-    ctx = await svc.retrieve_context(query=payload.query, mode="all", max_docs=payload.limit)
+    ctx = await svc.retrieve_context(
+        query=payload.query,
+        mode="all",
+        max_docs=payload.limit,
+        provider=(payload.provider or "openai"),
+        local_model=payload.localModel,
+    )
     doc_ids = set(ctx.get("doc_ids", []))
     out: List[Dict[str, Any]] = []
     for doc_id in doc_ids:
@@ -247,6 +263,34 @@ async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]
             }
         )
     return out
+
+
+@router.post("/files/{file_id}/embed-local")
+async def embed_local(file_id: str, model: str) -> Dict[str, Any]:
+    doc = await repo.get_document(file_id)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    await svc.embed_document_locally(document_id=file_id, model=model)
+    updated = await repo.get_document(file_id)
+    return {
+        "fileId": file_id,
+        "status": "ok",
+        "localEmbeddingModel": updated.get("local_embedding_model") if updated else None,
+        "localEmbeddingDimensions": updated.get("local_embedding_dimensions") if updated else None,
+    }
+
+
+@router.post("/reindex-local")
+async def reindex_local(model: str, only_missing: bool = True) -> Dict[str, Any]:
+    """Re-embed all documents using a local model. When only_missing is true, skip docs that already have local vectors."""
+    docs = await repo.list_documents()
+    count = 0
+    for d in docs:
+        if only_missing and d.get("local_embedding_model"):
+            continue
+        await svc.embed_document_locally(document_id=d["id"], model=model)
+        count += 1
+    return {"status": "ok", "processed": count}
 
 
 @router.get("/activity")
@@ -294,4 +338,50 @@ async def reextract_title(file_id: str) -> Dict[str, Any]:
         return {"fileId": file_id, "updated": False}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# RSI TODO: Implement full stats aggregation with file type breakdown, source distribution, and processing queue metrics
+@router.get("/stats")
+async def get_stats() -> Dict[str, Any]:
+    """Return knowledgebase statistics. Currently returns stub data with basic file count."""
+    try:
+        docs = await repo.list_documents()
+        total_files = len(docs)
+        total_size = sum(d.get("size", 0) for d in docs)
+
+        # RSI TODO: Aggregate by file type and source for richer stats
+        return {
+            "totalFiles": total_files,
+            "totalSize": total_size,
+            "filesByType": {},  # RSI TODO: Implement file type aggregation
+            "filesBySource": {},  # RSI TODO: Implement source aggregation
+            "totalEmbeddings": 0,  # RSI TODO: Query pgvector table for embedding count
+            "processingQueue": 0,  # RSI TODO: Count files with status='processing'
+            "recentActivity": []  # RSI TODO: Link to /activity endpoint or aggregate here
+        }
+    except Exception:
+        # Return safe defaults to keep UI functional
+        return {
+            "totalFiles": 0,
+            "totalSize": 0,
+            "filesByType": {},
+            "filesBySource": {},
+            "totalEmbeddings": 0,
+            "processingQueue": 0,
+            "recentActivity": []
+        }
+
+
+# RSI TODO: Implement full tag management with usage counts and hierarchical tag structures
+@router.get("/tags")
+async def get_tags() -> List[Dict[str, Any]]:
+    """Return available file tags. Currently returns empty list as tags are stored inline with files."""
+    try:
+        # RSI TODO: Query tags table or extract unique tags from document metadata
+        # RSI TODO: Include usage counts per tag for better UX
+        # RSI TODO: Support tag hierarchies/categories (e.g., 'project:core', 'topic:ai')
+        return []
+    except Exception:
+        # Return empty list to keep UI functional
+        return []
 

@@ -1,0 +1,26 @@
+<div class="message-renderer">
+  @if (message.message_type === 'code') {
+    <!-- Code Block Rendering -->
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-info">
+          <mat-icon class="code-icon">code</mat-icon>
+          <span class="code-language">{{ codeLanguage }}</span>
+          @if (codeFilename) {
+            <span class="code-filename">{{ codeFilename }}</span>
+          }
+        </div>
+        <button mat-icon-button class="copy-btn" (click)="copyCode()" title="Copy code">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </div>
+      <pre class="code-content"><code [innerHTML]="highlightedCode"></code></pre>
+    </div>
+  } @else if (message.message_type === 'markdown' || containsMarkdownSyntax(message.content) || containsCodeBlock(message.content)) {
+    <!-- Markdown Rendering -->
+    <div class="markdown-content" [innerHTML]="renderedContent"></div>
+  } @else {
+    <!-- Plain Text Rendering -->
+    <div class="text-content">{{ message.content }}</div>
+  }
+</div>

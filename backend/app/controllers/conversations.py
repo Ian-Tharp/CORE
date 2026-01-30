@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """REST endpoints for managing chat conversations."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import List
 
 from app.repository.conversation_repository import (
@@ -16,10 +16,10 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def get_conversations() -> List[dict]:
+async def get_conversations(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200)) -> List[dict]:
     """Return a list of all conversations (id, title, message count)."""
     try:
-        convs = await list_conversations()
+        convs = await list_conversations(page=page, page_size=page_size)
         # If repository returns aggregated counts, normalize shape
         result: List[dict] = []
         for c in convs:
@@ -34,6 +34,7 @@ async def get_conversations() -> List[dict]:
         return result
     except Exception:
         # Fail gracefully in dev if DB is unavailable
+        # RSI TODO: Log exception details with context; return proper error in non-dev environments.
         return []
 
 
@@ -62,12 +63,15 @@ async def get_single_conversation(conv_id: str):
     return conv
 
 
-@router.patch("/{conv_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def patch_conversation(conv_id: str, payload: dict):
-    """Update mutable fields of a conversation (currently only title)."""
-    title = payload.get("title")
-    if not title:
-        raise HTTPException(status_code=400, detail="'title' is required")
+from pydantic import BaseModel, Field
 
-    await update_title(conv_id, title)
+
+class PatchConversation(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+
+
+@router.patch("/{conv_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def patch_conversation(conv_id: str, payload: PatchConversation):
+    """Update mutable fields of a conversation (currently only title)."""
+    await update_title(conv_id, payload.title)
     return None

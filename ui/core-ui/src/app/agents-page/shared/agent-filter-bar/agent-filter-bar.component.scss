@@ -1,0 +1,323 @@
+.filter-bar {
+  padding: 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(13, 20, 33, 0.8) 0%,
+    rgba(26, 26, 46, 0.8) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 1rem;
+    align-items: center;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // Search field styling
+  .search {
+    flex: 1;
+    min-width: 0;
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 0 16px;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+      }
+
+      .mat-mdc-form-field-focus-overlay {
+        background: transparent;
+      }
+
+      .mdc-text-field--focused .mat-mdc-text-field-wrapper {
+        background: rgba(0, 255, 255, 0.05);
+        border-color: #00ffff;
+        box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+      }
+
+      .mat-mdc-form-field-infix {
+        padding: 12px 0;
+        min-height: auto;
+      }
+
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      // Hide default notched outline
+      .mdc-notched-outline {
+        display: none;
+      }
+
+      input {
+        color: #ffffff;
+        font-size: 0.95rem;
+
+        &::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+          opacity: 1;
+        }
+      }
+
+      // Ensure placeholder is visible when label is floating
+      .mdc-text-field--no-label input::placeholder,
+      input:not(:focus)::placeholder {
+        opacity: 1;
+      }
+
+      // Icon styling
+      .mat-mdc-form-field-icon-prefix,
+      .mat-mdc-form-field-icon-suffix {
+        mat-icon {
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+
+      .mat-mdc-form-field-icon-suffix {
+        mat-icon {
+          cursor: pointer;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: #00ffff;
+          }
+        }
+      }
+
+      // Label styling - always keep it floating so placeholder is visible
+      .mdc-floating-label {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.85rem;
+        transform: translateY(-106%) scale(0.85);
+
+        &:not(.mdc-floating-label--float-above) {
+          transform: translateY(-106%) scale(0.85);
+        }
+      }
+
+      .mdc-text-field--focused .mdc-floating-label {
+        color: #00ffff;
+      }
+    }
+  }
+
+  // Sort fields styling
+  .sort, .dir {
+    width: auto;
+    min-width: 160px;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      min-width: 0;
+    }
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 0 12px;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+      }
+
+      .mdc-text-field--focused .mat-mdc-text-field-wrapper {
+        background: rgba(0, 255, 255, 0.05);
+        border-color: #00ffff;
+        box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+      }
+
+      .mat-mdc-form-field-infix {
+        padding: 12px 0;
+        min-height: auto;
+      }
+
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      .mdc-notched-outline {
+        display: none;
+      }
+
+      .mat-mdc-select-value {
+        color: #ffffff;
+        font-size: 0.9rem;
+      }
+
+      .mat-mdc-select-arrow {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .mdc-floating-label {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
+      }
+
+      .mdc-text-field--focused .mdc-floating-label {
+        color: #00ffff;
+      }
+    }
+  }
+
+  // Filter chips row
+  .chips {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+
+    mat-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      height: auto;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: inherit;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &.selected {
+        background: rgba(0, 255, 136, 0.15);
+        border: 1px solid rgba(0, 255, 136, 0.4);
+        color: #00ff88;
+        box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+
+        mat-icon {
+          color: #00ff88;
+        }
+
+        &:hover {
+          background: rgba(0, 255, 136, 0.25);
+          border-color: rgba(0, 255, 136, 0.6);
+        }
+      }
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    // Clear button styling
+    .clear {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      min-height: 36px;
+      transition: all 0.3s ease;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        margin-right: 0.5rem;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+      }
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    padding: 1rem;
+
+    .chips {
+      gap: 0.5rem;
+
+      mat-chip {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+        min-height: 32px;
+      }
+
+      .clear {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Global dropdown panel styling (for selects)
+::ng-deep .mat-mdc-select-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(13, 20, 33, 0.95) 0%,
+    rgba(26, 26, 46, 0.95) 100%
+  );
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  .mat-mdc-option {
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 4px 8px;
+    padding: 12px 16px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.mat-mdc-option-active,
+    &.mdc-list-item--selected {
+      background: rgba(0, 255, 136, 0.15);
+      color: #00ff88;
+    }
+  }
+}

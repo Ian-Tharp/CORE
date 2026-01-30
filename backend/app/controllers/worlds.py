@@ -122,3 +122,10 @@ async def rename_world(world_id: str, payload: RenameWorldRequest) -> Dict[str, 
     return {"status": "ok"}
 
 
+@router.get("/by-name/{name}")
+async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
+    """Find a world by its name. Returns the world record or null if not found."""
+    world = await repo.get_world_by_name(name)
+    return world
+
+

@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 import { UserInput } from '../../models/UserInput';
+import { AppConfigService } from '../config/app-config.service';
 
 export type ChatMessage = UserInput & {
   id: string;
@@ -18,7 +19,10 @@ export class ChatService {
    * Base URL for the backend FastAPI service. In a real-world application this would
    * come from an environment file but is hard-coded here for brevity.
    */
-  private readonly _apiUrl = 'http://localhost:8001';
+  // RSI TODO: Move API base URL to Angular environment config or an AppConfigService and inject it.
+  // RSI TODO: Consider switching to EventSource for SSE for built-in reconnection and lower overhead.
+  // RSI TODO: Track messages per `conversationId` (map of streams) instead of a single list for multi-chat tabs.
+  private readonly _cfg = inject(AppConfigService);
 
   constructor() {}
 
@@ -62,7 +66,7 @@ export class ChatService {
     content: string,
     model: string,
     conversationId?: string,
-    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local' }
+    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local'; kbEmbeddingProvider?: 'openai' | 'local'; kbLocalModel?: string }
   ): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };
@@ -87,6 +91,12 @@ export class ChatService {
       if (options.kbMode === 'file' && options.kbFileId) {
         payload["kb_file_id"] = options.kbFileId;
       }
+      if (options.kbEmbeddingProvider) {
+        payload["kb_embedding_provider"] = options.kbEmbeddingProvider;
+      }
+      if (options.kbLocalModel) {
+        payload["kb_local_model"] = options.kbLocalModel;
+      }
     }
 
     // Route to the desired provider; default to OpenAI
@@ -96,10 +106,12 @@ export class ChatService {
     }
 
     return new Observable<string>((observer) => {
-      fetch(`${this._apiUrl}/chat/stream`, {
+      const controller = new AbortController();
+      fetch(this._cfg.chatStreamUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
         .then((response) => {
           if (!response.ok || !response.body) {
@@ -132,12 +144,26 @@ export class ChatService {
               // SSE chunks are separated by double newlines
               for (const part of text.split('\n\n')) {
                 const trimmed = part.trim();
-                if (!trimmed.startsWith('data:')) continue;
+                if (!trimmed) continue;
 
-                const jsonStr = trimmed.replace(/^data:\s*/, '');
-                if (jsonStr === '[DONE]') continue;
+                // Parse SSE format: can be "data: ..." or "event: type\ndata: ..."
+                const lines = trimmed.split('\n');
+                let eventType = 'message'; // default SSE event type
+                let dataLine = '';
 
-                observer.next(jsonStr);
+                for (const line of lines) {
+                  if (line.startsWith('event:')) {
+                    eventType = line.replace(/^event:\s*/, '').trim();
+                  } else if (line.startsWith('data:')) {
+                    dataLine = line.replace(/^data:\s*/, '');
+                  }
+                }
+
+                if (!dataLine || dataLine === '[DONE]') continue;
+
+                // Emit as { type, data } so consumers can handle different event types
+                const eventData = JSON.stringify({ type: eventType, data: dataLine });
+                observer.next(eventData);
               }
 
               readChunk();
@@ -147,6 +173,10 @@ export class ChatService {
           readChunk();
         })
         .catch((err) => observer.error(err));
+
+      return () => {
+        try { controller.abort(); } catch { /* ignore */ }
+      };
     });
   }
 }

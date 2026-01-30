@@ -165,4 +165,348 @@ $gradient-core: linear-gradient(
   --transition-normal: 0.3s ease;
   --transition-slow: 0.5s ease;
   --transition-bounce: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ============================================================================
+// SOLARPUNK DESIGN SYSTEM - Reusable Utility Classes
+// ============================================================================
+
+// Gradient Text Utilities
+.sp-gradient-text-primary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-primary) 0%,
+    var(--mdc-sys-color-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sp-gradient-text-secondary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-secondary) 0%,
+    var(--mdc-sys-color-tertiary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sp-gradient-text-full {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-primary) 0%,
+    var(--mdc-sys-color-secondary) 50%,
+    var(--mdc-sys-color-tertiary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// Glass Panel Utilities
+.sp-glass-panel {
+  background: linear-gradient(180deg,
+    rgba(20, 25, 37, 0.95) 0%,
+    rgba(27, 34, 50, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-medium);
+}
+
+.sp-glass-panel-light {
+  background: rgba(35, 48, 66, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-medium);
+}
+
+.sp-glass-surface {
+  background: linear-gradient(135deg,
+    rgba(20, 25, 37, 0.95) 0%,
+    rgba(27, 34, 50, 0.95) 100%);
+  backdrop-filter: blur(20px);
+}
+
+// Border Utilities
+.sp-border-primary {
+  border: 1px solid rgba(53, 255, 137, 0.2);
+}
+
+.sp-border-secondary {
+  border: 1px solid rgba(0, 234, 255, 0.2);
+}
+
+.sp-border-gradient-primary {
+  border: 3px solid transparent;
+  border-image: linear-gradient(180deg,
+    var(--mdc-sys-color-primary) 0%,
+    transparent 100%) 1;
+}
+
+.sp-border-gradient-secondary {
+  border: 3px solid transparent;
+  border-image: linear-gradient(180deg,
+    var(--mdc-sys-color-secondary) 0%,
+    transparent 100%) 1;
+}
+
+// Glow & Shadow Utilities
+.sp-glow-primary {
+  box-shadow: 0 0 20px rgba(53, 255, 137, 0.3);
+}
+
+.sp-glow-secondary {
+  box-shadow: 0 0 20px rgba(0, 234, 255, 0.3);
+}
+
+.sp-glow-tertiary {
+  box-shadow: 0 0 20px rgba(255, 198, 46, 0.3);
+}
+
+.sp-shadow-elevated {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.sp-shadow-inset {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+// Icon Utilities
+.sp-icon-gradient-primary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-primary) 0%,
+    var(--mdc-sys-color-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 4px rgba(53, 255, 137, 0.3));
+}
+
+.sp-icon-gradient-secondary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-secondary) 0%,
+    var(--mdc-sys-color-tertiary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 4px rgba(0, 234, 255, 0.3));
+}
+
+// Badge Utilities
+.sp-badge-primary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-primary) 0%,
+    var(--mdc-sys-color-secondary) 100%);
+  color: var(--mdc-sys-color-on-primary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(53, 255, 137, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.sp-badge-secondary {
+  background: rgba(0, 234, 255, 0.1);
+  color: var(--mdc-sys-color-secondary);
+  border: 1px solid var(--mdc-sys-color-secondary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
+}
+
+.sp-badge-tertiary {
+  background: rgba(255, 198, 46, 0.1);
+  color: var(--mdc-sys-color-tertiary);
+  border: 1px solid var(--mdc-sys-color-tertiary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 10px rgba(255, 198, 46, 0.2);
+}
+
+// Button Gradient Utilities
+.sp-btn-gradient-primary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-primary) 0%,
+    var(--mdc-sys-color-secondary) 100%) !important;
+  color: var(--mdc-sys-color-on-primary) !important;
+  box-shadow: 0 4px 16px rgba(53, 255, 137, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px !important;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 24px rgba(53, 255, 137, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sp-btn-gradient-secondary {
+  background: linear-gradient(135deg,
+    var(--mdc-sys-color-secondary) 0%,
+    var(--mdc-sys-color-tertiary) 100%) !important;
+  color: var(--mdc-sys-color-on-secondary) !important;
+  box-shadow: 0 4px 16px rgba(0, 234, 255, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px !important;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 24px rgba(0, 234, 255, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(1);
+  }
+}
+
+// Divider Utilities
+.sp-divider-gradient-horizontal {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--mdc-sys-color-primary) 50%,
+    transparent 100%);
+}
+
+.sp-divider-gradient-vertical {
+  width: 1px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--mdc-sys-color-primary) 50%,
+    transparent 100%);
+}
+
+// Input Utilities
+.sp-input-glass {
+  background: rgba(35, 48, 66, 0.6);
+  border: 1px solid rgba(53, 255, 137, 0.2);
+  border-radius: 12px;
+  color: var(--mdc-sys-color-on-surface);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  &:focus {
+    outline: none;
+    border-color: var(--mdc-sys-color-primary);
+    background: rgba(35, 48, 66, 0.8);
+    box-shadow: 0 0 0 3px rgba(53, 255, 137, 0.1),
+                inset 0 1px 3px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(53, 255, 137, 0.15);
+  }
+
+  &::placeholder {
+    color: rgba(232, 240, 255, 0.4);
+  }
+}
+
+// Avatar Utilities
+.sp-avatar-gradient-border {
+  position: relative;
+  border-radius: 50%;
+  background: linear-gradient(135deg,
+    rgba(53, 255, 137, 0.1) 0%,
+    rgba(0, 234, 255, 0.1) 100%);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg,
+      var(--mdc-sys-color-primary) 0%,
+      var(--mdc-sys-color-secondary) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+
+// Animation Utilities
+@keyframes sp-pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+.sp-animate-pulse-glow {
+  animation: sp-pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes sp-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sp-animate-fade-in {
+  animation: sp-fade-in 0.5s ease-out;
+}
+
+// Status Indicator Utilities
+.sp-status-online {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mdc-sys-color-primary);
+  box-shadow: 0 0 8px var(--mdc-sys-color-primary);
+}
+
+.sp-status-away {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mdc-sys-color-tertiary);
+  box-shadow: 0 0 8px var(--mdc-sys-color-tertiary);
+}
+
+.sp-status-busy {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mdc-sys-color-error);
+  box-shadow: 0 0 8px var(--mdc-sys-color-error);
+}
+
+// Header Utilities
+.sp-header-gradient {
+  background: linear-gradient(135deg,
+    rgba(53, 255, 137, 0.08) 0%,
+    rgba(0, 234, 255, 0.05) 100%);
+  border-bottom: 1px solid rgba(53, 255, 137, 0.2);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      var(--mdc-sys-color-primary) 50%,
+      transparent 100%);
+  }
 } 

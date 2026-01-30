@@ -15,9 +15,15 @@ services:
       - DATABASE_URL=postgresql://core_user:core_password@postgres:5432/core_db
       - REDIS_URL=redis://redis:6379
       - OLLAMA_BASE_URL=http://ollama:11434
+      - OBSIDIAN_VAULT_PATH=/vault
+      - OBSIDIAN_API_KEY=${OBSIDIAN_API_KEY}
+    command: >
+      uv run uvicorn app.main:app
+      --host 0.0.0.0 --port 8001 --reload --app-dir /app
     volumes:
       - ./backend:/app
       - backend-data:/app/data
+      - "C:/Users/Owner/Desktop/Ian's Personal Digital Brain/Digital-Brain:/vault"
     networks:
       - core-network
     depends_on:
@@ -33,7 +39,7 @@ services:
 
   # Database - PostgreSQL
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: core-postgres
     environment:
       - POSTGRES_DB=core_db
@@ -84,6 +90,14 @@ services:
       # - C:/Users/Owner/.ollama:/root/.ollama
       # On macOS/Linux:
       # - ~/.ollama:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     networks:
       - core-network
     restart: unless-stopped

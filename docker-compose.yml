@@ -13,7 +13,13 @@ services:
       - PYTHONPATH=/app
       - CORE_ENV=development
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CORE_API_KEY=${CORE_API_KEY:-core_dev_key}
+      - CORE_AUTH_DISABLED=${CORE_AUTH_DISABLED:-true}
+      - CORE_RATE_LIMIT_DISABLED=${CORE_RATE_LIMIT_DISABLED:-true}
       - OLLAMA_BASE_URL=http://ollama:11434
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=core_db
@@ -45,16 +51,17 @@ services:
     volumes:
       - ./ui/core-ui:/app
       - /app/node_modules
+      - /app/.angular
     networks:
       - core-network
     depends_on:
       - core-backend
     restart: unless-stopped
-    command: npm run start:ng
+    command: ng serve --host 0.0.0.0 --port 4200
 
   # Database - PostgreSQL (for future persistence)
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: core-postgres
     environment:
       - POSTGRES_DB=core_db
@@ -98,15 +105,42 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
+      - C:/Users/Owner/.ollama:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_KEEP_ALIVE=24h  # Keep models loaded for 24 hours
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     networks:
       - core-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
+
+  # Ollama Model Warmup - Pre-loads models on startup
+  ollama-warmup:
+    image: curlimages/curl:latest
+    container_name: ollama-warmup
+    volumes:
+      - ./mcp/warmup-ollama.sh:/warmup-ollama.sh:ro
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_WARMUP_MODELS=gpt-oss:20b,nomic-embed-text
+    networks:
+      - core-network
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: ["/bin/sh", "/warmup-ollama.sh"]
+    restart: "no"  # Only run once on startup
 
 volumes:
   backend-data:

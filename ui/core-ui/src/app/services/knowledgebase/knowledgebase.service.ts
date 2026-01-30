@@ -15,13 +15,16 @@ import {
   FileSource,
   ActivityLog
 } from '../../models/knowledgebase.models';
+import { AppConfigService } from '../config/app-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class KnowledgebaseService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8001/knowledgebase';
+  private cfg = inject(AppConfigService);
+  // RSI TODO: Externalize base URL into environment configuration; avoid hard-coded localhost.
+  private apiUrl = this.cfg.knowledgebaseUrl;
 
   // State management
   private filesSubject = new BehaviorSubject<KnowledgeFile[]>([]);
@@ -83,7 +86,7 @@ export class KnowledgebaseService {
     );
   }
 
-  uploadFile(request: FileUploadRequest): Observable<KnowledgeFile> {
+  uploadFile(request: FileUploadRequest & { embeddingProvider?: 'openai' | 'local'; localModel?: string }): Observable<KnowledgeFile> {
     const formData = new FormData();
     formData.append('file', request.file);
     formData.append('data', JSON.stringify({
@@ -91,7 +94,9 @@ export class KnowledgebaseService {
       description: request.description,
       isGlobal: request.isGlobal,
       metadata: request.metadata,
-      processImmediately: request.processImmediately
+      processImmediately: request.processImmediately,
+      embeddingProvider: request.embeddingProvider,
+      localModel: request.localModel
     }));
 
     // Emit initial stage
@@ -225,13 +230,27 @@ export class KnowledgebaseService {
     );
   }
 
-  semanticSearch(query: string, limit: number = 10): Observable<Array<KnowledgeFile & { similarity: number }>> {
+  semanticSearch(query: string, limit: number = 10, provider: 'openai' | 'local' = 'openai', localModel?: string): Observable<Array<KnowledgeFile & { similarity: number }>> {
     return this.http.post<Array<KnowledgeFile & { similarity: number }>>(`${this.apiUrl}/semantic-search`, {
       query,
-      limit
+      limit,
+      provider,
+      localModel
     }).pipe(
       catchError(this.handleError)
     );
+  }
+
+  embedLocal(fileId: string, model: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/files/${fileId}/embed-local`, null, {
+      params: { model }
+    }).pipe(catchError(this.handleError));
+  }
+
+  reindexLocal(model: string, onlyMissing: boolean = true): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/reindex-local`, null, {
+      params: { model, only_missing: String(!!onlyMissing) }
+    }).pipe(catchError(this.handleError));
   }
 
   applyFilter(filter: KnowledgebaseFilter): void {
@@ -362,6 +381,8 @@ export class KnowledgebaseService {
 
   private handleError(error: any): Observable<any> {
     console.error('Knowledgebase service error:', error);
+    // RSI TODO: Return type-safe defaults per call site (e.g., empty arrays for lists, null/undefined for singletons) instead of `any`.
+    // RSI TODO: Consider centralized HttpInterceptor for auth, base URL, and error handling.
     // Instead of throwing error, return empty data for development
     if (error.status === 404 || error.status === 0) {
       console.warn('API endpoint not available, returning empty data');

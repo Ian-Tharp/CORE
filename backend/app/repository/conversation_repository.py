@@ -18,6 +18,7 @@ from app.dependencies import get_db_pool
 class _Message(TypedDict):
     role: str
     content: str
+    thinking: str | None  # Optional thinking/reasoning process from AI
 
 
 class _Conversation(TypedDict):
@@ -31,12 +32,13 @@ class _Conversation(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-async def list_conversations() -> List[Dict[str, Any]]:
+async def list_conversations(*, page: int = 1, page_size: int = 50) -> List[Dict[str, Any]]:
     """Return list of conversations with message counts.
 
     Shape matches controller expectations: `{id, title, messages}` where
     `messages` is the count of messages in the conversation.
     """
+    # RSI TODO: Add pagination and optional search/sort parameters (e.g., by last_activity).
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -49,7 +51,10 @@ async def list_conversations() -> List[Dict[str, Any]]:
             LEFT JOIN messages m ON m.conversation_id = c.conversation_id
             GROUP BY c.conversation_id, c.title
             ORDER BY last_activity DESC NULLS LAST
-            """
+            LIMIT $1 OFFSET $2
+            """,
+            page_size,
+            max(0, (page - 1) * page_size),
         )
         # Do not expose last_activity field to the controller response shape
         return [{"id": r["id"], "title": r["title"], "messages": r["messages"]} for r in rows]
@@ -72,7 +77,7 @@ async def get_conversation(conv_id: str) -> Optional[_Conversation]:
 
         msg_rows = await conn.fetch(
             """
-            SELECT role, content
+            SELECT role, content, thinking
             FROM messages
             WHERE conversation_id = $1
             ORDER BY timestamp ASC, id ASC
@@ -83,7 +88,7 @@ async def get_conversation(conv_id: str) -> Optional[_Conversation]:
         return {
             "id": conv_row["id"],
             "title": conv_row["title"],
-            "messages": [{"role": r["role"], "content": r["content"]} for r in msg_rows],
+            "messages": [{"role": r["role"], "content": r["content"], "thinking": r["thinking"]} for r in msg_rows],
         }
 
 
@@ -173,10 +178,11 @@ async def _insert_messages(conn: asyncpg.Connection, conv_id: str, messages: Lis
         return
 
     # Use executemany for efficiency
+    # RSI TODO: Add index on (conversation_id, timestamp) if not present; consider batching and COPY for high throughput.
     await conn.executemany(
         """
-        INSERT INTO messages (conversation_id, role, content)
-        VALUES ($1, $2, $3)
+        INSERT INTO messages (conversation_id, role, content, thinking)
+        VALUES ($1, $2, $3, $4)
         """,
-        [(conv_id, m["role"], m["content"]) for m in messages],
+        [(conv_id, m["role"], m["content"], m.get("thinking")) for m in messages],
     )

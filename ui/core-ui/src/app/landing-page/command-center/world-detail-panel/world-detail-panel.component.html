@@ -1,0 +1,263 @@
+@if (selectedTile) {
+  <div class="world-detail-panel">
+    <header class="panel-header">
+      <div class="header-content">
+        @if (isEditingName) {
+          <input
+            class="name-input"
+            [(ngModel)]="editName"
+            placeholder="World name..."
+            (keydown.enter)="saveName()"
+            (keydown.escape)="cancelEditName()"
+            autofocus
+          />
+          <div class="edit-actions">
+            <button class="btn-icon" (click)="saveName()" title="Save">&#10003;</button>
+            <button class="btn-icon" (click)="cancelEditName()" title="Cancel">&#10005;</button>
+          </div>
+        } @else {
+          <h2 class="world-name" (click)="startEditName()">
+            {{ metadata?.name || 'Unnamed World' }}
+            <span class="edit-hint">click to edit</span>
+          </h2>
+        }
+        <div class="coords">({{ selectedTile.x }}, {{ selectedTile.y }})</div>
+      </div>
+      <button class="btn-close" (click)="closePanel.emit()" title="Close panel">&#10005;</button>
+    </header>
+
+    <div class="panel-body">
+      <!-- Terrain Info -->
+      <section class="info-section terrain-info">
+        <div class="terrain-badge terrain-{{ selectedTile.terrain }}">{{ selectedTile.terrain }}</div>
+        <div class="terrain-badge biome-{{ selectedTile.biome }}">{{ selectedTile.biome || 'none' }}</div>
+        @if (selectedTile.resource !== 'none') {
+          <div class="terrain-badge resource">{{ selectedTile.resource }}</div>
+        }
+      </section>
+
+      <!-- Description -->
+      <section class="info-section">
+        <label class="section-label">Description</label>
+        @if (isEditingDescription) {
+          <textarea
+            class="description-input"
+            [(ngModel)]="editDescription"
+            placeholder="Describe this world..."
+            rows="3"
+            (keydown.escape)="cancelEditDescription()"
+          ></textarea>
+          <div class="edit-actions">
+            <button class="btn-small" (click)="saveDescription()">Save</button>
+            <button class="btn-small secondary" (click)="cancelEditDescription()">Cancel</button>
+          </div>
+        } @else {
+          <p class="description" (click)="startEditDescription()">
+            {{ metadata?.description || 'Click to add description...' }}
+          </p>
+        }
+      </section>
+
+      <!-- Tags -->
+      <section class="info-section">
+        <label class="section-label">Tags</label>
+        <div class="tags-container">
+          @for (tag of metadata?.tags || []; track tag) {
+            <span class="tag">
+              {{ tag }}
+              <button class="tag-remove" (click)="removeTag(tag)">&#10005;</button>
+            </span>
+          }
+          <div class="tag-input-wrap">
+            <input
+              class="tag-input"
+              [(ngModel)]="newTag"
+              placeholder="+ Add tag"
+              (keydown.enter)="addTag()"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Capture -->
+      <section class="info-section">
+        <label class="section-label">Quick Capture</label>
+        <div
+          class="capture-zone"
+          (paste)="onPasteCapture($event)"
+          tabindex="0"
+        >
+          <div class="capture-hint">Paste image or URL here</div>
+          <div class="capture-inputs">
+            <input
+              class="capture-url"
+              [(ngModel)]="quickCaptureUrl"
+              placeholder="Paste URL..."
+            />
+            <input
+              class="capture-title"
+              [(ngModel)]="quickCaptureTitle"
+              placeholder="Title (optional)"
+            />
+            <button class="btn-small" (click)="captureLink()" [disabled]="!quickCaptureUrl">Add</button>
+          </div>
+        </div>
+
+        @if (metadata?.pinnedItems?.length) {
+          <div class="pinned-items">
+            @for (item of metadata?.pinnedItems; track item.id) {
+              <div class="pinned-item" [class.image]="item.type === 'image'">
+                @if (item.type === 'image' && item.imageData) {
+                  <img [src]="item.imageData" [alt]="item.title || 'Pinned image'" />
+                } @else if (item.type === 'link') {
+                  <a [href]="item.url" target="_blank" class="pinned-link">
+                    {{ item.title || item.url }}
+                  </a>
+                }
+                <button class="item-remove" (click)="removePinnedItem(item.id)">&#10005;</button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Quick Notes -->
+      <section class="info-section">
+        <label class="section-label">Notes</label>
+        <div class="notes-input-wrap">
+          <textarea
+            class="note-input"
+            [(ngModel)]="newNote"
+            placeholder="Add a quick note..."
+            rows="2"
+            (keydown.enter)="$any($event).ctrlKey && addNote()"
+          ></textarea>
+          <button class="btn-small" (click)="addNote()" [disabled]="!newNote.trim()">Add Note</button>
+        </div>
+
+        @if (metadata?.quickNotes?.length) {
+          <div class="notes-list">
+            @for (note of metadata?.quickNotes; track note.id) {
+              <div class="note-item" [class.ai-note]="note.source === 'ai'">
+                @if (note.source === 'ai') {
+                  <span class="note-source">{{ '@' + note.instanceName }}</span>
+                }
+                <p class="note-content">{{ note.content }}</p>
+                <div class="note-meta">
+                  <span class="note-date">{{ formatDate(note.createdAt) }}</span>
+                  <button class="note-remove" (click)="removeNote(note.id)">&#10005;</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- AI Assistant -->
+      <section class="info-section ai-section">
+        <label class="section-label">AI Assistant</label>
+        <div class="ai-quick-actions">
+          <button class="btn-ai" (click)="quickAIPrompt('lore')">Generate Lore</button>
+          <button class="btn-ai" (click)="quickAIPrompt('connections')">Suggest Connections</button>
+          <button class="btn-ai" (click)="quickAIPrompt('inhabitants')">Describe Inhabitants</button>
+          <button class="btn-ai" (click)="quickAIPrompt('history')">Create History</button>
+        </div>
+        <div class="ai-prompt-wrap">
+          <textarea
+            class="ai-prompt-input"
+            [(ngModel)]="aiPromptText"
+            placeholder="Ask about this world..."
+            rows="2"
+          ></textarea>
+          <button class="btn-small" (click)="sendAIPrompt()" [disabled]="!aiPromptText.trim()">Ask AI</button>
+        </div>
+
+        @if (metadata?.aiObservations?.length) {
+          <div class="ai-observations">
+            @for (obs of metadata?.aiObservations; track obs.id) {
+              <div class="ai-observation">
+                <span class="obs-source">{{ '@' + obs.instanceName }}</span>
+                <p class="obs-content">{{ obs.observation }}</p>
+                <div class="obs-meta">
+                  <span class="obs-date">{{ formatDate(obs.createdAt) }}</span>
+                  <button class="obs-remove" (click)="removeAIObservation(obs.id)">&#10005;</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Connections -->
+      <section class="info-section">
+        <label class="section-label">World Connections</label>
+        @if (!isCreatingConnection) {
+          <button class="btn-small" (click)="startCreateConnection()">+ Add Connection</button>
+        } @else {
+          <div class="connection-create">
+            <p class="create-hint">Click another tile to create a connection</p>
+            <select [(ngModel)]="newConnectionType" class="connection-type-select">
+              @for (type of connectionTypes; track type) {
+                <option [value]="type">{{ connectionStyles[type].label }}</option>
+              }
+            </select>
+            <button class="btn-small secondary" (click)="cancelCreateConnection()">Cancel</button>
+          </div>
+        }
+
+        @if (tileConnections.length) {
+          <div class="connections-list">
+            @for (conn of tileConnections; track conn.id) {
+              <div class="connection-item">
+                <span
+                  class="connection-type-indicator"
+                  [style.background]="connectionStyles[conn.type].color"
+                ></span>
+                <span class="connection-label">{{ connectionStyles[conn.type].label }}</span>
+                <span class="connection-arrow">{{ conn.bidirectional ? '↔' : '→' }}</span>
+                <span class="connection-partner">{{ getPartnerWorldName(conn) }}</span>
+                <button class="connection-remove" (click)="removeConnection(conn.id)">&#10005;</button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Linked Content -->
+      <section class="info-section">
+        <label class="section-label">Wiki Pages</label>
+        <button class="btn-small" (click)="createWikiPage()">+ Create Wiki Page</button>
+        @if (linkedWikiPages.length) {
+          <div class="linked-list">
+            @for (page of linkedWikiPages; track page.id) {
+              <div class="linked-item">
+                <span class="linked-title">{{ page.title }}</span>
+                <button class="linked-remove" (click)="unlinkWikiPage(page.id)">&#10005;</button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="info-section">
+        <label class="section-label">Mood Boards</label>
+        <button class="btn-small" (click)="createBoard()">+ Create Board</button>
+        @if (linkedBoards.length) {
+          <div class="linked-list">
+            @for (board of linkedBoards; track board.id) {
+              <div class="linked-item">
+                <span class="linked-title">{{ board.title }}</span>
+                <button class="linked-remove" (click)="unlinkBoard(board.id)">&#10005;</button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  </div>
+} @else {
+  <div class="no-selection">
+    <p>Select a tile to view world details</p>
+    <p class="hint">Switch to View mode and click a tile</p>
+  </div>
+}

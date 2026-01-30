@@ -1,0 +1,14 @@
+<div class="status-indicator" [class]="statusClass" [attr.data-size]="size">
+  <div class="status-icon">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path [attr.d]="iconPath" fill="currentColor"/>
+    </svg>
+    <!-- Pulse ring for running status -->
+    @if (status === 'running') {
+      <div class="pulse-ring"></div>
+    }
+  </div>
+  @if (showLabel) {
+    <span class="status-label">{{ statusLabel }}</span>
+  }
+</div>

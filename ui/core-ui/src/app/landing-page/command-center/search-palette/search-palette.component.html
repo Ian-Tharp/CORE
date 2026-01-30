@@ -1,0 +1,82 @@
+@if (isOpen) {
+  <div class="palette-backdrop" (click)="onBackdropClick($event)">
+    <div class="palette-container">
+      <div class="search-header">
+        <span class="search-icon">&#128269;</span>
+        <input
+          type="text"
+          class="search-input"
+          [(ngModel)]="query"
+          (ngModelChange)="onSearch()"
+          placeholder="Search worlds, wiki, tags..."
+          autofocus
+        />
+        <span class="shortcut-hint">ESC to close</span>
+      </div>
+
+      <div class="filters-bar">
+        <label class="filter-chip" [class.active]="filters.hasContent">
+          <input type="checkbox" [(ngModel)]="filters.hasContent" (ngModelChange)="onFilterChange()">
+          Has content
+        </label>
+        <label class="filter-chip" [class.active]="filters.hasConnections">
+          <input type="checkbox" [(ngModel)]="filters.hasConnections" (ngModelChange)="onFilterChange()">
+          Has connections
+        </label>
+        @if (filters.hasContent || filters.hasConnections) {
+          <button class="clear-filters" (click)="clearFilters()">Clear filters</button>
+        }
+      </div>
+
+      <div class="results-container">
+        @if (results.length === 0 && query) {
+          <div class="no-results">
+            <p>No results for "{{ query }}"</p>
+            <p class="hint">Try searching for world names, tags, or wiki pages</p>
+          </div>
+        } @else if (results.length === 0) {
+          <div class="no-results">
+            <p>Start typing to search</p>
+            <p class="hint">Search worlds, wiki pages, and tags</p>
+          </div>
+        } @else {
+          <div class="results-list">
+            @for (result of results; track result.id; let i = $index) {
+              <button
+                class="result-item"
+                [class.selected]="i === selectedIndex"
+                (click)="onSelectResult(result)"
+                (mouseenter)="selectedIndex = i"
+              >
+                <span class="result-icon">
+                  @switch (result.type) {
+                    @case ('world') { &#127758; }
+                    @case ('wiki') { &#128214; }
+                    @case ('tag') { &#127991;&#65039; }
+                    @case ('connection') { &#128279; }
+                    @default { &#128196; }
+                  }
+                </span>
+                <div class="result-content">
+                  <span class="result-title">{{ result.title }}</span>
+                  @if (result.subtitle) {
+                    <span class="result-subtitle">{{ result.subtitle }}</span>
+                  }
+                </div>
+                <span class="result-type">{{ result.type }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="palette-footer">
+        <span class="footer-hint">
+          <kbd>↑↓</kbd> Navigate
+          <kbd>Enter</kbd> Select
+          <kbd>Esc</kbd> Close
+        </span>
+      </div>
+    </div>
+  </div>
+}

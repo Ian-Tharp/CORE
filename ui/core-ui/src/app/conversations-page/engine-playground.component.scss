@@ -75,4 +75,174 @@
   margin-right: 0.25rem;
 }
 
+// Unified CORE Pipeline Section
+.core-unified-section {
+  background: linear-gradient(135deg, rgba(0,255,255,0.05), rgba(0,255,153,0.05));
+  border: 1px solid rgba(0,255,204,0.2);
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem;
+
+  mat-card-header {
+    margin-bottom: 1rem;
+  }
+
+  mat-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+
+    mat-chip {
+      font-size: 0.85rem;
+      mat-icon {
+        font-size: 1rem;
+      }
+    }
+  }
+
+  mat-card-subtitle {
+    opacity: 0.8;
+    margin-top: 0.25rem;
+    .elapsed {
+      color: rgba(0,255,204,0.9);
+      font-weight: 500;
+    }
+  }
+
+  .core-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    .run-id {
+      font-family: monospace;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+  }
+
+  .core-events {
+    margin-top: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid rgba(255,255,255,0.1);
+
+    h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: rgba(0,255,204,0.9);
+    }
+
+    .events-list {
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      .event-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        background: rgba(255,255,255,0.03);
+        border-radius: 0.375rem;
+        border-left: 3px solid rgba(0,255,204,0.3);
+        font-size: 0.9rem;
+
+        .event-time {
+          font-family: monospace;
+          font-size: 0.8rem;
+          opacity: 0.6;
+          white-space: nowrap;
+        }
+
+        .event-label {
+          flex: 1;
+          line-height: 1.4;
+          margin: 0;
+          white-space: pre-wrap;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-size: 0.85rem;
+        }
+
+        &.start, &.node_start {
+          border-left-color: rgba(0,153,255,0.6);
+        }
+
+        &.node_complete {
+          border-left-color: rgba(0,255,153,0.6);
+        }
+
+        &.complete {
+          border-left-color: rgba(0,255,0,0.7);
+          background: rgba(0,255,0,0.05);
+        }
+
+        &.error {
+          border-left-color: rgba(255,0,0,0.7);
+          background: rgba(255,0,0,0.05);
+        }
+      }
+    }
+  }
+
+  .core-state {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(0,0,0,0.15);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255,255,255,0.08);
+
+    h4 {
+      margin: 0 0 1rem 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: rgba(0,255,204,0.9);
+    }
+
+    mat-expansion-panel {
+      margin-bottom: 0.5rem;
+      background: rgba(255,255,255,0.03);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      font-family: monospace;
+      background: rgba(0,0,0,0.2);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      overflow-x: auto;
+    }
+
+    .final-response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(0,255,204,0.08);
+      border: 1px solid rgba(0,255,204,0.25);
+      border-radius: 0.5rem;
+
+      h4 {
+        margin-top: 0;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.6;
+      }
+    }
+
+    .error {
+      color: rgba(255,100,100,0.9);
+    }
+  }
+}
+
 

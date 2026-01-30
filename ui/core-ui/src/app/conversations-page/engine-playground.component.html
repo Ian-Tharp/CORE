@@ -28,6 +28,143 @@
     @if (isBusy) { <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner> }
   </div>
 
+  <!-- Unified CORE Pipeline Section -->
+  <mat-card class="core-unified-section">
+    <mat-card-header>
+      <mat-card-title>
+        🧠 Unified CORE Pipeline
+        @if (coreRunning) {
+          <mat-chip color="accent" highlighted>
+            <mat-icon>bolt</mat-icon>
+            Running: {{ currentCoreNode || 'Starting...' }}
+          </mat-chip>
+        }
+      </mat-card-title>
+      <mat-card-subtitle>
+        Execute the complete CORE cognitive graph with real-time streaming
+        @if (coreElapsedMs > 0) {
+          <span class="elapsed"> • {{ coreElapsedMs | number:'1.0-0' }}ms elapsed</span>
+        }
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="core-actions">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="runFullCORE()"
+          [disabled]="coreRunning || !inputText.trim()"
+          matTooltip="Run complete CORE pipeline (Comprehension → Orchestration → Reasoning → Evaluation → Conversation)">
+          <mat-icon>play_circle</mat-icon>
+          Run Full CORE
+        </button>
+        @if (coreRunning) {
+          <button mat-raised-button color="warn" (click)="stopCORE()" matTooltip="Stop execution">
+            <mat-icon>stop_circle</mat-icon>
+            Stop
+          </button>
+        }
+        @if (coreRunId) {
+          <span class="run-id">Run ID: {{ coreRunId }}</span>
+        }
+      </div>
+
+      <!-- Event Stream Display -->
+      @if (coreEvents.length > 0) {
+        <div class="core-events">
+          <h4>Execution Stream:</h4>
+          <div class="events-list">
+            @for (event of coreEvents; track $index) {
+              <div class="event-item" [ngClass]="event.event">
+                <span class="event-time">{{ event.timestamp | date:'HH:mm:ss.SSS' }}</span>
+                <pre class="event-label">{{ getCoreEventLabel(event) }}</pre>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Final State Display -->
+      @if (coreState && !coreRunning) {
+        <div class="core-state">
+          <h4>Final State:</h4>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Intent</mat-panel-title>
+            </mat-expansion-panel-header>
+            @if (coreState.intent) {
+              <pre>{{ coreState.intent | json }}</pre>
+            } @else {
+              <em>No intent data</em>
+            }
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Execution Plan</mat-panel-title>
+            </mat-expansion-panel-header>
+            @if (coreState.plan) {
+              <div>
+                <p><strong>Goal:</strong> {{ coreState.plan.goal }}</p>
+                <p><strong>Steps:</strong> {{ coreState.plan.steps.length }}</p>
+                <ul>
+                  @for (step of coreState.plan.steps; track step.id) {
+                    <li>
+                      <strong>{{ step.name }}</strong> ({{ step.status }})
+                      <br/><em>{{ step.description }}</em>
+                    </li>
+                  }
+                </ul>
+              </div>
+            } @else {
+              <em>No plan data</em>
+            }
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Step Results</mat-panel-title>
+            </mat-expansion-panel-header>
+            @if (coreState.step_results.length > 0) {
+              <ul>
+                @for (result of coreState.step_results; track result.step_id) {
+                  <li>
+                    <strong>Step {{ result.step_id }}:</strong> {{ result.status }}
+                    @if (result.error) { <span class="error"> • Error: {{ result.error }}</span> }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <em>No step results</em>
+            }
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Evaluation</mat-panel-title>
+            </mat-expansion-panel-header>
+            @if (coreState.eval_result) {
+              <pre>{{ coreState.eval_result | json }}</pre>
+            } @else {
+              <em>No evaluation data</em>
+            }
+          </mat-expansion-panel>
+
+          @if (coreState.response) {
+            <div class="final-response">
+              <h4>Response:</h4>
+              <p>{{ coreState.response }}</p>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-divider></mat-divider>
+  <br/>
+
+  <!-- Individual Step Controls (original functionality) -->
   <mat-accordion class="outputs" multi>
     <mat-expansion-panel [expanded]="true">
       <mat-expansion-panel-header>
@@ -55,7 +192,12 @@
             <button mat-icon-button color="primary" (click)="runComprehension()" matTooltip="Run Comprehension">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Comprehension']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Comprehension']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Comprehension')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(comprehension?.text || '')" [disabled]="!comprehension" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -96,7 +238,12 @@
             <button mat-icon-button color="primary" (click)="runOrchestration()" matTooltip="Run Orchestration">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Orchestration']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Orchestration']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Orchestration')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(orchestration?.text || '')" [disabled]="!orchestration" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -141,7 +288,12 @@
             <button mat-icon-button color="primary" (click)="runReasoning()" matTooltip="Run Reasoning">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Reasoning']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Reasoning']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Reasoning')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(reasoning?.text || '')" [disabled]="!reasoning" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>
@@ -179,7 +331,12 @@
             <button mat-icon-button color="primary" (click)="runEvaluation()" matTooltip="Run Evaluation">
               <mat-icon>play_arrow</mat-icon>
             </button>
-            @if (stepBusy['Evaluation']) { <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner> }
+            @if (stepBusy['Evaluation']) {
+              <mat-progress-spinner color="primary" diameter="16" mode="indeterminate"></mat-progress-spinner>
+              <button mat-icon-button color="warn" (click)="stop('Evaluation')" matTooltip="Stop">
+                <mat-icon>stop</mat-icon>
+              </button>
+            }
             <button mat-icon-button (click)="copy(evaluation?.text || '')" [disabled]="!evaluation" matTooltip="Copy">
               <mat-icon>content_copy</mat-icon>
             </button>

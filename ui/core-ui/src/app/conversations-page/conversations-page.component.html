@@ -1,3 +1,5 @@
+<!-- RSI TODO: Migrate remaining *ngIf usages to Angular 19 control flow (@if/@else) for consistency. -->
+<!-- RSI TODO: Add skeleton loaders and empty states with ARIA roles for improved accessibility. -->
 <div class="conversations-page-layout">
   <aside class="conversation-list">
     <button mat-raised-button color="primary" (click)="startNewConversation()" class="new-conv-btn" [disabled]="!isConnected">
@@ -41,12 +43,11 @@
               (click)="selectConversation(conv.id)"
               [ngClass]="{ selected: conv.id === selectedConversationId }"
             >
-              <ng-container *ngIf="editingConversationId !== conv.id; else editTitle">
+              @if (editingConversationId !== conv.id) {
                 <div matLine class="title-line">
                   {{ conv.title || (conv.id | slice:0:8) }}
                 </div>
-              </ng-container>
-              <ng-template #editTitle>
+              } @else {
                 <input
                   type="text"
                   class="title-edit-input"
@@ -56,7 +57,7 @@
                   (click)="$event.stopPropagation()"
                   autofocus
                 />
-              </ng-template>
+              }
 
               <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
 
@@ -78,9 +79,11 @@
 
   <section class="chat-section">
     <div class="two-col">
-      <mat-card class="chat-card" *ngIf="true">
+      <!-- RSI TODO: Remove always-true *ngIf; using direct render. -->
+      <mat-card class="chat-card">
         <app-chat-window
           [conversationId]="selectedConversationId"
+          [showTitle]="false"
           (conversationIdChange)="onConversationCreated($event)"
         ></app-chat-window>
       </mat-card>

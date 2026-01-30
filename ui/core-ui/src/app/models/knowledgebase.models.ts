@@ -6,6 +6,8 @@ export interface KnowledgeFile {
   chunkCount?: number;
   embeddingModel?: string;
   embeddingDimensions?: number;
+  localEmbeddingModel?: string;
+  localEmbeddingDimensions?: number;
   size: number;
   mimeType: string;
   uploadDate: Date;

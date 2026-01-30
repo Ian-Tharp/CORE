@@ -1,46 +1,317 @@
 <section class="wiki">
-  <aside class="outline">
-    <div class="new">
-      <input placeholder="New page title" [(ngModel)]="newTitle"/>
-      <button (click)="create()">Create</button>
+  <aside class="sidebar">
+    <!-- Enhanced page creation with templates -->
+    <div class="creation-section">
+      <div class="new-page" *ngIf="!showTemplateSelector">
+        <input placeholder="New page title" [(ngModel)]="newTitle"/>
+        <div class="create-options">
+          <button (click)="create()" class="primary">Create</button>
+          <button (click)="showTemplateSelector = true" class="template-btn">📋 Template</button>
+        </div>
+      </div>
+
+      <div class="template-selector" *ngIf="showTemplateSelector">
+        <div class="template-header">
+          <span>Choose Template</span>
+          <button (click)="showTemplateSelector = false" class="close">×</button>
+        </div>
+        <div class="templates">
+          <button *ngFor="let template of (templates | keyvalue)"
+                  (click)="createFromTemplate(template.key)"
+                  class="template-option">
+            <span class="icon">{{template.value.metadata.icon}}</span>
+            <span class="name">{{template.key}}</span>
+          </button>
+        </div>
+      </div>
     </div>
+
+    <!-- Search and filters -->
+    <div class="search-section">
+      <input class="search-input"
+             placeholder="🔍 Search pages..."
+             [(ngModel)]="searchQuery"/>
+
+      <!-- View mode toggle -->
+      <div class="view-toggle">
+        <button [class.active]="viewMode==='list'" (click)="viewMode='list'">📝</button>
+        <button [class.active]="viewMode==='grid'" (click)="viewMode='grid'">⊞</button>
+        <button [class.active]="viewMode==='timeline'" (click)="viewMode='timeline'">📅</button>
+      </div>
+    </div>
+
+    <!-- Tag filters -->
+    <div class="tag-section" *ngIf="getAllTags().length > 0">
+      <div class="tag-header">Tags</div>
+      <div class="tag-filters">
+        <button *ngFor="let tag of getAllTags()"
+                [class.selected]="selectedTags.includes(tag)"
+                (click)="toggleTag(tag)"
+                class="tag-filter">
+          #{{tag}}
+        </button>
+      </div>
+    </div>
+
+    <!-- Category sections -->
     <div class="sections">
       <button [class.active]="section==='All'" (click)="section='All'">All</button>
-      <button [class.active]="section==='Lore'" (click)="section='Lore'">Lore</button>
-      <button [class.active]="section==='Factions'" (click)="section='Factions'">Factions</button>
-      <button [class.active]="section==='Biomes'" (click)="section='Biomes'">Biomes</button>
-      <button [class.active]="section==='Items'" (click)="section='Items'">Items</button>
-      <button [class.active]="section==='Technology'" (click)="section='Technology'">Technology</button>
+      <button [class.active]="section==='Lore'" (click)="section='Lore'">📜 Lore</button>
+      <button [class.active]="section==='Factions'" (click)="section='Factions'">⚔️ Factions</button>
+      <button [class.active]="section==='Biomes'" (click)="section='Biomes'">🏞️ Biomes</button>
+      <button [class.active]="section==='Items'" (click)="section='Items'">🗡️ Items</button>
+      <button [class.active]="section==='Technology'" (click)="section='Technology'">🔧 Technology</button>
     </div>
-    <ul>
-      <li *ngFor="let p of filteredPages()" (click)="editing=p" [class.active]="editing?.id===p.id">{{ p.title }}</li>
-    </ul>
-    <div class="quick">
-      <div class="label">Quick add</div>
-      <button (click)="createOfType('Lore')">Lore</button>
-      <button (click)="createOfType('Factions')">Faction</button>
-      <button (click)="createOfType('Biomes')">Biome</button>
-      <button (click)="createOfType('Items')">Item</button>
-      <button (click)="createOfType('Technology')">Tech</button>
+
+    <!-- Enhanced page list -->
+    <div class="page-list" [attr.data-view]="viewMode">
+      <div *ngFor="let p of filteredPages()"
+           (click)="editing=p"
+           (contextmenu)="showContextMenu($event, p)"
+           [class.active]="editing?.id===p.id"
+           class="page-item">
+        <div class="page-icon">{{p.metadata?.icon || '📄'}}</div>
+        <div class="page-content">
+          <div class="page-title" *ngIf="!editingTitle || contextPage?.id !== p.id">{{ p.title }}</div>
+          <div class="title-edit" *ngIf="editingTitle && contextPage?.id === p.id">
+            <input [(ngModel)]="tempTitle"
+                   (keyup.enter)="confirmTitleEdit()"
+                   (keyup.escape)="cancelTitleEdit()"
+                   (blur)="confirmTitleEdit()"
+                   class="title-edit-input"/>
+          </div>
+          <div class="page-meta">
+            <span class="page-type" *ngIf="p.metadata?.type">{{p.metadata?.type}}</span>
+            <span class="page-tags" *ngIf="p.metadata?.tags?.length">
+              <span *ngFor="let tag of (p.metadata?.tags || []).slice(0, 3)" class="tag">#{{tag}}</span>
+              <span *ngIf="(p.metadata?.tags?.length || 0) > 3" class="more-tags">+{{(p.metadata?.tags?.length || 0) - 3}}</span>
+            </span>
+          </div>
+          <div class="page-preview" *ngIf="viewMode === 'grid'">
+            {{(p.content || '').substring(0, 100)}}{{(p.content || '').length > 100 ? '...' : ''}}
+          </div>
+        </div>
+        <div class="page-media" *ngIf="p.media?.length && viewMode === 'grid'">
+          <img [src]="p.media?.[0]?.url" alt="Preview" class="media-preview"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick add section -->
+    <div class="quick-add">
+      <div class="quick-label">Quick Add</div>
+      <div class="quick-buttons">
+        <button (click)="createOfType('Lore')" title="Lore">📜</button>
+        <button (click)="createOfType('Factions')" title="Faction">⚔️</button>
+        <button (click)="createOfType('Biomes')" title="Biome">🏞️</button>
+        <button (click)="createOfType('Items')" title="Item">🗡️</button>
+        <button (click)="createOfType('Technology')" title="Tech">🔧</button>
+      </div>
     </div>
   </aside>
-  <main class="editor" *ngIf="editing as e">
-    <input class="title" [(ngModel)]="e.title"/>
-    <textarea [(ngModel)]="e.content" rows="16" placeholder="Describe your world: geography, factions, magic systems, technology, cultures..."></textarea>
-    <div class="actions"><button (click)="save()">Save</button></div>
 
-    <section class="characters">
-      <h3>Character Builder</h3>
-      <div class="row">
-        <input placeholder="Character name" [(ngModel)]="characterName"/>
+  <!-- Context Menu -->
+  <div #contextMenu
+       class="context-menu"
+       *ngIf="contextMenuVisible"
+       [style.left.px]="contextMenuX"
+       [style.top.px]="contextMenuY">
+    <button (click)="editPageTitle()">✏️ Edit Title</button>
+    <button (click)="duplicatePage()">📋 Duplicate</button>
+    <button (click)="deletePage()" class="danger">🗑️ Delete</button>
+  </div>
+
+  <main class="editor" *ngIf="editing as e"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+        [class.drag-over]="dragOverEditor">
+
+    <!-- Enhanced editor header -->
+    <div class="editor-header">
+      <div class="title-section">
+        <div class="page-icon-large">{{e.metadata?.icon || '📄'}}</div>
+        <input class="title" [(ngModel)]="e.title" (blur)="save()"/>
       </div>
-      <div class="row">
-        <textarea [(ngModel)]="characterTraits" rows="6" placeholder='Traits as JSON or free text, e.g. {"role":"Ranger","mood":"Stoic","gear":"Cloak, bow"}'></textarea>
+
+      <!-- Page metadata -->
+      <div class="page-metadata">
+        <div class="metadata-row">
+          <span class="type-badge" *ngIf="e.metadata?.type">{{e.metadata?.type}}</span>
+          <span class="updated">Updated {{e.updatedAt | date:'short'}}</span>
+        </div>
+
+        <!-- Tags management -->
+        <div class="tags-row">
+          <div class="current-tags">
+            <span *ngFor="let tag of (e.metadata?.tags || [])" class="tag">
+              #{{tag}} <button (click)="removeTag(tag)" class="remove-tag">×</button>
+            </span>
+          </div>
+          <input #newTagInput
+                 placeholder="Add tag..."
+                 (keyup.enter)="addTag(newTagInput.value); newTagInput.value=''"
+                 class="tag-input"/>
+        </div>
       </div>
-      <div class="actions"><button (click)="createCharacter()">Generate Portrait</button></div>
-      <div class="preview" *ngIf="characterImageB64 as img">
-        <img [src]="'data:image/png;base64,' + img" alt="Character" />
+    </div>
+
+    <!-- Content editor with enhanced features -->
+    <div class="content-section">
+      <textarea [(ngModel)]="e.content"
+                (blur)="save()"
+                rows="20"
+                placeholder="Describe your world: geography, factions, magic systems, technology, cultures...
+
+📎 Drag and drop images, or use the media section below
+🏷️ Add tags to organize your content
+📋 Use templates for structured content"
+                class="content-editor"></textarea>
+    </div>
+
+    <!-- Media gallery -->
+    <div class="media-section" *ngIf="e.media?.length || showMediaUpload">
+      <div class="media-header">
+        <h3>Media Gallery</h3>
+        <div class="media-controls">
+          <button (click)="showMediaUpload = !showMediaUpload" class="media-toggle">
+            {{showMediaUpload ? 'Hide' : 'Add Media'}}
+          </button>
+        </div>
+      </div>
+
+      <div class="media-upload" *ngIf="showMediaUpload">
+        <input #fileInput
+               type="file"
+               (change)="onFileSelected($event)"
+               accept="image/*,video/*,audio/*"
+               multiple
+               hidden/>
+        <button (click)="fileInput.click()" class="upload-btn">
+          📎 Choose Files
+        </button>
+        <span class="upload-hint">or drag and drop files onto the editor</span>
+      </div>
+
+      <div class="media-gallery" *ngIf="e.media?.length">
+        <div *ngFor="let media of e.media" class="media-item">
+          <div class="media-content" [ngSwitch]="media.type">
+            <img *ngSwitchCase="'image'" [src]="media.url" alt="Media"/>
+            <video *ngSwitchCase="'video'" [src]="media.url" controls></video>
+            <audio *ngSwitchCase="'audio'" [src]="media.url" controls></audio>
+          </div>
+          <div class="media-controls">
+            <input [(ngModel)]="media.caption"
+                   (blur)="save()"
+                   placeholder="Add caption..."
+                   class="caption-input"/>
+            <button (click)="removeMedia(media.id)" class="remove-media">🗑️</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Assistant Panel -->
+    <section class="ai-assistant" *ngIf="editing">
+      <h3>🤖 AI Assistant</h3>
+
+      <!-- Content Suggestions -->
+      <div class="ai-section" *ngIf="getContentSuggestions().length > 0">
+        <h4>💡 Content Suggestions</h4>
+        <div class="suggestions">
+          <button *ngFor="let suggestion of getContentSuggestions()"
+                  (click)="applySuggestion(suggestion)"
+                  class="suggestion-btn">
+            + {{suggestion}}
+          </button>
+        </div>
+      </div>
+
+      <!-- Smart Outline Generation -->
+      <div class="ai-section">
+        <h4>📝 Smart Outline</h4>
+        <button (click)="generateContentOutline()" class="outline-btn">
+          Generate {{editing.metadata?.type || 'Page'}} Outline
+        </button>
+      </div>
+
+      <!-- Tag Recommendations -->
+      <div class="ai-section" *ngIf="getRecommendedTags().length > 0">
+        <h4>🏷️ Suggested Tags</h4>
+        <div class="tag-suggestions">
+          <button *ngFor="let tag of getRecommendedTags()"
+                  (click)="addRecommendedTag(tag)"
+                  class="tag-suggestion">
+            + #{{tag}}
+          </button>
+        </div>
+      </div>
+
+      <!-- Page Connections -->
+      <div class="ai-section" *ngIf="getConnectionSuggestions().length > 0">
+        <h4>🔗 Related Pages</h4>
+        <div class="connection-suggestions">
+          <button *ngFor="let page of getConnectionSuggestions()"
+                  (click)="connectToPage(page)"
+                  class="connection-btn">
+            🔗 {{page.title}}
+          </button>
+        </div>
+      </div>
+
+      <!-- Connected Pages Display -->
+      <div class="ai-section" *ngIf="getConnectedPages().length > 0">
+        <h4>📎 Connected Pages</h4>
+        <div class="connected-pages">
+          <span *ngFor="let page of getConnectedPages()"
+                class="connected-page"
+                (click)="editing = page">
+            {{page.metadata?.icon || '📄'}} {{page.title}}
+          </span>
+        </div>
       </div>
     </section>
+
+    <!-- Enhanced character builder -->
+    <section class="character-builder">
+      <h3>🎭 Character Builder</h3>
+      <div class="character-form">
+        <div class="form-row">
+          <input placeholder="Character name" [(ngModel)]="characterName" class="character-input"/>
+        </div>
+        <div class="form-row">
+          <textarea [(ngModel)]="characterTraits"
+                    rows="4"
+                    placeholder='Character traits (JSON or text):
+{"role":"Ranger","mood":"Stoic","gear":"Cloak, bow"}'
+                    class="traits-input"></textarea>
+        </div>
+        <div class="form-actions">
+          <button (click)="createCharacter()" class="generate-btn">🎨 Generate Portrait</button>
+        </div>
+        <div class="character-preview" *ngIf="characterImageB64 as img">
+          <img [src]="'data:image/png;base64,' + img" alt="Character Portrait" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Save indicator -->
+    <div class="save-indicator">
+      <button (click)="save()" class="save-btn">💾 Save</button>
+      <span class="auto-save-hint">Auto-saves on blur</span>
+    </div>
   </main>
+
+  <!-- Empty state -->
+  <div class="empty-state" *ngIf="!editing && pages.length === 0">
+    <div class="empty-icon">📚</div>
+    <h3>Welcome to your Wiki</h3>
+    <p>Create your first page to start building your world</p>
+    <button (click)="showTemplateSelector = true" class="template-start-btn">
+      📋 Start with Template
+    </button>
+  </div>
+
+  <!-- File input for drag and drop -->
+  <input #fileInput type="file" hidden multiple accept="image/*,video/*,audio/*" (change)="onFileSelected($event)"/>
 </section>

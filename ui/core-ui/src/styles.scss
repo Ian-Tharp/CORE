@@ -3,6 +3,7 @@
 /* Angular Material Theme Configuration */
 @use '@angular/material' as mat;
 @use './solarpunk-theme' as solarpunk;
+@use './styles/agents/components' as *;
 
 // Include the common styles for Angular Material
 @include mat.core();
@@ -57,6 +58,11 @@ body {
   background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface) 90%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface-high) 90%, transparent) 100%) !important;
 }
 
+/* Standardized card header padding - ensures consistent spacing between header and content */
+.mat-mdc-card .mat-mdc-card-header {
+  padding-bottom: 16px;
+}
+
 /* Ensure readable text within cards globally */
 .mat-mdc-card .mat-mdc-card-content,
 .mat-mdc-card .mat-mdc-card-content p {
@@ -68,6 +74,20 @@ body {
 
 .mat-mdc-button {
   border-radius: 8px !important;
+}
+
+/* Ensure consistent border radius across all Material button variants */
+.mat-mdc-button-base,
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-stroked-button {
+  border-radius: 0.5rem !important;
+}
+
+/* Icon buttons: keep rounded corners matching the system */
+.mat-mdc-icon-button {
+  border-radius: 0.5rem !important;
 }
 
 .mat-mdc-raised-button {
@@ -93,6 +113,12 @@ body {
 .mat-mdc-standard-chip {
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(5px);
+  border-radius: 0.75rem !important;
+}
+
+/* Icon vertical alignment consistency */
+.mat-icon {
+  vertical-align: middle;
 }
 
 /* --- Next-Gen Glass Inputs & Selects (global) ------------------------ */
@@ -239,10 +265,18 @@ body {
 /* Glass dialog theming for dark solarpunk UI */
 .glass-dialog .mdc-dialog__surface,
 .glass-dialog .mat-mdc-dialog-surface {
-  background: linear-gradient(135deg, rgba(8, 28, 35, 0.85), rgba(20, 60, 70, 0.65)) !important;
+  background: linear-gradient(135deg, rgb(8, 28, 35), rgb(14, 45, 55)) !important;
   color: #c8fff0 !important;
-  border: 1px solid rgba(0,255,200,0.18) !important;
-  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.5) !important;
+  border: 1px solid rgba(0,255,200,0.25) !important;
+  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.6), 0 0 1rem rgba(0, 255, 200, 0.1) !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Ensure dialog backdrop fully obscures the background */
+.glass-dialog + .cdk-overlay-backdrop,
+.cdk-overlay-dark-backdrop {
+  background: rgba(0, 10, 15, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
 }
 
 /* Toolbar customization */
@@ -326,10 +360,34 @@ body {
     border: 1px solid rgba(0, 255, 255, 0.3) !important;
     font-size: 0.875rem !important;
     padding: 8px 12px !important;
-    box-shadow: 
+    box-shadow:
       0 4px 16px rgba(0, 0, 0, 0.8),
       0 0 10px rgba(0, 255, 255, 0.2) !important;
   }
+}
+
+/* Material Badge Styling - Global */
+.mat-badge-content {
+  font-weight: 700;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.mat-badge-accent .mat-badge-content {
+  background: var(--mdc-sys-color-tertiary);
+  color: var(--mdc-sys-color-on-tertiary);
+}
+
+.mat-badge-primary .mat-badge-content {
+  background: var(--mdc-sys-color-primary);
+  color: var(--mdc-sys-color-on-primary);
+}
+
+.mat-badge-warn .mat-badge-content {
+  background: var(--mdc-sys-color-error);
+  color: var(--mdc-sys-color-on-error);
 }
 
 /* Ensure tooltip has no transparency */

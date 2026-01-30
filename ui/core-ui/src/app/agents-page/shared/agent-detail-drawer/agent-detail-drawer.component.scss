@@ -1,0 +1,21 @@
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+}
+.drawer {
+  position: fixed; top: 0; right: 0; height: 100%; width: min(40rem, 95vw);
+  z-index: 1001; display: flex; flex-direction: column;
+}
+.head { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(0,0,0,0.25); }
+.head.sticky { position: sticky; top: 0; z-index: 1; backdrop-filter: blur(10px); }
+.title { display: flex; align-items: center; gap: 0.75rem; }
+.name { margin: 0; color: #fff; }
+.sub { margin: 0; color: rgba(255,255,255,0.7); }
+.section { padding: 1rem; color: rgba(255,255,255,0.9); }
+.cap { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem; }
+.cap-name { font-weight: 600; }
+.cap-desc { opacity: 0.8; }
+.foot { margin-top: auto; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; justify-content: flex-end; background: rgba(0,0,0,0.25); }
+.foot.sticky { position: sticky; bottom: 0; }
+.head-actions { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+

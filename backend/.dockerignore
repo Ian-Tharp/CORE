@@ -1,54 +1,27 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-env/
+# Exclude local virtualenvs and caches from Docker build context
+.venv/
 venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Testing
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
 .pytest_cache/
 .coverage
-htmlcov/
-.tox/
 
-# Jupyter
-.ipynb_checkpoints
-
-# OS
+# Git and editor files
+.git/
+.gitignore
+.idea/
+.vscode/
 .DS_Store
-Thumbs.db
 
-# Logs
-*.log
+# Build artifacts
+build/
+dist/
 
-# Environment
-.env
-.env.local
+# Data (bind-mounted at runtime)
+data/
+
+# Node modules if accidentally present
+node_modules/
