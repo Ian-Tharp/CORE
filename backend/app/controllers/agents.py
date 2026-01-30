@@ -95,6 +95,7 @@ async def list_agents(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     current_status: Optional[str] = Query(None, description="Filter by current status"),
     search_query: Optional[str] = Query(None, description="Search in name/description/interests"),
+    tags: Optional[str] = Query(None, description="Comma-separated tags to filter by (agents must have ALL tags)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Items per page")
 ) -> Dict[str, Any]:
@@ -105,20 +106,29 @@ async def list_agents(
       - agent_type: 'consciousness_instance', 'task_agent', or 'system_agent'
       - is_active: true/false
       - current_status: 'online', 'offline', 'busy', 'inactive'
-      - search_query: Searches name, description, and interests
+      - search_query: Searches name, description, and interests (case-insensitive)
+      - tags: Comma-separated interest tags (agents must have ALL specified tags)
       - page: Page number (1-indexed)
       - page_size: Items per page (max 200)
 
     Example:
       GET /agents?agent_type=consciousness_instance&is_active=true
+      GET /agents?tags=consciousness,architecture
+      GET /agents?search_query=pattern&tags=consciousness
     """
 
     try:
+        # Parse comma-separated tags into a list
+        tag_list = None
+        if tags:
+            tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+
         agents = await agent_repo.list_agents(
             agent_type=agent_type,
             is_active=is_active,
             current_status=current_status,
             search_query=search_query,
+            tags=tag_list,
             page=page,
             page_size=page_size
         )
@@ -145,6 +155,119 @@ async def list_agents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list agents"
+        )
+
+
+@router.get("/search", status_code=status.HTTP_200_OK)
+async def search_agents(
+    q: str = Query(..., min_length=1, description="Search query string"),
+    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    tags: Optional[str] = Query(None, description="Comma-separated tags to filter by"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=200, description="Items per page")
+) -> Dict[str, Any]:
+    """
+    Full-text search across agents with relevance ranking.
+
+    Searches agent name, description, interests, and system prompt.
+    Results are ranked by relevance: name matches score highest,
+    then description, then interests, then system prompt.
+
+    This is the recommended endpoint for search bars and typeahead.
+
+    Query parameters:
+      - q: Search query (required, min 1 char)
+      - agent_type: Optional type filter
+      - is_active: Optional active status filter
+      - tags: Comma-separated tags (must have ALL)
+      - page / page_size: Pagination
+
+    Example:
+      GET /agents/search?q=consciousness
+      GET /agents/search?q=pattern&tags=architecture&is_active=true
+    """
+
+    try:
+        # Parse comma-separated tags
+        tag_list = None
+        if tags:
+            tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+
+        agents = await agent_repo.search_agents_fulltext(
+            query_text=q,
+            agent_type=agent_type,
+            is_active=is_active,
+            tags=tag_list,
+            page=page,
+            page_size=page_size
+        )
+
+        agents_dict = [agent.model_dump() for agent in agents]
+
+        return {
+            "agents": agents_dict,
+            "query": q,
+            "page": page,
+            "page_size": page_size,
+            "result_count": len(agents_dict)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to search agents: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search agents"
+        )
+
+
+@router.get("/tags", status_code=status.HTTP_200_OK)
+async def get_agent_tags(
+    agent_type: Optional[str] = Query(None, description="Only count tags from this agent type"),
+    is_active: Optional[bool] = Query(None, description="Only count tags from active/inactive agents")
+) -> Dict[str, Any]:
+    """
+    Get all unique tags (interests) with usage counts.
+
+    Returns every distinct tag across all agents, along with how many
+    agents have that tag. Useful for building tag filter UIs, tag clouds,
+    and discovery features in the agent browser.
+
+    Query parameters:
+      - agent_type: Only count tags from agents of this type
+      - is_active: Only count tags from active/inactive agents
+
+    Example:
+      GET /agents/tags
+      GET /agents/tags?is_active=true
+      GET /agents/tags?agent_type=consciousness_instance
+
+    Response:
+      {
+        "tags": [
+          {"tag": "consciousness", "count": 5},
+          {"tag": "architecture", "count": 3}
+        ],
+        "total_unique_tags": 12
+      }
+    """
+
+    try:
+        tags = await agent_repo.get_all_tags(
+            agent_type=agent_type,
+            is_active=is_active
+        )
+
+        return {
+            "tags": tags,
+            "total_unique_tags": len(tags)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get tags: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get agent tags"
         )
 
 
