@@ -123,6 +123,7 @@ class TestTaskRouting:
              patch('app.services.task_router.agent_registry') as mock_registry, \
              patch('app.services.task_router.update_task_status') as mock_update_status, \
              patch('app.services.task_router.create_task_assignment') as mock_create_assignment, \
+             patch('app.services.task_router.get_agent_task_metrics') as mock_agent_metrics, \
              patch.object(task_router, '_get_agent_current_load') as mock_get_load:
             
             # Setup mocks
@@ -130,6 +131,7 @@ class TestTaskRouting:
             mock_registry.get_healthy_agents.return_value = ["researcher-001", "analyst-001", "researcher-002"]
             mock_update_status.return_value = True
             mock_create_assignment.return_value = uuid4()
+            mock_agent_metrics.return_value = []
             
             # Set different load levels
             async def mock_load_side_effect(agent_id):
@@ -193,12 +195,14 @@ class TestTaskRouting:
              patch('app.services.task_router.agent_registry') as mock_registry, \
              patch('app.services.task_router.update_task_status') as mock_update_status, \
              patch('app.services.task_router.create_task_assignment') as mock_create_assignment, \
+             patch('app.services.task_router.get_agent_task_metrics') as mock_agent_metrics, \
              patch.object(task_router, '_get_agent_current_load') as mock_get_load:
             
             mock_get_instances.return_value = sample_agents_with_metrics
             mock_registry.get_healthy_agents.return_value = ["researcher-001", "analyst-001", "researcher-002"]
             mock_update_status.return_value = True
             mock_create_assignment.return_value = uuid4()
+            mock_agent_metrics.return_value = []
             mock_get_load.return_value = 0  # All agents have low load
             
             # Act
@@ -234,12 +238,14 @@ class TestTaskRouting:
              patch('app.services.task_router.agent_registry') as mock_registry, \
              patch('app.services.task_router.update_task_status') as mock_update_status, \
              patch('app.services.task_router.create_task_assignment') as mock_create_assignment, \
+             patch('app.services.task_router.get_agent_task_metrics') as mock_agent_metrics, \
              patch.object(task_router, '_get_agent_current_load') as mock_get_load:
             
             mock_get_instances.return_value = sample_agents_with_metrics
             mock_registry.get_healthy_agents.return_value = ["researcher-001", "analyst-001", "researcher-002"]
             mock_update_status.return_value = True
             mock_create_assignment.return_value = uuid4()
+            mock_agent_metrics.return_value = []
             mock_get_load.return_value = 1  # Same load for all
             
             # Act
@@ -510,8 +516,10 @@ class TestAnalytics:
     async def test_queue_depth_reported_accurately(self, task_router):
         """Test that queue depth is reported accurately."""
         # Arrange
-        with patch('app.services.task_router.get_task_metrics') as mock_get_task_metrics:
+        with patch('app.services.task_router.get_task_metrics') as mock_get_task_metrics, \
+             patch('app.services.task_router.get_agent_task_metrics') as mock_get_agent_metrics:
             mock_get_task_metrics.return_value = MagicMock(queue_depth=15)
+            mock_get_agent_metrics.return_value = []
             
             # Act
             analytics = await task_router.get_routing_analytics()
@@ -558,7 +566,10 @@ class TestEdgeCases:
             
             # Return agents but none with required capabilities
             mock_get_instances.return_value = [
-                {"instance": MagicMock(capabilities=["web_search", "analysis"])}
+                {
+                    "instance": MagicMock(capabilities=["web_search", "analysis"], status="ready", agent_id="agent-001"),
+                    "trust_metrics": {"trust_score": 0.7, "tasks_completed": 5, "tasks_failed": 0, "tasks_refused": 0, "avg_task_duration_ms": 30000}
+                }
             ]
             mock_update_status.return_value = True
             
@@ -604,14 +615,19 @@ class TestEdgeCases:
              patch('app.services.task_router.agent_registry') as mock_registry, \
              patch('app.services.task_router.update_task_status') as mock_update_status, \
              patch('app.services.task_router.create_task_assignment') as mock_create_assignment, \
+             patch('app.services.task_router.get_agent_task_metrics') as mock_agent_metrics, \
              patch.object(task_router, '_get_agent_current_load') as mock_get_load:
             
             mock_get_instances.return_value = [
-                {"instance": MagicMock(capabilities=["web_search", "analysis", "writing"])}
+                {
+                    "instance": MagicMock(capabilities=["web_search", "analysis", "writing"], status="ready", agent_id="agent-001", id=uuid4(), agent_role="researcher"),
+                    "trust_metrics": {"trust_score": 0.8, "tasks_completed": 10, "tasks_failed": 1, "tasks_refused": 0, "avg_task_duration_ms": 25000}
+                }
             ]
             mock_registry.get_healthy_agents.return_value = ["agent-001"]
             mock_update_status.return_value = True
             mock_create_assignment.return_value = uuid4()
+            mock_agent_metrics.return_value = []
             mock_get_load.return_value = 0
             
             # Act
@@ -693,8 +709,9 @@ class TestHelperFunctions:
         score_missing = task_router._calculate_capability_match_score(task, agent_missing)
         
         # Assert
-        assert score_exact == 1.0
-        assert score_extra > 1.0  # Bonus for extra capabilities
+        assert score_exact == 0.9  # Exact match baseline
+        assert score_extra > score_exact  # Bonus for extra capabilities
+        assert score_extra <= 1.0  # Score stays within [0, 1] range
         assert score_missing < 1.0  # Penalty for missing capabilities
     
     def test_load_score_calculation(self, task_router):

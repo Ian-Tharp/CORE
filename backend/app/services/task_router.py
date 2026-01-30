@@ -147,7 +147,9 @@ class TaskRouter:
             trust_metrics = agent_data["trust_metrics"]
             
             # Check if agent is ready and healthy
-            if instance.status.value != "ready":
+            # Note: AgentInstance uses `use_enum_values = True`, so status is a string
+            status_val = instance.status.value if hasattr(instance.status, 'value') else str(instance.status)
+            if status_val != "ready":
                 continue
                 
             # Check if agent is in registry (actually online)
@@ -273,12 +275,11 @@ class TaskRouter:
         if not required_capabilities:
             return 1.0
         
-        # Exact match bonus
+        # Exact match bonus — base score 0.9, extra capabilities push towards 1.0
         if required_capabilities.issubset(agent_capabilities):
-            # More capabilities = slightly higher score
             extra_capabilities = len(agent_capabilities) - len(required_capabilities)
             bonus = min(0.1, extra_capabilities * 0.02)  # Cap bonus at 10%
-            return 1.0 + bonus
+            return min(1.0, 0.9 + bonus)  # Exact match = 0.9, extra caps push to 1.0
         
         # Partial match (shouldn't happen due to filtering, but safety check)
         match_count = len(required_capabilities.intersection(agent_capabilities))
