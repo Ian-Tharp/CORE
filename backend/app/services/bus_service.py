@@ -279,6 +279,10 @@ async def register_external_agent(
     )
 
 
+async def get_external_agent(agent_id: str) -> Optional[Dict[str, Any]]:
+    return await repo.get_external_agent(agent_id)
+
+
 async def deregister_external_agent(agent_id: str) -> bool:
     return await repo.deregister_external_agent(agent_id)
 

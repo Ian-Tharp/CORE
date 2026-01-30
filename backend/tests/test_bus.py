@@ -894,6 +894,7 @@ class TestEdgeCases:
              patch("app.services.bus_service.agent_ws_manager") as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
+            mock_ws.send_message = AsyncMock(return_value=True)
 
             # Act
             receipt = await bus_service.publish(msg)

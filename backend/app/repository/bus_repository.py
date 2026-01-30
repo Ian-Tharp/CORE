@@ -125,7 +125,8 @@ async def ensure_bus_tables() -> None:
                     id SERIAL PRIMARY KEY,
                     agent_id VARCHAR(255) NOT NULL,
                     message_id VARCHAR(255) NOT NULL,
-                    queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (agent_id, message_id)
                 )
                 """
             )

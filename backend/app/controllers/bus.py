@@ -168,8 +168,17 @@ async def webhook_receive(incoming: WebhookIncoming) -> Dict[str, Any]:
     Receive a message from an external agent into the bus.
 
     This is the counterpart to webhook delivery — external agents POST here
-    to inject messages into the bus.
+    to inject messages into the bus.  Only registered external agents may
+    send messages; the ``sender_id`` must match an existing registration.
     """
+    # Validate sender is a registered external agent
+    sender = await bus_service.get_external_agent(incoming.sender_id)
+    if not sender:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Sender '{incoming.sender_id}' is not a registered external agent",
+        )
+
     message = BusMessage(
         sender_id=incoming.sender_id,
         recipients=incoming.recipients,
