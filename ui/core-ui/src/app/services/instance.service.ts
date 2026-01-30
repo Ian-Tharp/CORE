@@ -42,7 +42,7 @@ export class InstanceService {
         return of([]);
       }),
       tap(instances => {
-        const uiInstances = instances.map(this.enhanceInstanceForUI);
+        const uiInstances = instances.map(i => this.enhanceInstanceForUI(i));
         this.instancesSubject.next(uiInstances);
       })
     );

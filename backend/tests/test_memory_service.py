@@ -6,10 +6,13 @@ All tests follow AAA format (Arrange, Act, Assert).
 """
 
 import asyncio
+import logging
 import pytest
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from uuid import uuid4, UUID
+
+logger = logging.getLogger(__name__)
 
 from app.services.memory_service import memory_service, MemoryContext, Procedure, MemoryStats
 from app.services.embedding_service import embedding_service
