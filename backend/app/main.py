@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -13,7 +13,7 @@ from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
 from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.services.memory_service import memory_service
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository
 
 
 logging.basicConfig(
@@ -54,6 +54,10 @@ async def lifespan(app: FastAPI):
             # Ensure memory tables exist (LangMem three-tier system)
             await memory_repository.ensure_memory_tables()
             logger.info("Memory tables ensured")
+            
+            # Ensure comprehension tables exist (CORE Comprehension Engine)
+            await comprehension_repository.ensure_comprehension_tables()
+            logger.info("Comprehension tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
@@ -129,6 +133,7 @@ app.include_router(council.router)  # Council of Perspectives deliberation syste
 app.include_router(instances.router)  # Instance management and container orchestration
 app.include_router(tasks.router)  # Task Routing Engine for CORE orchestration
 app.include_router(memory.router)  # LangMem three-tier memory system
+app.include_router(comprehension.router)  # CORE Comprehension Engine
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
