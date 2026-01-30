@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -13,7 +13,7 @@ from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
 from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.services.memory_service import memory_service
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository
 
 
 logging.basicConfig(
@@ -62,6 +62,10 @@ async def lifespan(app: FastAPI):
             # Ensure evaluation tables exist (Evaluation Engine)
             await evaluation_repository.ensure_evaluation_tables()
             logger.info("Evaluation tables ensured")
+
+            # Ensure bus tables exist (Inter-Agent Communication Bus)
+            await bus_repository.ensure_bus_tables()
+            logger.info("Bus tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
@@ -139,6 +143,7 @@ app.include_router(tasks.router)  # Task Routing Engine for CORE orchestration
 app.include_router(memory.router)  # LangMem three-tier memory system
 app.include_router(comprehension.router)  # CORE Comprehension Engine
 app.include_router(evaluation.router)  # Evaluation Engine — quality gate for CORE loop
+app.include_router(bus.router)  # Inter-Agent Communication Bus
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
