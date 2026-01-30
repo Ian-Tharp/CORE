@@ -12,7 +12,7 @@ import logging
 import time
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.evaluation_models import (
     EvaluationInput,
@@ -108,7 +108,7 @@ async def evaluate(evaluation_input: EvaluationInput) -> EvaluationResult:
         execution_duration_ms=evaluation_input.execution_duration_ms,
         evaluation_duration_ms=eval_duration_ms,
         metadata=evaluation_input.metadata,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
 
     # 6. Persist

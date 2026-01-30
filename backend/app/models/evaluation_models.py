@@ -8,12 +8,12 @@ The Evaluation Engine scores output quality, checks plan completion, determines
 next actions (approve/retry/refine/escalate), and feeds learnings back into memory.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from uuid import UUID, uuid4
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # =============================================================================
@@ -210,14 +210,15 @@ class EvaluationResult(BaseModel):
     model_used: Optional[str] = Field(None, description="Model used during execution")
     execution_duration_ms: Optional[int] = Field(None, description="Execution duration")
     evaluation_duration_ms: Optional[int] = Field(None, description="Time spent evaluating")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Evaluation timestamp")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Evaluation timestamp")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat(),
             UUID: str,
         }
+    )
 
 
 # =============================================================================

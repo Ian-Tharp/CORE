@@ -185,7 +185,7 @@ async def store_evaluation(result: EvaluationResult) -> UUID:
             pc.total_steps, pc.completed_steps, pc.partial_steps,
             pc.failed_steps, pc.skipped_steps, pc.completion_rate,
             pc.required_steps_met,
-            json.dumps([se.dict() for se in pc.step_evaluations]),
+            json.dumps([se.model_dump() for se in pc.step_evaluations]),
             # feedback
             result.feedback,
             json.dumps(result.suggested_improvements),

@@ -12,7 +12,7 @@ from uuid import UUID
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.evaluation_models import (
     EvaluationInput,
@@ -39,11 +39,12 @@ class EvaluationResponse(BaseModel):
     """Envelope for a single evaluation result."""
     evaluation: EvaluationResult
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat(),
             UUID: str,
         }
+    )
 
 
 class EvaluationListResponse(BaseModel):
@@ -53,11 +54,12 @@ class EvaluationListResponse(BaseModel):
     page: int
     page_size: int
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat(),
             UUID: str,
         }
+    )
 
 
 class StepEvaluationResponse(BaseModel):

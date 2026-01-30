@@ -1010,8 +1010,8 @@ class TestSerialization:
         )
 
         # Act
-        json_str = result.json()
-        restored = EvaluationResult.parse_raw(json_str)
+        json_str = result.model_dump_json()
+        restored = EvaluationResult.model_validate_json(json_str)
 
         # Assert
         assert restored.task_id == result.task_id
