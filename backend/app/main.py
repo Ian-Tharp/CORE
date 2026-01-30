@@ -5,12 +5,12 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
-from app.repository import run_repository, council_repository
+from app.repository import run_repository, council_repository, instance_repository
 
 
 logging.basicConfig(
@@ -39,6 +39,10 @@ async def lifespan(app: FastAPI):
             # Ensure council tables exist
             await council_repository.ensure_council_tables()
             logger.info("Council tables ensured")
+            
+            # Ensure instance tables exist
+            await instance_repository.ensure_instance_tables()
+            logger.info("Instance tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
@@ -90,6 +94,7 @@ app.include_router(test_core.router)  # Test endpoints
 app.include_router(health.router)  # Health check endpoints (includes /health)
 app.include_router(admin.router)  # Admin and management endpoints
 app.include_router(council.router)  # Council of Perspectives deliberation system
+app.include_router(instances.router)  # Instance management and container orchestration
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
