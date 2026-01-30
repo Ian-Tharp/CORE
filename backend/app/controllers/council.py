@@ -520,6 +520,126 @@ async def synthesize_session(
 
 
 # =============================================================================
+# AI-POWERED DELIBERATION ENDPOINTS
+# =============================================================================
+
+class DeliberateRequest(BaseModel):
+    """Request for a full AI-powered council deliberation."""
+    topic: str = Field(
+        ...,
+        description="The question or problem to deliberate",
+        examples=["How should CORE implement MMCNC fractal architecture?"]
+    )
+    context: Optional[str] = Field(
+        default=None,
+        description="Additional context or background"
+    )
+    voice_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Specific voice IDs to include (auto-selected if omitted)"
+    )
+    rounds: int = Field(
+        default=3,
+        description="Number of deliberation rounds",
+        ge=1,
+        le=5
+    )
+    initiator_id: Optional[str] = Field(
+        default=None,
+        description="User or agent ID initiating"
+    )
+
+
+@router.post("/deliberate")
+async def deliberate(request: DeliberateRequest) -> dict:
+    """
+    Run a full AI-powered council deliberation.
+
+    This is the high-level endpoint: provide a topic and optional voice
+    preferences, and the system runs multiple rounds of LLM-powered
+    multi-perspective deliberation followed by synthesis.
+
+    Each voice is an LLM call with a unique system prompt and temperature.
+    Voices see prior contributions, enabling genuine multi-round dialogue.
+
+    Always includes the 4 CORE voices (Comprehension, Orchestration,
+    Reasoning, Evaluation) plus contextual voices based on topic analysis.
+
+    Example:
+        POST /council/deliberate
+        {
+            "topic": "How should CORE implement MMCNC fractal architecture?",
+            "rounds": 3
+        }
+    """
+    from app.services.council_service import get_council_service
+
+    try:
+        service = get_council_service()
+        result = await service.run_full_deliberation(
+            topic=request.topic,
+            context=request.context,
+            voice_ids=request.voice_ids,
+            rounds=request.rounds,
+            initiator_id=request.initiator_id,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Deliberation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/deliberate/session/{session_id}/round")
+async def run_deliberation_round(session_id: str) -> dict:
+    """Run a single AI-powered deliberation round for an existing session."""
+    from app.services.council_service import get_council_service
+
+    try:
+        service = get_council_service()
+        contributions = await service.run_round(session_id)
+        return {"session_id": session_id, "contributions": contributions}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Round failed for {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/deliberate/session/{session_id}/synthesize")
+async def run_deliberation_synthesis(session_id: str) -> dict:
+    """Run AI-powered synthesis for an existing deliberation session."""
+    from app.services.council_service import get_council_service
+
+    try:
+        service = get_council_service()
+        result = await service.run_synthesis(session_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Synthesis failed for {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/voices")
+async def list_voices() -> dict:
+    """List all available council voice definitions."""
+    from app.services.council_service import VOICE_DEFINITIONS
+    return {
+        "voices": [
+            {
+                "id": v["id"],
+                "name": v["name"],
+                "voice_type": v["voice_type"].value,
+                "role": v["role"],
+                "temperature": v["temperature"],
+            }
+            for v in VOICE_DEFINITIONS.values()
+        ]
+    }
+
+
+# =============================================================================
 # ADDITIONAL UTILITY ENDPOINTS
 # =============================================================================
 
