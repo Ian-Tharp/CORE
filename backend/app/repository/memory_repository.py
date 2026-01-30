@@ -336,7 +336,7 @@ async def search_episodic_memories(
     pool = await get_db_pool()
     
     conditions = ["agent_id = $1"]
-    params = [agent_id]
+    params: list = [agent_id]
     param_count = 1
     
     if memory_type:
@@ -344,25 +344,34 @@ async def search_episodic_memories(
         conditions.append(f"memory_type = ${param_count}")
         params.append(memory_type)
     
+    embedding_param_idx: Optional[int] = None
     if query_embedding:
         param_count += 1
-        conditions.append(f"1 - (embedding <=> ${param_count}) > ${param_count + 1}")
+        embedding_param_idx = param_count
+        threshold_param_idx = param_count + 1
+        conditions.append(f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}")
         params.extend([query_embedding, threshold])
-        order_by = f"embedding <=> ${param_count}"
-        param_count += 1
+        order_by = f"embedding <=> ${embedding_param_idx}"
+        param_count += 1  # for threshold
     else:
         order_by = "created_at DESC"
     
+    param_count += 1
+    limit_param_idx = param_count
     params.append(limit)
     
+    # Build similarity column
+    if embedding_param_idx:
+        similarity_expr = f"1 - (embedding <=> ${embedding_param_idx}) as similarity"
+    else:
+        similarity_expr = "NULL::float as similarity"
+    
     query = f"""
-        SELECT *, 
-               CASE WHEN ${{len(params) - 1}} > 1 THEN 1 - (embedding <=> ${len(params) - 2}) 
-                    ELSE NULL END as similarity
+        SELECT *, {similarity_expr}
         FROM episodic_memories
         WHERE {' AND '.join(conditions)}
         ORDER BY {order_by}
-        LIMIT ${len(params)}
+        LIMIT ${limit_param_idx}
     """
     
     async with pool.acquire() as conn:
@@ -374,7 +383,7 @@ async def search_episodic_memories(
                 id=row['id'],
                 agent_id=row['agent_id'],
                 content=row['content'],
-                embedding=list(row['embedding']),
+                embedding=list(row['embedding']) if row['embedding'] else [],
                 memory_type=row['memory_type'],
                 metadata=json.loads(row['metadata']) if row['metadata'] else {},
                 importance=row['importance'],
@@ -385,7 +394,7 @@ async def search_episodic_memories(
                 last_accessed=row['last_accessed'],
                 expires_at=row['expires_at']
             )
-            if row['similarity']:
+            if row['similarity'] is not None:
                 memory.metadata['similarity'] = float(row['similarity'])
             memories.append(memory)
         
@@ -431,14 +440,13 @@ async def expire_old_memories(days_to_keep: int = 90) -> int:
     
     query = """
         DELETE FROM episodic_memories 
-        WHERE expires_at IS NOT NULL 
-        AND expires_at < NOW()
-        OR (created_at < NOW() - INTERVAL '%s days' AND importance < 0.2)
+        WHERE (expires_at IS NOT NULL AND expires_at < NOW())
+           OR (created_at < NOW() - make_interval(days => $1) AND importance < 0.2)
         RETURNING id
     """
     
     async with pool.acquire() as conn:
-        rows = await conn.fetch(query % days_to_keep)
+        rows = await conn.fetch(query, days_to_keep)
         count = len(rows)
         
         if count > 0:
@@ -494,8 +502,8 @@ async def search_procedural_memories(
     """Search procedural memories by role and/or similarity."""
     pool = await get_db_pool()
     
-    conditions = []
-    params = []
+    conditions: List[str] = []
+    params: list = []
     param_count = 0
     
     if role:
@@ -503,12 +511,15 @@ async def search_procedural_memories(
         conditions.append(f"role = ${param_count}")
         params.append(role)
     
+    embedding_param_idx: Optional[int] = None
     if query_embedding:
         param_count += 1
-        conditions.append(f"1 - (embedding <=> ${param_count}) > ${param_count + 1}")
+        embedding_param_idx = param_count
+        threshold_param_idx = param_count + 1
+        conditions.append(f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}")
         params.extend([query_embedding, threshold])
-        order_by = f"embedding <=> ${param_count}"
-        param_count += 1
+        order_by = f"embedding <=> ${embedding_param_idx}"
+        param_count += 1  # for threshold
     else:
         order_by = "updated_at DESC"
     
@@ -516,16 +527,22 @@ async def search_procedural_memories(
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
     
+    param_count += 1
+    limit_param_idx = param_count
     params.append(limit)
     
+    # Build similarity column
+    if embedding_param_idx:
+        similarity_expr = f"1 - (embedding <=> ${embedding_param_idx}) as similarity"
+    else:
+        similarity_expr = "NULL::float as similarity"
+    
     query = f"""
-        SELECT *, 
-               CASE WHEN ${param_count} > 0 THEN 1 - (embedding <=> ${param_count - 1}) 
-                    ELSE NULL END as similarity
+        SELECT *, {similarity_expr}
         FROM procedural_memories
         {where_clause}
         ORDER BY {order_by}
-        LIMIT ${len(params)}
+        LIMIT ${limit_param_idx}
     """
     
     async with pool.acquire() as conn:
@@ -538,9 +555,9 @@ async def search_procedural_memories(
                 role=row['role'],
                 procedure_name=row['procedure_name'],
                 content=row['content'],
-                steps=json.loads(row['steps']) if row['steps'] else [],
-                embedding=list(row['embedding']),
-                metadata=json.loads(row['metadata']) if row['metadata'] else {},
+                steps=json.loads(row['steps']) if isinstance(row['steps'], str) else (row['steps'] or []),
+                embedding=list(row['embedding']) if row['embedding'] else [],
+                metadata=json.loads(row['metadata']) if isinstance(row['metadata'], str) else (row['metadata'] or {}),
                 success_rate=row['success_rate'],
                 usage_count=row['usage_count'],
                 confidence=row['confidence'],
@@ -549,7 +566,7 @@ async def search_procedural_memories(
                 last_accessed=row['last_accessed'],
                 updated_at=row['updated_at']
             )
-            if row['similarity']:
+            if row['similarity'] is not None:
                 memory.metadata['similarity'] = float(row['similarity'])
             memories.append(memory)
         
@@ -652,12 +669,11 @@ async def get_memory_stats(agent_id: str) -> MemoryStats:
     
     # Total access counts for this agent's memories
     access_count_query = """
-        SELECT 
-            COALESCE(SUM(s.access_count), 0) + COALESCE(SUM(e.access_count), 0) as total_access
-        FROM 
-            (SELECT access_count FROM semantic_memories WHERE source_agent_id = $1) s
-        FULL OUTER JOIN 
-            (SELECT access_count FROM episodic_memories WHERE agent_id = $1) e ON TRUE
+        SELECT COALESCE(
+            (SELECT SUM(access_count) FROM semantic_memories WHERE source_agent_id = $1), 0
+        ) + COALESCE(
+            (SELECT SUM(access_count) FROM episodic_memories WHERE agent_id = $1), 0
+        ) as total_access
     """
     
     # Last memory created
@@ -723,10 +739,15 @@ async def clear_agent_memories(
 # UTILITY FUNCTIONS
 # =============================================================================
 
+_VALID_MEMORY_TABLES = frozenset({"semantic_memories", "episodic_memories", "procedural_memories"})
+
 async def _update_access_counts(table_name: str, memory_ids: List[UUID]) -> None:
     """Update access counts and last_accessed for memories."""
     if not memory_ids:
         return
+    
+    if table_name not in _VALID_MEMORY_TABLES:
+        raise ValueError(f"Invalid table name: {table_name}")
         
     pool = await get_db_pool()
     
