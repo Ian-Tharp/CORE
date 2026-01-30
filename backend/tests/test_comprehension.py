@@ -555,13 +555,15 @@ class TestCapabilityMatching:
         )
         suggested_caps = ["web_search", "analysis"]
 
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
         mock_conn.fetch = AsyncMock(return_value=mock_agent_rows)
+        mock_acquire_ctx = AsyncMock()
+        mock_acquire_ctx.__aenter__.return_value = mock_conn
+        mock_acquire_ctx.__aexit__.return_value = None
+        mock_pool = MagicMock()
+        mock_pool.acquire.return_value = mock_acquire_ctx
 
-        with patch("app.services.comprehension_service.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
             # Act
             result = await comprehension_service._match_capabilities(intent, suggested_caps)
 
@@ -581,13 +583,15 @@ class TestCapabilityMatching:
             keywords=["obscure_capability"],
         )
 
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
         mock_conn.fetch = AsyncMock(return_value=[])
+        mock_acquire_ctx = AsyncMock()
+        mock_acquire_ctx.__aenter__.return_value = mock_conn
+        mock_acquire_ctx.__aexit__.return_value = None
+        mock_pool = MagicMock()
+        mock_pool.acquire.return_value = mock_acquire_ctx
 
-        with patch("app.services.comprehension_service.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
             # Act
             result = await comprehension_service._match_capabilities(intent, [])
 
@@ -606,7 +610,7 @@ class TestCapabilityMatching:
             keywords=["test"],
         )
 
-        with patch("app.services.comprehension_service.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
+        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
             # Act
             result = await comprehension_service._match_capabilities(intent, [])
 
@@ -1107,7 +1111,7 @@ class TestEdgeCases:
     async def test_capability_registry_returns_system_capabilities(self, comprehension_service):
         """Test capability registry always includes system capabilities."""
         # Arrange — DB fails but system caps should still return
-        with patch("app.services.comprehension_service.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
+        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
             # Act
             caps = await comprehension_service.get_capability_registry()
 
