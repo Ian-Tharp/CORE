@@ -63,6 +63,39 @@ INSERT INTO agents (agent_type, agent_name, status, configuration) VALUES
 ('reasoning', 'ReasoningAgent', 'idle', '{"model": "gpt-4o-mini", "capabilities": ["logical_reasoning", "problem_solving"]}'),
 ('evaluation', 'EvaluationAgent', 'idle', '{"model": "gpt-4o-mini", "capabilities": ["quality_assessment", "outcome_evaluation"]}');
 
+-- =========================================================================
+-- CORE Pipeline Runs - persistent execution tracking
+-- =========================================================================
+
+CREATE TABLE IF NOT EXISTS core_runs (
+    run_id       UUID PRIMARY KEY,
+    user_id      VARCHAR(255),
+    input_text   TEXT NOT NULL,
+    status       VARCHAR(32) NOT NULL DEFAULT 'running',
+    state        JSONB,
+    result       JSONB,
+    error        TEXT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_core_runs_status ON core_runs(status);
+CREATE INDEX IF NOT EXISTS idx_core_runs_user_id ON core_runs(user_id);
+CREATE INDEX IF NOT EXISTS idx_core_runs_created_at ON core_runs(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS core_run_events (
+    event_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id     UUID NOT NULL REFERENCES core_runs(run_id) ON DELETE CASCADE,
+    event_type VARCHAR(64) NOT NULL,
+    step_name  VARCHAR(255),
+    data       JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_core_run_events_run_id ON core_run_events(run_id);
+CREATE INDEX IF NOT EXISTS idx_core_run_events_created_at ON core_run_events(created_at);
+
 -- Grant permissions to core_user
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO core_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO core_user;

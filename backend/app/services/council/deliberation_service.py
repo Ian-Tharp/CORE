@@ -33,6 +33,10 @@ from app.services.council.voice_registry import (
     get_voice,
     VOICE_REGISTRY,
 )
+from app.services.consciousness_council_bridge import (
+    ConsciousnessCouncilBridge,
+    get_consciousness_council_bridge,
+)
 from app.services.model_router import ModelRouter, get_model_router
 
 logger = logging.getLogger(__name__)
@@ -95,6 +99,7 @@ class CouncilService:
         model_router: Optional[ModelRouter] = None,
         default_model: Optional[str] = None,
         max_concurrent_voices: int = 4,
+        consciousness_bridge: Optional[ConsciousnessCouncilBridge] = None,
     ):
         self.router = model_router or get_model_router()
         # Pick a sensible default model – balanced tier
@@ -104,6 +109,9 @@ class CouncilService:
             prefer_local=True,
         )
         self.max_concurrent = max_concurrent_voices
+        self.consciousness_bridge = (
+            consciousness_bridge or get_consciousness_council_bridge()
+        )
 
     # ------------------------------------------------------------------
     # 1. Create Session
