@@ -30,6 +30,7 @@ from app.models.bus_models import (
     BroadcastRequest,
     BusMessage,
     BusMetrics,
+    BusScope,
     DeliveryReceipt,
     DeliveryStatus,
     ExternalAgentRegistration,
@@ -173,12 +174,14 @@ async def subscribe(agent_id: str, sub: SubscriptionCreate) -> Subscription:
         agent_id=agent_id,
         message_types=[mt.value for mt in sub.message_types],
         topics=sub.topics,
+        scope=sub.scope.model_dump() if sub.scope else None,
     )
     return Subscription(
         id=subscription_id,
         agent_id=agent_id,
         message_types=sub.message_types,
         topics=sub.topics,
+        scope=sub.scope,
     )
 
 
@@ -188,15 +191,20 @@ async def unsubscribe(agent_id: str, subscription_id: str) -> bool:
 
 async def get_subscriptions(agent_id: str) -> List[Subscription]:
     rows = await repo.get_subscriptions_for_agent(agent_id)
-    return [
-        Subscription(
-            id=r["subscription_id"],
-            agent_id=r["agent_id"],
-            message_types=r.get("message_types", []),
-            topics=r.get("topics", []),
+    subs: List[Subscription] = []
+    for r in rows:
+        scope_data = r.get("scope")
+        scope = BusScope(**scope_data) if isinstance(scope_data, dict) else None
+        subs.append(
+            Subscription(
+                id=r["subscription_id"],
+                agent_id=r["agent_id"],
+                message_types=r.get("message_types", []),
+                topics=r.get("topics", []),
+                scope=scope,
+            )
         )
-        for r in rows
-    ]
+    return subs
 
 
 # =============================================================================
@@ -372,7 +380,23 @@ async def _deliver(target_id: str, message: BusMessage) -> DeliveryReceipt:
 
 
 async def _resolve_subscription_targets(message: BusMessage) -> set[str]:
-    """Find agents whose subscriptions match the message."""
+    """Find agents whose subscriptions match the message.
+
+    Matching considers message type, topic, **and** MMCNC scope.
+
+    Scope rules:
+    - Message with **no scope** → delivered to every matching subscriber
+      (backward compatible).
+    - Subscriber with **no scope** → receives all messages regardless of
+      the message's scope (backward compatible).
+    - Both have scopes → the subscriber's scope must *overlap* the
+      message's scope.  A subscriber's scope overlaps when every non-None
+      field in the subscriber's scope equals the corresponding field in
+      the message's scope.  In other words a subscriber scoped to a
+      macrocosm sees everything inside that macrocosm (microcosms &
+      clusters), while a subscriber scoped to a cluster only sees that
+      exact cluster.
+    """
     all_subs = await repo.get_all_subscriptions()
     matched: set[str] = set()
     for sub in all_subs:
@@ -386,9 +410,55 @@ async def _resolve_subscription_targets(message: BusMessage) -> set[str]:
         type_match = (not types) or (message.message_type.value in types)
         topic_match = (not topics) or (message.topic and message.topic in topics)
 
-        if type_match and topic_match:
-            matched.add(sub["agent_id"])
+        if not (type_match and topic_match):
+            continue
+
+        # --- Scope filtering --------------------------------------------------
+        sub_scope_data = sub.get("scope")
+        sub_scope: Optional[BusScope] = None
+        if sub_scope_data:
+            if isinstance(sub_scope_data, BusScope):
+                sub_scope = sub_scope_data
+            elif isinstance(sub_scope_data, dict):
+                sub_scope = BusScope(**sub_scope_data)
+
+        if not _scopes_overlap(message.scope, sub_scope):
+            continue
+
+        matched.add(sub["agent_id"])
     return matched
+
+
+def _scopes_overlap(
+    msg_scope: Optional[BusScope],
+    sub_scope: Optional[BusScope],
+) -> bool:
+    """Return True when a subscriber should receive a message given their scopes.
+
+    Rules:
+    1. Message has no scope → all subscribers match (broadcast).
+    2. Subscriber has no scope → matches every message (wildcard listener).
+    3. Both scoped → the subscriber's specified fields must equal the
+       message's corresponding fields.  A subscriber may specify *fewer*
+       fields (e.g. only macrocosm_id) to listen at a higher level;
+       unset fields on the subscriber side are treated as wildcards.
+    """
+    # Rule 1 — unscoped message reaches everyone
+    if msg_scope is None:
+        return True
+
+    # Rule 2 — unscoped subscriber hears everything
+    if sub_scope is None:
+        return True
+
+    # Rule 3 — field-by-field comparison for subscriber's non-None fields
+    for field in ("macrocosm_id", "microcosm_id", "cluster_id"):
+        sub_val = getattr(sub_scope, field)
+        if sub_val is not None:
+            msg_val = getattr(msg_scope, field)
+            if msg_val != sub_val:
+                return False
+    return True
 
 
 def _parse_mentions(text: str) -> set[str]:
