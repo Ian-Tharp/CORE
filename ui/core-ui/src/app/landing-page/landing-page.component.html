@@ -1,4 +1,21 @@
 <div class="landing-container">
+  <!-- Loading Overlay -->
+  @if (dashboardState.loading) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="48"></mat-spinner>
+      <span>Initializing Dashboard...</span>
+    </div>
+  }
+
+  <!-- Error Banner -->
+  @if (dashboardState.error) {
+    <div class="error-banner">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ dashboardState.error }}</span>
+      <button mat-button (click)="dashboardState.error = null">Dismiss</button>
+    </div>
+  }
+
   <!-- In-page Main Navigation Tabs -->
   <mat-tab-group class="main-tabs" selectedIndex="0">
       <mat-tab label="Dashboard">
@@ -22,7 +39,7 @@
                   Your Digital Brain Platform is operational and ready to revolutionize your AI interaction experience.
                 </p>
                 <div class="hero-actions">
-                  <button mat-raised-button class="primary-action" [routerLink]="['/agents']">
+                  <button mat-raised-button class="primary-action" (click)="scrollToDeployPanel()">
                     <mat-icon>rocket_launch</mat-icon>
                     Deploy New Agent
                   </button>
@@ -30,9 +47,9 @@
                     <mat-icon>dashboard</mat-icon>
                     View Command Center
                   </button>
-                  <button mat-stroked-button class="secondary-action" [routerLink]="['/creative']">
-                    <mat-icon>palette</mat-icon>
-                    Creative Studio
+                  <button mat-stroked-button class="secondary-action" (click)="viewAnalytics()">
+                    <mat-icon>analytics</mat-icon>
+                    Analytics
                   </button>
                 </div>
               </div>
@@ -44,7 +61,9 @@
                 <div class="hologram-ring inner-ring"></div>
                 <div class="hologram-core">
                   <mat-icon class="core-icon">memory</mat-icon>
-                  <div class="status-text">OPERATIONAL</div>
+                  <div class="status-text" [style.color]="getSystemHealthColor()">
+                    {{ systemHealth?.status?.toUpperCase() || 'INITIALIZING' }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -57,47 +76,104 @@
               <mat-card-header>
                 <mat-card-title>
                   <mat-icon>smart_toy</mat-icon>
-                  Active Agents
+                  Active Agents ({{ activeAgents.length }})
                 </mat-card-title>
               </mat-card-header>
               <mat-card-content>
                 <div class="agent-grid">
-                  @for (agent of activeAgents; track agent.name) {
+                  @for (agent of activeAgents; track agent.id) {
                     <div class="agent-unit-card" [class]="agent.status">
                       <div class="agent-header">
-                        <div class="agent-name">{{agent.name}}</div>
+                        <div class="agent-name">{{ agent.agent_id }}</div>
                         <mat-chip class="agent-status" [class]="agent.status">
-                          {{agent.status}}
+                          {{ getAgentStatusText(agent.status) }}
                         </mat-chip>
                       </div>
+                      <div class="agent-role">{{ agent.agent_role }}</div>
                       <div class="agent-stats">
                         <div class="stat-item">
                           <mat-icon>access_time</mat-icon>
-                          <span>{{agent.uptime}}</span>
+                          <span>{{ agent.uptimeFormatted || 'Starting...' }}</span>
                         </div>
+                        @if (agent.current_task) {
+                          <div class="stat-item">
+                            <mat-icon>task</mat-icon>
+                            <span>{{ agent.current_task }}</span>
+                          </div>
+                        }
                       </div>
                       <div class="agent-actions">
-                        <button mat-icon-button class="agent-btn">
-                          <mat-icon>visibility</mat-icon>
+                        <button mat-icon-button class="agent-btn" matTooltip="Restart"
+                                (click)="restartAgent(agent)">
+                          <mat-icon>refresh</mat-icon>
                         </button>
-                        <button mat-icon-button class="agent-btn">
-                          <mat-icon>settings</mat-icon>
-                        </button>
-                        <button mat-icon-button class="agent-btn">
-                          <mat-icon>more_vert</mat-icon>
+                        <button mat-icon-button class="agent-btn" matTooltip="Stop"
+                                (click)="stopAgent(agent)">
+                          <mat-icon>stop</mat-icon>
                         </button>
                       </div>
                     </div>
                   }
+                  @empty {
+                    <div class="empty-state">
+                      <mat-icon>smart_toy</mat-icon>
+                      <p>No agents running. Deploy one to get started.</p>
+                    </div>
+                  }
                 </div>
-                <div class="agents-footer">
-                  <button mat-stroked-button class="add-agent-btn">
-                    <mat-icon>add</mat-icon>
-                    Deploy New Agent
-                  </button>
+                <div class="agents-footer deploy-panel">
+                  <div class="deploy-form">
+                    <mat-select [(value)]="selectedAgentRole" placeholder="Select Role">
+                      @for (role of availableRoles; track role) {
+                        <mat-option [value]="role">{{ role | titlecase }}</mat-option>
+                      }
+                    </mat-select>
+                    <button mat-raised-button class="add-agent-btn" 
+                            (click)="deployAgent()"
+                            [disabled]="deploymentLoading">
+                      @if (deploymentLoading) {
+                        <mat-spinner diameter="18"></mat-spinner>
+                      } @else {
+                        <mat-icon>add</mat-icon>
+                      }
+                      Deploy Agent
+                    </button>
+                  </div>
                 </div>
               </mat-card-content>
             </mat-card>
+
+            <!-- Task Summary Card -->
+            @if (taskSummary) {
+              <mat-card class="dashboard-card tasks-card">
+                <mat-card-header>
+                  <mat-card-title>
+                    <mat-icon>assignment</mat-icon>
+                    Task Overview
+                  </mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="task-stats-grid">
+                    <div class="task-stat">
+                      <span class="task-count queued">{{ taskSummary.queued }}</span>
+                      <span class="task-label">Queued</span>
+                    </div>
+                    <div class="task-stat">
+                      <span class="task-count running">{{ taskSummary.running }}</span>
+                      <span class="task-label">Running</span>
+                    </div>
+                    <div class="task-stat">
+                      <span class="task-count completed">{{ taskSummary.completed }}</span>
+                      <span class="task-label">Completed</span>
+                    </div>
+                    <div class="task-stat">
+                      <span class="task-count failed">{{ taskSummary.failed }}</span>
+                      <span class="task-label">Failed</span>
+                    </div>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
 
             <!-- Quick Actions Card -->
             <mat-card class="dashboard-card actions-card">
@@ -109,23 +185,18 @@
               </mat-card-header>
               <mat-card-content>
                 <div class="quick-actions-grid">
-                  <button mat-raised-button class="quick-action" color="primary">
+                  <button mat-raised-button class="quick-action" color="primary"
+                          (click)="scrollToDeployPanel()">
                     <mat-icon>add_box</mat-icon>
-                    <span>New Workflow</span>
+                    <span>Deploy Agent</span>
                   </button>
-                  <button mat-raised-button class="quick-action" color="accent">
+                  <button mat-raised-button class="quick-action" color="accent"
+                          (click)="runSecurityScan()">
                     <mat-icon>security</mat-icon>
                     <span>Security Scan</span>
                   </button>
-                  <button mat-raised-button class="quick-action">
-                    <mat-icon>backup</mat-icon>
-                    <span>Backup System</span>
-                  </button>
-                  <button mat-raised-button class="quick-action">
-                    <mat-icon>update</mat-icon>
-                    <span>Update Agents</span>
-                  </button>
-                  <button mat-raised-button class="quick-action">
+                  <button mat-raised-button class="quick-action"
+                          (click)="viewAnalytics()">
                     <mat-icon>analytics</mat-icon>
                     <span>View Analytics</span>
                   </button>
@@ -141,7 +212,29 @@
 
         <!-- Right-side resources/notifications column -->
         <aside class="side-section">
-          <!-- System Resources (no card) -->
+          <!-- System Health Status -->
+          @if (systemHealth) {
+            <section class="system-health">
+              <h3 class="resources-title">
+                <mat-icon [style.color]="getSystemHealthColor()">health_and_safety</mat-icon>
+                System Health
+              </h3>
+              <div class="health-status" [style.color]="getSystemHealthColor()">
+                {{ systemHealth.status | titlecase }}
+              </div>
+              <div class="health-uptime">Uptime: {{ systemHealth.uptime.formatted }}</div>
+              @for (entry of systemHealth.services | keyvalue; track entry.key) {
+                <div class="service-item">
+                  <span class="service-name">{{ entry.key }}</span>
+                  <mat-chip [class]="entry.value.status" size="small">
+                    {{ entry.value.status }}
+                  </mat-chip>
+                </div>
+              }
+            </section>
+          }
+
+          <!-- System Resources -->
           <section class="system-resources">
             <h3 class="resources-title">
               <mat-icon>monitor_heart</mat-icon>
@@ -185,7 +278,7 @@
             </div>
           </section>
 
-          <!-- Recent Activity Card (notifications) -->
+          <!-- Recent Activity Card -->
           <mat-card class="dashboard-card activity-card">
             <mat-card-header>
               <mat-card-title>
@@ -195,26 +288,33 @@
             </mat-card-header>
             <mat-card-content>
               <div class="activity-feed">
-                @for (activity of recentActivities; track $index) {
-                  <div class="activity-item">
+                @for (activity of recentActivities; track activity.id) {
+                  <div class="activity-item" [class]="activity.severity">
                     <div class="activity-timestamp">
-                      {{($index * 15) + 2}} min ago
+                      {{ formatActivityTime(activity.timestamp) }}
                     </div>
                     <div class="activity-message">
-                      {{activity}}
+                      {{ activity.message }}
                     </div>
-                    <div class="activity-indicator"></div>
+                    <div class="activity-indicator" [class]="activity.severity"></div>
+                  </div>
+                }
+                @empty {
+                  <div class="empty-state">
+                    <mat-icon>inbox</mat-icon>
+                    <p>No recent activity</p>
                   </div>
                 }
               </div>
-              <div class="activity-footer">
-                <button mat-button class="view-all-btn">
-                  View All Activities
-                  <mat-icon>arrow_forward</mat-icon>
-                </button>
-              </div>
             </mat-card-content>
           </mat-card>
+
+          <!-- Last Updated -->
+          @if (dashboardState.lastUpdate) {
+            <div class="last-update">
+              Last updated: {{ dashboardState.lastUpdate }}
+            </div>
+          }
         </aside>
       </div>
     </mat-tab>

@@ -5,12 +5,15 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, mmcnc
+from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
-from app.repository import run_repository, council_repository
+from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
+from app.services.memory_service import memory_service
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository
 
 
 logging.basicConfig(
@@ -32,13 +35,39 @@ async def lifespan(app: FastAPI):
             await setup_db_schema()
             logger.info("Database schema ensured")
             
-            # Ensure run repository table exists
-            await run_repository.ensure_runs_table()
-            logger.info("Engine runs table ensured")
+            # core_runs / core_run_events tables are now created by setup_db_schema()
             
             # Ensure council tables exist
             await council_repository.ensure_council_tables()
             logger.info("Council tables ensured")
+            
+            # Ensure instance tables exist
+            await instance_repository.ensure_instance_tables()
+            logger.info("Instance tables ensured")
+            
+            # Ensure task tables exist
+            await task_repository.ensure_task_tables()
+            logger.info("Task tables ensured")
+
+            # Ensure memory tables exist (LangMem three-tier system)
+            await memory_repository.ensure_memory_tables()
+            logger.info("Memory tables ensured")
+
+            # Ensure comprehension tables exist (CORE Comprehension Engine)
+            await comprehension_repository.ensure_comprehension_tables()
+            logger.info("Comprehension tables ensured")
+
+            # Ensure evaluation tables exist (Evaluation Engine)
+            await evaluation_repository.ensure_evaluation_tables()
+            logger.info("Evaluation tables ensured")
+
+            # Ensure bus tables exist (Inter-Agent Communication Bus)
+            await bus_repository.ensure_bus_tables()
+            logger.info("Bus tables ensured")
+
+            # Ensure MMCNC tables exist (Macro/Micro/Cluster/Node hierarchy)
+            await mmcnc_repository.ensure_mmcnc_tables()
+            logger.info("MMCNC tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
@@ -51,6 +80,20 @@ async def lifespan(app: FastAPI):
         except Exception as webhook_exc:
             logger.error("Failed to initialize webhook service: %s", webhook_exc)
         
+        # Initialize agent registry
+        try:
+            await initialize_agent_registry()
+            logger.info("Agent registry initialized")
+        except Exception as agent_exc:
+            logger.error("Failed to initialize agent registry: %s", agent_exc)
+        
+        # Initialize memory service
+        try:
+            await memory_service.initialize()
+            logger.info("Memory service initialized")
+        except Exception as memory_exc:
+            logger.error("Failed to initialize memory service: %s", memory_exc)
+
         yield
     finally:
         # Shutdown webhook service
@@ -59,6 +102,13 @@ async def lifespan(app: FastAPI):
             logger.info("Webhook service shutdown")
         except Exception as webhook_close_exc:
             logger.error("Error shutting down webhook service: %s", webhook_close_exc)
+        
+        # Shutdown agent registry
+        try:
+            await shutdown_agent_registry()
+            logger.info("Agent registry shutdown")
+        except Exception as agent_close_exc:
+            logger.error("Error shutting down agent registry: %s", agent_close_exc)
         
         # Gracefully close DB connections on shutdown.
         try:
@@ -90,6 +140,13 @@ app.include_router(test_core.router)  # Test endpoints
 app.include_router(health.router)  # Health check endpoints (includes /health)
 app.include_router(admin.router)  # Admin and management endpoints
 app.include_router(council.router)  # Council of Perspectives deliberation system
+app.include_router(instances.router)  # Instance management and container orchestration
+app.include_router(tasks.router)  # Task Routing Engine for CORE orchestration
+app.include_router(memory.router)  # LangMem three-tier memory system
+app.include_router(comprehension.router)  # CORE Comprehension Engine
+app.include_router(evaluation.router)  # Evaluation Engine — quality gate for CORE loop
+app.include_router(bus.router)  # Inter-Agent Communication Bus
+app.include_router(mmcnc.router)  # MMCNC hierarchy (Macro/Micro/Cluster/Node)
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
@@ -185,6 +242,27 @@ async def websocket_endpoint(websocket: WebSocket, instance_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for {instance_id}: {e}")
         manager.disconnect(instance_id)
+
+
+# ---------------------------------------------------------------------------
+# Agent WebSocket endpoint for container registration and communication
+# ---------------------------------------------------------------------------
+@app.websocket("/ws/agent/{agent_id}")
+async def websocket_agent_endpoint(websocket: WebSocket, agent_id: str):
+    """
+    WebSocket endpoint for agent registration and communication.
+
+    Separate from Communication Commons WebSocket - this is specifically
+    for containerized agents to register, send heartbeats, and receive tasks.
+    
+    Each agent connects with their agent_id and can:
+    - Register with capabilities and version
+    - Send periodic heartbeats with status and resource usage
+    - Report task completion or refusal
+    - Receive task assignments and configuration updates
+    - Gracefully deregister on shutdown
+    """
+    await agent_websocket_endpoint(websocket, agent_id)
 
 
 # ---------------------------------------------------------------------------

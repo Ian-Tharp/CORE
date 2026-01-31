@@ -1,0 +1,244 @@
+# OpenClaw Agent Configuration Template for CORE
+# Copy this file and customize for each agent instance
+# Location: ./config/agents/${AGENT_ID}/openclaw.json
+
+# Core Agent Configuration
+agent:
+  # Model configuration - Ollama default with Claude fallback
+  model: "anthropic/claude-sonnet-4"
+  fallback: 
+    - "anthropic/claude-opus-4-5"
+    - "ollama/llama3.1:latest"  # Local Ollama fallback
+  
+  # Agent identity
+  name: "${AGENT_ID:-agent-001}"
+  role: "${AGENT_ROLE:-general}"
+  
+  # Workspace settings
+  workspace: "/home/openclaw/workspace"
+  
+  # Thinking and behavior
+  thinking: "medium"
+  verbose: false
+  
+  # CORE integration settings
+  core:
+    endpoint: "${CORE_ENDPOINT}"
+    agent_id: "${AGENT_ID}"
+    heartbeat_interval: 30  # seconds
+    report_status: true
+
+# Gateway configuration
+gateway:
+  bind: "lan"  # Listen on all interfaces for container networking
+  port: 18789
+  
+  # Authentication for CORE access
+  auth:
+    mode: "token"
+    token: "${OPENCLAW_GATEWAY_TOKEN}"
+  
+  # CORE network integration
+  cors:
+    enabled: true
+    origins:
+      - "${CORE_ENDPOINT}"
+      - "http://localhost:3000"  # CORE frontend
+      - "http://core-frontend:3000"
+
+# Channel Configuration (Bot Integrations)
+channels:
+  # Discord integration
+  discord:
+    enabled: true
+    token: "${DISCORD_BOT_TOKEN}"
+    
+    # DM security policy
+    dm:
+      policy: "pairing"  # Require pairing for unknown users
+      allowFrom:
+        - "${DISCORD_ADMIN_ID}"  # Admin user ID
+    
+    # Guild (server) settings  
+    guilds:
+      "${DISCORD_GUILD_ID}":
+        enabled: true
+        activation: "mention"  # Only respond when mentioned
+        
+  # Telegram integration
+  telegram:
+    enabled: false  # Disable by default, enable per instance as needed
+    botToken: "${TELEGRAM_BOT_TOKEN}"
+    
+  # Slack integration  
+  slack:
+    enabled: false
+    botToken: "${SLACK_BOT_TOKEN}"
+    appToken: "${SLACK_APP_TOKEN}"
+
+# Model Providers
+providers:
+  # Anthropic (primary)
+  anthropic:
+    enabled: true
+    apiKey: "${ANTHROPIC_API_KEY}"
+    models:
+      - "claude-sonnet-4"
+      - "claude-opus-4-5"
+      - "claude-haiku-3-5"
+      
+  # OpenAI (secondary)
+  openai:
+    enabled: true
+    apiKey: "${OPENAI_API_KEY}"
+    models:
+      - "gpt-4"
+      - "gpt-3.5-turbo"
+      
+  # Ollama (local fallback)
+  ollama:
+    enabled: true
+    baseURL: "http://core-ollama:11434"  # CORE's Ollama instance
+    models:
+      - "llama3.1:latest"
+      - "mistral:latest"
+      - "codellama:latest"
+
+# Agent Tools and Capabilities
+tools:
+  # Core tools (always enabled)
+  enabled:
+    - "read"
+    - "write"  
+    - "edit"
+    - "exec"
+    - "process"
+    - "web_search"
+    - "web_fetch"
+    - "message"
+    
+  # Conditional tools (enable based on agent role)
+  browser:
+    enabled: false  # Enable for development agents only
+    profile: "isolated"
+    
+  canvas:
+    enabled: false  # Disable for containerized agents (no display)
+    
+  nodes:
+    enabled: false  # Disable device-specific tools
+    
+  # Sandbox configuration for tool isolation
+  sandbox:
+    mode: "non-main"  # Sandbox group/channel sessions
+    scope: "agent"    # One container per agent
+    workspaceAccess: "rw"  # Read-write workspace access
+    
+    docker:
+      image: "clawdbot-sandbox:bookworm-slim"
+      network: "core-network"  # Connect to CORE network
+      memory: "512m"
+      cpus: 0.5
+
+# Session Management
+sessions:
+  # Prune old sessions to save memory
+  maxAge: "7d"
+  maxSessions: 100
+  
+  # Main session configuration
+  main:
+    activation: "always"
+    
+  # Group session configuration  
+  groups:
+    activation: "mention"
+    requireAuth: true
+
+# Logging and Monitoring
+logging:
+  level: "info"
+  format: "json"  # Structured logs for CORE monitoring
+  
+  # CORE integration
+  core:
+    enabled: true
+    endpoint: "${CORE_ENDPOINT}/api/logs"
+    
+# Security Settings
+security:
+  # Sandbox non-main sessions for multi-user safety
+  sandbox:
+    enabled: true
+    mode: "non-main"
+    
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    windowMs: 60000  # 1 minute
+    maxRequests: 30  # Per window
+    
+  # Content filtering
+  contentFilter:
+    enabled: true
+    blockUnsafeContent: true
+
+# Performance Tuning
+performance:
+  # Memory management
+  memory:
+    maxHeapSize: "768m"
+    gcInterval: "5m"
+    
+  # Concurrency limits
+  concurrency:
+    maxSessions: 10
+    maxToolCalls: 5
+
+# Agent-Specific Capabilities by Role
+# Uncomment and customize based on AGENT_ROLE
+
+# For discord-bot role:
+# discord_bot:
+#   channels:
+#     discord:
+#       enabled: true
+#       guilds:
+#         "GUILD_ID":
+#           features:
+#             - "moderation"
+#             - "utility"
+#             - "entertainment"
+
+# For development role:  
+# development:
+#   tools:
+#     browser:
+#       enabled: true
+#     sandbox:
+#       workspaceAccess: "rw"
+#       setupCommand: "apt-get update && apt-get install -y git curl build-essential"
+
+# For monitoring role:
+# monitoring: 
+#   tools:
+#     enabled:
+#       - "cron"
+#       - "web_fetch"
+#   automation:
+#     healthChecks:
+#       interval: "1m"
+#       endpoints:
+#         - "${CORE_ENDPOINT}/health"
+
+# Environment Variable Replacements:
+# - ${AGENT_ID}: Unique identifier for this agent instance
+# - ${AGENT_ROLE}: Role/purpose (general, discord-bot, development, monitoring)  
+# - ${CORE_ENDPOINT}: URL of CORE backend API
+# - ${DISCORD_BOT_TOKEN}: Discord bot token (unique per agent)
+# - ${TELEGRAM_BOT_TOKEN}: Telegram bot token
+# - ${SLACK_BOT_TOKEN}: Slack bot token  
+# - ${SLACK_APP_TOKEN}: Slack app token
+# - ${ANTHROPIC_API_KEY}: Anthropic API key
+# - ${OPENAI_API_KEY}: OpenAI API key
+# - ${OPENCLAW_GATEWAY_TOKEN}: Gateway authentication token
