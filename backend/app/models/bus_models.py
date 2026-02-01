@@ -31,6 +31,8 @@ class MessageType(str, Enum):
     CAPABILITY_RESPONSE = "capability_response"
     HEARTBEAT = "heartbeat"
     BROADCAST = "broadcast"
+    CATALYST_PHASE_COMPLETE = "catalyst_phase_complete"
+    LEVEL_TRANSITION = "level_transition"
 
 
 class MessagePriority(str, Enum):
@@ -48,6 +50,36 @@ class DeliveryStatus(str, Enum):
     READ = "read"
     FAILED = "failed"
     QUEUED = "queued"
+
+
+# =============================================================================
+# SCOPING
+# =============================================================================
+
+class BusScope(BaseModel):
+    """
+    MMCNC hierarchy scope for targeted message delivery.
+
+    Messages can be addressed to a specific level of the Macrocosm / Microcosm /
+    Cluster hierarchy.  When a scope is attached to a message, only subscribers
+    whose own scope *overlaps* will receive it.  Overlap rules:
+
+    - A subscriber scoped to a **macrocosm** receives messages for that
+      macrocosm and any of its child microcosms / clusters.
+    - A subscriber scoped to a **microcosm** receives messages for that
+      microcosm and any of its child clusters.
+    - A subscriber scoped to a **cluster** only receives messages for that
+      exact cluster.
+    - A subscriber with **no scope** (None) receives all messages (backward
+      compatible).
+
+    Fields are cumulative — setting ``cluster_id`` implies the message lives
+    inside a specific microcosm inside a specific macrocosm, so callers should
+    populate the parent IDs as well for correct hierarchical matching.
+    """
+    macrocosm_id: Optional[str] = None
+    microcosm_id: Optional[str] = None
+    cluster_id: Optional[str] = None
 
 
 # =============================================================================
@@ -88,6 +120,10 @@ class BusMessage(BaseModel):
         None,
         description="Message ID this is a reply to"
     )
+    scope: Optional[BusScope] = Field(
+        None,
+        description="MMCNC hierarchy scope for targeted delivery (None = all subscribers)"
+    )
     ttl_seconds: Optional[int] = Field(
         None,
         ge=1,
@@ -112,6 +148,10 @@ class Subscription(BaseModel):
         default_factory=list,
         description="Topics to subscribe to (empty = all for matched types)"
     )
+    scope: Optional[BusScope] = Field(
+        None,
+        description="MMCNC scope filter — only receive messages whose scope overlaps"
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -120,6 +160,7 @@ class SubscriptionCreate(BaseModel):
     agent_id: str = Field(..., min_length=1)
     message_types: List[MessageType] = Field(default_factory=list)
     topics: List[str] = Field(default_factory=list)
+    scope: Optional[BusScope] = None
 
 
 # =============================================================================

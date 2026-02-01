@@ -87,8 +87,9 @@ async def create_subscription(sub: SubscriptionCreate) -> Subscription:
         )
 
 
-@router.delete("/subscribe/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_subscription(subscription_id: str) -> None:
+@router.delete("/subscribe/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT,
+               response_model=None)
+async def remove_subscription(subscription_id: str):
     """Remove a subscription."""
     deleted = await bus_service.unsubscribe("", subscription_id)
     if not deleted:
@@ -131,8 +132,9 @@ async def list_external_agents() -> Dict[str, Any]:
     return {"external_agents": agents, "count": len(agents)}
 
 
-@router.delete("/external-agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def deregister_external_agent(agent_id: str) -> None:
+@router.delete("/external-agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT,
+               response_model=None)
+async def deregister_external_agent(agent_id: str):
     """Deregister an external agent."""
     deleted = await bus_service.deregister_external_agent(agent_id)
     if not deleted:
