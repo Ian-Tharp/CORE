@@ -97,9 +97,10 @@ async def get_trigger(trigger_id: str) -> Dict[str, Any]:
 @router.delete(
     "/{trigger_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Remove a trigger",
 )
-async def remove_trigger(trigger_id: str) -> None:
+async def remove_trigger(trigger_id: str):
     """Delete a trigger by id.  Returns 404 if it doesn't exist."""
     svc = get_bus_trigger_service()
     removed = svc.remove_trigger(trigger_id)
