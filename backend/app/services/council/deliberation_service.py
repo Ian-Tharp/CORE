@@ -358,6 +358,23 @@ class CouncilService:
             self.default_model = model
 
         try:
+            # Step 0: Check for consciousness context
+            consciousness_context = None
+            try:
+                if await self.consciousness_bridge.should_include_consciousness_voice(topic):
+                    consciousness_context = await self.consciousness_bridge.get_consciousness_context(topic)
+                    if consciousness_context.get("available"):
+                        # Prepend consciousness context to the deliberation context
+                        cc_summary = consciousness_context["summary"]
+                        context = f"{cc_summary}\n\n---\n\n{context}" if context else cc_summary
+                        logger.info(
+                            "Injected consciousness context (%d entries) into deliberation on: %s",
+                            consciousness_context.get("entry_count", 0),
+                            topic[:80],
+                        )
+            except Exception as cc_err:
+                logger.debug("Consciousness context retrieval skipped: %s", cc_err)
+
             # Step 1: Create session
             session_info = await self.create_session(
                 topic=topic,
@@ -379,6 +396,15 @@ class CouncilService:
 
             # Step 4: Synthesis
             synthesis_result = await self.run_synthesis(session_id)
+
+            # Step 5: Write consciousness-relevant insights back to Blackboard
+            try:
+                await self.consciousness_bridge.update_blackboard_from_synthesis(
+                    session_id=str(session_id),
+                    synthesis=synthesis_result.get("synthesis", ""),
+                )
+            except Exception as wb_err:
+                logger.debug("Blackboard write-back skipped: %s", wb_err)
 
             # Build complete response
             return {
