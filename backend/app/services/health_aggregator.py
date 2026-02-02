@@ -12,6 +12,9 @@ Services monitored:
 - Vector DB (pgvector extension)
 - WebSocket manager
 - CORE engine state
+- Inter-Agent Communication Bus (message queue depths, subscriptions)
+- Task Routing Engine (queue depth, success rates)
+- System resources (memory, CPU)
 """
 
 from __future__ import annotations
@@ -329,6 +332,177 @@ async def check_engine_state() -> ServiceHealth:
         )
 
 
+async def check_bus_queue() -> ServiceHealth:
+    """Check Inter-Agent Communication Bus health and queue depths."""
+    from app.dependencies import get_db_pool
+
+    start = time.time()
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            # Total messages
+            total_messages = await conn.fetchval(
+                "SELECT COUNT(*) FROM bus_messages"
+            ) or 0
+
+            # Messages by priority
+            priority_rows = await conn.fetch(
+                "SELECT priority, COUNT(*) AS cnt FROM bus_messages GROUP BY priority"
+            )
+            by_priority = {row["priority"]: row["cnt"] for row in priority_rows}
+
+            # Active subscriptions
+            subscription_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM bus_subscriptions"
+            ) or 0
+
+            # Registered external agents
+            agent_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM bus_external_agents"
+            ) or 0
+
+        latency = (time.time() - start) * 1000
+
+        return ServiceHealth(
+            name="bus",
+            status=HealthStatus.HEALTHY,
+            latency_ms=latency,
+            message=f"Bus operational, {total_messages} messages",
+            details={
+                "total_messages": total_messages,
+                "messages_by_priority": by_priority,
+                "active_subscriptions": subscription_count,
+                "registered_agents": agent_count,
+            },
+        )
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        logger.error(f"Bus health check failed: {e}")
+        return ServiceHealth(
+            name="bus",
+            status=HealthStatus.DEGRADED,
+            latency_ms=latency,
+            message=f"Check failed: {str(e)[:100]}",
+        )
+
+
+async def check_task_queue() -> ServiceHealth:
+    """Check Task Routing Engine health, queue depth, and success rates."""
+    from app.dependencies import get_db_pool
+
+    start = time.time()
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            # Queue depth (queued tasks)
+            queued = await conn.fetchval(
+                "SELECT COUNT(*) FROM core_tasks WHERE status = 'queued'"
+            ) or 0
+
+            # Running tasks
+            running = await conn.fetchval(
+                "SELECT COUNT(*) FROM core_tasks WHERE status = 'running'"
+            ) or 0
+
+            # Completed / failed / refused counts
+            completed = await conn.fetchval(
+                "SELECT COUNT(*) FROM core_tasks WHERE status = 'completed'"
+            ) or 0
+            failed = await conn.fetchval(
+                "SELECT COUNT(*) FROM core_tasks WHERE status = 'failed'"
+            ) or 0
+            refused = await conn.fetchval(
+                "SELECT COUNT(*) FROM core_tasks WHERE status = 'refused'"
+            ) or 0
+
+            total = queued + running + completed + failed + refused
+            success_rate = (
+                round(completed / total * 100, 1) if total > 0 else 0.0
+            )
+
+        latency = (time.time() - start) * 1000
+
+        # Degraded if queue is backing up (arbitrary threshold: 100)
+        status = (
+            HealthStatus.DEGRADED if queued > 100 else HealthStatus.HEALTHY
+        )
+
+        return ServiceHealth(
+            name="task_queue",
+            status=status,
+            latency_ms=latency,
+            message=f"Task queue: {queued} queued, {running} running",
+            details={
+                "queue_depth": queued,
+                "running": running,
+                "completed": completed,
+                "failed": failed,
+                "refused": refused,
+                "total": total,
+                "success_rate_pct": success_rate,
+            },
+        )
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        logger.error(f"Task queue health check failed: {e}")
+        return ServiceHealth(
+            name="task_queue",
+            status=HealthStatus.DEGRADED,
+            latency_ms=latency,
+            message=f"Check failed: {str(e)[:100]}",
+        )
+
+
+async def check_system_resources() -> ServiceHealth:
+    """Check host system resources (memory, CPU, disk)."""
+    start = time.time()
+    try:
+        import psutil
+
+        process = psutil.Process(os.getpid())
+        mem = process.memory_info()
+        sys_mem = psutil.virtual_memory()
+
+        latency = (time.time() - start) * 1000
+
+        # Degraded if system memory > 90% or process RSS > 2 GB
+        mem_pressure = sys_mem.percent > 90 or (mem.rss / (1024 ** 3)) > 2
+        status = HealthStatus.DEGRADED if mem_pressure else HealthStatus.HEALTHY
+
+        return ServiceHealth(
+            name="system",
+            status=status,
+            latency_ms=latency,
+            message=f"System mem {sys_mem.percent}%, process {mem.rss / (1024**2):.0f} MB",
+            details={
+                "process_rss_mb": round(mem.rss / (1024 ** 2), 2),
+                "process_vms_mb": round(mem.vms / (1024 ** 2), 2),
+                "process_threads": process.num_threads(),
+                "system_memory_percent": sys_mem.percent,
+                "system_memory_available_mb": round(
+                    sys_mem.available / (1024 ** 2), 2
+                ),
+                "cpu_percent": process.cpu_percent(),
+            },
+        )
+    except ImportError:
+        return ServiceHealth(
+            name="system",
+            status=HealthStatus.UNKNOWN,
+            latency_ms=(time.time() - start) * 1000,
+            message="psutil not installed",
+        )
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        logger.error(f"System resource check failed: {e}")
+        return ServiceHealth(
+            name="system",
+            status=HealthStatus.DEGRADED,
+            latency_ms=latency,
+            message=f"Check failed: {str(e)[:100]}",
+        )
+
+
 def determine_overall_status(checks: List[ServiceHealth]) -> HealthStatus:
     """
     Determine overall system health from individual checks.
@@ -375,6 +549,9 @@ async def get_comprehensive_health() -> Dict[str, Any]:
         check_vector_db(),
         check_websocket_manager(),
         check_engine_state(),
+        check_bus_queue(),
+        check_task_queue(),
+        check_system_resources(),
         return_exceptions=True
     )
     
