@@ -21,7 +21,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -110,7 +110,7 @@ async def publish(message: BusMessage) -> DeliveryReceipt:
         message_id=message.id,
         recipient_id=",".join(targets) if targets else "none",
         status=summary_status,
-        delivered_at=datetime.utcnow() if delivered else None,
+        delivered_at=datetime.now(timezone.utc) if delivered else None,
         error=f"{failed} failed, {queued} queued" if (failed or queued) else None,
     )
 
@@ -348,7 +348,7 @@ async def _deliver(target_id: str, message: BusMessage) -> DeliveryReceipt:
             message_id=message.id,
             recipient_id=target_id,
             status=status,
-            delivered_at=datetime.utcnow() if success else None,
+            delivered_at=datetime.now(timezone.utc) if success else None,
             error=error,
         )
 
@@ -363,7 +363,7 @@ async def _deliver(target_id: str, message: BusMessage) -> DeliveryReceipt:
             message_id=message.id,
             recipient_id=target_id,
             status=DeliveryStatus.DELIVERED,
-            delivered_at=datetime.utcnow(),
+            delivered_at=datetime.now(timezone.utc),
         )
 
     # Agent offline — queue

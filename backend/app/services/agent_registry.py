@@ -20,7 +20,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4, UUID
 from pydantic import BaseModel, Field
 
@@ -137,7 +137,7 @@ class AgentRegistry:
             "agent_id": agent_id,
             "status": InstanceStatus.READY.value,
             "capabilities": registration_payload.capabilities,
-            "last_heartbeat": datetime.utcnow()
+            "last_heartbeat": datetime.now(timezone.utc)
         })
         
         # Store agent info in memory
@@ -147,8 +147,8 @@ class AgentRegistry:
             "role": registration_payload.role,
             "capabilities": registration_payload.capabilities,
             "version": registration_payload.version,
-            "registered_at": datetime.utcnow(),
-            "last_heartbeat": datetime.utcnow(),
+            "registered_at": datetime.now(timezone.utc),
+            "last_heartbeat": datetime.now(timezone.utc),
             "current_status": "ready",
             "current_task": None
         }
@@ -196,7 +196,7 @@ class AgentRegistry:
             raise ValueError(f"Agent {agent_id} not registered")
         
         agent_info = self.active_agents[agent_id]
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Update agent info
         agent_info["last_heartbeat"] = current_time
@@ -298,7 +298,7 @@ class AgentRegistry:
         await update_instance_status(
             agent_info["container_id"],
             InstanceStatus.STOPPED,
-            datetime.utcnow()
+            datetime.now(timezone.utc)
         )
         
         # Remove from active agents
@@ -348,7 +348,7 @@ class AgentRegistry:
         if self._shutdown:
             return []
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         stale_agents = []
         lost_agents = []
         
@@ -410,7 +410,7 @@ class AgentRegistry:
     
     def get_healthy_agents(self) -> List[str]:
         """Get agents that are healthy (recent heartbeat, ready status)."""
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         healthy = []
         
         for agent_id, info in self.active_agents.items():
