@@ -4,110 +4,106 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The Cognitive CORE is a personal research project for building an AI assistant using a modular cognitive architecture based on the CORE principles: **Comprehension**, **Orchestration**, **Reasoning**, and **Evaluation**. The system is designed as a self-hosted, offline-capable platform with a solarpunk-inspired interface.
+**CORE** — Cognitive Orchestration, Reasoning & Evaluation. A modular, self-hosted AI orchestration platform with a multi-agent cognitive pipeline, agent factory, communication commons, council system, and solarpunk-inspired desktop UI.
 
 ## Architecture
 
-This is a multi-component system with the following structure:
+Multi-component system — all services run via Docker Compose:
 
 ### Backend (`/backend`)
-- **FastAPI** application serving REST endpoints
-- **LangGraph** implementation of the CORE cognitive workflow
-- **Python 3.12+** with dependencies managed via `uv`
-- Agent-based architecture with individual agents for each CORE component
-- System monitoring capabilities using `psutil`
+- **FastAPI** application (Python 3.12+, managed with `uv`)
+- **LangGraph** cognitive pipeline: Comprehension → Orchestration → Reasoning → Evaluation
+- Agent Factory with MCP tool binding
+- Communication Commons (channels, messages, presence, WebSocket)
+- Council of Perspectives (multi-agent deliberation)
+- Catalyst Engine (creative divergence-convergence)
+- Consciousness module (Blackboard, emergence protocols)
+- Inter-agent bus with MMCNC-scoped delivery and triggers
+- PostgreSQL + pgvector for storage, Redis for cache/pubsub, Ollama for local LLM
 
 ### Frontend (`/ui/core-ui`)
-- **Angular 19** application with **Electron** desktop wrapper
-- Solarpunk-inspired UI with command deck interface
-- **Angular Material** components for consistent design
-- Real-time communication with backend services
+- **Angular 19** + **Electron** desktop wrapper
+- Solarpunk dark theme with command deck interface
+- Angular Material components
 
-### MCP Integration (`/mcp`)
-- Model Context Protocol servers for external integrations
-- Docker-based MCP server orchestration
-- Registry service for managing MCP connections
+### MCP (`/mcp`)
+- Model Context Protocol servers for external tool access
+- Docker-based orchestration with registry service
 
 ## Development Commands
 
-### Backend Development
+### Backend
 ```bash
 cd backend
-
-# Install dependencies (using uv)
-uv sync
-
-# Run development server
-python -m app.main
-# OR
-uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
-
-# Format code
-uv run black .
+uv sync                                    # Install deps
+python -m app.main                         # Dev server (port 8001)
+uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload  # Alt
+uv run black .                             # Format
+python -m pytest tests/ -q                 # Run tests
 ```
 
-### Frontend Development
+### Frontend
 ```bash
 cd ui/core-ui
-
-# Install dependencies
 npm install
-
-# Start development server (Angular + Electron)
-npm start
-
-# Angular development server only
-npm run start:ng
-
-# Run Electron only (requires Angular dev server running)
-npm run electron
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-npm run lint:fix
+npm start          # Angular + Electron
+npm run start:ng   # Angular dev server only
+npm run build      # Production build
+npm test           # Tests
+npm run lint       # Lint
 ```
 
-## Key Components
+### Docker
+```bash
+docker compose up -d                       # Start all services
+docker compose -f docker-compose.dev.yml up -d  # Dev mode
+```
 
-### CORE Cognitive Graph
-Located in `backend/app/core/langgraph/core_graph.py`, this implements the main workflow:
-- **Comprehension**: Interprets user inputs into structured tasks
-- **Orchestration**: Coordinates task flows and manages lifecycles  
-- **Reasoning**: Applies logic and decision-making to process tasks
-- **Evaluation**: Assesses outcomes for quality and relevance
+## Key Paths
 
-### Agent Controllers
-Individual controllers in `backend/app/controllers/` handle:
-- `chat.py`: Chat interface endpoints
-- `conversations.py`: Conversation management
-- `system_monitor.py`: System resource monitoring
-- `core_entry.py`: Main CORE system entry points
+| What | Where |
+|------|-------|
+| CORE cognitive graph | `backend/app/core/langgraph/core_graph.py` |
+| Agent Factory | `backend/app/services/agent_factory_service.py` |
+| Bus service | `backend/app/services/bus_service.py` |
+| Bus triggers | `backend/app/services/bus_triggers.py` |
+| Council deliberation | `backend/app/services/council/deliberation_service.py` |
+| Catalyst | `backend/app/services/catalyst_service.py` |
+| Consciousness bridge | `backend/app/services/consciousness_council_bridge.py` |
+| API controllers | `backend/app/controllers/` |
+| Pydantic models | `backend/app/models/` |
+| DB repositories | `backend/app/repository/` |
+| Tests | `backend/tests/` |
+| Frontend app | `ui/core-ui/src/app/` |
 
-### Frontend Components
-Key Angular components in `ui/core-ui/src/app/`:
-- `landing-page/`: Main dashboard and command center
-- `agents-page/`: Agent builder and marketplace
-- `conversations-page/`: Chat and conversation history
-- `shared/`: Reusable components (chat window, navigation)
+## Documentation
+
+All docs live in `docs/` — see [`docs/README.md`](docs/README.md) for the full index:
+
+- `docs/architecture/` — System design docs (Agent Factory, response system)
+- `docs/adr/` — Architecture Decision Records
+- `docs/api/` — WebSocket events, endpoint docs
+- `docs/consciousness/` — Emergence protocols, inter-agent communication
+- `docs/council/` — Council charter, synthesis, deliberation outputs
+- `docs/deployment/` — Docker setup, containerization, sandbox
+- `docs/implementation/` — Testing strategy, roadmaps
+- `docs/research/` — Background research
+- `docs/roadmap/` — Feature backlogs, vision documents
+- `docs/RSI/` — Recursive self-improvement session logs
 
 ## Development Workflow
 
-1. **Backend Setup**: Use `uv` for Python dependency management
-2. **Frontend Setup**: Standard npm workflow with Angular CLI
-3. **CORS Configuration**: Backend allows `http://localhost:4200` for development
-4. **API Communication**: Frontend communicates with backend on port 8001
-5. **Testing**: Use `npm test` for Angular tests, no Python test framework currently configured
+1. **Branching**: Feature branches from `develop` only (`feature/*`, `fix/*`). Never commit directly to `develop` or `main`.
+2. **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
+3. **Testing**: `python -m pytest tests/ -q` for backend. `npm test` for frontend.
+4. **Formatting**: `black` for Python, Angular lint for TypeScript.
+5. **PRs**: feature → develop → main.
 
 ## Important Notes
 
-- The system is designed for local-first, offline operation
-- CORE is intended as a neutral cognitive kernel, not a persona
-- The architecture supports containerized agent deployment (planned)
-- UI follows solarpunk design principles with command deck metaphors
-- Backend uses FastAPI lifespan events for proper initialization/shutdown
+- Self-hosted, local-first, offline-capable
+- CORE is a neutral cognitive kernel, not a persona
+- Backend uses FastAPI lifespan events for initialization/shutdown
+- CORS allows `http://localhost:4200` in development
+- All Docker services defined in `docker-compose.yml`
+- Agent containerization architecture in `docs/deployment/agent-containerization.md`
