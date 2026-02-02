@@ -18,6 +18,9 @@ Services Monitored:
 - Vector DB (pgvector)
 - WebSocket manager
 - CORE engine
+- Inter-Agent Communication Bus (queue depths)
+- Task Routing Engine (queue depth, success rates)
+- System resources (memory, CPU)
 """
 
 import time
@@ -73,6 +76,9 @@ async def deep_health_check() -> Dict[str, Any]:
         - vector_db: pgvector extension status
         - websocket: Connection manager state
         - engine: CORE engine runs
+        - bus: Inter-agent message queue depths, subscriptions, agents
+        - task_queue: Task routing queue depth, success rates
+        - system: Host memory, CPU, process resource usage
     
     Response:
         - status: "healthy" | "degraded" | "unhealthy"
