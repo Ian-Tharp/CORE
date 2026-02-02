@@ -9,7 +9,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from uuid import uuid4, UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.services.memory_service import MemoryService, MemoryContext, Procedure
 from app.repository.memory_repository import (
@@ -50,8 +50,8 @@ def sample_semantic_memory():
         source_agent_id="researcher-001",
         confidence=0.95,
         access_count=3,
-        created_at=datetime.utcnow(),
-        last_accessed=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        last_accessed=datetime.now(timezone.utc),
     )
 
 
@@ -69,9 +69,9 @@ def sample_episodic_memory():
         confidence=0.9,
         access_count=1,
         consolidated=False,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         last_accessed=None,
-        expires_at=datetime.utcnow() + timedelta(days=90),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=90),
     )
 
 
@@ -90,9 +90,9 @@ def sample_procedural_memory():
         usage_count=10,
         confidence=0.9,
         access_count=5,
-        created_at=datetime.utcnow(),
-        last_accessed=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        last_accessed=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
 
 
@@ -448,7 +448,7 @@ class TestMemoryManagement:
             episodic_count=25,
             procedural_count=5,
             total_access_count=100,
-            last_memory_created=datetime.utcnow(),
+            last_memory_created=datetime.now(timezone.utc),
         )
 
         with patch("app.services.memory_service.get_memory_stats") as mock_stats:

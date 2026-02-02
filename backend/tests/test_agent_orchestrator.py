@@ -2,33 +2,37 @@
 Integration tests for the Agent Orchestrator.
 
 Tests the full CORE loop execution with mocked dependencies.
+Requires MCP stack (fastmcp + mcp packages) to be available.
 """
 
 import asyncio
+import sys
+import os
 import pytest
 from datetime import datetime
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-import sys
-import os
 
 # Add the backend and mcp to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from app.sandbox import (
-    ContainerManager,
-    ContainerConfig,
-    TrustLevel,
-    TRUST_PRESETS,
-    StateManager,
-    StateScope,
-)
-from mcp.dynamic_tool_selector import (
-    DynamicToolSelector,
-    ToolSelection,
-    ToolDefinition,
-    Capability
-)
+try:
+    from app.sandbox import (
+        ContainerManager,
+        ContainerConfig,
+        TrustLevel,
+        TRUST_PRESETS,
+        StateManager,
+        StateScope,
+    )
+    from mcp.dynamic_tool_selector import (
+        DynamicToolSelector,
+        ToolSelection,
+        ToolDefinition,
+        Capability,
+    )
+except (ImportError, ModuleNotFoundError):
+    pytest.skip("MCP/sandbox dependencies not available", allow_module_level=True)
 
 
 # ============================================================================

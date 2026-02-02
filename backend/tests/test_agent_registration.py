@@ -14,7 +14,7 @@ ALL TESTS FOLLOW AAA FORMAT:
 import pytest
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, Mock, patch
 from typing import Dict, Any, List
@@ -70,7 +70,7 @@ def mock_instance():
         agent_role="researcher",
         status=InstanceStatus.STARTING,
         capabilities=["web_search", "file_ops"],
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
 
@@ -114,8 +114,8 @@ class TestAgentRegistration:
     async def test_register_agent_success(self, agent_registry, mock_instance, registration_payload):
         """Test successful agent registration."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
                 
                 # Act
                 config = await agent_registry.register_agent(registration_payload)
@@ -124,7 +124,8 @@ class TestAgentRegistration:
                 assert config.agent_id == mock_instance.agent_id
                 assert config.model == "ollama/llama3.2"
                 assert "web_search" in config.tools
-                assert "file_ops" in config.tools
+                assert "file_read" in config.tools
+                assert "file_write" in config.tools
                 assert config.memory_config["max_context_length"] == 4000
                 assert mock_instance.agent_id in agent_registry.active_agents
     
@@ -132,7 +133,7 @@ class TestAgentRegistration:
     async def test_register_agent_unknown_container(self, agent_registry, registration_payload):
         """Test registration fails with unknown container_id."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=None):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=None):
             
             # Act & Assert
             with pytest.raises(ValueError, match="Container .* not found in database"):
@@ -156,8 +157,8 @@ class TestAgentRegistration:
     async def test_duplicate_registration_updates_record(self, agent_registry, mock_instance, registration_payload):
         """Test duplicate registration updates existing record."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
                 # Register agent first time
                 await agent_registry.register_agent(registration_payload)
                 
@@ -186,9 +187,9 @@ class TestHeartbeat:
     async def test_heartbeat_updates_timestamp_and_status(self, agent_registry, mock_instance, registration_payload, heartbeat_data):
         """Test heartbeat updates timestamp and status."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_heartbeat', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_heartbeat', return_value=True):
                     # Register agent first
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
@@ -211,9 +212,9 @@ class TestHeartbeat:
     async def test_heartbeat_with_resource_usage_stores_metrics(self, agent_registry, mock_instance, registration_payload):
         """Test heartbeat with resource usage stores metrics."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_heartbeat', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_heartbeat', return_value=True):
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -257,9 +258,9 @@ class TestDeregistration:
     async def test_graceful_deregister_saves_final_state(self, agent_registry, mock_instance, registration_payload):
         """Test graceful deregister saves final state."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_instance_status', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_instance_status', return_value=True):
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -279,9 +280,9 @@ class TestDeregistration:
     async def test_deregister_updates_status_to_stopped(self, agent_registry, mock_instance, registration_payload):
         """Test deregister updates status to 'stopped'."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_instance_status', return_value=True) as mock_update_status:
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_instance_status', return_value=True) as mock_update_status:
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -303,14 +304,14 @@ class TestStaleAgentDetection:
     async def test_agent_with_old_heartbeat_marked_unhealthy(self, agent_registry, mock_instance, registration_payload):
         """Test agent with old heartbeat marked unhealthy."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_instance_status', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_instance_status', return_value=True):
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
                     # Simulate old heartbeat (2 minutes ago)
-                    old_time = datetime.utcnow() - timedelta(minutes=2)
+                    old_time = datetime.now(timezone.utc) - timedelta(minutes=2)
                     agent_registry.active_agents[agent_id]["last_heartbeat"] = old_time
                     
                     # Act
@@ -325,15 +326,15 @@ class TestStaleAgentDetection:
     async def test_agent_missing_5_minutes_marked_as_lost(self, agent_registry, mock_instance, registration_payload):
         """Test agent missing 5+ minutes marked as lost."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_instance_status', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_instance_status', return_value=True):
                     with patch('app.services.instance_manager.instance_manager.restart_instance', return_value=True) as mock_restart:
                         config = await agent_registry.register_agent(registration_payload)
                         agent_id = config.agent_id
                         
                         # Simulate very old heartbeat (6 minutes ago)
-                        old_time = datetime.utcnow() - timedelta(minutes=6)
+                        old_time = datetime.now(timezone.utc) - timedelta(minutes=6)
                         agent_registry.active_agents[agent_id]["last_heartbeat"] = old_time
                         
                         # Act
@@ -348,13 +349,13 @@ class TestStaleAgentDetection:
     async def test_healthy_agent_not_affected_by_stale_check(self, agent_registry, mock_instance, registration_payload):
         """Test healthy agent is not affected by stale check."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
                 config = await agent_registry.register_agent(registration_payload)
                 agent_id = config.agent_id
                 
                 # Ensure recent heartbeat
-                agent_registry.active_agents[agent_id]["last_heartbeat"] = datetime.utcnow()
+                agent_registry.active_agents[agent_id]["last_heartbeat"] = datetime.now(timezone.utc)
                 
                 # Act
                 stale_agents = await agent_registry.check_stale_agents()
@@ -373,9 +374,9 @@ class TestTaskRefusal:
     async def test_agent_can_refuse_task_with_reason(self, agent_registry, mock_instance, registration_payload):
         """Test agent can refuse task with reason."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.increment_task_refused', return_value=True) as mock_increment:
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.increment_task_refused', return_value=True) as mock_increment:
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -395,9 +396,9 @@ class TestTaskRefusal:
     async def test_refused_task_recorded_in_trust_metrics(self, agent_registry, mock_instance, registration_payload):
         """Test refusal recorded in trust metrics."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.increment_task_refused', return_value=True) as mock_increment:
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.increment_task_refused', return_value=True) as mock_increment:
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -417,9 +418,9 @@ class TestTaskCompletion:
     async def test_task_completion_updates_trust_metrics(self, agent_registry, mock_instance, registration_payload):
         """Test task completion updates trust metrics."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.increment_task_completed', return_value=True) as mock_increment:
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.increment_task_completed', return_value=True) as mock_increment:
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -462,9 +463,9 @@ class TestEdgeCases:
     async def test_multiple_rapid_heartbeats_handled_correctly(self, agent_registry, mock_instance, registration_payload):
         """Test multiple rapid heartbeats handled correctly."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_heartbeat', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_heartbeat', return_value=True):
                     config = await agent_registry.register_agent(registration_payload)
                     agent_id = config.agent_id
                     
@@ -495,7 +496,7 @@ class TestEdgeCases:
         # Arrange
         agent_registry._shutdown = True
         
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=None):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=None):
             
             # Act & Assert
             with pytest.raises(ValueError):
@@ -534,8 +535,8 @@ class TestEdgeCases:
             version="1.0.1"
         )
         
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
                 
                 # Act - register concurrently
                 results = await asyncio.gather(
@@ -559,11 +560,11 @@ class TestIntegration:
     async def test_full_lifecycle_spawn_register_heartbeat_task_deregister(self, agent_registry, mock_instance, registration_payload):
         """Test full lifecycle: spawn → register → heartbeat → task → deregister."""
         # Arrange
-        with patch('app.repository.instance_repository.get_instance_by_container_id', return_value=mock_instance):
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
-                with patch('app.repository.instance_repository.update_heartbeat', return_value=True):
-                    with patch('app.repository.instance_repository.update_instance_status', return_value=True):
-                        with patch('app.repository.instance_repository.increment_task_completed', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id', return_value=mock_instance):
+            with patch('app.services.agent_registry.update_instance', return_value=True):
+                with patch('app.services.agent_registry.update_heartbeat', return_value=True):
+                    with patch('app.services.agent_registry.update_instance_status', return_value=True):
+                        with patch('app.services.agent_registry.increment_task_completed', return_value=True):
                             
                             # Act 1: Register
                             config = await agent_registry.register_agent(registration_payload)
@@ -609,12 +610,12 @@ class TestIntegration:
                 agent_role="researcher",
                 status=InstanceStatus.STARTING,
                 capabilities=["web_search"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             instances.append(instance)
         
-        with patch('app.repository.instance_repository.get_instance_by_container_id') as mock_get_instance:
-            with patch('app.repository.instance_repository.update_instance', return_value=True):
+        with patch('app.services.agent_registry.get_instance_by_container_id') as mock_get_instance:
+            with patch('app.services.agent_registry.update_instance', return_value=True):
                 
                 def get_instance_side_effect(container_id):
                     for instance in instances:
@@ -642,7 +643,7 @@ class TestIntegration:
                 # Act 3: "Scale down" by deregistering 2 agents
                 for i in range(2):
                     deregistration = AgentDeregistration(reason="scale_down", final_state={})
-                    with patch('app.repository.instance_repository.update_instance_status', return_value=True):
+                    with patch('app.services.agent_registry.update_instance_status', return_value=True):
                         await agent_registry.deregister_agent(configs[i].agent_id, deregistration)
                 
                 # Assert

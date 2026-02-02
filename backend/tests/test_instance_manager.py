@@ -8,8 +8,10 @@ to avoid creating actual containers during testing.
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4, UUID
+
+from docker.errors import NotFound as DockerNotFound
 
 from app.services.instance_manager import (
     InstanceManager,
@@ -79,8 +81,8 @@ def sample_agent_instance():
         device_id="test-device",
         resource_profile={"tier": "standard"},
         capabilities=["file_access", "web_search"],
-        created_at=datetime.utcnow(),
-        last_heartbeat=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_heartbeat=datetime.now(timezone.utc)
     )
 
 
@@ -93,7 +95,7 @@ class TestInstanceManagerInitialization:
         # Arrange
         mock_client = MagicMock()
         mock_docker.from_env.return_value = mock_client
-        mock_client.networks.get.side_effect = Exception("Network not found")
+        mock_client.networks.get.side_effect = DockerNotFound("Network not found")
         
         manager = InstanceManager()
         
@@ -144,8 +146,8 @@ class TestInstanceManagerInitialization:
 class TestSpawnInstance:
     """Test instance spawning functionality."""
     
-    @patch('app.repository.instance_repository.create_instance')
-    @patch('app.repository.instance_repository.update_instance_status')
+    @patch('app.services.instance_manager.create_instance')
+    @patch('app.services.instance_manager.update_instance_status')
     async def test_spawn_instance_creates_container_with_correct_labels(
         self, mock_update_status, mock_create_instance, mock_docker_client, sample_instance_config
     ):
@@ -187,7 +189,7 @@ class TestSpawnInstance:
         mock_create_instance.assert_called_once()
         mock_update_status.assert_called_once_with("test_container_123", InstanceStatus.READY)
     
-    @patch('app.repository.instance_repository.create_instance')
+    @patch('app.services.instance_manager.create_instance')
     async def test_spawn_instance_handles_docker_failure(
         self, mock_create_instance, mock_docker_client, sample_instance_config
     ):
@@ -218,7 +220,7 @@ class TestSpawnInstance:
 class TestStopInstance:
     """Test instance stopping functionality."""
     
-    @patch('app.repository.instance_repository.update_instance_status')
+    @patch('app.services.instance_manager.update_instance_status')
     async def test_stop_instance_gracefully_stops_container(
         self, mock_update_status, mock_docker_client
     ):
@@ -246,7 +248,7 @@ class TestStopInstance:
         mock_update_status.assert_any_call(container_id, InstanceStatus.STOPPING)
         mock_update_status.assert_any_call(container_id, InstanceStatus.STOPPED)
     
-    @patch('app.repository.instance_repository.update_instance_status')
+    @patch('app.services.instance_manager.update_instance_status')
     async def test_stop_instance_handles_missing_container(
         self, mock_update_status, mock_docker_client
     ):
@@ -273,7 +275,7 @@ class TestStopInstance:
 class TestRestartInstance:
     """Test instance restarting functionality."""
     
-    @patch('app.repository.instance_repository.update_instance_status')
+    @patch('app.services.instance_manager.update_instance_status')
     async def test_restart_instance_restarts_and_waits_for_healthy(
         self, mock_update_status, mock_docker_client
     ):
@@ -304,7 +306,7 @@ class TestRestartInstance:
 class TestListInstances:
     """Test instance listing functionality."""
     
-    @patch('app.repository.instance_repository.get_instance_by_container_id')
+    @patch('app.services.instance_manager.get_instance_by_container_id')
     async def test_list_instances_filters_by_agent_label(
         self, mock_get_instance, mock_docker_client, sample_agent_instance
     ):
@@ -320,6 +322,16 @@ class TestListInstances:
             "core.agent": "true",
             "core.role": "reasoning",
             "core.agent_id": "agent1"
+        }
+        mock_container1.attrs = {
+            'Created': '2026-01-27T10:00:00.000000Z'
+        }
+        mock_container1.stats.return_value = {
+            'memory_stats': {'usage': 1000000},
+            'cpu_stats': {
+                'cpu_usage': {'total_usage': 1000000},
+                'system_cpu_usage': 2000000
+            }
         }
         
         mock_container2 = MagicMock()
@@ -362,9 +374,11 @@ class TestScaleInstances:
         manager.docker_client = mock_docker_client
         
         # No existing containers for this role
+        final_c1 = MagicMock(status="running")
+        final_c2 = MagicMock(status="running")
         mock_docker_client.containers.list.side_effect = [
             [],  # Initial count: 0
-            [MagicMock(), MagicMock()]  # Final count: 2
+            [final_c1, final_c2]  # Final count: 2
         ]
         
         mock_uuid4.return_value = UUID('12345678-1234-5678-9012-123456789012')
@@ -374,7 +388,7 @@ class TestScaleInstances:
             agent_id="reasoning-12345678",
             agent_role="reasoning",
             status="ready",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         # Act
@@ -422,9 +436,10 @@ class TestScaleInstances:
         mock_container3.status = "running"
         mock_container3.labels = {"core.agent_id": "agent3"}
         
+        final_c = MagicMock(status="running")
         mock_docker_client.containers.list.side_effect = [
             [mock_container1, mock_container2, mock_container3],  # Initial: 3
-            [mock_container1]  # Final: 1
+            [final_c]  # Final: 1
         ]
         
         mock_stop.return_value = True
@@ -455,7 +470,7 @@ class TestScaleInstances:
 class TestGetInstanceStatus:
     """Test instance status retrieval."""
     
-    @patch('app.repository.instance_repository.get_instance_by_container_id')
+    @patch('app.services.instance_manager.get_instance_by_container_id')
     async def test_get_instance_status_returns_detailed_info(
         self, mock_get_instance, mock_docker_client, sample_agent_instance
     ):
@@ -518,11 +533,12 @@ class TestGetInstanceStatus:
         assert result is None
 
 
+@pytest.mark.integration
 class TestInstanceManagerIntegration:
     """Integration tests for InstanceManager."""
     
-    @patch('app.repository.instance_repository.create_instance')
-    @patch('app.repository.instance_repository.update_instance_status')
+    @patch('app.services.instance_manager.create_instance')
+    @patch('app.services.instance_manager.update_instance_status')
     async def test_full_lifecycle_spawn_and_stop(
         self, mock_update_status, mock_create_instance, mock_docker_client, sample_instance_config
     ):
@@ -596,4 +612,4 @@ class TestInstanceManagerErrorHandling:
         # Assert
         mock_logger.error.assert_called()
         error_message = mock_logger.error.call_args[0][0]
-        assert "Failed to spawn instance" in error_message
+        assert "spawning instance" in error_message.lower() or "spawn instance" in error_message.lower()

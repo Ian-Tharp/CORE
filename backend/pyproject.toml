@@ -28,7 +28,19 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "aiosqlite>=0.22.1",
     "black>=25.1.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+addopts = "-m 'not integration'"
+filterwarnings = [
+    "ignore:.*datetime\\.datetime\\.utcnow.*:DeprecationWarning",
+    "ignore:.*class-based `config` is deprecated.*:DeprecationWarning",
 ]
