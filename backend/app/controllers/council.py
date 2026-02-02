@@ -33,6 +33,8 @@ from app.models.council_models import (
     VoteType,
 )
 from app.repository import council_repository as repo
+from app.services.council.voice_registry import list_voices, get_voice, VoiceCategory
+from app.services.council_service import get_council_service
 
 logger = logging.getLogger(__name__)
 

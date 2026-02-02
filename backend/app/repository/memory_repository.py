@@ -201,12 +201,17 @@ async def create_semantic_memory(memory: SemanticMemory) -> UUID:
         RETURNING id
     """
     
+    # Convert embedding list to pgvector string format if needed
+    embedding = memory.embedding
+    if isinstance(embedding, list):
+        embedding = str(embedding)
+    
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
             memory.id,
             memory.content,
-            memory.embedding,
+            embedding,
             json.dumps(memory.metadata),
             memory.source_agent_id,
             memory.confidence,
@@ -233,15 +238,28 @@ async def search_semantic_memories(
         LIMIT $3
     """
     
+    # Convert embedding list to pgvector string format if needed
+    if isinstance(query_embedding, list):
+        query_embedding = str(query_embedding)
+    
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, query_embedding, threshold, limit)
         
         memories = []
         for row in rows:
+            # Parse embedding: pgvector returns as string "[0.1,0.2,...]"
+            raw_emb = row['embedding']
+            if isinstance(raw_emb, str):
+                emb = json.loads(raw_emb)
+            elif isinstance(raw_emb, (list, tuple)):
+                emb = [float(x) for x in raw_emb]
+            else:
+                emb = []
+            
             memory = SemanticMemory(
                 id=row['id'],
                 content=row['content'],
-                embedding=list(row['embedding']),
+                embedding=emb,
                 metadata=json.loads(row['metadata']) if row['metadata'] else {},
                 source_agent_id=row['source_agent_id'],
                 confidence=row['confidence'],

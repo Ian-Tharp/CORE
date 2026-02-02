@@ -91,20 +91,24 @@ class MemoryService:
             # so this store is only used for LangMem's internal state management.
             self.store = InMemoryStore()
             
-            # Initialize LangMem memory manager
-            # Note: Using a lightweight schema since we're primarily using our custom repository
-            self.langmem_manager = create_memory_manager(
-                model="ollama/llama3.2:3b",  # Use local Ollama model
-                schemas=[],  # We'll use our custom schemas
-                store=self.store,
-                instructions="""
-                Extract and organize information for the three-tier memory system:
-                - Semantic: Facts and knowledge that are useful across agents
-                - Episodic: Personal experiences and context for specific agents
-                - Procedural: Step-by-step procedures and learned behaviors
-                Focus on actionable information that improves future interactions.
-                """
-            )
+            # Initialize LangMem memory manager (optional — not needed for core memory ops)
+            # LangMem is used for higher-level memory extraction; core store/search uses
+            # our custom pgvector repository + embedding service directly.
+            try:
+                self.langmem_manager = create_memory_manager(
+                    "ollama/llama3.2:3b",
+                    instructions="""
+                    Extract and organize information for the three-tier memory system:
+                    - Semantic: Facts and knowledge that are useful across agents
+                    - Episodic: Personal experiences and context for specific agents
+                    - Procedural: Step-by-step procedures and learned behaviors
+                    Focus on actionable information that improves future interactions.
+                    """,
+                )
+                logger.info("LangMem memory manager initialized")
+            except Exception as langmem_err:
+                logger.warning(f"LangMem manager initialization failed (non-fatal): {langmem_err}")
+                self.langmem_manager = None
             
             self._initialized = True
             logger.info("MemoryService initialized successfully")

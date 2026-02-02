@@ -27,6 +27,7 @@ services:
       - DB_PASSWORD=core_password
     volumes:
       - ./backend:/app
+      - backend-venv:/app/.venv
       - backend-data:/app/data
     networks:
       - core-network
@@ -144,6 +145,7 @@ services:
 
 volumes:
   backend-data:
+  backend-venv:
   postgres-data:
   redis-data:
   ollama-data:

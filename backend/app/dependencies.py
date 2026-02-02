@@ -524,6 +524,56 @@ async def setup_db_schema() -> None:
             )
 
             # -----------------------------------------------------------------
+            # CORE Pipeline Runs: persistent execution tracking
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS core_runs (
+                    run_id       UUID PRIMARY KEY,
+                    user_id      VARCHAR(255),
+                    input_text   TEXT NOT NULL,
+                    status       VARCHAR(32) NOT NULL DEFAULT 'running',
+                    state        JSONB,
+                    result       JSONB,
+                    error        TEXT,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_core_runs_status ON core_runs(status)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_core_runs_user_id ON core_runs(user_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_core_runs_created_at ON core_runs(created_at DESC)"
+            )
+
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS core_run_events (
+                    event_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    run_id     UUID NOT NULL REFERENCES core_runs(run_id) ON DELETE CASCADE,
+                    event_type VARCHAR(64) NOT NULL,
+                    step_name  VARCHAR(255),
+                    data       JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_core_run_events_run_id ON core_run_events(run_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_core_run_events_created_at ON core_run_events(created_at)"
+            )
+
+            # -----------------------------------------------------------------
             # Agent Library: agent configurations for dynamic instantiation
             # -----------------------------------------------------------------
             await conn.execute(
