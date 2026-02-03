@@ -24,11 +24,11 @@ dependencies = [
     "httpx>=0.27.0",
     "langchain-mcp-adapters>=0.1.11",
     "docker>=7.0.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [dependency-groups]
 dev = [
-    "aiosqlite>=0.22.1",
     "black>=25.1.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=0.23.0",
@@ -40,7 +40,13 @@ markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
 ]
 addopts = "-m 'not integration'"
+testpaths = ["tests", "app"]
+# Exclude standalone scripts that aren't real test modules
+collect_ignore = ["test_sync.py"]
 filterwarnings = [
     "ignore:.*datetime\\.datetime\\.utcnow.*:DeprecationWarning",
     "ignore:.*class-based `config` is deprecated.*:DeprecationWarning",
+    "ignore:.*Importing Send from langgraph.constants.*:DeprecationWarning",
+    "ignore:.*The `dict` method is deprecated.*:DeprecationWarning",
+    "ignore:.*json_encoders.*is deprecated.*:DeprecationWarning",
 ]
