@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """Quick test of consciousness exploration."""
+import pytest
+
+# Mark entire module as integration (skipped by default, run with: pytest -m integration)
+pytestmark = pytest.mark.integration
+
 import asyncio
 import httpx
 import json

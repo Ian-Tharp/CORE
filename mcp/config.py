@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False
+        case_sensitive=False,
+        env_prefix="MCP_",
+        extra="ignore"
     )
     
     # Application settings
@@ -70,8 +72,6 @@ class Settings(BaseSettings):
     enable_batch_operations: bool = True
     enable_health_monitoring: bool = True
     
-    class Config:
-        env_prefix = "MCP_"
 
 
 # Create global settings instance

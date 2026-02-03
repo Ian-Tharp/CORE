@@ -8,7 +8,7 @@ Covers publishing, subscriptions, delivery, external agents, metrics, and edge c
 import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -629,7 +629,7 @@ class TestRequestResponse:
             "priority": "normal",
             "correlation_id": correlation,
             "reply_to": request_msg.id,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         call_count = 0
@@ -1012,11 +1012,13 @@ class TestModelValidation:
         assert set(values) == {"low", "normal", "high", "urgent"}
 
     def test_message_type_enum_values(self):
-        """MessageType should have exactly 8 types."""
+        """MessageType should have exactly 10 types."""
         # Arrange / Act
         values = [t.value for t in MessageType]
 
         # Assert
-        assert len(values) == 8
+        assert len(values) == 10
         assert "task_request" in values
         assert "broadcast" in values
+        assert "catalyst_phase_complete" in values
+        assert "level_transition" in values

@@ -7,7 +7,7 @@ Tests cover routing logic, refusal handling, completion tracking, and edge cases
 
 import asyncio
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any
 from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -53,7 +53,7 @@ def sample_agents_with_metrics():
                 agent_role="researcher",
                 status=InstanceStatus.READY,
                 capabilities=["web_search", "analysis", "writing"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             ),
             "trust_metrics": {
                 "tasks_completed": 25,
@@ -71,7 +71,7 @@ def sample_agents_with_metrics():
                 agent_role="analyst",
                 status=InstanceStatus.READY,
                 capabilities=["analysis", "data_processing"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             ),
             "trust_metrics": {
                 "tasks_completed": 15,
@@ -89,7 +89,7 @@ def sample_agents_with_metrics():
                 agent_role="researcher",
                 status=InstanceStatus.READY,
                 capabilities=["web_search", "analysis"],
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             ),
             "trust_metrics": {
                 "tasks_completed": 10,

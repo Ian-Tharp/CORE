@@ -54,7 +54,7 @@ async def test_core_state():
     return {
         "status": "ok",
         "run_id": state.run_id,
-        "intent": state.intent.dict() if state.intent else None,
+        "intent": state.intent.model_dump() if state.intent else None,
         "plan_steps": len(state.plan.steps) if state.plan else 0,
         "response": state.response
     }
