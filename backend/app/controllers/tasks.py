@@ -22,6 +22,7 @@ from app.repository.task_repository import (
     get_task_metrics, get_agent_task_metrics, get_queued_tasks
 )
 from app.services.task_router import task_router
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class RoutingAnalyticsResponse(BaseModel):
 # =============================================================================
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def submit_task(request: CreateTaskRequest) -> Dict[str, str]:
+async def submit_task(request: CreateTaskRequest, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Submit a new task for routing.
     
@@ -151,7 +152,8 @@ async def list_tasks_endpoint(
     priority_max: Optional[int] = Query(None, ge=1, le=10, description="Maximum priority"),
     human_override: Optional[bool] = Query(None, description="Filter by human override"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=200, description="Page size")
+    page_size: int = Query(50, ge=1, le=200, description="Page size"),
+    api_key: str = Depends(require_api_key),
 ) -> TaskListResponse:
     """List tasks with optional filtering and pagination."""
     try:
@@ -187,7 +189,8 @@ async def list_tasks_endpoint(
 @router.get("/queue", status_code=status.HTTP_200_OK)
 async def get_queued_tasks_endpoint(
     priority_order: bool = Query(True, description="Order by priority"),
-    limit: int = Query(50, ge=1, le=200, description="Maximum tasks to return")
+    limit: int = Query(50, ge=1, le=200, description="Maximum tasks to return"),
+    api_key: str = Depends(require_api_key),
 ) -> List[Task]:
     """Get queued tasks waiting for assignment."""
     try:
@@ -203,7 +206,7 @@ async def get_queued_tasks_endpoint(
 
 
 @router.get("/{task_id}", status_code=status.HTTP_200_OK)
-async def get_task_details(task_id: UUID) -> TaskResponse:
+async def get_task_details(task_id: UUID, api_key: str = Depends(require_api_key)) -> TaskResponse:
     """Get detailed task information including assignments."""
     try:
         task = await get_task(task_id)
@@ -234,7 +237,7 @@ async def get_task_details(task_id: UUID) -> TaskResponse:
 # =============================================================================
 
 @router.post("/{task_id}/assign", status_code=status.HTTP_200_OK)
-async def assign_task_manually(task_id: UUID, request: AssignTaskRequest) -> Dict[str, str]:
+async def assign_task_manually(task_id: UUID, request: AssignTaskRequest, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Manually assign a task to a specific agent (human override).
     
@@ -289,7 +292,7 @@ async def assign_task_manually(task_id: UUID, request: AssignTaskRequest) -> Dic
 
 
 @router.post("/{task_id}/complete", status_code=status.HTTP_200_OK)
-async def complete_task(task_id: UUID, request: TaskCompletionRequest) -> Dict[str, str]:
+async def complete_task(task_id: UUID, request: TaskCompletionRequest, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """Mark a task as completed with results."""
     try:
         # Get task to verify it exists and get agent ID
@@ -338,7 +341,7 @@ async def complete_task(task_id: UUID, request: TaskCompletionRequest) -> Dict[s
 
 
 @router.post("/{task_id}/fail", status_code=status.HTTP_200_OK)
-async def fail_task(task_id: UUID, request: TaskFailureRequest) -> Dict[str, str]:
+async def fail_task(task_id: UUID, request: TaskFailureRequest, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """Mark a task as failed with error details."""
     try:
         # Get task to verify it exists and get agent ID
@@ -386,7 +389,7 @@ async def fail_task(task_id: UUID, request: TaskFailureRequest) -> Dict[str, str
 
 
 @router.post("/{task_id}/cancel", status_code=status.HTTP_200_OK)
-async def cancel_task(task_id: UUID) -> Dict[str, str]:
+async def cancel_task(task_id: UUID, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """Cancel a queued or running task."""
     try:
         # Get task to verify it exists
@@ -428,7 +431,7 @@ async def cancel_task(task_id: UUID) -> Dict[str, str]:
 
 
 @router.post("/{task_id}/retry", status_code=status.HTTP_200_OK)
-async def retry_task(task_id: UUID) -> Dict[str, str]:
+async def retry_task(task_id: UUID, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """Retry a failed task."""
     try:
         # Get task to verify it exists
@@ -489,7 +492,7 @@ async def retry_task(task_id: UUID) -> Dict[str, str]:
 # =============================================================================
 
 @router.get("/analytics/overview", status_code=status.HTTP_200_OK)
-async def get_task_analytics() -> TaskMetrics:
+async def get_task_analytics(api_key: str = Depends(require_api_key)) -> TaskMetrics:
     """Get overall task routing analytics."""
     try:
         metrics = await get_task_metrics()
@@ -504,7 +507,7 @@ async def get_task_analytics() -> TaskMetrics:
 
 
 @router.get("/analytics/agents", status_code=status.HTTP_200_OK)
-async def get_agent_analytics() -> List[AgentTaskMetrics]:
+async def get_agent_analytics(api_key: str = Depends(require_api_key)) -> List[AgentTaskMetrics]:
     """Get per-agent task performance analytics."""
     try:
         metrics = await get_agent_task_metrics()
@@ -519,7 +522,7 @@ async def get_agent_analytics() -> List[AgentTaskMetrics]:
 
 
 @router.get("/analytics/routing", status_code=status.HTTP_200_OK)
-async def get_routing_analytics() -> RoutingAnalyticsResponse:
+async def get_routing_analytics(api_key: str = Depends(require_api_key)) -> RoutingAnalyticsResponse:
     """Get comprehensive routing analytics for dashboard."""
     try:
         analytics = await task_router.get_routing_analytics()
@@ -538,7 +541,7 @@ async def get_routing_analytics() -> RoutingAnalyticsResponse:
 # =============================================================================
 
 @router.get("/types", status_code=status.HTTP_200_OK)
-async def get_task_types() -> List[str]:
+async def get_task_types(api_key: str = Depends(require_api_key)) -> List[str]:
     """Get available task types."""
     return [
         TaskType.RESEARCH,
@@ -553,7 +556,7 @@ async def get_task_types() -> List[str]:
 
 
 @router.get("/statuses", status_code=status.HTTP_200_OK)
-async def get_task_statuses() -> List[str]:
+async def get_task_statuses(api_key: str = Depends(require_api_key)) -> List[str]:
     """Get available task statuses."""
     return [
         TaskStatus.QUEUED,

@@ -19,7 +19,7 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 
 from app.models.council_models import (
@@ -35,6 +35,7 @@ from app.models.council_models import (
 from app.repository import council_repository as repo
 from app.services.council.voice_registry import list_voices, get_voice, VoiceCategory
 from app.services.council_service import get_council_service
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ class DeliberateResponse(BaseModel):
 
 
 @router.post("/deliberate", response_model=DeliberateResponse)
-async def deliberate(request: DeliberateRequest) -> DeliberateResponse:
+async def deliberate(request: DeliberateRequest, api_key: str = Depends(require_api_key)) -> DeliberateResponse:
     """
     Run a full multi-perspective Council deliberation.
 
@@ -287,6 +288,7 @@ async def list_available_voices(
         default=None,
         description="Filter by category: core, strategic, domain, execution, meta"
     ),
+    api_key: str = Depends(require_api_key),
 ) -> dict:
     """
     List all available council voices.
@@ -339,7 +341,7 @@ async def list_available_voices(
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)
-async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
+async def create_session(request: CreateSessionRequest, api_key: str = Depends(require_api_key)) -> CreateSessionResponse:
     """
     Create a new council deliberation session.
     
@@ -387,7 +389,8 @@ async def create_session(request: CreateSessionRequest) -> CreateSessionResponse
 async def list_sessions(
     status: Optional[SessionStatus] = Query(default=None, description="Filter by status"),
     limit: int = Query(default=50, ge=1, le=100, description="Max results"),
-    offset: int = Query(default=0, ge=0, description="Offset for pagination")
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    api_key: str = Depends(require_api_key),
 ) -> ListSessionsResponse:
     """
     List council sessions with optional filtering.
@@ -416,7 +419,7 @@ async def list_sessions(
 
 
 @router.get("/sessions/{session_id}", response_model=CouncilSessionFull)
-async def get_session(session_id: UUID) -> CouncilSessionFull:
+async def get_session(session_id: UUID, api_key: str = Depends(require_api_key)) -> CouncilSessionFull:
     """
     Get a council session with all perspectives and votes.
     
@@ -449,7 +452,8 @@ async def get_session(session_id: UUID) -> CouncilSessionFull:
 @router.post("/sessions/{session_id}/perspectives", response_model=AddPerspectiveResponse)
 async def add_perspective(
     session_id: UUID,
-    request: AddPerspectiveRequest
+    request: AddPerspectiveRequest,
+    api_key: str = Depends(require_api_key),
 ) -> AddPerspectiveResponse:
     """
     Add a perspective to a council session.
@@ -518,7 +522,8 @@ async def add_perspective(
 @router.post("/sessions/{session_id}/votes", response_model=CastVoteResponse)
 async def cast_vote(
     session_id: UUID,
-    request: CastVoteRequest
+    request: CastVoteRequest,
+    api_key: str = Depends(require_api_key),
 ) -> CastVoteResponse:
     """
     Cast a vote on a perspective in a council session.
@@ -604,7 +609,8 @@ async def cast_vote(
 @router.post("/sessions/{session_id}/synthesize", response_model=SynthesizeResponse)
 async def synthesize_session(
     session_id: UUID,
-    request: SynthesizeRequest
+    request: SynthesizeRequest,
+    api_key: str = Depends(require_api_key),
 ) -> SynthesizeResponse:
     """
     Generate synthesis and complete a council session.
@@ -675,7 +681,7 @@ async def synthesize_session(
 # =============================================================================
 
 @router.post("/sessions/{session_id}/advance-round")
-async def advance_round(session_id: UUID) -> dict:
+async def advance_round(session_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """
     Advance a session to the next deliberation round.
     
@@ -727,7 +733,8 @@ async def advance_round(session_id: UUID) -> dict:
 @router.patch("/sessions/{session_id}/status")
 async def update_status(
     session_id: UUID,
-    status: SessionStatus = Query(..., description="New status")
+    status: SessionStatus = Query(..., description="New status"),
+    api_key: str = Depends(require_api_key),
 ) -> dict:
     """
     Update a session's status.
@@ -769,7 +776,7 @@ async def update_status(
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: UUID) -> dict:
+async def delete_session(session_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """
     Delete a council session and all associated data.
     

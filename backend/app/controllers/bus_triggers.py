@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.models.bus_models import BusMessage
 from app.services.bus_triggers import (
@@ -20,6 +20,7 @@ from app.services.bus_triggers import (
     TriggerRule,
     get_bus_trigger_service,
 )
+from app.auth import require_api_key
 
 router = APIRouter(prefix="/bus/triggers", tags=["bus-triggers"])
 
@@ -35,7 +36,7 @@ router = APIRouter(prefix="/bus/triggers", tags=["bus-triggers"])
     response_model=Dict[str, Any],
     summary="Register a new bus trigger",
 )
-async def register_trigger(rule: TriggerRule) -> Dict[str, Any]:
+async def register_trigger(rule: TriggerRule, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Register a trigger rule.
 
@@ -66,7 +67,7 @@ async def register_trigger(rule: TriggerRule) -> Dict[str, Any]:
     response_model=Dict[str, Any],
     summary="List all registered triggers",
 )
-async def list_triggers() -> Dict[str, Any]:
+async def list_triggers(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Return every registered trigger rule."""
     svc = get_bus_trigger_service()
     triggers = svc.list_triggers()
@@ -82,7 +83,7 @@ async def list_triggers() -> Dict[str, Any]:
     response_model=Dict[str, Any],
     summary="Get a single trigger by id",
 )
-async def get_trigger(trigger_id: str) -> Dict[str, Any]:
+async def get_trigger(trigger_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Return a single trigger rule or 404."""
     svc = get_bus_trigger_service()
     rule = svc.get_trigger(trigger_id)
@@ -100,7 +101,7 @@ async def get_trigger(trigger_id: str) -> Dict[str, Any]:
     response_model=None,
     summary="Remove a trigger",
 )
-async def remove_trigger(trigger_id: str):
+async def remove_trigger(trigger_id: str, api_key: str = Depends(require_api_key)):
     """Delete a trigger by id.  Returns 404 if it doesn't exist."""
     svc = get_bus_trigger_service()
     removed = svc.remove_trigger(trigger_id)
@@ -122,7 +123,7 @@ async def remove_trigger(trigger_id: str):
     response_model=TriggerEvaluation,
     summary="Evaluate a message against all triggers (dry run)",
 )
-async def evaluate_message(message: BusMessage) -> TriggerEvaluation:
+async def evaluate_message(message: BusMessage, api_key: str = Depends(require_api_key)) -> TriggerEvaluation:
     """
     Test which triggers would fire for a given message **without**
     actually executing any actions.  Useful for debugging rules.

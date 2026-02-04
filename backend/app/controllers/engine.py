@@ -27,7 +27,7 @@ from pydantic import BaseModel
 
 from app.models.core_state import COREState
 from app.core.langgraph.core_graph_v2 import get_core_graph
-from app.auth import optional_api_key
+from app.auth import optional_api_key, require_api_key
 from app.repository import run_repository
 from app.services.webhook_service import get_webhook_service, WebhookEvent
 import logging
@@ -90,7 +90,7 @@ class RunResponse(BaseModel):
 # ======================
 
 @router.post("/run", response_model=RunResponse)
-async def run_core(request: RunRequest) -> RunResponse:
+async def run_core(request: RunRequest, api_key: str = Depends(require_api_key)) -> RunResponse:
     """
     Execute the CORE cognitive pipeline for a user input.
 
@@ -212,7 +212,7 @@ async def run_core(request: RunRequest) -> RunResponse:
 
 
 @router.post("/run/stream")
-async def run_core_stream(request: RunRequest):
+async def run_core_stream(request: RunRequest, api_key: str = Depends(require_api_key)):
     """
     Execute CORE pipeline with real-time streaming progress.
     
@@ -384,7 +384,7 @@ def _sse_event(data: dict) -> str:
 
 # NOTE: /runs/stats must be defined BEFORE /runs/{run_id} to avoid route matching issues
 @router.get("/runs/stats")
-async def get_run_stats() -> Dict[str, Any]:
+async def get_run_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get run statistics from the database.
     
@@ -404,7 +404,7 @@ async def get_run_stats() -> Dict[str, Any]:
 
 
 @router.get("/runs/{run_id}")
-async def get_run(run_id: str) -> COREState:
+async def get_run(run_id: str, api_key: str = Depends(require_api_key)) -> COREState:
     """
     Get the current state of a CORE execution.
 
@@ -450,7 +450,7 @@ async def get_run(run_id: str) -> COREState:
 
 
 @router.get("/runs/{run_id}/stream")
-async def stream_run(run_id: str, user_input: str = ""):
+async def stream_run(run_id: str, user_input: str = "", api_key: str = Depends(require_api_key)):
     """
     Stream execution updates via Server-Sent Events (SSE).
 
@@ -682,7 +682,7 @@ async def _stream_graph_execution(graph, state: COREState):
 
 
 @router.delete("/runs/{run_id}")
-async def delete_run(run_id: str) -> Dict[str, str]:
+async def delete_run(run_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Delete a run from memory and database.
     """
@@ -722,7 +722,8 @@ async def list_runs(
     user_id: Optional[str] = None,
     status_filter: Optional[str] = None,
     limit: int = 50,
-    include_db: bool = True
+    include_db: bool = True,
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     List runs (in-memory active + persisted in database).

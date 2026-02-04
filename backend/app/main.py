@@ -156,12 +156,16 @@ setup_middleware(app)
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
-# Allow both Angular development server and Electron app to access this API
+# Configurable allowed origins (default: local dev servers).
+# Set CORE_ALLOWED_ORIGINS env var to a comma-separated list for production.
+ALLOWED_ORIGINS = os.getenv(
+    "CORE_ALLOWED_ORIGINS",
+    "http://localhost:4200,http://localhost:8001",
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    # Development: allow all origins to prevent CORS headaches across
-    # Electron (app://, file://) and local dev servers (localhost:*).
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

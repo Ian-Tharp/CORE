@@ -22,7 +22,7 @@ For junior developers:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel, Field
 from unittest.mock import MagicMock  # used in tests only
 from typing import List, Optional, Dict, Any
@@ -38,6 +38,7 @@ from app.services.agent_factory_service import get_agent_factory
 from app.services.agent_mcp_service import get_agent_mcp_service
 
 import logging
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class AgentToolDTO(BaseModel):
 
 
 @router.get("/{agent_id}/tools", status_code=status.HTTP_200_OK)
-async def get_agent_tools(agent_id: str) -> Dict[str, Any]:
+async def get_agent_tools(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Return the list of tools available to the specified agent, including
     the MCP server id when known.
@@ -97,7 +98,8 @@ async def list_agents(
     search_query: Optional[str] = Query(None, description="Search in name/description/interests"),
     tags: Optional[str] = Query(None, description="Comma-separated tags to filter by (agents must have ALL tags)"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=200, description="Items per page")
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     List agents with optional filtering and pagination.
@@ -165,7 +167,8 @@ async def search_agents(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     tags: Optional[str] = Query(None, description="Comma-separated tags to filter by"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=200, description="Items per page")
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Full-text search across agents with relevance ranking.
@@ -224,7 +227,8 @@ async def search_agents(
 @router.get("/tags", status_code=status.HTTP_200_OK)
 async def get_agent_tags(
     agent_type: Optional[str] = Query(None, description="Only count tags from this agent type"),
-    is_active: Optional[bool] = Query(None, description="Only count tags from active/inactive agents")
+    is_active: Optional[bool] = Query(None, description="Only count tags from active/inactive agents"),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Get all unique tags (interests) with usage counts.
@@ -272,7 +276,7 @@ async def get_agent_tags(
 
 
 @router.get("/{agent_id}", status_code=status.HTTP_200_OK)
-async def get_agent(agent_id: str) -> Dict[str, Any]:
+async def get_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get details for a specific agent.
 
@@ -312,7 +316,7 @@ async def get_agent(agent_id: str) -> Dict[str, Any]:
 # =============================================================================
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_agent(request: AgentCreateRequest) -> Dict[str, Any]:
+async def create_agent(request: AgentCreateRequest, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Create a new agent in the library.
 
@@ -380,7 +384,8 @@ async def create_agent(request: AgentCreateRequest) -> Dict[str, Any]:
 @router.patch("/{agent_id}", status_code=status.HTTP_200_OK)
 async def update_agent(
     agent_id: str,
-    request: AgentUpdateRequest
+    request: AgentUpdateRequest,
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Update an existing agent (partial update).
@@ -440,7 +445,7 @@ async def update_agent(
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_agent(agent_id: str):
+async def delete_agent(agent_id: str, api_key: str = Depends(require_api_key)):
     """
     Delete an agent from the library.
 
@@ -481,7 +486,7 @@ async def delete_agent(agent_id: str):
 # =============================================================================
 
 @router.post("/{agent_id}/activate", status_code=status.HTTP_200_OK)
-async def activate_agent(agent_id: str) -> Dict[str, str]:
+async def activate_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Activate an agent (set is_active=true, status='online').
 
@@ -514,7 +519,7 @@ async def activate_agent(agent_id: str) -> Dict[str, str]:
 
 
 @router.post("/{agent_id}/deactivate", status_code=status.HTTP_200_OK)
-async def deactivate_agent(agent_id: str) -> Dict[str, str]:
+async def deactivate_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Deactivate an agent (set is_active=false, status='inactive').
 
@@ -554,7 +559,7 @@ async def deactivate_agent(agent_id: str) -> Dict[str, str]:
 # =============================================================================
 
 @router.get("/stats/overview", status_code=status.HTTP_200_OK)
-async def get_agent_stats() -> Dict[str, Any]:
+async def get_agent_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get agent system statistics.
 
@@ -608,7 +613,8 @@ async def get_agent_stats() -> Dict[str, Any]:
 
 @router.post("/cache/clear", status_code=status.HTTP_200_OK)
 async def clear_factory_cache(
-    agent_id: Optional[str] = Query(None, description="Agent to clear (or all if not specified)")
+    agent_id: Optional[str] = Query(None, description="Agent to clear (or all if not specified)"),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """
     Clear agent factory cache.
