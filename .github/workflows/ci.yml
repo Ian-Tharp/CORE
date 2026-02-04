@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: core
+          POSTGRES_PASSWORD: core_dev
+          POSTGRES_DB: core_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run linting
+        run: uv run black --check app/ tests/
+        continue-on-error: true  # Don't fail CI on formatting yet
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://core:core_dev@localhost:5432/core_db
+          REDIS_URL: redis://localhost:6379
+          CORE_API_KEY: ci-test-key
+          OPENAI_API_KEY: sk-fake-for-ci
+          ANTHROPIC_API_KEY: sk-ant-fake-for-ci
+        run: |
+          uv run pytest --tb=short -q --ignore=test_sync.py 2>&1

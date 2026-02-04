@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 import os
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates
@@ -16,10 +16,8 @@ from app.services.memory_service import memory_service
 from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+from app.core.logging_config import setup_logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -166,6 +164,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Correlation ID middleware — adds X-Correlation-ID to every request/response
+from app.middleware.correlation import CorrelationIDMiddleware
+app.add_middleware(CorrelationIDMiddleware)
+
+# TODO: Add /api/v1/ prefix when ready for versioned API
 
 
 # NOTE: /health endpoint is now handled by health.router (no duplicate!)
