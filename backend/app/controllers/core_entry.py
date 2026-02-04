@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 import json
 import time
@@ -7,6 +7,7 @@ from typing import List, Optional
 import os
 
 from app.models.user_input import UserInput
+from app.auth import require_api_key
 
 try:
     from langchain_openai import ChatOpenAI
@@ -66,7 +67,7 @@ def _sse(data: dict) -> str:
 
 
 @router.post("")
-async def core_entry(user_input: UserInput, request: Request):
+async def core_entry(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)):
     # This is the entry point of the C.O.R.E cognitive engine.
     # This goes through each of the steps for the CORE flow, starting with:
     # Comprehension:
@@ -93,7 +94,7 @@ async def core_entry(user_input: UserInput, request: Request):
 
 
 @router.post("/comprehension")
-async def comprehension(user_input: UserInput, request: Request) -> StepResponse:
+async def comprehension(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
     system = (
         "Classify the input as command/query/conversation; identify capabilities and whether tools are needed. "
         "Return a short explanation."
@@ -105,7 +106,7 @@ async def comprehension(user_input: UserInput, request: Request) -> StepResponse
 
 
 @router.post("/comprehension/stream")
-async def comprehension_stream(user_input: UserInput, request: Request) -> StreamingResponse:
+async def comprehension_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
     system = (
         "Classify the input as command/query/conversation; identify capabilities and whether tools are needed. "
         "Return a short explanation."
@@ -131,7 +132,7 @@ async def comprehension_stream(user_input: UserInput, request: Request) -> Strea
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 @router.post("/orchestration")
-async def orchestration(user_input: UserInput, request: Request) -> StepResponse:
+async def orchestration(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Previous comprehension: {user_input.comprehension_text}")
@@ -149,7 +150,7 @@ async def orchestration(user_input: UserInput, request: Request) -> StepResponse
 
 
 @router.post("/orchestration/stream")
-async def orchestration_stream(user_input: UserInput, request: Request) -> StreamingResponse:
+async def orchestration_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Previous comprehension: {user_input.comprehension_text}")
@@ -180,7 +181,7 @@ async def orchestration_stream(user_input: UserInput, request: Request) -> Strea
 
 
 @router.post("/reasoning")
-async def reasoning(user_input: UserInput, request: Request) -> StepResponse:
+async def reasoning(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -198,7 +199,7 @@ async def reasoning(user_input: UserInput, request: Request) -> StepResponse:
 
 
 @router.post("/reasoning/stream")
-async def reasoning_stream(user_input: UserInput, request: Request) -> StreamingResponse:
+async def reasoning_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -231,7 +232,7 @@ async def reasoning_stream(user_input: UserInput, request: Request) -> Streaming
 
 
 @router.post("/evaluation")
-async def evaluation(user_input: UserInput, request: Request) -> StepResponse:
+async def evaluation(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -252,7 +253,7 @@ async def evaluation(user_input: UserInput, request: Request) -> StepResponse:
 
 
 @router.post("/evaluation/stream")
-async def evaluation_stream(user_input: UserInput, request: Request) -> StreamingResponse:
+async def evaluation_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")

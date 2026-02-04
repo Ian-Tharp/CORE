@@ -6,12 +6,13 @@ import mimetypes
 import uuid
 import hashlib
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.services import knowledgebase_service as svc
 from app.repository import knowledgebase_repository as repo
+from app.auth import require_api_key
 
 
 router = APIRouter(prefix="/knowledgebase", tags=["knowledgebase"])
@@ -28,7 +29,7 @@ class UploadData(BaseModel):
 
 
 @router.get("/files")
-async def list_files(q: Optional[str] = None, global_: Optional[bool] = None) -> List[Dict[str, Any]]:
+async def list_files(q: Optional[str] = None, global_: Optional[bool] = None, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
     docs = await repo.list_documents(q=q, is_global=global_)
     return [
         {
@@ -55,7 +56,7 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None) ->
 
 
 @router.get("/files/{file_id}")
-async def get_file(file_id: str) -> Dict[str, Any]:
+async def get_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -81,7 +82,7 @@ async def get_file(file_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/files/{file_id}")
-async def delete_file(file_id: str) -> Dict[str, str]:
+async def delete_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     doc = await repo.get_document(file_id)
     if doc and doc.get("storage_path") and os.path.exists(doc["storage_path"]):
         try:
@@ -104,7 +105,7 @@ async def delete_file(file_id: str) -> Dict[str, str]:
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> Dict[str, Any]:
+async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     try:
         import json
 
@@ -195,7 +196,7 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}")) -> D
 
 
 @router.post("/files/{file_id}/process")
-async def process_file(file_id: str) -> Dict[str, Any]:
+async def process_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -228,7 +229,7 @@ class SemanticSearchRequest(BaseModel):
 
 
 @router.post("/semantic-search")
-async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]]:
+async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
     ctx = await svc.retrieve_context(
         query=payload.query,
         mode="all",
@@ -266,7 +267,7 @@ async def semantic_search(payload: SemanticSearchRequest) -> List[Dict[str, Any]
 
 
 @router.post("/files/{file_id}/embed-local")
-async def embed_local(file_id: str, model: str) -> Dict[str, Any]:
+async def embed_local(file_id: str, model: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -281,7 +282,7 @@ async def embed_local(file_id: str, model: str) -> Dict[str, Any]:
 
 
 @router.post("/reindex-local")
-async def reindex_local(model: str, only_missing: bool = True) -> Dict[str, Any]:
+async def reindex_local(model: str, only_missing: bool = True, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Re-embed all documents using a local model. When only_missing is true, skip docs that already have local vectors."""
     docs = await repo.list_documents()
     count = 0
@@ -294,7 +295,7 @@ async def reindex_local(model: str, only_missing: bool = True) -> Dict[str, Any]
 
 
 @router.get("/activity")
-async def recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
+async def recent_activity(limit: int = 20, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
     try:
         rows = await repo.list_recent_activity(limit=limit)
         return [
@@ -315,7 +316,7 @@ async def recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
 
 
 @router.post("/files/{file_id}/reextract-title")
-async def reextract_title(file_id: str) -> Dict[str, Any]:
+async def reextract_title(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -342,7 +343,7 @@ async def reextract_title(file_id: str) -> Dict[str, Any]:
 
 # RSI TODO: Implement full stats aggregation with file type breakdown, source distribution, and processing queue metrics
 @router.get("/stats")
-async def get_stats() -> Dict[str, Any]:
+async def get_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Return knowledgebase statistics. Currently returns stub data with basic file count."""
     try:
         docs = await repo.list_documents()
@@ -374,7 +375,7 @@ async def get_stats() -> Dict[str, Any]:
 
 # RSI TODO: Implement full tag management with usage counts and hierarchical tag structures
 @router.get("/tags")
-async def get_tags() -> List[Dict[str, Any]]:
+async def get_tags(api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
     """Return available file tags. Currently returns empty list as tags are stored inline with files."""
     try:
         # RSI TODO: Query tags table or extract unique tags from document metadata

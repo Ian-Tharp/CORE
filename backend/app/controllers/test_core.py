@@ -1,4 +1,7 @@
-"""Quick test endpoint for CORE without LLM calls"""
+"""Quick test endpoint for CORE without LLM calls
+
+WARNING: This endpoint is public (no auth). Remove or protect in production.
+"""
 from fastapi import APIRouter
 from app.models.core_state import COREState, UserIntent, ExecutionPlan, PlanStep, StepResult, EvaluationResult
 

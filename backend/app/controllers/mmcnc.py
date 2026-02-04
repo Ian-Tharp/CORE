@@ -44,7 +44,7 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 
 from app.models.mmcnc_models import (
     Macrocosm,
@@ -62,6 +62,7 @@ from app.models.mmcnc_models import (
     HierarchyContext,
 )
 from app.repository import mmcnc_repository as repo
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ router = APIRouter(prefix="/mmcnc", tags=["mmcnc"])
 # =============================================================================
 
 @router.post("/macrocosms", response_model=Macrocosm)
-async def create_macrocosm(request: CreateMacrocosmRequest) -> Macrocosm:
+async def create_macrocosm(request: CreateMacrocosmRequest, api_key: str = Depends(require_api_key)) -> Macrocosm:
     """
     Create a new macrocosm.
 
@@ -108,6 +109,7 @@ async def create_macrocosm(request: CreateMacrocosmRequest) -> Macrocosm:
 async def list_macrocosms(
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    api_key: str = Depends(require_api_key),
 ) -> List[Macrocosm]:
     """List all macrocosms with pagination."""
     try:
@@ -118,7 +120,7 @@ async def list_macrocosms(
 
 
 @router.get("/macrocosms/{macrocosm_id}", response_model=Macrocosm)
-async def get_macrocosm(macrocosm_id: UUID) -> Macrocosm:
+async def get_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_api_key)) -> Macrocosm:
     """Get a macrocosm by ID."""
     try:
         macrocosm = await repo.get_macrocosm(macrocosm_id)
@@ -133,7 +135,7 @@ async def get_macrocosm(macrocosm_id: UUID) -> Macrocosm:
 
 
 @router.patch("/macrocosms/{macrocosm_id}", response_model=Macrocosm)
-async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest) -> Macrocosm:
+async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest, api_key: str = Depends(require_api_key)) -> Macrocosm:
     """
     Partially update a macrocosm.
 
@@ -159,7 +161,7 @@ async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest) 
 
 
 @router.delete("/macrocosms/{macrocosm_id}")
-async def delete_macrocosm(macrocosm_id: UUID) -> dict:
+async def delete_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """Delete a macrocosm."""
     try:
         success = await repo.delete_macrocosm(macrocosm_id)
@@ -178,7 +180,7 @@ async def delete_macrocosm(macrocosm_id: UUID) -> dict:
 # =============================================================================
 
 @router.post("/microcosms", response_model=Microcosm)
-async def create_microcosm(request: CreateMicrocosmRequest) -> Microcosm:
+async def create_microcosm(request: CreateMicrocosmRequest, api_key: str = Depends(require_api_key)) -> Microcosm:
     """
     Create a new microcosm.
 
@@ -221,6 +223,7 @@ async def list_microcosms(
     parent_macrocosm_id: Optional[UUID] = Query(default=None, description="Filter by parent macrocosm"),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    api_key: str = Depends(require_api_key),
 ) -> List[Microcosm]:
     """List microcosms with optional filters."""
     try:
@@ -237,7 +240,7 @@ async def list_microcosms(
 
 
 @router.get("/microcosms/{microcosm_id}", response_model=Microcosm)
-async def get_microcosm(microcosm_id: UUID) -> Microcosm:
+async def get_microcosm(microcosm_id: UUID, api_key: str = Depends(require_api_key)) -> Microcosm:
     """Get a microcosm by ID."""
     try:
         microcosm = await repo.get_microcosm(microcosm_id)
@@ -252,7 +255,7 @@ async def get_microcosm(microcosm_id: UUID) -> Microcosm:
 
 
 @router.patch("/microcosms/{microcosm_id}", response_model=Microcosm)
-async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest) -> Microcosm:
+async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest, api_key: str = Depends(require_api_key)) -> Microcosm:
     """Partially update a microcosm."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -274,7 +277,7 @@ async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest) 
 
 
 @router.delete("/microcosms/{microcosm_id}")
-async def delete_microcosm(microcosm_id: UUID) -> dict:
+async def delete_microcosm(microcosm_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """Delete a microcosm."""
     try:
         success = await repo.delete_microcosm(microcosm_id)
@@ -293,7 +296,7 @@ async def delete_microcosm(microcosm_id: UUID) -> dict:
 # =============================================================================
 
 @router.post("/clusters", response_model=Cluster)
-async def create_cluster(request: CreateClusterRequest) -> Cluster:
+async def create_cluster(request: CreateClusterRequest, api_key: str = Depends(require_api_key)) -> Cluster:
     """
     Create a new cluster.
 
@@ -330,6 +333,7 @@ async def list_clusters(
     phase: Optional[str] = Query(default=None, description="Filter by phase"),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    api_key: str = Depends(require_api_key),
 ) -> List[Cluster]:
     """List clusters with optional filters."""
     try:
@@ -345,7 +349,7 @@ async def list_clusters(
 
 
 @router.get("/clusters/{cluster_id}", response_model=Cluster)
-async def get_cluster(cluster_id: UUID) -> Cluster:
+async def get_cluster(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> Cluster:
     """Get a cluster by ID."""
     try:
         cluster = await repo.get_cluster(cluster_id)
@@ -360,7 +364,7 @@ async def get_cluster(cluster_id: UUID) -> Cluster:
 
 
 @router.patch("/clusters/{cluster_id}", response_model=Cluster)
-async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest) -> Cluster:
+async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest, api_key: str = Depends(require_api_key)) -> Cluster:
     """Partially update a cluster."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -382,7 +386,7 @@ async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest) -> Clu
 
 
 @router.delete("/clusters/{cluster_id}")
-async def delete_cluster(cluster_id: UUID) -> dict:
+async def delete_cluster(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """Delete a cluster and all its nodes (cascade)."""
     try:
         success = await repo.delete_cluster(cluster_id)
@@ -401,7 +405,7 @@ async def delete_cluster(cluster_id: UUID) -> dict:
 # =============================================================================
 
 @router.post("/nodes", response_model=CreativeNode)
-async def create_node(request: CreateCreativeNodeRequest) -> CreativeNode:
+async def create_node(request: CreateCreativeNodeRequest, api_key: str = Depends(require_api_key)) -> CreativeNode:
     """
     Create a new creative node.
 
@@ -441,6 +445,7 @@ async def list_nodes(
     node_type: Optional[str] = Query(default=None, description="Filter by node type"),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    api_key: str = Depends(require_api_key),
 ) -> List[CreativeNode]:
     """List creative nodes with optional filters."""
     try:
@@ -456,7 +461,7 @@ async def list_nodes(
 
 
 @router.get("/nodes/{node_id}", response_model=CreativeNode)
-async def get_node(node_id: UUID) -> CreativeNode:
+async def get_node(node_id: UUID, api_key: str = Depends(require_api_key)) -> CreativeNode:
     """Get a creative node by ID."""
     try:
         node = await repo.get_node(node_id)
@@ -471,7 +476,7 @@ async def get_node(node_id: UUID) -> CreativeNode:
 
 
 @router.patch("/nodes/{node_id}", response_model=CreativeNode)
-async def update_node(node_id: UUID, request: UpdateCreativeNodeRequest) -> CreativeNode:
+async def update_node(node_id: UUID, request: UpdateCreativeNodeRequest, api_key: str = Depends(require_api_key)) -> CreativeNode:
     """Partially update a creative node."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -493,7 +498,7 @@ async def update_node(node_id: UUID, request: UpdateCreativeNodeRequest) -> Crea
 
 
 @router.delete("/nodes/{node_id}")
-async def delete_node(node_id: UUID) -> dict:
+async def delete_node(node_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
     """Delete a creative node."""
     try:
         success = await repo.delete_node(node_id)
@@ -512,7 +517,7 @@ async def delete_node(node_id: UUID) -> dict:
 # =============================================================================
 
 @router.get("/navigate/{entity_id}", response_model=HierarchyContext)
-async def navigate_hierarchy(entity_id: UUID) -> HierarchyContext:
+async def navigate_hierarchy(entity_id: UUID, api_key: str = Depends(require_api_key)) -> HierarchyContext:
     """
     Navigate the MMCNC hierarchy from any entity.
 
@@ -544,7 +549,7 @@ async def navigate_hierarchy(entity_id: UUID) -> HierarchyContext:
 
 
 @router.get("/clusters/{cluster_id}/lineage", response_model=HierarchyContext)
-async def get_cluster_lineage(cluster_id: UUID) -> HierarchyContext:
+async def get_cluster_lineage(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> HierarchyContext:
     """
     Get the full hierarchy lineage for a specific cluster.
 

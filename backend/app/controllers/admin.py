@@ -29,6 +29,7 @@ from app.services.webhook_service import get_webhook_service, WebhookEvent
 from app.services.model_router import get_model_router
 from app.repository import run_repository
 import logging
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # =============================================================================
 
 @router.get("/health")
-async def admin_health_check() -> Dict[str, str]:
+async def admin_health_check(api_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Quick health check for load balancers.
     
@@ -50,7 +51,7 @@ async def admin_health_check() -> Dict[str, str]:
 
 
 @router.get("/health/full")
-async def full_health_check() -> Dict[str, Any]:
+async def full_health_check(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Comprehensive health check for all services.
     
@@ -85,7 +86,8 @@ class CreateKeyResponse(BaseModel):
 @router.post("/keys", response_model=CreateKeyResponse)
 async def create_api_key(
     request: CreateKeyRequest,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> CreateKeyResponse:
     """
     Generate a new API key.
@@ -116,7 +118,7 @@ async def create_api_key(
 
 
 @router.get("/keys")
-async def get_api_keys(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def get_api_keys(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     List all registered API keys.
     
@@ -132,7 +134,8 @@ async def get_api_keys(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
 @router.delete("/keys/{key_name}")
 async def delete_api_key(
     key_name: str,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """
     Revoke an API key by name.
@@ -164,7 +167,8 @@ class RegisterWebhookRequest(BaseModel):
 @router.post("/webhooks")
 async def register_webhook(
     request: RegisterWebhookRequest,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Register a new webhook endpoint.
@@ -194,7 +198,7 @@ async def register_webhook(
 
 
 @router.get("/webhooks")
-async def list_webhooks(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def list_webhooks(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     List all registered webhooks.
     """
@@ -210,7 +214,8 @@ async def list_webhooks(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
 @router.delete("/webhooks/{webhook_id}")
 async def unregister_webhook(
     webhook_id: str,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """
     Unregister a webhook.
@@ -229,7 +234,8 @@ async def unregister_webhook(
 @router.get("/webhooks/deliveries")
 async def get_webhook_deliveries(
     limit: int = Query(50, ge=1, le=200),
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Get recent webhook delivery attempts.
@@ -246,7 +252,8 @@ async def get_webhook_deliveries(
 @router.post("/webhooks/test/{webhook_id}")
 async def test_webhook(
     webhook_id: str,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """
     Send a test event to a webhook.
@@ -276,7 +283,7 @@ async def test_webhook(
 # =============================================================================
 
 @router.get("/metrics")
-async def get_request_metrics(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def get_request_metrics(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get request metrics and statistics.
     """
@@ -285,7 +292,7 @@ async def get_request_metrics(api_key: dict = Depends(get_api_key)) -> Dict[str,
 
 
 @router.post("/metrics/reset")
-async def reset_metrics(api_key: dict = Depends(get_api_key)) -> Dict[str, str]:
+async def reset_metrics(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, str]:
     """
     Reset request metrics.
     """
@@ -298,7 +305,7 @@ async def reset_metrics(api_key: dict = Depends(get_api_key)) -> Dict[str, str]:
 
 
 @router.get("/stats")
-async def get_system_stats(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def get_system_stats(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get comprehensive system statistics.
     """
@@ -331,7 +338,8 @@ async def list_runs(
     status: Optional[str] = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     List engine runs with filtering.
@@ -359,7 +367,7 @@ async def list_runs(
 
 
 @router.get("/runs/stats")
-async def get_run_stats(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def get_run_stats(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get run statistics.
     """
@@ -376,7 +384,8 @@ async def get_run_stats(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
 @router.delete("/runs/cleanup")
 async def cleanup_old_runs(
     days: int = Query(30, ge=1, le=365),
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Delete runs older than specified days.
@@ -406,7 +415,8 @@ async def cleanup_old_runs(
 async def list_models(
     provider: Optional[str] = None,
     tier: Optional[str] = None,
-    api_key: dict = Depends(get_api_key)
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     List available models.
@@ -428,7 +438,7 @@ async def list_models(
 
 
 @router.get("/models/usage")
-async def get_model_usage(api_key: dict = Depends(get_api_key)) -> Dict[str, Any]:
+async def get_model_usage(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Get model usage statistics.
     """
