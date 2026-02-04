@@ -7,7 +7,7 @@ registering external agents, receiving webhooks, and observing metrics.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import Any, Dict, List
 
 from app.models.bus_models import (
@@ -22,6 +22,7 @@ from app.models.bus_models import (
     MessageType,
 )
 from app.services import bus_service
+from app.auth import require_api_key
 
 router = APIRouter(prefix="/bus", tags=["bus"])
 
@@ -31,7 +32,7 @@ router = APIRouter(prefix="/bus", tags=["bus"])
 # =============================================================================
 
 @router.post("/publish", status_code=status.HTTP_201_CREATED, response_model=DeliveryReceipt)
-async def publish_message(message: BusMessage) -> DeliveryReceipt:
+async def publish_message(message: BusMessage, api_key: str = Depends(require_api_key)) -> DeliveryReceipt:
     """Publish a message on the Communication Bus."""
     try:
         return await bus_service.publish(message)
@@ -43,7 +44,7 @@ async def publish_message(message: BusMessage) -> DeliveryReceipt:
 
 
 @router.post("/broadcast", status_code=status.HTTP_201_CREATED, response_model=DeliveryReceipt)
-async def broadcast_message(request: BroadcastRequest) -> DeliveryReceipt:
+async def broadcast_message(request: BroadcastRequest, api_key: str = Depends(require_api_key)) -> DeliveryReceipt:
     """Broadcast a message to all subscribers of a topic."""
     try:
         return await bus_service.broadcast(request)
@@ -59,7 +60,7 @@ async def broadcast_message(request: BroadcastRequest) -> DeliveryReceipt:
 # =============================================================================
 
 @router.get("/messages/{agent_id}", status_code=status.HTTP_200_OK)
-async def get_queued_messages(agent_id: str) -> Dict[str, Any]:
+async def get_queued_messages(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get queued (offline) messages for an agent and drain the queue."""
     try:
         messages = await bus_service.drain_queue(agent_id)
@@ -76,7 +77,7 @@ async def get_queued_messages(agent_id: str) -> Dict[str, Any]:
 # =============================================================================
 
 @router.post("/subscribe", status_code=status.HTTP_201_CREATED, response_model=Subscription)
-async def create_subscription(sub: SubscriptionCreate) -> Subscription:
+async def create_subscription(sub: SubscriptionCreate, api_key: str = Depends(require_api_key)) -> Subscription:
     """Create a subscription for an agent."""
     try:
         return await bus_service.subscribe(sub.agent_id, sub)
@@ -89,7 +90,7 @@ async def create_subscription(sub: SubscriptionCreate) -> Subscription:
 
 @router.delete("/subscribe/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT,
                response_model=None)
-async def remove_subscription(subscription_id: str):
+async def remove_subscription(subscription_id: str, api_key: str = Depends(require_api_key)):
     """Remove a subscription."""
     deleted = await bus_service.unsubscribe("", subscription_id)
     if not deleted:
@@ -100,7 +101,7 @@ async def remove_subscription(subscription_id: str):
 
 
 @router.get("/subscriptions/{agent_id}", status_code=status.HTTP_200_OK)
-async def list_subscriptions(agent_id: str) -> Dict[str, Any]:
+async def list_subscriptions(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """List all subscriptions for an agent."""
     subs = await bus_service.get_subscriptions(agent_id)
     return {"agent_id": agent_id, "subscriptions": [s.model_dump() for s in subs]}
@@ -113,6 +114,7 @@ async def list_subscriptions(agent_id: str) -> Dict[str, Any]:
 @router.post("/external-agents", status_code=status.HTTP_201_CREATED)
 async def register_external_agent(
     registration: ExternalAgentRegistration,
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Register an external agent (e.g. Vigil) with a webhook URL."""
     try:
@@ -126,7 +128,7 @@ async def register_external_agent(
 
 
 @router.get("/external-agents", status_code=status.HTTP_200_OK)
-async def list_external_agents() -> Dict[str, Any]:
+async def list_external_agents(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """List all registered external agents."""
     agents = await bus_service.list_external_agents()
     return {"external_agents": agents, "count": len(agents)}
@@ -134,7 +136,7 @@ async def list_external_agents() -> Dict[str, Any]:
 
 @router.delete("/external-agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT,
                response_model=None)
-async def deregister_external_agent(agent_id: str):
+async def deregister_external_agent(agent_id: str, api_key: str = Depends(require_api_key)):
     """Deregister an external agent."""
     deleted = await bus_service.deregister_external_agent(agent_id)
     if not deleted:
@@ -149,7 +151,7 @@ async def deregister_external_agent(agent_id: str):
 # =============================================================================
 
 @router.get("/metrics", status_code=status.HTTP_200_OK, response_model=BusMetrics)
-async def get_metrics() -> BusMetrics:
+async def get_metrics(api_key: str = Depends(require_api_key)) -> BusMetrics:
     """Get Communication Bus throughput and health metrics."""
     try:
         return await bus_service.get_metrics()
@@ -165,7 +167,7 @@ async def get_metrics() -> BusMetrics:
 # =============================================================================
 
 @router.post("/webhook/receive", status_code=status.HTTP_201_CREATED)
-async def webhook_receive(incoming: WebhookIncoming) -> Dict[str, Any]:
+async def webhook_receive(incoming: WebhookIncoming, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Receive a message from an external agent into the bus.
 

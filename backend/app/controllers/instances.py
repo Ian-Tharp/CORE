@@ -27,6 +27,7 @@ from app.repository.instance_repository import (
     get_instances_with_trust_metrics,
     InstanceStatus
 )
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def _convert_instance_info(info: InstanceInfo) -> InstanceResponse:
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=InstanceResponse)
-async def spawn_instance(request: SpawnInstanceRequest) -> InstanceResponse:
+async def spawn_instance(request: SpawnInstanceRequest, api_key: str = Depends(require_api_key)) -> InstanceResponse:
     """
     Spawn a new agent container.
     
@@ -165,7 +166,8 @@ async def list_instances_endpoint(
     device_id: Optional[str] = Query(None, description="Filter by device ID"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
-    include_docker: bool = Query(True, description="Include live Docker container data")
+    include_docker: bool = Query(True, description="Include live Docker container data"),
+    api_key: str = Depends(require_api_key),
 ) -> ListInstancesResponse:
     """
     List all agent instances with optional filtering.
@@ -253,7 +255,7 @@ async def list_instances_endpoint(
 
 
 @router.get("/{instance_id}", status_code=status.HTTP_200_OK, response_model=InstanceResponse)
-async def get_instance_details(instance_id: str) -> InstanceResponse:
+async def get_instance_details(instance_id: str, api_key: str = Depends(require_api_key)) -> InstanceResponse:
     """
     Get detailed information about a specific instance.
     
@@ -301,7 +303,7 @@ async def get_instance_details(instance_id: str) -> InstanceResponse:
 
 
 @router.post("/{instance_id}/stop", status_code=status.HTTP_200_OK)
-async def stop_instance(instance_id: str) -> Dict[str, Any]:
+async def stop_instance(instance_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Gracefully stop an instance.
     
@@ -341,7 +343,7 @@ async def stop_instance(instance_id: str) -> Dict[str, Any]:
 
 
 @router.post("/{instance_id}/restart", status_code=status.HTTP_200_OK)
-async def restart_instance(instance_id: str) -> Dict[str, Any]:
+async def restart_instance(instance_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Restart an instance.
     
@@ -381,7 +383,7 @@ async def restart_instance(instance_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/{instance_id}", status_code=status.HTTP_200_OK)
-async def remove_instance(instance_id: str, force: bool = Query(False, description="Force remove running container")) -> Dict[str, Any]:
+async def remove_instance(instance_id: str, force: bool = Query(False, description="Force remove running container"), api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     Remove an instance.
     
@@ -445,7 +447,7 @@ async def remove_instance(instance_id: str, force: bool = Query(False, descripti
 
 
 @router.post("/scale", status_code=status.HTTP_200_OK, response_model=ScaleResponse)
-async def scale_instances(request: ScaleRequest) -> ScaleResponse:
+async def scale_instances(request: ScaleRequest, api_key: str = Depends(require_api_key)) -> ScaleResponse:
     """
     Scale instances of a specific role to target count.
     
@@ -474,7 +476,7 @@ async def scale_instances(request: ScaleRequest) -> ScaleResponse:
 
 
 @router.get("/{instance_id}/trust", status_code=status.HTTP_200_OK, response_model=TrustMetricsResponse)
-async def get_instance_trust_metrics(instance_id: str) -> TrustMetricsResponse:
+async def get_instance_trust_metrics(instance_id: str, api_key: str = Depends(require_api_key)) -> TrustMetricsResponse:
     """
     Get trust metrics for a specific instance.
     
@@ -519,7 +521,8 @@ async def get_instance_trust_metrics(instance_id: str) -> TrustMetricsResponse:
 @router.get("/analytics/trust", status_code=status.HTTP_200_OK)
 async def get_trust_analytics(
     agent_role: Optional[str] = Query(None, description="Filter by agent role"),
-    min_trust_score: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum trust score")
+    min_trust_score: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum trust score"),
+    api_key: str = Depends(require_api_key),
 ) -> List[InstanceWithTrustResponse]:
     """
     Get instances with trust analytics.
@@ -656,7 +659,7 @@ class ConnectedAgentInfo(BaseModel):
 
 
 @router.post("/agents/register", status_code=status.HTTP_200_OK, response_model=AgentConfigResponse)
-async def register_agent_rest(request: AgentRegistrationRequest) -> AgentConfigResponse:
+async def register_agent_rest(request: AgentRegistrationRequest, api_key: str = Depends(require_api_key)) -> AgentConfigResponse:
     """
     REST fallback for agent registration when WebSocket is unavailable.
     
@@ -698,7 +701,7 @@ async def register_agent_rest(request: AgentRegistrationRequest) -> AgentConfigR
 
 
 @router.post("/agents/{agent_id}/heartbeat", status_code=status.HTTP_200_OK)
-async def send_heartbeat_rest(agent_id: str, request: AgentHeartbeatRequest) -> Dict[str, Any]:
+async def send_heartbeat_rest(agent_id: str, request: AgentHeartbeatRequest, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     REST fallback for agent heartbeat when WebSocket is unavailable.
     
@@ -736,7 +739,7 @@ async def send_heartbeat_rest(agent_id: str, request: AgentHeartbeatRequest) -> 
 
 
 @router.get("/agents/connected", status_code=status.HTTP_200_OK)
-async def list_connected_agents() -> Dict[str, Any]:
+async def list_connected_agents(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """
     List currently connected agents with WebSocket status.
     

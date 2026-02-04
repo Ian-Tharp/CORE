@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any
 from uuid import UUID
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.evaluation_models import (
@@ -25,6 +25,7 @@ from app.models.evaluation_models import (
     Verdict,
 )
 from app.services import evaluation_service
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class FeedbackResponse(BaseModel):
 # =============================================================================
 
 @router.post("/evaluate", status_code=status.HTTP_200_OK, response_model=EvaluationResponse)
-async def evaluate_task_output(request: EvaluationInput) -> EvaluationResponse:
+async def evaluate_task_output(request: EvaluationInput, api_key: str = Depends(require_api_key)) -> EvaluationResponse:
     """
     Evaluate a task's output against the original intent.
 
@@ -98,7 +99,7 @@ async def evaluate_task_output(request: EvaluationInput) -> EvaluationResponse:
 
 
 @router.post("/evaluate-step", status_code=status.HTTP_200_OK, response_model=StepEvaluationResponse)
-async def evaluate_single_step(request: EvaluateStepInput) -> StepEvaluationResponse:
+async def evaluate_single_step(request: EvaluateStepInput, api_key: str = Depends(require_api_key)) -> StepEvaluationResponse:
     """Evaluate a single plan step."""
     try:
         step_eval = await evaluation_service.evaluate_step(request)
@@ -117,7 +118,7 @@ async def evaluate_single_step(request: EvaluateStepInput) -> StepEvaluationResp
 # =============================================================================
 
 @router.get("/results/{task_id}", status_code=status.HTTP_200_OK)
-async def get_evaluation_results(task_id: UUID) -> List[EvaluationResult]:
+async def get_evaluation_results(task_id: UUID, api_key: str = Depends(require_api_key)) -> List[EvaluationResult]:
     """Get all evaluations for a given task, newest first."""
     try:
         results = await evaluation_service.get_evaluations_for_task(task_id)
@@ -147,6 +148,7 @@ async def get_metrics(
     agent_id: Optional[UUID] = Query(None, description="Filter by agent"),
     created_after: Optional[datetime] = Query(None, description="Start of period"),
     created_before: Optional[datetime] = Query(None, description="End of period"),
+    api_key: str = Depends(require_api_key),
 ) -> EvaluationMetrics:
     """Get aggregate evaluation metrics for the dashboard."""
     try:
@@ -169,7 +171,7 @@ async def get_metrics(
 # =============================================================================
 
 @router.post("/feedback", status_code=status.HTTP_200_OK, response_model=FeedbackResponse)
-async def submit_human_feedback(request: HumanFeedbackInput) -> FeedbackResponse:
+async def submit_human_feedback(request: HumanFeedbackInput, api_key: str = Depends(require_api_key)) -> FeedbackResponse:
     """Submit human feedback on an existing evaluation."""
     try:
         success = await evaluation_service.record_human_feedback(
@@ -209,6 +211,7 @@ async def get_evaluation_history(
     has_human_feedback: Optional[bool] = Query(None, description="Has human feedback"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
+    api_key: str = Depends(require_api_key),
 ) -> EvaluationListResponse:
     """Query evaluation history with optional filters and pagination."""
     try:

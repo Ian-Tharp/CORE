@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel, Field, validator
 
 from app.services.memory_service import memory_service, MemoryContext, Procedure, MemoryStats
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,8 @@ async def get_memory_service():
 @router.post("/knowledge", status_code=status.HTTP_201_CREATED)
 async def store_knowledge(
     request: StoreKnowledgeRequest,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Store shared knowledge accessible to all agents."""
     try:
@@ -175,7 +177,8 @@ async def search_knowledge(
     q: str = Query(..., description="Search query"),
     limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
     threshold: float = Query(0.7, ge=0.0, le=1.0, description="Similarity threshold"),
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> MemorySearchResponse:
     """Search shared knowledge by semantic similarity."""
     try:
@@ -220,7 +223,8 @@ async def search_knowledge(
 @router.post("/experience", status_code=status.HTTP_201_CREATED)
 async def store_experience(
     request: StoreExperienceRequest,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Store agent experience."""
     try:
@@ -251,7 +255,8 @@ async def get_agent_experiences(
     q: Optional[str] = Query(None, description="Optional search query"),
     limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
     memory_type: Optional[str] = Query(None, description="Filter by memory type"),
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> List[EpisodicMemoryResponse]:
     """Get agent experiences."""
     try:
@@ -291,7 +296,8 @@ async def get_agent_experiences(
 @router.post("/experience/{agent_id}/consolidate")
 async def consolidate_agent_experiences(
     agent_id: str,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Consolidate short-term experiences to long-term for an agent."""
     try:
@@ -318,7 +324,8 @@ async def consolidate_agent_experiences(
 @router.post("/procedure", status_code=status.HTTP_201_CREATED)
 async def store_procedure(
     request: StoreProcedureRequest,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Store a learned procedure."""
     try:
@@ -348,7 +355,8 @@ async def store_procedure(
 @router.get("/procedures/{role}")
 async def get_role_procedures(
     role: str,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> List[Procedure]:
     """Get all procedures for a role."""
     try:
@@ -368,7 +376,8 @@ async def search_procedures(
     q: str = Query(..., description="Search query"),
     role: Optional[str] = Query(None, description="Filter by role"),
     limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> List[Procedure]:
     """Search procedures by semantic similarity."""
     try:
@@ -390,7 +399,8 @@ async def search_procedures(
 @router.patch("/procedure/outcome")
 async def update_procedure_outcome(
     request: UpdateProcedureOutcomeRequest,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Update procedure success rate based on execution outcome."""
     try:
@@ -431,7 +441,8 @@ async def get_relevant_context(
     agent_id: Optional[str] = Query(None, description="Agent ID for personalized context"),
     limit: int = Query(5, ge=1, le=20, description="Items per memory tier"),
     threshold: float = Query(0.7, ge=0.0, le=1.0, description="Relevance threshold"),
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> ContextResponse:
     """Get relevant context from all memory tiers."""
     try:
@@ -466,7 +477,8 @@ async def get_relevant_context(
 @router.get("/stats/{agent_id}")
 async def get_memory_statistics(
     agent_id: str,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> MemoryStats:
     """Get memory statistics for an agent."""
     try:
@@ -485,7 +497,8 @@ async def get_memory_statistics(
 async def clear_agent_memories(
     agent_id: str,
     tier: Optional[str] = Query(None, description="Memory tier to clear (semantic/episodic/procedural)"),
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Clear memories for an agent."""
     try:
@@ -518,7 +531,8 @@ async def clear_agent_memories(
 
 @router.post("/cleanup")
 async def cleanup_expired_memories(
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Clean up expired memories (admin operation)."""
     try:
@@ -541,7 +555,8 @@ async def cleanup_expired_memories(
 @router.post("/bulk-import", status_code=status.HTTP_201_CREATED)
 async def bulk_import_memories(
     request: BulkImportRequest,
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Import memories in bulk."""
     try:
@@ -572,7 +587,8 @@ async def bulk_import_memories(
 
 @router.get("/health")
 async def memory_health_check(
-    service = Depends(get_memory_service)
+    service = Depends(get_memory_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Check memory service health."""
     try:

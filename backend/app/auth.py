@@ -14,6 +14,7 @@ Usage in controllers:
 
 import os
 import logging
+import secrets
 from typing import Optional
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
@@ -24,14 +25,18 @@ logger = logging.getLogger(__name__)
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 # Valid API keys (in production, store in database or secrets manager)
-# For now, use environment variable or default dev key
 VALID_API_KEYS = set(
     filter(None, [
         os.getenv("CORE_API_KEY"),
         os.getenv("CORE_API_KEY_2"),
-        "dev-key-local-only",  # Default dev key (remove in production)
     ])
 )
+
+# If no keys configured via env, generate one for local dev
+if not VALID_API_KEYS:
+    _auto_key = secrets.token_urlsafe(32)
+    VALID_API_KEYS.add(_auto_key)
+    logger.info("No API keys configured. Auto-generated dev key: %s", _auto_key)
 
 # Endpoints that don't require authentication
 PUBLIC_ENDPOINTS = {

@@ -18,13 +18,14 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.dependencies import _get_openai_client
 from app.models.user_input import UserInput
 from app.services.catalyst_service import get_catalyst_service
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class SynthesisRequest(BaseModel):
 # =============================================================================
 
 @router.post("/auto")
-async def auto_catalyst(request: AutoCatalystRequest) -> dict:
+async def auto_catalyst(request: AutoCatalystRequest, api_key: str = Depends(require_api_key)) -> dict:
     """
     Run the full Catalyst Creativity pipeline end-to-end.
 
@@ -96,6 +97,7 @@ async def catalyst_creativity_divergence(
     divergence_number: int = Query(
         ..., ge=1, le=10, description="Number of divergent ideas to generate"
     ),
+    api_key: str = Depends(require_api_key),
 ):
     """
     Stream divergent ideas token-by-token using SSE (legacy endpoint).
@@ -153,7 +155,7 @@ async def catalyst_creativity_divergence(
 
 
 @router.post("/convergence")
-async def catalyst_creativity_convergence(request: ConvergenceRequest) -> dict:
+async def catalyst_creativity_convergence(request: ConvergenceRequest, api_key: str = Depends(require_api_key)) -> dict:
     """
     Evaluate, group, and rank divergent ideas.
 
@@ -180,7 +182,7 @@ async def catalyst_creativity_convergence(request: ConvergenceRequest) -> dict:
 
 
 @router.post("/synthesis")
-async def catalyst_creativity_synthesis(request: SynthesisRequest) -> dict:
+async def catalyst_creativity_synthesis(request: SynthesisRequest, api_key: str = Depends(require_api_key)) -> dict:
     """
     Synthesize divergent ideas and convergent analysis into a unified output.
 
@@ -209,7 +211,7 @@ async def catalyst_creativity_synthesis(request: SynthesisRequest) -> dict:
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str) -> dict:
+async def get_session(session_id: str, api_key: str = Depends(require_api_key)) -> dict:
     """Get the current state and results of a catalyst session."""
     service = get_catalyst_service()
     session = service.get_session(session_id)

@@ -26,6 +26,7 @@ from app.models.comprehension_models import (
     ComprehensionStatus,
 )
 from app.services.comprehension_service import comprehension_service
+from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,7 @@ async def get_comprehension_service():
 async def analyze_input(
     request: AnalyzeRequest,
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> AnalyzeResponse:
     """
     Analyze input through the Comprehension Engine.
@@ -177,6 +179,7 @@ async def analyze_input(
 @router.get("/capabilities", status_code=status.HTTP_200_OK)
 async def list_capabilities(
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> CapabilityListResponse:
     """
     List all system capabilities.
@@ -209,6 +212,7 @@ async def get_comprehension_history(
     min_confidence: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
     conversation_id: Optional[str] = Query(None, description="Filter by conversation"),
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> HistoryResponse:
     """
     Get past comprehension results with filtering and pagination.
@@ -249,6 +253,7 @@ async def get_comprehension_history(
 async def submit_feedback(
     request: FeedbackRequest,
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Submit feedback on comprehension accuracy.
@@ -298,6 +303,7 @@ async def submit_feedback(
 async def get_analytics(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Get comprehension analytics over a time window.
@@ -321,6 +327,7 @@ async def get_analytics(
 async def get_accuracy_trend(
     days: int = Query(30, ge=1, le=365, description="Number of days"),
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> List[Dict[str, Any]]:
     """
     Get comprehension accuracy over time for trend analysis.
@@ -348,6 +355,7 @@ async def get_accuracy_trend(
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def comprehension_health(
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Check comprehension service health."""
     try:
@@ -371,6 +379,7 @@ async def comprehension_health(
 async def analyze_complexity(
     content: str = Query(..., description="Text to analyze for complexity"),
     service=Depends(get_comprehension_service),
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
     Analyze text complexity without full comprehension.

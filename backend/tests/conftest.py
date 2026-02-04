@@ -27,6 +27,19 @@ warnings.filterwarnings(
 
 
 # ---------------------------------------------------------------------------
+# Auth fixture
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def api_key():
+    """Test API key for authenticated endpoints."""
+    from app.auth import add_api_key
+    key = "test-api-key-fixture"
+    add_api_key(key)
+    yield key
+
+
+# ---------------------------------------------------------------------------
 # Common mock fixtures
 # ---------------------------------------------------------------------------
 
