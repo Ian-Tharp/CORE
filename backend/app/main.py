@@ -10,6 +10,7 @@ from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
+from app.migrations.runner import run_pending_migrations
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
 from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.services.memory_service import memory_service
@@ -28,8 +29,16 @@ async def lifespan(app: FastAPI):
     try:
         # Initialize DB pool and ensure schema on startup so first request is fast.
         try:
-            await get_db_pool()
+            pool = await get_db_pool()
             logger.info("Database pool initialized")
+
+            # Run SQL migrations before ensure_*_tables() calls
+            try:
+                await run_pending_migrations(pool)
+                logger.info("Database migrations complete")
+            except Exception as mig_exc:
+                logger.error("Migration runner failed: %s", mig_exc)
+
             await setup_db_schema()
             logger.info("Database schema ensured")
             
