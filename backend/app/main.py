@@ -19,6 +19,7 @@ from app.config.discord import get_config as get_discord_config
 from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository
 
 
+from app.config.startup_validator import validate_startup_config
 from app.core.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -29,6 +30,15 @@ async def lifespan(app: FastAPI):
     """Manage the lifespan events of the FastAPI application."""
     logger.info("CORE System - Initializing...")
     try:
+        # Validate configuration before connecting to anything
+        config_issues = validate_startup_config()
+        config_errors = sum(1 for i in config_issues if i.severity.value == "error")
+        if config_errors:
+            logger.warning(
+                "Startup config has %d error(s) — continuing, but fix before production",
+                config_errors,
+            )
+
         # Initialize DB pool and ensure schema on startup so first request is fast.
         try:
             pool = await get_db_pool()
