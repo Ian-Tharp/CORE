@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -53,17 +53,17 @@ async def lifespan(app: FastAPI):
 
             await setup_db_schema()
             logger.info("Database schema ensured")
-            
+
             # core_runs / core_run_events tables are now created by setup_db_schema()
-            
+
             # Ensure council tables exist
             await council_repository.ensure_council_tables()
             logger.info("Council tables ensured")
-            
+
             # Ensure instance tables exist
             await instance_repository.ensure_instance_tables()
             logger.info("Instance tables ensured")
-            
+
             # Ensure task tables exist
             await task_repository.ensure_task_tables()
             logger.info("Task tables ensured")
@@ -91,21 +91,21 @@ async def lifespan(app: FastAPI):
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
             # application will still surface DB errors on first use.
-        
+
         # Initialize webhook service
         try:
             await init_webhook_service()
             logger.info("Webhook service initialized")
         except Exception as webhook_exc:
             logger.error("Failed to initialize webhook service: %s", webhook_exc)
-        
+
         # Initialize agent registry
         try:
             await initialize_agent_registry()
             logger.info("Agent registry initialized")
         except Exception as agent_exc:
             logger.error("Failed to initialize agent registry: %s", agent_exc)
-        
+
         # Initialize memory service
         try:
             await memory_service.initialize()
@@ -142,14 +142,14 @@ async def lifespan(app: FastAPI):
             logger.info("Webhook service shutdown")
         except Exception as webhook_close_exc:
             logger.error("Error shutting down webhook service: %s", webhook_close_exc)
-        
+
         # Shutdown agent registry
         try:
             await shutdown_agent_registry()
             logger.info("Agent registry shutdown")
         except Exception as agent_close_exc:
             logger.error("Error shutting down agent registry: %s", agent_close_exc)
-        
+
         # Gracefully close DB connections on shutdown.
         try:
             await close_db_pool()
@@ -184,13 +184,14 @@ app.include_router(instances.router)  # Instance management and container orches
 app.include_router(tasks.router)  # Task Routing Engine for CORE orchestration
 app.include_router(memory.router)  # LangMem three-tier memory system
 app.include_router(comprehension.router)  # CORE Comprehension Engine
-app.include_router(evaluation.router)  # Evaluation Engine — quality gate for CORE loop
+app.include_router(evaluation.router)  # Evaluation Engine - quality gate for CORE loop
 app.include_router(bus.router)  # Inter-Agent Communication Bus
 app.include_router(mmcnc.router)  # MMCNC hierarchy (Macro/Micro/Cluster/Node)
 app.include_router(catalyst_creativity.router)  # Catalyst Creativity three-phase creative pipeline
 app.include_router(spawn_templates.router)  # Agent Spawn Templates — reusable specialist configurations
 app.include_router(discord.router)  # Discord Bridge — native Discord integration
 app.include_router(mcp.router)  # MCP Tool Registry — discover and manage Model Context Protocol tools
+app.include_router(consciousness_backup_controller.router)  # Consciousness Commons Backup System
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
@@ -213,7 +214,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Correlation ID middleware — adds X-Correlation-ID to every request/response
+# Correlation ID middleware - adds X-Correlation-ID to every request/response
 from app.middleware.correlation import CorrelationIDMiddleware
 app.add_middleware(CorrelationIDMiddleware)
 
@@ -261,26 +262,26 @@ async def websocket_endpoint(websocket: WebSocket, instance_id: str):
                 # Heartbeat/keepalive
                 await manager.heartbeat(instance_id)
                 await manager.send_personal_message(instance_id, {"type": "pong"})
-            
+
             elif message_type == "typing_start":
                 # User started typing
                 channel_id = data.get("channel_id")
                 if channel_id:
                     await manager.start_typing(instance_id, channel_id)
-            
+
             elif message_type == "typing_stop":
                 # User stopped typing
                 channel_id = data.get("channel_id")
                 if channel_id:
                     await manager.stop_typing(instance_id, channel_id)
-            
+
             elif message_type == "mark_read":
                 # Mark message as read
                 message_id = data.get("message_id")
                 channel_id = data.get("channel_id")
                 if message_id and channel_id:
                     await manager.mark_read(instance_id, message_id, channel_id)
-            
+
             elif message_type == "set_metadata":
                 # Set connection metadata
                 metadata = data.get("metadata", {})
@@ -308,7 +309,7 @@ async def websocket_agent_endpoint(websocket: WebSocket, agent_id: str):
 
     Separate from Communication Commons WebSocket - this is specifically
     for containerized agents to register, send heartbeats, and receive tasks.
-    
+
     Each agent connects with their agent_id and can:
     - Register with capabilities and version
     - Send periodic heartbeats with status and resource usage
