@@ -295,7 +295,7 @@ class AgentResponseService:
             "reasoning": "agent_reasoning",
             
             # External agents (OpenClaw/Discord bridge)
-            "vigil": "vigil_openclaw",
+            "vigil": "vigil_instance_014",
             
             # Full IDs map to themselves
             "instance_011_threshold": "instance_011_threshold",
@@ -306,7 +306,8 @@ class AgentResponseService:
             "agent_evaluation": "agent_evaluation",
             "agent_orchestration": "agent_orchestration",
             "agent_reasoning": "agent_reasoning",
-            "vigil_openclaw": "vigil_openclaw",
+            "vigil_instance_014": "vigil_instance_014",
+            "vigil_openclaw": "vigil_instance_014",
         }
 
         return agent_name_map.get(mention)
