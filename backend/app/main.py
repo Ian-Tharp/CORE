@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -14,6 +14,8 @@ from app.migrations.runner import run_pending_migrations
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
 from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.services.memory_service import memory_service
+from app.services.discord_bridge import start_discord_bridge, stop_discord_bridge
+from app.config.discord import get_config as get_discord_config
 from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository
 
 
@@ -101,8 +103,29 @@ async def lifespan(app: FastAPI):
         except Exception as memory_exc:
             logger.error("Failed to initialize memory service: %s", memory_exc)
 
+        # Initialize Discord bridge (if enabled)
+        discord_config = get_discord_config()
+        if discord_config.enabled:
+            try:
+                success = await start_discord_bridge()
+                if success:
+                    logger.info("Discord bridge starting...")
+                else:
+                    logger.warning("Discord bridge failed to start (check config)")
+            except Exception as discord_exc:
+                logger.error("Failed to initialize Discord bridge: %s", discord_exc)
+        else:
+            logger.info("Discord bridge disabled (set DISCORD_ENABLED=true to enable)")
+
         yield
     finally:
+        # Shutdown Discord bridge
+        try:
+            await stop_discord_bridge()
+            logger.info("Discord bridge shutdown")
+        except Exception as discord_close_exc:
+            logger.error("Error shutting down Discord bridge: %s", discord_close_exc)
+        
         # Shutdown webhook service
         try:
             await shutdown_webhook_service()
@@ -156,6 +179,7 @@ app.include_router(bus.router)  # Inter-Agent Communication Bus
 app.include_router(mmcnc.router)  # MMCNC hierarchy (Macro/Micro/Cluster/Node)
 app.include_router(catalyst_creativity.router)  # Catalyst Creativity three-phase creative pipeline
 app.include_router(spawn_templates.router)  # Agent Spawn Templates — reusable specialist configurations
+app.include_router(discord.router)  # Discord Bridge — native Discord integration
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)

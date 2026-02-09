@@ -54,6 +54,7 @@ from app.repository.communication_repository import (
 )
 from app.services.agent_factory_service import get_agent_factory
 from app.websocket_manager import manager as websocket_manager
+from app.repository.communication_repository import get_message
 
 logger = logging.getLogger(__name__)
 
@@ -597,11 +598,80 @@ Please respond naturally to the conversation, staying true to your personality a
                     },
                 )
 
+            # Forward to Discord if the original message came from Discord
+            if reply_to:
+                await self._forward_to_discord_if_needed(
+                    reply_to_message_id=reply_to,
+                    agent_name=agent.agent_name,
+                    content=content
+                )
+
         except Exception as e:
             logger.error(
                 f"Failed to post response from {agent.agent_id}: {e}",
                 exc_info=True
             )
+
+    async def _forward_to_discord_if_needed(
+        self,
+        reply_to_message_id: str,
+        agent_name: str,
+        content: str
+    ) -> None:
+        """
+        Forward agent response to Discord if the original message came from Discord.
+
+        Checks the metadata of the original message to see if it originated
+        from Discord (has source="discord" and discord_channel_id).
+        If so, sends the response back to that Discord channel.
+
+        Args:
+            reply_to_message_id: The message ID we're replying to
+            agent_name: Name of the agent responding
+            content: Response content
+        """
+        try:
+            # Get the original message to check if it came from Discord
+            original_message = await get_message(reply_to_message_id)
+            if not original_message:
+                return
+
+            metadata = original_message.get("metadata", {}) or {}
+            if metadata.get("source") != "discord":
+                return
+
+            discord_channel_id = metadata.get("discord_channel_id")
+            discord_message_id = metadata.get("discord_message_id")
+
+            if not discord_channel_id:
+                return
+
+            # Import here to avoid circular import
+            from app.services.discord_bridge import get_discord_bridge
+
+            bridge = get_discord_bridge()
+            if not bridge.is_connected:
+                logger.debug("Discord bridge not connected, skipping forward")
+                return
+
+            # Format response with agent name
+            formatted_response = f"**{agent_name}:** {content}"
+
+            # Send to Discord
+            success = await bridge.send_to_discord(
+                discord_channel_id=discord_channel_id,
+                content=formatted_response,
+                reply_to_message_id=discord_message_id
+            )
+
+            if success:
+                logger.info(f"Forwarded agent response to Discord channel {discord_channel_id}")
+            else:
+                logger.warning(f"Failed to forward response to Discord channel {discord_channel_id}")
+
+        except Exception as e:
+            # Don't fail the main response posting just because Discord forward failed
+            logger.warning(f"Error forwarding to Discord: {e}")
 
 
 # =============================================================================

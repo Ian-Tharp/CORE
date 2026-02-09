@@ -25,6 +25,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.1.11",
     "docker>=7.0.0",
     "aiosqlite>=0.22.1",
+    "discord.py>=2.3.0",
 ]
 
 [dependency-groups]
