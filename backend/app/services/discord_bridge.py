@@ -422,6 +422,27 @@ class DiscordBridgeService:
             logger.error(f"Error sending to Discord: {e}")
             return False
     
+    async def start_typing(self, discord_channel_id: str) -> None:
+        """
+        Show typing indicator in a Discord channel.
+        
+        Call this when an agent starts processing a request.
+        The typing indicator will show for ~10 seconds or until a message is sent.
+        
+        Args:
+            discord_channel_id: The Discord channel ID to show typing in.
+        """
+        if not self.is_connected:
+            return
+        
+        try:
+            channel = self._client.get_channel(int(discord_channel_id))
+            if channel and isinstance(channel, (TextChannel, DMChannel, Thread)):
+                await channel.typing()
+                logger.debug(f"Started typing indicator in Discord channel {discord_channel_id}")
+        except Exception as e:
+            logger.debug(f"Failed to start typing indicator: {e}")
+    
     def _split_message(self, content: str, max_length: int) -> List[str]:
         """Split a message into chunks that fit Discord's limit."""
         if len(content) <= max_length:

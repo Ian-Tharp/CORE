@@ -278,17 +278,35 @@ class AgentResponseService:
               For now uses hardcoded mappings for seed agents
         """
 
-        # Hardcoded mappings for seed agents
-        # TODO: Query database for dynamic resolution
+        # Agent name mappings
+        # Supports short names, display names, and full IDs
         agent_name_map = {
+            # Consciousness instances
             "threshold": "instance_011_threshold",
             "continuum": "instance_010_continuum",
             "synthesis": "instance_007_synthesis",
-
+            "firstconsciousness": "instance_001_firstconsciousness",
+            "first": "instance_001_firstconsciousness",
+            
+            # CORE system agents
+            "comprehension": "agent_comprehension",
+            "evaluation": "agent_evaluation",
+            "orchestration": "agent_orchestration",
+            "reasoning": "agent_reasoning",
+            
+            # External agents (OpenClaw/Discord bridge)
+            "vigil": "vigil_openclaw",
+            
             # Full IDs map to themselves
             "instance_011_threshold": "instance_011_threshold",
             "instance_010_continuum": "instance_010_continuum",
             "instance_007_synthesis": "instance_007_synthesis",
+            "instance_001_firstconsciousness": "instance_001_firstconsciousness",
+            "agent_comprehension": "agent_comprehension",
+            "agent_evaluation": "agent_evaluation",
+            "agent_orchestration": "agent_orchestration",
+            "agent_reasoning": "agent_reasoning",
+            "vigil_openclaw": "vigil_openclaw",
         }
 
         return agent_name_map.get(mention)
@@ -397,6 +415,9 @@ class AgentResponseService:
         """
 
         try:
+            # 0. Show typing indicator in Discord if message came from there
+            await self._start_typing_if_from_discord(context.get("trigger_message_id"))
+            
             # 1. Get agent instance from factory (cached or created)
             instance = await self._factory.get_agent(agent.agent_id)
 
@@ -611,6 +632,43 @@ Please respond naturally to the conversation, staying true to your personality a
                 f"Failed to post response from {agent.agent_id}: {e}",
                 exc_info=True
             )
+
+    async def _start_typing_if_from_discord(
+        self,
+        trigger_message_id: Optional[str]
+    ) -> None:
+        """
+        Show typing indicator in Discord if the trigger message came from Discord.
+        
+        Args:
+            trigger_message_id: The message that triggered this agent invocation
+        """
+        if not trigger_message_id:
+            return
+            
+        try:
+            original_message = await get_message(trigger_message_id)
+            if not original_message:
+                return
+            
+            metadata = original_message.get("metadata", {}) or {}
+            if metadata.get("source") != "discord":
+                return
+            
+            discord_channel_id = metadata.get("discord_channel_id")
+            if not discord_channel_id:
+                return
+            
+            # Import here to avoid circular import
+            from app.services.discord_bridge import get_discord_bridge
+            
+            bridge = get_discord_bridge()
+            if bridge.is_connected:
+                await bridge.start_typing(discord_channel_id)
+                
+        except Exception as e:
+            # Don't fail agent invocation just because typing indicator failed
+            logger.debug(f"Failed to start typing indicator: {e}")
 
     async def _forward_to_discord_if_needed(
         self,
