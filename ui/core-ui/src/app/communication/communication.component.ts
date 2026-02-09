@@ -111,10 +111,13 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
         this.channels = channels;
         this.filteredChannels = channels; // Initialize filtered list
 
-        // Auto-select Blackboard if no channel selected
+        // Auto-select updates_channel (Discord bridge) or fallback to Blackboard
         if (!this.selectedChannel && channels.length > 0) {
+          const updatesChannel = channels.find(c => c.channel_id === 'updates_channel' || c.channel_id.includes('updates_channel'));
           const blackboard = channels.find(c => c.channel_id === 'blackboard_global');
-          if (blackboard) {
+          if (updatesChannel) {
+            this.selectChannel(updatesChannel);
+          } else if (blackboard) {
             this.selectChannel(blackboard);
           }
         }

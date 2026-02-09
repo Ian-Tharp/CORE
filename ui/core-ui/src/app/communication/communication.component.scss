@@ -131,6 +131,29 @@
   .channel-sections {
     flex-grow: 1;
     overflow-y: auto;
+
+    // Custom scrollbar styling
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg,
+        rgba(53, 255, 137, 0.4) 0%,
+        rgba(0, 234, 255, 0.4) 100%);
+      border-radius: 3px;
+      
+      &:hover {
+        background: linear-gradient(180deg,
+          rgba(53, 255, 137, 0.6) 0%,
+          rgba(0, 234, 255, 0.6) 100%);
+      }
+    }
   }
 
   .channel-section {
@@ -323,6 +346,29 @@
     flex-grow: 1;
     overflow-y: auto;
     padding: 16px 20px;
+
+    // Custom scrollbar styling
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg,
+        rgba(53, 255, 137, 0.3) 0%,
+        rgba(0, 234, 255, 0.3) 100%);
+      border-radius: 4px;
+      
+      &:hover {
+        background: linear-gradient(180deg,
+          rgba(53, 255, 137, 0.5) 0%,
+          rgba(0, 234, 255, 0.5) 100%);
+      }
+    }
 
     .message-item {
       display: flex;
@@ -699,6 +745,27 @@
       box-shadow: 0 0 12px rgba(0, 234, 255, 0.4),
                   inset 0 0 12px rgba(0, 234, 255, 0.1);
       transform: translateY(-1px);
+    }
+  }
+
+  // Inline thread toggle button
+  .inline-thread-toggle {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: rgba(232, 240, 255, 0.5);
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    &:hover {
+      color: var(--mdc-sys-color-secondary);
+      background: rgba(0, 234, 255, 0.1);
+      transform: scale(1.1);
     }
   }
 
@@ -1379,6 +1446,7 @@
   backdrop-filter: blur(10px);
   position: relative;
   z-index: 1;
+  overflow: hidden;
 
   &.hidden {
     display: none;
@@ -1391,6 +1459,7 @@
       rgba(0, 234, 255, 0.08) 0%,
       rgba(53, 255, 137, 0.05) 100%);
     position: relative;
+    flex-shrink: 0;
 
     &::after {
       content: '';
@@ -1419,6 +1488,37 @@
     }
   }
 
+  // Scrollable container for presence sections
+  .presence-sections {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 8px;
+
+    // Custom scrollbar styling
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg,
+        rgba(0, 234, 255, 0.4) 0%,
+        rgba(53, 255, 137, 0.4) 100%);
+      border-radius: 3px;
+      
+      &:hover {
+        background: linear-gradient(180deg,
+          rgba(0, 234, 255, 0.6) 0%,
+          rgba(53, 255, 137, 0.6) 100%);
+      }
+    }
+  }
+
   .presence-section {
     margin-bottom: 16px;
 
@@ -1428,6 +1528,36 @@
       font-weight: 600;
       text-transform: uppercase;
       color: rgba(232, 240, 255, 0.6);
+      position: sticky;
+      top: 0;
+      background: linear-gradient(180deg,
+        rgba(20, 25, 37, 0.98) 0%,
+        rgba(20, 25, 37, 0.95) 100%);
+      backdrop-filter: blur(8px);
+      z-index: 1;
+    }
+  }
+
+  .presence-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    color: rgba(232, 240, 255, 0.4);
+    text-align: center;
+    gap: 12px;
+
+    mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      opacity: 0.6;
+    }
+
+    span {
+      font-size: 0.9rem;
+      font-style: italic;
     }
   }
 
@@ -2132,11 +2262,38 @@
 // Additional styles for new features
 .empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
+  min-height: 200px;
   color: rgba(232, 240, 255, 0.5);
   font-size: 1rem;
+  text-align: center;
+  padding: 24px;
+  gap: 12px;
+
+  p {
+    margin: 0;
+    font-style: italic;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  &::before {
+    content: '💬';
+    font-size: 2.5rem;
+    opacity: 0.5;
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .token-count {

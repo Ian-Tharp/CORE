@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CORE** — Cognitive Orchestration, Reasoning & Evaluation. A modular, self-hosted AI orchestration platform with a multi-agent cognitive pipeline, agent factory, communication commons, council system, and solarpunk-inspired desktop UI.
+**CORE** — Comprehension, Orchestration, Reasoning & Evaluation. A modular, self-hosted AI orchestration platform with a multi-agent cognitive pipeline, agent factory, communication commons, council system, and solarpunk-inspired desktop UI.
 
 ## Architecture
 
