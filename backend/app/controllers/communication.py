@@ -9,11 +9,13 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+import asyncio
 import uuid
 
 from app.repository import communication_repository as comm_repo
 from app.websocket_manager import manager
 from app.services.agent_response_service import get_agent_response_service
+from app.services.discord_bridge import get_discord_bridge
 
 router = APIRouter(prefix="/communication", tags=["communication"])
 
@@ -190,9 +192,25 @@ async def send_message(
         }
     )
 
+    # Forward to Discord if this channel is bridged (outbound: CORE → Discord)
+    discord_bridge = get_discord_bridge()
+    if discord_bridge.is_connected:
+        # Find Discord channel ID for this CORE channel
+        for discord_ch_id, mapping in discord_bridge.get_channel_mappings().items():
+            if mapping.core_channel_id == channel_id:
+                # Don't echo back messages that originated from Discord
+                metadata = request.metadata or {}
+                if metadata.get("source") != "discord":
+                    asyncio.create_task(
+                        discord_bridge.send_to_discord(
+                            discord_channel_id=discord_ch_id,
+                            content=f"**{sender_name}**: {request.content}"
+                        )
+                    )
+                break
+
     # Process message for agent mentions (async, non-blocking)
     # This checks for @mentions and triggers agent responses
-    import asyncio
     asyncio.create_task(
         get_agent_response_service().process_message(
             message_id=message_id,
