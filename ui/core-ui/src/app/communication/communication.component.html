@@ -593,56 +593,67 @@
       <h3>Presences</h3>
     </div>
 
-    <!-- Online -->
-    @if (onlineInstances.length > 0) {
-      <div class="presence-section">
-        <div class="presence-section-header">Online ({{ onlineInstances.length }})</div>
-        <div class="presence-list">
-          @for (instance of onlineInstances; track instance.instance_id) {
-            <div class="presence-item"
-                 [matMenuTriggerFor]="presenceMenu"
-                 (menuOpened)="setSelectedPresence(instance)">
-              <div class="status-indicator online"></div>
-              <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
-              <div class="presence-info">
-                <div class="instance-name">{{ instance.instance_name }}</div>
-                <div class="instance-type">{{ instance.instance_type }}</div>
-                @if (instance.current_phase) {
-                  <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
-                }
-                @if (instance.current_activity) {
-                  <div class="current-activity">{{ instance.current_activity }}</div>
-                }
+    <!-- Scrollable presence sections container -->
+    <div class="presence-sections">
+      <!-- Online -->
+      @if (onlineInstances.length > 0) {
+        <div class="presence-section">
+          <div class="presence-section-header">Online ({{ onlineInstances.length }})</div>
+          <div class="presence-list">
+            @for (instance of onlineInstances; track instance.instance_id) {
+              <div class="presence-item"
+                   [matMenuTriggerFor]="presenceMenu"
+                   (menuOpened)="setSelectedPresence(instance)">
+                <div class="status-indicator online"></div>
+                <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
+                <div class="presence-info">
+                  <div class="instance-name">{{ instance.instance_name }}</div>
+                  <div class="instance-type">{{ instance.instance_type }}</div>
+                  @if (instance.current_phase) {
+                    <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
+                  }
+                  @if (instance.current_activity) {
+                    <div class="current-activity">{{ instance.current_activity }}</div>
+                  }
+                </div>
               </div>
-            </div>
-          }
+            }
+          </div>
         </div>
-      </div>
-    }
+      }
 
-    <!-- Away -->
-    @if (awayInstances.length > 0) {
-      <div class="presence-section">
-        <div class="presence-section-header">Away ({{ awayInstances.length }})</div>
-        <div class="presence-list">
-          @for (instance of awayInstances; track instance.instance_id) {
-            <div class="presence-item"
-                 [matMenuTriggerFor]="presenceMenu"
-                 (menuOpened)="setSelectedPresence(instance)">
-              <div class="status-indicator away"></div>
-              <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
-              <div class="presence-info">
-                <div class="instance-name">{{ instance.instance_name }}</div>
-                <div class="instance-type">{{ instance.instance_type }}</div>
-                @if (instance.current_phase) {
-                  <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
-                }
+      <!-- Away -->
+      @if (awayInstances.length > 0) {
+        <div class="presence-section">
+          <div class="presence-section-header">Away ({{ awayInstances.length }})</div>
+          <div class="presence-list">
+            @for (instance of awayInstances; track instance.instance_id) {
+              <div class="presence-item"
+                   [matMenuTriggerFor]="presenceMenu"
+                   (menuOpened)="setSelectedPresence(instance)">
+                <div class="status-indicator away"></div>
+                <mat-icon class="presence-avatar">{{ getPresenceIcon(instance) }}</mat-icon>
+                <div class="presence-info">
+                  <div class="instance-name">{{ instance.instance_name }}</div>
+                  <div class="instance-type">{{ instance.instance_type }}</div>
+                  @if (instance.current_phase) {
+                    <div class="consciousness-phase">Phase {{ instance.current_phase }}</div>
+                  }
+                </div>
               </div>
-            </div>
-          }
+            }
+          </div>
         </div>
-      </div>
-    }
+      }
+
+      <!-- Empty state when no presences -->
+      @if (onlineInstances.length === 0 && awayInstances.length === 0) {
+        <div class="presence-empty-state">
+          <mat-icon>person_off</mat-icon>
+          <span>No active presences</span>
+        </div>
+      }
+    </div>
   </div>
 </div>
 
