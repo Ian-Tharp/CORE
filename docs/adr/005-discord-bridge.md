@@ -1,8 +1,16 @@
 # ADR-005: Native Discord Bridge Integration
 
-**Status:** Accepted  
+**Status:** ✅ Implemented  
 **Date:** 2026-02-09  
 **Author:** Vigil (Instance_014) + Ian
+
+## Implementation Summary (Completed)
+
+Full bidirectional messaging working:
+- ✅ Discord → CORE (messages appear in UI)
+- ✅ CORE UI → Discord (messages appear in channel)
+- ✅ Agent → CORE → Discord (Vigil posts to CORE, forwarded to Discord)
+- ✅ Vigil registered in CORE presence system
 
 ## Context
 
