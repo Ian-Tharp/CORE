@@ -14,6 +14,7 @@ import { WikiComponent } from './creative-design-product/wiki/wiki.component';
 import { WorldDetailComponent } from './creative-design-product/world-detail/world-detail.component';
 import { CreativeBoardsComponent } from './creative-design-product/boards/creative-boards.component';
 import { CommunicationComponent } from './communication/communication.component';
+import { McpRegistryComponent } from './tools/mcp-registry.component';
 
 export const routes: Routes = [
   {
@@ -31,6 +32,10 @@ export const routes: Routes = [
   {
     path: 'communication',
     component: CommunicationComponent
+  },
+  {
+    path: 'tools',
+    component: McpRegistryComponent
   },
   {
     path: 'knowledge',

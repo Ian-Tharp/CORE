@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -180,6 +180,7 @@ app.include_router(mmcnc.router)  # MMCNC hierarchy (Macro/Micro/Cluster/Node)
 app.include_router(catalyst_creativity.router)  # Catalyst Creativity three-phase creative pipeline
 app.include_router(spawn_templates.router)  # Agent Spawn Templates — reusable specialist configurations
 app.include_router(discord.router)  # Discord Bridge — native Discord integration
+app.include_router(mcp.router)  # MCP Tool Registry — discover and manage Model Context Protocol tools
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
