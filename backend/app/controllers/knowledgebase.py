@@ -150,7 +150,7 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
             description=payload.description,
             is_global=bool(payload.isGlobal),
             file_hash=file_hash,
-            embedding_provider=(payload.embeddingProvider or 'openai'),
+            embedding_provider=(payload.embeddingProvider or 'local'),
             local_model=payload.localModel,
         )
         doc = await repo.get_document(doc_id)
@@ -224,7 +224,7 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
 class SemanticSearchRequest(BaseModel):
     query: str
     limit: int = 10
-    provider: str | None = None  # 'openai' | 'local'
+    provider: str | None = None  # 'openai' | 'local' (default: local for Ollama)
     localModel: str | None = None
 
 
@@ -234,8 +234,8 @@ async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends
         query=payload.query,
         mode="all",
         max_docs=payload.limit,
-        provider=(payload.provider or "openai"),
-        local_model=payload.localModel,
+        provider=(payload.provider or "local"),
+        local_model=(payload.localModel or "nomic-embed-text"),
     )
     doc_ids = set(ctx.get("doc_ids", []))
     out: List[Dict[str, Any]] = []

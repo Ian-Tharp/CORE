@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from app.auth import require_auth
+from app.auth import require_api_key as require_auth
 
 
 router = APIRouter(prefix="/mcp", tags=["MCP Tools"])
