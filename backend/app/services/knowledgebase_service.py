@@ -179,6 +179,87 @@ async def process_uploaded_file(
     return doc_id
 
 
+async def reprocess_document(
+    *,
+    document_id: str,
+    storage_path: str,
+    original_name: str,
+    mime_type: str,
+    description: Optional[str] = None,
+    embedding_provider: str = "local",
+    local_model: Optional[str] = None,
+) -> None:
+    """Re-extract text and re-embed an existing document (delete old chunks first)."""
+    logger.info("Reprocessing document %s (%s)", document_id, original_name)
+
+    # 1. Extract text with OCR fallback
+    title, text = await _extract_title_and_text(storage_path, mime_type)
+    logger.info("Extracted %d chars, title=%r for %s", len(text or ""), title, document_id)
+
+    # 2. Delete old chunks
+    from app.dependencies import get_db_pool
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        deleted = await conn.execute("DELETE FROM kb_chunks WHERE document_id = $1", document_id)
+        logger.info("Deleted old chunks for %s: %s", document_id, deleted)
+
+    # 3. Update document title if extracted
+    if title:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE kb_documents SET title = $1 WHERE id = $2", title, document_id
+            )
+
+    use_local = (embedding_provider or "local").lower() == "local"
+    model = local_model or "nomic-embed-text"
+
+    # 4. Document-level embedding
+    title_desc = f"{(title or original_name)}\n\n{(description or '')}".strip()
+    if title_desc:
+        if use_local:
+            vecs, orig = await _embed_texts_local(model=model, texts=[title_desc])
+            if vecs:
+                await repo.update_document_embedding_local(
+                    document_id=document_id,
+                    embedding=vecs[0],
+                    model=model,
+                    dimensions=orig,
+                )
+
+    # 5. Chunk text and embed
+    chunks = _split_text(text)
+    logger.info("Split into %d chunks for %s", len(chunks), document_id)
+
+    if not chunks:
+        logger.warning("No text chunks for %s — document may be empty or image-only", document_id)
+        return
+
+    if use_local:
+        vecs_all: List[List[float]] = []
+        dims = 0
+        batch_size = 64
+        for start in range(0, len(chunks), batch_size):
+            batch = chunks[start:start + batch_size]
+            v, od = await _embed_texts_local(model=model, texts=batch)
+            if v:
+                vecs_all.extend(v)
+                if od and not dims:
+                    dims = od
+        # Insert new chunks with embeddings
+        chunk_payload: List[Tuple[int, str, List[float]]] = []
+        for idx, chunk_text in enumerate(chunks):
+            if idx < len(vecs_all):
+                chunk_payload.append((idx, chunk_text, vecs_all[idx]))
+        if chunk_payload:
+            await repo.insert_chunk_embeddings_local(
+                document_id=document_id,
+                items=chunk_payload,
+                model=model,
+                dimensions=dims or 0,
+            )
+    logger.info("Reprocessing complete for %s: %d chunks embedded", document_id, len(chunks))
+
+
 async def embed_document_locally(*, document_id: str, model: str) -> None:
     """Generate and persist local embeddings for a document and its chunks via Ollama."""
     # Load document details and chunks
