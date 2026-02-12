@@ -3,8 +3,12 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 import os
 import io
+import logging
 import math
 import mimetypes
+import shutil
+
+logger = logging.getLogger(__name__)
 
 from openai import AsyncOpenAI
 
@@ -295,6 +299,70 @@ async def _extract_text(path: str, mime_type: str) -> str:
         return ""
 
 
+_PYMUPDF_MAX_OCR_PAGES = 500
+_TESSERACT_AVAILABLE = shutil.which("tesseract") is not None
+
+
+def _extract_pdf_with_pymupdf(
+    path: str, existing_title: Optional[str]
+) -> Tuple[str, Optional[str]]:
+    """Extract text from a PDF using pymupdf (fitz), with OCR fallback per page.
+
+    Returns (full_text, title).  Title is derived from the first page if
+    *existing_title* is None.
+    """
+    import fitz  # pymupdf
+
+    title = existing_title
+    pages_text: List[str] = []
+
+    try:
+        doc = fitz.open(path)
+    except Exception:
+        logger.error("pymupdf could not open %s", path, exc_info=True)
+        return "", title
+
+    num_pages = min(len(doc), _PYMUPDF_MAX_OCR_PAGES)
+    if len(doc) > _PYMUPDF_MAX_OCR_PAGES:
+        logger.warning(
+            "PDF has %d pages; limiting OCR to first %d pages: %s",
+            len(doc), _PYMUPDF_MAX_OCR_PAGES, path,
+        )
+
+    for idx in range(num_pages):
+        try:
+            page = doc[idx]
+            text = page.get_text("text") or ""
+            if len(text.strip()) < 20 and _TESSERACT_AVAILABLE:
+                # Attempt OCR for this page
+                try:
+                    ocr_text = page.get_text("ocr") or ""
+                    if len(ocr_text.strip()) > len(text.strip()):
+                        text = ocr_text
+                        logger.debug("OCR used for page %d of %s", idx, path)
+                except Exception:
+                    logger.debug("OCR failed for page %d of %s", idx, path, exc_info=True)
+            pages_text.append(text)
+        except Exception:
+            logger.debug("pymupdf failed on page %d of %s", idx, path, exc_info=True)
+            continue
+
+    doc.close()
+
+    full_text = "\n".join(pages_text)
+
+    # Derive title from first page if needed
+    if not title and pages_text:
+        for line in pages_text[0].splitlines():
+            candidate = (line or "").strip()
+            if 3 <= len(candidate) <= 140:
+                title = candidate
+                break
+
+    logger.info("pymupdf extracted %d chars from %d pages: %s", len(full_text), num_pages, path)
+    return full_text, title
+
+
 async def _extract_title_and_text(path: str, mime_type: str) -> Tuple[Optional[str], str]:
     """Best-effort extraction of a human-friendly title and full text.
 
@@ -343,9 +411,30 @@ async def _extract_title_and_text(path: str, mime_type: str) -> Tuple[Optional[s
                         title = candidate
                         break
 
-            return title, "\n".join(pages_text)
+            full_text = "\n".join(pages_text)
+
+            # OCR fallback: if pypdf returned very little text, try pymupdf
+            num_pages = len(reader.pages)
+            if len(full_text.strip()) < 100 and num_pages > 0:
+                logger.info(
+                    "pypdf extracted < 100 chars from %d-page PDF, "
+                    "falling back to pymupdf OCR: %s",
+                    num_pages, path,
+                )
+                full_text, title = _extract_pdf_with_pymupdf(path, title)
+
+            else:
+                logger.debug("pypdf text extraction succeeded for %s", path)
+
+            return title, full_text
         except Exception:
             # Fall through to generic extraction
+            logger.warning("pypdf failed for %s, trying pymupdf", path, exc_info=True)
+            try:
+                text, fallback_title = _extract_pdf_with_pymupdf(path, None)
+                return fallback_title, text
+            except Exception:
+                logger.warning("pymupdf also failed for %s", path, exc_info=True)
             pass
 
     # DOCX path

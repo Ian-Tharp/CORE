@@ -122,7 +122,13 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
     stored_name = f"{uuid.uuid4().hex}{ext}"
     storage_path = os.path.join(storage_dir, stored_name)
 
+    MAX_UPLOAD_SIZE = 200 * 1024 * 1024  # 200MB
     content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large (max {MAX_UPLOAD_SIZE // (1024*1024)}MB)",
+        )
     with open(storage_path, "wb") as out:
         out.write(content)
 
