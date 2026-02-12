@@ -200,13 +200,15 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
     doc = await repo.get_document(file_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-    # Re-process document (idempotent)
+    # Re-process document (idempotent) — default to local Ollama embeddings
     await svc.process_uploaded_file(
         storage_path=doc["storage_path"],
         original_name=doc["original_name"],
         mime_type=doc["mime_type"],
         description=doc.get("description"),
         is_global=doc.get("is_global", False),
+        embedding_provider="local",
+        local_model="nomic-embed-text",
     )
     try:
         await repo.insert_activity(
