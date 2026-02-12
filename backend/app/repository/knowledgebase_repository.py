@@ -20,9 +20,6 @@ async def create_document(
     is_global: bool = False,
     source: str = "user_upload",
     status: str = "ready",
-    doc_embedding: Optional[List[float]] = None,
-    embedding_model: Optional[str] = None,
-    embedding_dimensions: Optional[int] = None,
     title: Optional[str] = None,
     file_hash: Optional[str] = None,
 ) -> str:
@@ -33,8 +30,8 @@ async def create_document(
             """
             INSERT INTO kb_documents (
                 id, filename, original_name, size, mime_type, description, is_global, source, status,
-                storage_path, doc_embedding, embedding_model, embedding_dimensions, title, file_hash
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                storage_path, title, file_hash
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             """,
             doc_id,
             filename,
@@ -46,9 +43,6 @@ async def create_document(
             source,
             status,
             storage_path,
-            doc_embedding,
-            embedding_model,
-            embedding_dimensions,
             title,
             file_hash,
         )
@@ -62,39 +56,16 @@ async def update_document_embedding(
     model: str,
     dimensions: int,
 ) -> None:
+    """Update the document-level vector embedding."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            UPDATE kb_documents
-            SET doc_embedding = $2::jsonb, embedding_model = $3, embedding_dimensions = $4,
-                last_modified = CURRENT_TIMESTAMP
-            WHERE id = $1
-            """,
-            document_id,
-            _json.dumps(embedding),
-            model,
-            dimensions,
-        )
-
-
-async def update_document_embedding_local(
-    *,
-    document_id: str,
-    embedding: List[float],
-    model: str,
-    dimensions: int,
-) -> None:
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Represent vector as text and cast to vector(3072)
         vec_text = f"[{', '.join(str(x) for x in embedding)}]"
         await conn.execute(
             """
             UPDATE kb_documents
-            SET doc_embedding_vec_local = $2::vector(3072),
-                local_embedding_model = $3,
-                local_embedding_dimensions = $4,
+            SET doc_embedding_vec = $2::vector(768),
+                embedding_model = $3,
+                embedding_dimensions = $4,
                 last_modified = CURRENT_TIMESTAMP
             WHERE id = $1
             """,
@@ -108,75 +79,11 @@ async def update_document_embedding_local(
 async def insert_chunk_embeddings(
     *,
     document_id: str,
-    chunks: List[Tuple[int, str, List[float]]],
-    model: str,
-    dimensions: int,
-) -> None:
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        records = [
-            (
-                str(uuid.uuid4()),
-                document_id,
-                chunk_index,
-                text,
-                _json.dumps(embedding),
-                model,
-                dimensions,
-            )
-            for (chunk_index, text, embedding) in chunks
-        ]
-        await conn.executemany(
-            """
-            INSERT INTO kb_chunks (
-                id, document_id, chunk_index, text, embedding, embedding_model, embedding_dimensions
-            ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
-            """,
-            records,
-        )
-
-
-async def update_chunk_embeddings_local(
-    *,
-    document_id: str,
-    chunks: List[Tuple[int, List[float]]],
-    model: str,
-    dimensions: int,
-) -> None:
-    """Update local vector embeddings for existing chunks by (document_id, chunk_index)."""
-    if not chunks:
-        return
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        records = []
-        for (chunk_index, embedding) in chunks:
-            vec_text = f"[{', '.join(str(x) for x in embedding)}]"
-            records.append((document_id, chunk_index, vec_text, model, dimensions))
-        await conn.executemany(
-            """
-            UPDATE kb_chunks
-            SET embedding_vec_local = $3::vector(3072),
-                local_embedding_model = $4,
-                local_embedding_dimensions = $5
-            WHERE document_id = $1 AND chunk_index = $2
-            """,
-            records,
-        )
-
-
-async def insert_chunk_embeddings_local(
-    *,
-    document_id: str,
     items: List[Tuple[int, str, List[float]]],
     model: str,
     dimensions: int,
 ) -> None:
-    """Insert new kb_chunks rows with text and local vector embeddings.
-
-    For compatibility with existing schema (embedding JSONB NOT NULL), we store
-    an empty JSON array in the standard ``embedding`` column and rely on
-    ``embedding_vec_local`` for similarity when provider='local'.
-    """
+    """Insert new kb_chunks rows with text and vector embeddings."""
     if not items:
         return
     pool = await get_db_pool()
@@ -189,9 +96,6 @@ async def insert_chunk_embeddings_local(
                 document_id,
                 chunk_index,
                 text,
-                _json.dumps([]),  # standard embedding JSONB (unused for local)
-                '',               # embedding_model (unused for local)
-                0,                # embedding_dimensions (unused for local)
                 model,
                 dimensions,
                 vec_text,
@@ -199,14 +103,42 @@ async def insert_chunk_embeddings_local(
         await conn.executemany(
             """
             INSERT INTO kb_chunks (
-                id, document_id, chunk_index, text, embedding, embedding_model, embedding_dimensions,
-                local_embedding_model, local_embedding_dimensions, embedding_vec_local
+                id, document_id, chunk_index, text, embedding_model, embedding_dimensions, embedding_vec
             ) VALUES (
-                $1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10::vector(3072)
+                $1, $2, $3, $4, $5, $6, $7::vector(768)
             )
             """,
             records,
         )
+
+
+async def update_chunk_embeddings(
+    *,
+    document_id: str,
+    chunks: List[Tuple[int, List[float]]],
+    model: str,
+    dimensions: int,
+) -> None:
+    """Update vector embeddings for existing chunks by (document_id, chunk_index)."""
+    if not chunks:
+        return
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        records = []
+        for (chunk_index, embedding) in chunks:
+            vec_text = f"[{', '.join(str(x) for x in embedding)}]"
+            records.append((document_id, chunk_index, vec_text, model, dimensions))
+        await conn.executemany(
+            """
+            UPDATE kb_chunks
+            SET embedding_vec = $3::vector(768),
+                embedding_model = $4,
+                embedding_dimensions = $5
+            WHERE document_id = $1 AND chunk_index = $2
+            """,
+            records,
+        )
+
 
 async def list_documents(*, q: Optional[str] = None, is_global: Optional[bool] = None) -> List[Dict[str, Any]]:
     pool = await get_db_pool()
@@ -226,8 +158,7 @@ async def list_documents(*, q: Optional[str] = None, is_global: Optional[bool] =
                    d.is_global, coalesce(d.description,'') AS description, d.source, d.status,
                    coalesce(d.title, '') AS title,
                    COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count,
-                   d.embedding_model, d.embedding_dimensions,
-                   d.local_embedding_model, d.local_embedding_dimensions
+                   d.embedding_model, d.embedding_dimensions
             FROM kb_documents d
             {where_sql}
             ORDER BY d.upload_date DESC
@@ -244,9 +175,8 @@ async def get_document(document_id: str) -> Optional[Dict[str, Any]]:
             """
             SELECT d.id, d.filename, d.original_name, d.size, d.mime_type, d.upload_date, d.last_modified,
                    d.is_global, coalesce(d.description,'') AS description, d.source, d.status, d.storage_path,
-                   d.doc_embedding, d.embedding_model, d.embedding_dimensions,
+                   d.embedding_model, d.embedding_dimensions,
                    coalesce(d.title, '') AS title,
-                   d.local_embedding_model, d.local_embedding_dimensions,
                    COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count
             FROM kb_documents d
             WHERE d.id = $1
@@ -267,8 +197,7 @@ async def list_chunks_for_document(document_id: str) -> List[Dict[str, Any]]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, document_id, chunk_index, text, embedding, embedding_model, embedding_dimensions,
-                   local_embedding_model, local_embedding_dimensions
+            SELECT id, document_id, chunk_index, text, embedding_model, embedding_dimensions
             FROM kb_chunks
             WHERE document_id = $1
             ORDER BY chunk_index ASC
@@ -278,30 +207,6 @@ async def list_chunks_for_document(document_id: str) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
 
 
-async def list_all_doc_embeddings() -> List[Dict[str, Any]]:
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT id, coalesce(description,'') AS description, filename, original_name,
-                   doc_embedding, embedding_model, embedding_dimensions, coalesce(title,'') AS title
-            FROM kb_documents
-            WHERE doc_embedding IS NOT NULL
-            """
-        )
-        out: List[Dict[str, Any]] = []
-        for r in rows:
-            d = dict(r)
-            emb = d.get("doc_embedding")
-            if isinstance(emb, str):
-                try:
-                    d["doc_embedding"] = _json.loads(emb)
-                except Exception:
-                    d["doc_embedding"] = []
-            out.append(d)
-        return out
-
-
 async def list_chunks_for_documents(document_ids: List[str]) -> List[Dict[str, Any]]:
     if not document_ids:
         return []
@@ -309,34 +214,24 @@ async def list_chunks_for_documents(document_ids: List[str]) -> List[Dict[str, A
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, document_id, chunk_index, text, embedding, embedding_model, embedding_dimensions,
-                   local_embedding_model, local_embedding_dimensions
+            SELECT id, document_id, chunk_index, text, embedding_model, embedding_dimensions
             FROM kb_chunks
             WHERE document_id = ANY($1::uuid[])
             ORDER BY document_id, chunk_index ASC
             """,
             document_ids,
         )
-        out: List[Dict[str, Any]] = []
-        for r in rows:
-            d = dict(r)
-            emb = d.get("embedding")
-            if isinstance(emb, str):
-                try:
-                    d["embedding"] = _json.loads(emb)
-                except Exception:
-                    d["embedding"] = []
-            out.append(d)
-        return out
+        return [dict(r) for r in rows]
 
 
-async def search_chunks_by_vector_local(
+async def search_chunks_by_vector(
     *, query_vec: List[float], limit: int = 20, document_filter: Optional[List[str]] = None, model: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    """Search chunks by vector similarity (cosine distance via HNSW index)."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         vec_text = f"[{', '.join(str(x) for x in query_vec)}]"
-        where = ["embedding_vec_local IS NOT NULL"]
+        where = ["embedding_vec IS NOT NULL"]
         params: List[Any] = []
         param_offset = 2  # $1 is vec, $2 is limit
         if document_filter:
@@ -344,17 +239,16 @@ async def search_chunks_by_vector_local(
             params.append(document_filter)
             param_offset += 1
         if model:
-            where.append(f"local_embedding_model = ${param_offset + 1}")
+            where.append(f"embedding_model = ${param_offset + 1}")
             params.append(model)
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
         rows = await conn.fetch(
             f"""
             SELECT id, document_id, chunk_index, text, embedding_model, embedding_dimensions,
-                   local_embedding_model, local_embedding_dimensions,
-                   (embedding_vec_local <-> $1::vector(3072)) AS distance
+                   (embedding_vec <=> $1::vector(768)) AS distance
             FROM kb_chunks
             {where_sql}
-            ORDER BY embedding_vec_local <-> $1::vector(3072) ASC
+            ORDER BY embedding_vec <=> $1::vector(768) ASC
             LIMIT $2
             """,
             vec_text,
@@ -408,7 +302,7 @@ async def get_document_by_hash(file_hash: str) -> Optional[Dict[str, Any]]:
             """
             SELECT d.id, d.filename, d.original_name, d.size, d.mime_type, d.upload_date, d.last_modified,
                    d.is_global, coalesce(d.description,'') AS description, d.source, d.status, d.storage_path,
-                   d.doc_embedding, d.embedding_model, d.embedding_dimensions,
+                   d.embedding_model, d.embedding_dimensions,
                    coalesce(d.title, '') AS title,
                    COALESCE((SELECT COUNT(1) FROM kb_chunks c WHERE c.document_id = d.id), 0) AS chunk_count
             FROM kb_documents d
@@ -457,5 +351,3 @@ async def list_recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
             limit,
         )
         return [dict(r) for r in rows]
-
-

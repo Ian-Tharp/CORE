@@ -239,7 +239,7 @@ async def check_vector_db() -> ServiceHealth:
             
             # Count indexed chunks
             chunk_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM kb_chunks WHERE embedding_vec_local IS NOT NULL"
+                "SELECT COUNT(*) FROM kb_chunks WHERE embedding_vec IS NOT NULL"
             )
         
         latency = (time.time() - start) * 1000
