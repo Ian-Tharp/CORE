@@ -26,6 +26,7 @@ dependencies = [
     "docker>=7.0.0",
     "aiosqlite>=0.22.1",
     "discord.py>=2.3.0",
+    "pymupdf>=1.25.0",
 ]
 
 [dependency-groups]

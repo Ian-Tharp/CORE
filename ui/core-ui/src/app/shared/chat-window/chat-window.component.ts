@@ -77,11 +77,6 @@ export class ChatWindowComponent implements OnChanges {
   kbFiles: KnowledgeFile[] = [];
   kbFileId?: string;
 
-  // RAG embeddings provider/model (independent of chat provider)
-  ragEmbeddingProvider: 'openai' | 'local' = 'openai';
-  ragLocalModels: string[] = ['nomic-embed-text', 'mxbai-embed-large', 'embedding-gemma'];
-  ragSelectedLocalModel: string = this.ragLocalModels[0];
-
   // Reference to the scrolling container so we can auto-scroll.
   @ViewChild('scrollContainer', { static: false })
   private scrollContainer?: ElementRef<HTMLDivElement>;
@@ -254,8 +249,6 @@ export class ChatWindowComponent implements OnChanges {
           kbMode: this.kbMode,
           kbFileId: this.kbMode === 'file' ? this.kbFileId : undefined,
           provider: this.selectedProvider,
-          kbEmbeddingProvider: this.kbMode !== 'none' ? this.ragEmbeddingProvider : undefined,
-          kbLocalModel: this.kbMode !== 'none' && this.ragEmbeddingProvider === 'local' ? this.ragSelectedLocalModel : undefined,
         })
         .subscribe({
           next: (jsonStr) => {

@@ -1,0 +1,177 @@
+<div class="mcp-registry">
+  <div class="registry-header">
+    <h1>MCP Tool Registry</h1>
+    <p class="subtitle">
+      Discover and manage Model Context Protocol tools available to agents
+    </p>
+    
+    <div class="header-actions">
+      <button 
+        class="btn btn-secondary" 
+        (click)="refreshRegistry()" 
+        [disabled]="loading">
+        <i class="icon-refresh"></i>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading MCP registry...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-container">
+    <div class="error-message">
+      <i class="icon-warning"></i>
+      <p>{{ error }}</p>
+      <button class="btn btn-primary" (click)="loadRegistry()">Try Again</button>
+    </div>
+  </div>
+
+  <!-- Registry Content -->
+  <div *ngIf="!loading && !error && registry" class="registry-content">
+    
+    <!-- Summary Stats -->
+    <div class="stats-bar">
+      <div class="stat">
+        <span class="stat-number">{{ registry.servers.length }}</span>
+        <span class="stat-label">MCP Servers</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">{{ registry.total_tools }}</span>
+        <span class="stat-label">Total Tools</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">{{ allTools.length }}</span>
+        <span class="stat-label">Filtered Tools</span>
+      </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="filters">
+      <div class="search-box">
+        <i class="icon-search"></i>
+        <input 
+          type="text" 
+          placeholder="Search tools and servers..."
+          [(ngModel)]="searchQuery"
+          class="search-input">
+      </div>
+      
+      <div class="server-filter">
+        <label>Server:</label>
+        <select [(ngModel)]="selectedServer" class="server-select">
+          <option [value]="null">All Servers</option>
+          <option *ngFor="let serverName of serverNames" [value]="serverName">
+            {{ serverName }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Server List -->
+    <div class="servers-list">
+      <div *ngFor="let server of filteredServers" class="server-card">
+        <div class="server-header">
+          <div class="server-info">
+            <h3 class="server-name">{{ server.name }}</h3>
+            <div class="server-meta">
+              <span class="server-type">{{ server.type }}</span>
+              <span class="server-status" [class]="'status-' + getServerStatus(server)">
+                {{ getServerStatusText(server) }}
+              </span>
+            </div>
+          </div>
+          
+          <div class="server-stats">
+            <span class="tool-count">{{ server.tools.length }} tools</span>
+          </div>
+        </div>
+
+        <!-- Server Command Info -->
+        <div class="server-details" *ngIf="server.command">
+          <div class="command-info">
+            <strong>Command:</strong> {{ server.command }}
+            <span *ngIf="server.args && server.args.length > 0"> {{ server.args.join(' ') }}</span>
+          </div>
+        </div>
+
+        <!-- Tools Grid -->
+        <div class="tools-grid" *ngIf="server.tools.length > 0">
+          <div 
+            *ngFor="let tool of server.tools" 
+            class="tool-card"
+            (click)="selectTool(tool)"
+            [class.selected]="selectedTool === tool">
+            
+            <div class="tool-header">
+              <h4 class="tool-name">{{ tool.name }}</h4>
+              <span class="tool-server">{{ tool.server }}</span>
+            </div>
+            
+            <p class="tool-description">{{ tool.description }}</p>
+            
+            <div class="tool-meta">
+              <span class="has-schema" *ngIf="tool.parameters_schema">
+                <i class="icon-code"></i> Schema
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Tools Message -->
+        <div class="no-tools" *ngIf="server.tools.length === 0">
+          <p>No tools available for this server</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Results -->
+    <div class="no-results" *ngIf="filteredServers.length === 0">
+      <div class="no-results-content">
+        <i class="icon-search-empty"></i>
+        <h3>No tools found</h3>
+        <p>Try adjusting your search query or server filter</p>
+        <button class="btn btn-secondary" (click)="searchQuery = ''; selectedServer = null">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool Details Modal -->
+  <div class="tool-modal" *ngIf="selectedTool" (click)="clearSelection()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ selectedTool.name }}</h3>
+        <button class="close-btn" (click)="clearSelection()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="tool-info">
+          <div class="info-row">
+            <strong>Server:</strong> {{ selectedTool.server }}
+          </div>
+          <div class="info-row">
+            <strong>Description:</strong> {{ selectedTool.description }}
+          </div>
+        </div>
+
+        <div class="tool-schema" *ngIf="selectedTool.parameters_schema">
+          <h4>Parameters Schema</h4>
+          <pre class="schema-code">{{ selectedTool.parameters_schema | json }}</pre>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="clearSelection()">Close</button>
+        <button class="btn btn-primary" disabled>
+          Use Tool (Coming Soon)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

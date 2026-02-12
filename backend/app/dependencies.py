@@ -491,36 +491,36 @@ async def setup_db_schema() -> None:
             )
 
             # -----------------------------------------------------------------
-            # Knowledgebase: add local embedding support with pgvector columns
+            # Knowledgebase: vector embedding columns (768-dim, nomic-embed-text)
             # -----------------------------------------------------------------
-            # Documents: local embedding metadata and vector
+            # Documents: embedding metadata and vector
             await conn.execute(
-                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS local_embedding_model VARCHAR(128)"
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(128)"
             )
             await conn.execute(
-                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS local_embedding_dimensions INTEGER"
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS embedding_dimensions INTEGER"
             )
             await conn.execute(
-                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS doc_embedding_vec_local vector(3072)"
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS doc_embedding_vec vector(768)"
             )
 
-            # Chunks: local embedding metadata and vector
+            # Chunks: embedding metadata and vector
             await conn.execute(
-                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS local_embedding_model VARCHAR(128)"
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(128)"
             )
             await conn.execute(
-                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS local_embedding_dimensions INTEGER"
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS embedding_dimensions INTEGER"
             )
             await conn.execute(
-                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS embedding_vec_local vector(3072)"
+                "ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS embedding_vec vector(768)"
             )
 
-            # Try to create a HNSW index for cosine similarity; fallback to IVFFLAT
+            # HNSW index for cosine similarity
             await _safe_exec(
-                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_hnsw ON kb_chunks USING hnsw (embedding_vec_local vector_cosine_ops)"
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_hnsw ON kb_chunks USING hnsw (embedding_vec vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
             )
             await _safe_exec(
-                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_vec_local_ivfflat ON kb_chunks USING ivfflat (embedding_vec_local vector_cosine_ops) WITH (lists = 100)"
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_doc_embedding_vec_hnsw ON kb_documents USING hnsw (doc_embedding_vec vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
             )
 
             # -----------------------------------------------------------------

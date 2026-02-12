@@ -86,7 +86,7 @@ export class KnowledgebaseService {
     );
   }
 
-  uploadFile(request: FileUploadRequest & { embeddingProvider?: 'openai' | 'local'; localModel?: string }): Observable<KnowledgeFile> {
+  uploadFile(request: FileUploadRequest): Observable<KnowledgeFile> {
     const formData = new FormData();
     formData.append('file', request.file);
     formData.append('data', JSON.stringify({
@@ -94,9 +94,7 @@ export class KnowledgebaseService {
       description: request.description,
       isGlobal: request.isGlobal,
       metadata: request.metadata,
-      processImmediately: request.processImmediately,
-      embeddingProvider: request.embeddingProvider,
-      localModel: request.localModel
+      processImmediately: request.processImmediately
     }));
 
     // Emit initial stage
@@ -230,27 +228,13 @@ export class KnowledgebaseService {
     );
   }
 
-  semanticSearch(query: string, limit: number = 10, provider: 'openai' | 'local' = 'openai', localModel?: string): Observable<Array<KnowledgeFile & { similarity: number }>> {
+  semanticSearch(query: string, limit: number = 10): Observable<Array<KnowledgeFile & { similarity: number }>> {
     return this.http.post<Array<KnowledgeFile & { similarity: number }>>(`${this.apiUrl}/semantic-search`, {
       query,
-      limit,
-      provider,
-      localModel
+      limit
     }).pipe(
       catchError(this.handleError)
     );
-  }
-
-  embedLocal(fileId: string, model: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/files/${fileId}/embed-local`, null, {
-      params: { model }
-    }).pipe(catchError(this.handleError));
-  }
-
-  reindexLocal(model: string, onlyMissing: boolean = true): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/reindex-local`, null, {
-      params: { model, only_missing: String(!!onlyMissing) }
-    }).pipe(catchError(this.handleError));
   }
 
   applyFilter(filter: KnowledgebaseFilter): void {
