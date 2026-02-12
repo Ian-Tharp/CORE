@@ -106,16 +106,10 @@ async def chat_stream(request: ChatRequest):
         if request.kb_mode in {"all", "file"}:
             user_msg = request.messages[-1].content if request.messages else ""
             try:
-                # Auto-detect embedding provider: use local embeddings if using local LLM provider
-                embedding_provider = request.kb_embedding_provider
-                if not embedding_provider:
-                    embedding_provider = "local" if request.provider == "ollama" else "openai"
-
                 ctx = await kb_svc.retrieve_context(
                     query=user_msg,
                     mode=request.kb_mode,
                     file_id=request.kb_file_id,
-                    provider=embedding_provider,
                     local_model=request.kb_local_model,
                 )
                 final_messages = kb_svc.build_rag_messages(final_messages, context_chunks=ctx.get("chunks", []))

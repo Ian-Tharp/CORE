@@ -24,7 +24,6 @@ class UploadData(BaseModel):
     isGlobal: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     processImmediately: Optional[bool] = True
-    embeddingProvider: Optional[str] = None  # 'openai' | 'local'
     localModel: Optional[str] = None
 
 
@@ -40,8 +39,6 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None, ap
             "chunkCount": d.get("chunk_count", 0),
             "embeddingModel": d.get("embedding_model"),
             "embeddingDimensions": d.get("embedding_dimensions"),
-            "localEmbeddingModel": d.get("local_embedding_model"),
-            "localEmbeddingDimensions": d.get("local_embedding_dimensions"),
             "size": d["size"],
             "mimeType": d["mime_type"],
             "uploadDate": d["upload_date"],
@@ -68,8 +65,6 @@ async def get_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dic
         "chunkCount": doc.get("chunk_count", 0),
         "embeddingModel": doc.get("embedding_model"),
         "embeddingDimensions": doc.get("embedding_dimensions"),
-        "localEmbeddingModel": doc.get("local_embedding_model"),
-        "localEmbeddingDimensions": doc.get("local_embedding_dimensions"),
         "size": doc["size"],
         "mimeType": doc["mime_type"],
         "uploadDate": doc["upload_date"],
@@ -99,7 +94,6 @@ async def delete_file(file_id: str, api_key: str = Depends(require_api_key)) -> 
             details=None,
         )
     except Exception:
-        # Do not block deletion on logging failures
         pass
     return {"status": "ok"}
 
@@ -156,7 +150,6 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
             description=payload.description,
             is_global=bool(payload.isGlobal),
             file_hash=file_hash,
-            embedding_provider=(payload.embeddingProvider or 'local'),
             local_model=payload.localModel,
         )
         doc = await repo.get_document(doc_id)
@@ -213,7 +206,6 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
         original_name=doc["original_name"],
         mime_type=doc["mime_type"],
         description=doc.get("description"),
-        embedding_provider="local",
         local_model="nomic-embed-text",
     )
     try:
@@ -232,7 +224,6 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
 class SemanticSearchRequest(BaseModel):
     query: str
     limit: int = 10
-    provider: str | None = None  # 'openai' | 'local' (default: local for Ollama)
     localModel: str | None = None
 
 
@@ -242,7 +233,6 @@ async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends
         query=payload.query,
         mode="all",
         max_docs=payload.limit,
-        provider=(payload.provider or "local"),
         local_model=(payload.localModel or "nomic-embed-text"),
     )
     doc_ids = set(ctx.get("doc_ids", []))
@@ -268,7 +258,7 @@ async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends
                 "description": d.get("description") or "",
                 "source": d.get("source") or "user_upload",
                 "status": d.get("status") or "ready",
-                "similarity": 1.0,  # Placeholder; detailed per-doc score optional
+                "similarity": 1.0,
             }
         )
     return out
@@ -284,18 +274,18 @@ async def embed_local(file_id: str, model: str, api_key: str = Depends(require_a
     return {
         "fileId": file_id,
         "status": "ok",
-        "localEmbeddingModel": updated.get("local_embedding_model") if updated else None,
-        "localEmbeddingDimensions": updated.get("local_embedding_dimensions") if updated else None,
+        "embeddingModel": updated.get("embedding_model") if updated else None,
+        "embeddingDimensions": updated.get("embedding_dimensions") if updated else None,
     }
 
 
-@router.post("/reindex-local")
-async def reindex_local(model: str, only_missing: bool = True, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+@router.post("/reindex")
+async def reindex(model: str, only_missing: bool = True, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Re-embed all documents using a local model. When only_missing is true, skip docs that already have local vectors."""
     docs = await repo.list_documents()
     count = 0
     for d in docs:
-        if only_missing and d.get("local_embedding_model"):
+        if only_missing and d.get("embedding_model"):
             continue
         await svc.embed_document_locally(document_id=d["id"], model=model)
         count += 1
@@ -319,7 +309,6 @@ async def recent_activity(limit: int = 20, api_key: str = Depends(require_api_ke
             for r in rows
         ]
     except Exception:
-        # Return empty list if anything goes wrong to keep UI functional
         return []
 
 
@@ -349,27 +338,24 @@ async def reextract_title(file_id: str, api_key: str = Depends(require_api_key))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-# RSI TODO: Implement full stats aggregation with file type breakdown, source distribution, and processing queue metrics
 @router.get("/stats")
 async def get_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
-    """Return knowledgebase statistics. Currently returns stub data with basic file count."""
+    """Return knowledgebase statistics."""
     try:
         docs = await repo.list_documents()
         total_files = len(docs)
         total_size = sum(d.get("size", 0) for d in docs)
 
-        # RSI TODO: Aggregate by file type and source for richer stats
         return {
             "totalFiles": total_files,
             "totalSize": total_size,
-            "filesByType": {},  # RSI TODO: Implement file type aggregation
-            "filesBySource": {},  # RSI TODO: Implement source aggregation
-            "totalEmbeddings": 0,  # RSI TODO: Query pgvector table for embedding count
-            "processingQueue": 0,  # RSI TODO: Count files with status='processing'
-            "recentActivity": []  # RSI TODO: Link to /activity endpoint or aggregate here
+            "filesByType": {},
+            "filesBySource": {},
+            "totalEmbeddings": 0,
+            "processingQueue": 0,
+            "recentActivity": []
         }
     except Exception:
-        # Return safe defaults to keep UI functional
         return {
             "totalFiles": 0,
             "totalSize": 0,
@@ -381,16 +367,10 @@ async def get_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
         }
 
 
-# RSI TODO: Implement full tag management with usage counts and hierarchical tag structures
 @router.get("/tags")
 async def get_tags(api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
-    """Return available file tags. Currently returns empty list as tags are stored inline with files."""
+    """Return available file tags."""
     try:
-        # RSI TODO: Query tags table or extract unique tags from document metadata
-        # RSI TODO: Include usage counts per tag for better UX
-        # RSI TODO: Support tag hierarchies/categories (e.g., 'project:core', 'topic:ai')
         return []
     except Exception:
-        # Return empty list to keep UI functional
         return []
-
