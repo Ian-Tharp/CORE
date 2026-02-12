@@ -299,9 +299,11 @@ async def embed_document_locally(*, document_id: str, model: str) -> None:
             for i, v in enumerate(vecs):
                 items.append((start + i, batch[i], v))
         if items:
-            await repo.insert_chunk_embeddings_local(
+            # Update existing chunks' local vectors (don't insert duplicates)
+            update_tuples = [(idx, vec) for idx, _text, vec in items]
+            await repo.update_chunk_embeddings_local(
                 document_id=document_id,
-                items=items,
+                chunks=update_tuples,
                 model=model,
                 dimensions=original_dim_total or 0,
             )
