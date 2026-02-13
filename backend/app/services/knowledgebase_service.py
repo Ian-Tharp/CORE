@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
+import asyncio
 import os
 import io
 import logging
 import math
 import mimetypes
 import shutil
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,7 @@ async def process_uploaded_file(
     file_hash: Optional[str] = None,
     local_model: Optional[str] = None,
 ) -> str:
+    start_time = time.time()
     title, text = await _extract_title_and_text(storage_path, mime_type)
     model = local_model or "nomic-embed-text"
 
@@ -128,6 +131,15 @@ async def process_uploaded_file(
             model=model,
             dimensions=dims or 0,
         )
+
+    # Record document processing performance
+    elapsed_ms = (time.time() - start_time) * 1000
+    total_chars = len(text or "")
+    try:
+        from app.services.metrics_service import record_embedding_performance
+        record_embedding_performance("document", model, len(chunks), elapsed_ms, total_chars)
+    except Exception:
+        pass  # Don't fail on metrics errors
 
     return doc_id
 
@@ -353,12 +365,26 @@ def _extract_pdf_with_pymupdf(
     return full_text, title
 
 
-async def _extract_title_and_text(path: str, mime_type: str) -> Tuple[Optional[str], str]:
-    """Best-effort extraction of a human-friendly title and full text."""
+async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: bool = False) -> Tuple[Optional[str], str]:
+    """Best-effort extraction of a human-friendly title and full text.
+    
+    If prefer_pymupdf=True, use pymupdf first (faster, no hanging on malformed fonts).
+    Falls back to pypdf only if pymupdf fails.
+    """
     title: Optional[str] = None
 
     # PDF path
     if mime_type == "application/pdf":
+        if prefer_pymupdf:
+            # pymupdf-first path: faster and doesn't hang on font map issues
+            try:
+                text, fallback_title = _extract_pdf_with_pymupdf(path, None)
+                if text and len(text.strip()) >= 100:
+                    return fallback_title, text
+                logger.info("pymupdf extracted < 100 chars for %s, trying pypdf", path)
+            except Exception:
+                logger.warning("pymupdf failed for %s, trying pypdf", path, exc_info=True)
+
         try:
             from pypdf import PdfReader  # type: ignore
 
@@ -498,18 +524,31 @@ async def batch_upload_and_process(
     model = local_model or "nomic-embed-text"
     start_time = time.monotonic()
 
-    # Phase 1: Extract and chunk all files
+    # Phase 1: Extract and chunk all files (with per-file timeout)
     file_infos: List[Dict] = []  # {path, title, text, chunks, error}
+    extraction_timeout = 120  # seconds per file
     for i, fpath in enumerate(file_paths):
         logger.info("Processing file %d of %d: %s", i + 1, len(file_paths), fpath)
         try:
             mime = mimetypes.guess_type(fpath)[0] or "application/octet-stream"
-            title, text = await _extract_title_and_text(fpath, mime)
+            # Run extraction with timeout — pypdf can hang on malformed PDFs
+            title, text = await asyncio.wait_for(
+                _extract_title_and_text(fpath, mime, prefer_pymupdf=True),
+                timeout=extraction_timeout,
+            )
+            # Strip null bytes — some PDFs contain \x00 that PostgreSQL rejects
+            if text:
+                text = text.replace("\x00", "")
+            if title:
+                title = title.replace("\x00", "")
             chunks = _split_text(text) if text else []
             file_infos.append({
                 "path": fpath, "title": title, "text": text,
                 "chunks": chunks, "mime": mime, "error": None,
             })
+        except asyncio.TimeoutError:
+            logger.error("Extraction timed out after %ds: %s", extraction_timeout, fpath)
+            file_infos.append({"path": fpath, "chunks": [], "error": f"extraction timed out after {extraction_timeout}s"})
         except Exception as exc:
             logger.error("Failed to extract %s: %s", fpath, exc)
             file_infos.append({"path": fpath, "chunks": [], "error": str(exc)})
@@ -583,15 +622,15 @@ async def batch_upload_and_process(
                         model=model, dimensions=dorig,
                     )
 
-            # Chunk embeddings
+            # Chunk embeddings — INSERT (not update, chunks don't exist yet)
             num_chunks = len(info["chunks"])
-            updates: List[Tuple[int, List[float]]] = []
+            inserts: List[Tuple[int, str, List[float]]] = []
             for ci in range(num_chunks):
                 if vec_offset + ci < len(all_vecs):
-                    updates.append((ci, all_vecs[vec_offset + ci]))
-            if updates:
-                await repo.update_chunk_embeddings(
-                    document_id=doc_id, chunks=updates,
+                    inserts.append((ci, info["chunks"][ci], all_vecs[vec_offset + ci]))
+            if inserts:
+                await repo.insert_chunk_embeddings(
+                    document_id=doc_id, items=inserts,
                     model=model, dimensions=dims or 0,
                 )
             vec_offset += num_chunks

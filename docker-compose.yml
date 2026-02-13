@@ -29,6 +29,8 @@ services:
       - ./backend:/app
       - backend-venv:/app/.venv
       - backend-data:/app/data
+      # Optional: mount local directories for batch ingestion
+      # - /path/to/your/documents:/mnt/documents:ro
     networks:
       - core-network
     restart: unless-stopped

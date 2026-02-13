@@ -13,3 +13,5 @@ venv.bak/
 
 # Python
 __pycache__/
+
+docker-compose.override.yml

@@ -27,6 +27,7 @@ dependencies = [
     "aiosqlite>=0.22.1",
     "discord.py>=2.3.0",
     "pymupdf>=1.25.0",
+    "redis>=5.0.1",
 ]
 
 [dependency-groups]
