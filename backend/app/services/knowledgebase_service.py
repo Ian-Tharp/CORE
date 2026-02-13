@@ -11,7 +11,7 @@ import shutil
 logger = logging.getLogger(__name__)
 
 from app.repository import knowledgebase_repository as repo
-from app.services.ollama_embeddings import embed_texts_via_ollama
+from app.services.ollama_embeddings import embed_texts_via_ollama, embed_texts_batch
 
 
 def _split_text(text: str, *, chunk_size: int = 1200, chunk_overlap: int = 200) -> List[str]:
@@ -46,8 +46,13 @@ def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-async def _embed_texts_local(*, model: str, texts: List[str]) -> Tuple[List[List[float]], int]:
-    """Embed texts locally via Ollama and return (vectors, original_dim)."""
+async def _embed_texts_local(*, model: str, texts: List[str], use_batch: bool = True) -> Tuple[List[List[float]], int]:
+    """Embed texts locally via Ollama and return (vectors, original_dim).
+
+    When use_batch is True, uses the batch /api/embed endpoint (with fallback).
+    """
+    if use_batch:
+        return await embed_texts_batch(model=model, texts=texts)
     return await embed_texts_via_ollama(model=model, texts=texts)
 
 
@@ -474,6 +479,137 @@ async def retrieve_context(
         query_vec=query_vec, limit=max_chunks, document_filter=doc_filter, model=local_model
     )
     return {"chunks": rows, "doc_ids": list({r.get("document_id") for r in rows})}
+
+
+async def batch_upload_and_process(
+    *,
+    file_paths: List[str],
+    is_global: bool = False,
+    local_model: Optional[str] = None,
+    description: Optional[str] = None,
+) -> Dict:
+    """Process multiple files: extract text, chunk, batch-embed, store.
+
+    Returns dict with doc_ids, stats per doc, and totals.
+    """
+    import time
+    import hashlib
+
+    model = local_model or "nomic-embed-text"
+    start_time = time.monotonic()
+
+    # Phase 1: Extract and chunk all files
+    file_infos: List[Dict] = []  # {path, title, text, chunks, error}
+    for i, fpath in enumerate(file_paths):
+        logger.info("Processing file %d of %d: %s", i + 1, len(file_paths), fpath)
+        try:
+            mime = mimetypes.guess_type(fpath)[0] or "application/octet-stream"
+            title, text = await _extract_title_and_text(fpath, mime)
+            chunks = _split_text(text) if text else []
+            file_infos.append({
+                "path": fpath, "title": title, "text": text,
+                "chunks": chunks, "mime": mime, "error": None,
+            })
+        except Exception as exc:
+            logger.error("Failed to extract %s: %s", fpath, exc)
+            file_infos.append({"path": fpath, "chunks": [], "error": str(exc)})
+
+    # Phase 2: Collect all chunks and batch embed
+    all_chunks: List[str] = []
+    chunk_map: List[Tuple[int, int]] = []  # (file_index, chunk_index_within_file)
+    for fi, info in enumerate(file_infos):
+        if info.get("error"):
+            continue
+        for ci, chunk in enumerate(info["chunks"]):
+            all_chunks.append(chunk)
+            chunk_map.append((fi, ci))
+
+    all_vecs: List[List[float]] = []
+    dims = 0
+    batch_size = 64
+    total_batches = (len(all_chunks) + batch_size - 1) // batch_size if all_chunks else 0
+    for batch_idx, start in enumerate(range(0, len(all_chunks), batch_size)):
+        logger.info("Embedding batch %d of %d", batch_idx + 1, total_batches)
+        batch = all_chunks[start:start + batch_size]
+        v, od = await embed_texts_batch(model=model, texts=batch)
+        if v:
+            all_vecs.extend(v)
+            if od and not dims:
+                dims = od
+
+    # Phase 3: Store documents and chunks
+    doc_ids: List[str] = []
+    stats: List[Dict] = []
+    vec_offset = 0
+
+    for fi, info in enumerate(file_infos):
+        if info.get("error"):
+            stats.append({"file": info["path"], "error": info["error"], "chunks": 0})
+            continue
+
+        fpath = info["path"]
+        try:
+            stat = os.stat(fpath)
+            filename = os.path.basename(fpath)
+            with open(fpath, "rb") as f:
+                file_hash = hashlib.sha256(f.read()).hexdigest()
+
+            auto_desc = description
+            if not auto_desc:
+                snippet = (info.get("text") or "").strip()[:800]
+                if snippet:
+                    parts = [p.strip() for p in snippet.split(".") if p.strip()]
+                    auto_desc = ". ".join(parts[:2])[:200]
+
+            doc_id = await repo.create_document(
+                filename=filename,
+                original_name=filename,
+                size=stat.st_size,
+                mime_type=info["mime"],
+                storage_path=fpath,
+                description=auto_desc,
+                is_global=is_global,
+                title=info.get("title"),
+                file_hash=file_hash,
+            )
+
+            # Document-level embedding
+            title_desc = f"{(info.get('title') or filename)}\n\n{(auto_desc or '')}".strip()
+            if title_desc:
+                dvecs, dorig = await embed_texts_batch(model=model, texts=[title_desc])
+                if dvecs:
+                    await repo.update_document_embedding(
+                        document_id=doc_id, embedding=dvecs[0],
+                        model=model, dimensions=dorig,
+                    )
+
+            # Chunk embeddings
+            num_chunks = len(info["chunks"])
+            updates: List[Tuple[int, List[float]]] = []
+            for ci in range(num_chunks):
+                if vec_offset + ci < len(all_vecs):
+                    updates.append((ci, all_vecs[vec_offset + ci]))
+            if updates:
+                await repo.update_chunk_embeddings(
+                    document_id=doc_id, chunks=updates,
+                    model=model, dimensions=dims or 0,
+                )
+            vec_offset += num_chunks
+
+            doc_ids.append(doc_id)
+            stats.append({"file": fpath, "doc_id": doc_id, "chunks": num_chunks})
+        except Exception as exc:
+            logger.error("Failed to store %s: %s", fpath, exc)
+            stats.append({"file": fpath, "error": str(exc), "chunks": 0})
+            vec_offset += len(info["chunks"])
+
+    elapsed = time.monotonic() - start_time
+    return {
+        "doc_ids": doc_ids,
+        "stats": stats,
+        "total_chunks": len(all_chunks),
+        "total_time": round(elapsed, 2),
+    }
 
 
 def build_rag_messages(original_messages: List[Dict[str, str]], *, context_chunks: List[Dict[str, any]]) -> List[Dict[str, str]]:

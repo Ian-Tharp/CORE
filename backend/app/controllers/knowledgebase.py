@@ -221,6 +221,87 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
     return {"fileId": file_id, "status": "ready"}
 
 
+class BatchUploadRequest(BaseModel):
+    directory: str
+    recursive: bool = True
+    extensions: Optional[List[str]] = None
+    processImmediately: Optional[bool] = True
+    isGlobal: Optional[bool] = False
+    localModel: Optional[str] = None
+    description: Optional[str] = None
+
+
+@router.post("/batch-upload")
+async def batch_upload(payload: BatchUploadRequest, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+    """Batch-upload files from a directory.
+
+    NOTE: The directory path must be as seen from INSIDE the Docker container
+    (e.g. /data/documents), not the host path.
+    """
+    import time
+    import glob
+
+    directory = payload.directory
+    if not os.path.isdir(directory):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Directory not found: {directory}")
+
+    # Scan for files
+    extensions = payload.extensions or [".pdf", ".txt", ".md", ".docx", ".json"]
+    found_files: List[str] = []
+
+    if payload.recursive:
+        for root, _dirs, files in os.walk(directory):
+            for fname in files:
+                if any(fname.lower().endswith(ext) for ext in extensions):
+                    found_files.append(os.path.join(root, fname))
+    else:
+        for fname in os.listdir(directory):
+            fpath = os.path.join(directory, fname)
+            if os.path.isfile(fpath) and any(fname.lower().endswith(ext) for ext in extensions):
+                found_files.append(fpath)
+
+    # Skip duplicates by file hash
+    files_to_process: List[str] = []
+    skipped = 0
+    for fpath in found_files:
+        try:
+            with open(fpath, "rb") as f:
+                fhash = hashlib.sha256(f.read()).hexdigest()
+            existing = await repo.get_document_by_hash(fhash)
+            if existing:
+                skipped += 1
+                continue
+        except Exception:
+            pass
+        files_to_process.append(fpath)
+
+    if not files_to_process:
+        return {
+            "filesFound": len(found_files),
+            "filesSkipped": skipped,
+            "filesProcessed": 0,
+            "totalChunks": 0,
+            "totalTime": 0,
+            "results": [],
+        }
+
+    result = await svc.batch_upload_and_process(
+        file_paths=files_to_process,
+        is_global=bool(payload.isGlobal),
+        local_model=payload.localModel,
+        description=payload.description,
+    )
+
+    return {
+        "filesFound": len(found_files),
+        "filesSkipped": skipped,
+        "filesProcessed": len(result["doc_ids"]),
+        "totalChunks": result["total_chunks"],
+        "totalTime": result["total_time"],
+        "results": result["stats"],
+    }
+
+
 class SemanticSearchRequest(BaseModel):
     query: str
     limit: int = 10

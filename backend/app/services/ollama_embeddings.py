@@ -60,3 +60,47 @@ async def embed_texts_via_ollama(*, model: str, texts: List[str]) -> Tuple[List[
             collected.append(vec)
 
         return collected, detected_dim
+
+
+async def embed_texts_batch(*, model: str, texts: List[str]) -> Tuple[List[List[float]], int]:
+    """Embed texts using Ollama's batch /api/embed endpoint (Ollama 0.12+).
+
+    Sends all texts in a single request. Falls back to sequential
+    embed_texts_via_ollama() if the batch endpoint is unavailable.
+
+    Returns (vectors, dimensions).
+    """
+    if not texts:
+        return [], 0
+
+    base = _get_ollama_base_url().rstrip("/")
+    url = f"{base}/api/embed"
+
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            r = await client.post(url, json={"model": model, "input": texts})
+            if r.status_code == 404:
+                # Batch endpoint not available, fall back
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Ollama /api/embed returned 404, falling back to sequential embedding"
+                )
+                return await embed_texts_via_ollama(model=model, texts=texts)
+            r.raise_for_status()
+            data = r.json() or {}
+            embeddings = data.get("embeddings")
+            if not isinstance(embeddings, list) or len(embeddings) != len(texts):
+                raise ValueError(
+                    f"Expected {len(texts)} embeddings, got "
+                    f"{len(embeddings) if isinstance(embeddings, list) else 'none'}"
+                )
+            dims = len(embeddings[0]) if embeddings else 0
+            return embeddings, dims
+    except httpx.HTTPStatusError:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Batch embed failed (%s), falling back to sequential", exc
+        )
+        return await embed_texts_via_ollama(model=model, texts=texts)
