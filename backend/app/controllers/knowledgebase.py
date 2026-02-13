@@ -5,6 +5,7 @@ import os
 import mimetypes
 import uuid
 import hashlib
+import logging
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -15,6 +16,7 @@ from app.repository import knowledgebase_repository as repo
 from app.auth import require_api_key
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/knowledgebase", tags=["knowledgebase"])
 
 
@@ -316,12 +318,22 @@ async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends
         max_docs=payload.limit,
         local_model=(payload.localModel or "nomic-embed-text"),
     )
+    # Aggregate best (lowest) chunk distance per document
+    best_dist: Dict[str, float] = {}
+    for chunk in ctx.get("chunks", []):
+        did = chunk.get("document_id")
+        dist = chunk.get("distance", 1.0)
+        if did and (did not in best_dist or dist < best_dist[did]):
+            best_dist[did] = dist
+
     doc_ids = set(ctx.get("doc_ids", []))
     out: List[Dict[str, Any]] = []
     for doc_id in doc_ids:
         d = await repo.get_document(doc_id)
         if not d:
             continue
+        # Convert cosine distance to similarity (1 - distance)
+        similarity = round(1.0 - best_dist.get(doc_id, 0.0), 4)
         out.append(
             {
                 "id": d["id"],
@@ -339,9 +351,54 @@ async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends
                 "description": d.get("description") or "",
                 "source": d.get("source") or "user_upload",
                 "status": d.get("status") or "ready",
-                "similarity": 1.0,
+                "similarity": similarity,
             }
         )
+    # Sort by similarity descending (most relevant first)
+    out.sort(key=lambda x: x["similarity"], reverse=True)
+    return out
+
+
+class ChunkSearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+    fileId: str | None = None
+    localModel: str | None = None
+
+
+@router.post("/chunk-search")
+async def chunk_search(payload: ChunkSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+    """Search at the chunk level — returns actual text passages with similarity scores and source document info."""
+    file_filter = [payload.fileId] if payload.fileId else None
+    ctx = await svc.retrieve_context(
+        query=payload.query,
+        mode="file" if payload.fileId else "all",
+        file_id=payload.fileId,
+        max_docs=payload.limit,
+        max_chunks=payload.limit,
+        local_model=(payload.localModel or "nomic-embed-text"),
+    )
+    chunks = ctx.get("chunks", [])
+    # Enrich each chunk with document metadata
+    doc_cache: Dict[str, Dict[str, Any]] = {}
+    out: List[Dict[str, Any]] = []
+    for chunk in chunks:
+        did = chunk.get("document_id")
+        if did and did not in doc_cache:
+            doc = await repo.get_document(did)
+            doc_cache[did] = doc or {}
+        doc = doc_cache.get(did, {})
+        similarity = round(1.0 - chunk.get("distance", 0.0), 4)
+        out.append({
+            "chunkId": str(chunk.get("id", "")),
+            "documentId": did,
+            "filename": doc.get("original_name") or doc.get("filename", ""),
+            "title": doc.get("title") or "",
+            "chunkIndex": chunk.get("chunk_index"),
+            "text": chunk.get("text", ""),
+            "similarity": similarity,
+        })
+    out.sort(key=lambda x: x["similarity"], reverse=True)
     return out
 
 
@@ -455,3 +512,40 @@ async def get_tags(api_key: str = Depends(require_api_key)) -> List[Dict[str, An
         return []
     except Exception:
         return []
+
+
+@router.get("/metrics/performance")
+async def get_performance_metrics(
+    hours: int = 24,
+    operation: Optional[str] = None,
+    summary: bool = False,
+    api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
+    """Get embedding performance metrics and statistics.
+    
+    Args:
+        hours: Number of hours of history to retrieve (default 24)
+        operation: Filter by operation type (single, batch, document)
+        summary: If True, return aggregate summary instead of raw metrics
+    """
+    try:
+        from app.services.metrics_service import get_embedding_metrics, get_embedding_summary
+        
+        if summary:
+            return get_embedding_summary(hours=hours)
+        else:
+            metrics = get_embedding_metrics(hours=hours, operation=operation)
+            return {
+                "metrics": metrics,
+                "count": len(metrics),
+                "period_hours": hours,
+                "filtered_operation": operation
+            }
+    except Exception as e:
+        logger.error("Failed to retrieve performance metrics: %s", e)
+        return {
+            "error": "Metrics unavailable",
+            "metrics": [],
+            "count": 0,
+            "period_hours": hours
+        }

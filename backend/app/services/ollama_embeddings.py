@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import List, Tuple, Dict
+import time
 
 import httpx
 
@@ -15,6 +16,8 @@ async def embed_texts_via_ollama(*, model: str, texts: List[str]) -> Tuple[List[
     """
     if not texts:
         return [], 0
+    
+    start_time = time.time()
     base = _get_ollama_base_url().rstrip("/")
     url = f"{base}/api/embeddings"
     async with httpx.AsyncClient(timeout=None) as client:
@@ -59,6 +62,15 @@ async def embed_texts_via_ollama(*, model: str, texts: List[str]) -> Tuple[List[
                 detected_dim = len(vec)
             collected.append(vec)
 
+        # Record performance metrics
+        elapsed_ms = (time.time() - start_time) * 1000
+        total_chars = sum(len(text) for text in texts)
+        try:
+            from app.services.metrics_service import record_embedding_performance
+            record_embedding_performance("single", model, len(texts), elapsed_ms, total_chars)
+        except Exception:
+            pass  # Don't fail on metrics errors
+
         return collected, detected_dim
 
 
@@ -73,6 +85,7 @@ async def embed_texts_batch(*, model: str, texts: List[str]) -> Tuple[List[List[
     if not texts:
         return [], 0
 
+    start_time = time.time()
     base = _get_ollama_base_url().rstrip("/")
     url = f"{base}/api/embed"
 
@@ -95,6 +108,16 @@ async def embed_texts_batch(*, model: str, texts: List[str]) -> Tuple[List[List[
                     f"{len(embeddings) if isinstance(embeddings, list) else 'none'}"
                 )
             dims = len(embeddings[0]) if embeddings else 0
+            
+            # Record performance metrics
+            elapsed_ms = (time.time() - start_time) * 1000
+            total_chars = sum(len(text) for text in texts)
+            try:
+                from app.services.metrics_service import record_embedding_performance
+                record_embedding_performance("batch", model, len(texts), elapsed_ms, total_chars)
+            except Exception:
+                pass  # Don't fail on metrics errors
+                
             return embeddings, dims
     except httpx.HTTPStatusError:
         raise
@@ -103,4 +126,5 @@ async def embed_texts_batch(*, model: str, texts: List[str]) -> Tuple[List[List[
         logging.getLogger(__name__).warning(
             "Batch embed failed (%s), falling back to sequential", exc
         )
+        # Note: fallback will record its own metrics as "single" operation
         return await embed_texts_via_ollama(model=model, texts=texts)
