@@ -207,6 +207,7 @@ class TestBatchUploadAndProcess:
             create_document=AsyncMock(side_effect=_fake_create),
             update_document_embedding=AsyncMock(),
             update_chunk_embeddings=AsyncMock(),
+            insert_chunk_embeddings=AsyncMock(),
         )
 
     def _patch_embed(self, dim=768):
