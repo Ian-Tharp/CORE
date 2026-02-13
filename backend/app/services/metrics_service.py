@@ -18,8 +18,11 @@ except ImportError:
 class EmbeddingMetrics:
     """Tracks and stores embedding performance metrics."""
     
-    def __init__(self, redis_url: str = "redis://localhost:6379/0"):
-        self.redis_url = redis_url
+    def __init__(self, redis_url: str = None):
+        import os
+        default_host = os.environ.get("REDIS_HOST", "localhost")
+        default_port = os.environ.get("REDIS_PORT", "6379")
+        self.redis_url = redis_url or f"redis://{default_host}:{default_port}/0"
         self._redis = None
         self._enabled = _REDIS_AVAILABLE
         if not _REDIS_AVAILABLE:
