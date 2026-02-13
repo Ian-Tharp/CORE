@@ -194,11 +194,17 @@ class TestEmbedTextsBatch:
 
 class TestBatchUploadAndProcess:
 
+    _call_count = 0
+
     def _patch_repo(self):
         """Patch all repo calls used by batch_upload_and_process."""
+        import uuid
+        def _fake_create(**kw):
+            TestBatchUploadAndProcess._call_count += 1
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, kw.get('filename', str(TestBatchUploadAndProcess._call_count))))
         return patch.multiple(
             "app.services.knowledgebase_service.repo",
-            create_document=AsyncMock(side_effect=lambda **kw: f"doc-{kw.get('filename', 'x')}"),
+            create_document=AsyncMock(side_effect=_fake_create),
             update_document_embedding=AsyncMock(),
             update_chunk_embeddings=AsyncMock(),
         )
