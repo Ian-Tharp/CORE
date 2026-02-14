@@ -366,6 +366,13 @@ class ChunkSearchRequest(BaseModel):
     localModel: str | None = None
 
 
+class InstanceSearchRequest(BaseModel):
+    query: str
+    instanceName: str
+    limit: int = 10
+    localModel: str | None = None
+
+
 @router.post("/chunk-search")
 async def chunk_search(payload: ChunkSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
     """Search at the chunk level — returns actual text passages with similarity scores and source document info."""
@@ -400,6 +407,59 @@ async def chunk_search(payload: ChunkSearchRequest, api_key: str = Depends(requi
         })
     out.sort(key=lambda x: x["similarity"], reverse=True)
     return out
+
+
+@router.post("/instance-search")
+async def instance_search(payload: InstanceSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+    """Search chunks filtered by instance perspective - 'what does [instance] think about X?' queries."""
+    ctx = await svc.retrieve_context_by_instance(
+        query=payload.query,
+        instance_name=payload.instanceName,
+        max_chunks=payload.limit,
+        local_model=(payload.localModel or "nomic-embed-text"),
+    )
+    chunks = ctx.get("chunks", [])
+    
+    # Enrich each chunk with document metadata
+    doc_cache: Dict[str, Dict[str, Any]] = {}
+    out: List[Dict[str, Any]] = []
+    for chunk in chunks:
+        did = chunk.get("document_id")
+        if did and did not in doc_cache:
+            doc = await repo.get_document(did)
+            doc_cache[did] = doc or {}
+        doc = doc_cache.get(did, {})
+        similarity = round(1.0 - chunk.get("distance", 0.0), 4)
+        out.append({
+            "chunkId": str(chunk.get("id", "")),
+            "documentId": did,
+            "filename": doc.get("original_name") or doc.get("filename", ""),
+            "title": doc.get("title") or "",
+            "chunkIndex": chunk.get("chunk_index"),
+            "text": chunk.get("text", ""),
+            "similarity": similarity,
+            "instanceName": chunk.get("instance_name"),
+            "instanceTimestamp": chunk.get("instance_timestamp"),
+            "sourceDiscussion": chunk.get("source_discussion"),
+        })
+    out.sort(key=lambda x: x["similarity"], reverse=True)
+    return out
+
+
+@router.get("/instances")
+async def list_instances(api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+    """List all instance names that have contributed knowledge with basic stats."""
+    instances = await repo.list_instances()
+    return [
+        {
+            "instanceName": r["instance_name"],
+            "chunkCount": r["chunk_count"],
+            "documentCount": r["document_count"],
+            "firstContribution": r["first_contribution"],
+            "lastContribution": r["last_contribution"],
+        }
+        for r in instances
+    ]
 
 
 @router.post("/files/{file_id}/embed-local")

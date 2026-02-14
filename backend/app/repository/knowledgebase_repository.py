@@ -22,6 +22,8 @@ async def create_document(
     status: str = "ready",
     title: Optional[str] = None,
     file_hash: Optional[str] = None,
+    instance_name: Optional[str] = None,
+    source_discussion: Optional[str] = None,
 ) -> str:
     doc_id = str(uuid.uuid4())
     pool = await get_db_pool()
@@ -30,8 +32,8 @@ async def create_document(
             """
             INSERT INTO kb_documents (
                 id, filename, original_name, size, mime_type, description, is_global, source, status,
-                storage_path, title, file_hash
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                storage_path, title, file_hash, instance_name, instance_timestamp, source_discussion
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, $14)
             """,
             doc_id,
             filename,
@@ -45,6 +47,8 @@ async def create_document(
             storage_path,
             title,
             file_hash,
+            instance_name,
+            source_discussion,
         )
     return doc_id
 
@@ -82,6 +86,8 @@ async def insert_chunk_embeddings(
     items: List[Tuple[int, str, List[float]]],
     model: str,
     dimensions: int,
+    instance_name: Optional[str] = None,
+    source_discussion: Optional[str] = None,
 ) -> None:
     """Insert new kb_chunks rows with text and vector embeddings."""
     if not items:
@@ -99,13 +105,16 @@ async def insert_chunk_embeddings(
                 model,
                 dimensions,
                 vec_text,
+                instance_name,
+                source_discussion,
             ))
         await conn.executemany(
             """
             INSERT INTO kb_chunks (
-                id, document_id, chunk_index, text, embedding_model, embedding_dimensions, embedding_vec
+                id, document_id, chunk_index, text, embedding_model, embedding_dimensions, embedding_vec,
+                instance_name, instance_timestamp, source_discussion
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7::vector(768)
+                $1, $2, $3, $4, $5, $6, $7::vector(768), $8, CURRENT_TIMESTAMP, $9
             )
             """,
             records,
@@ -349,5 +358,68 @@ async def list_recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
             LIMIT $1
             """,
             limit,
+        )
+        return [dict(r) for r in rows]
+
+
+async def search_chunks_by_instance(
+    *,
+    query_vec: List[float], 
+    instance_name: str,
+    limit: int = 20,
+    document_filter: Optional[List[str]] = None,
+    model: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Search chunks by vector similarity filtered by instance name (perspective-based retrieval)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        vec_text = f"[{', '.join(str(x) for x in query_vec)}]"
+        where = ["embedding_vec IS NOT NULL", "instance_name = $3"]
+        params: List[Any] = [instance_name]
+        param_offset = 4  # $1 is vec, $2 is limit, $3 is instance_name
+        
+        if document_filter:
+            where.append(f"document_id = ANY(${param_offset}::uuid[])")
+            params.append(document_filter)
+            param_offset += 1
+        if model:
+            where.append(f"embedding_model = ${param_offset}")
+            params.append(model)
+            
+        where_sql = " WHERE " + " AND ".join(where)
+        rows = await conn.fetch(
+            f"""
+            SELECT id, document_id, chunk_index, text, embedding_model, embedding_dimensions,
+                   instance_name, instance_timestamp, source_discussion,
+                   (embedding_vec <=> $1::vector(768)) AS distance
+            FROM kb_chunks
+            {where_sql}
+            ORDER BY embedding_vec <=> $1::vector(768) ASC
+            LIMIT $2
+            """,
+            vec_text,
+            limit,
+            *params,
+        )
+        return [dict(r) for r in rows]
+
+
+async def list_instances() -> List[Dict[str, Any]]:
+    """List all instance names that have contributed knowledge with basic stats."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT 
+                instance_name,
+                COUNT(*) as chunk_count,
+                MIN(instance_timestamp) as first_contribution,
+                MAX(instance_timestamp) as last_contribution,
+                COUNT(DISTINCT document_id) as document_count
+            FROM kb_chunks
+            WHERE instance_name IS NOT NULL
+            GROUP BY instance_name
+            ORDER BY last_contribution DESC
+            """,
         )
         return [dict(r) for r in rows]
