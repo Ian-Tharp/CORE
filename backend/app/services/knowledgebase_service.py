@@ -67,6 +67,8 @@ async def process_uploaded_file(
     is_global: bool,
     file_hash: Optional[str] = None,
     local_model: Optional[str] = None,
+    instance_name: Optional[str] = None,
+    source_discussion: Optional[str] = None,
 ) -> str:
     start_time = time.time()
     title, text = await _extract_title_and_text(storage_path, mime_type)
@@ -93,6 +95,8 @@ async def process_uploaded_file(
         is_global=is_global,
         title=title,
         file_hash=file_hash,
+        instance_name=instance_name,
+        source_discussion=source_discussion,
     )
 
     # Document-level embedding
@@ -125,11 +129,17 @@ async def process_uploaded_file(
         if idx < len(vecs_all):
             updates.append((idx, vecs_all[idx]))
     if updates:
-        await repo.update_chunk_embeddings(
+        # Convert updates to inserts with text for new chunks
+        chunk_inserts = []
+        for idx, vec in updates:
+            chunk_inserts.append((idx, chunks[idx], vec))
+        await repo.insert_chunk_embeddings(
             document_id=doc_id,
-            chunks=updates,
+            items=chunk_inserts,
             model=model,
             dimensions=dims or 0,
+            instance_name=instance_name,
+            source_discussion=source_discussion,
         )
 
     # Record document processing performance
@@ -505,6 +515,35 @@ async def retrieve_context(
         query_vec=query_vec, limit=max_chunks, document_filter=doc_filter, model=local_model
     )
     return {"chunks": rows, "doc_ids": list({r.get("document_id") for r in rows})}
+
+
+async def retrieve_context_by_instance(
+    *,
+    query: str,
+    instance_name: str,
+    max_chunks: int = 8,
+    local_model: Optional[str] = None,
+    document_filter: Optional[List[str]] = None,
+) -> Dict[str, any]:
+    """Retrieve context filtered by instance perspective for 'what does [instance] think about X?' queries."""
+    model = (local_model or "nomic-embed-text").strip()
+    qvecs, _orig = await _embed_texts_local(model=model, texts=[query])
+    if not qvecs:
+        return {"chunks": [], "doc_ids": [], "instance_name": instance_name}
+    query_vec = qvecs[0]
+
+    rows = await repo.search_chunks_by_instance(
+        query_vec=query_vec,
+        instance_name=instance_name,
+        limit=max_chunks,
+        document_filter=document_filter,
+        model=local_model
+    )
+    return {
+        "chunks": rows, 
+        "doc_ids": list({r.get("document_id") for r in rows}),
+        "instance_name": instance_name
+    }
 
 
 async def batch_upload_and_process(
