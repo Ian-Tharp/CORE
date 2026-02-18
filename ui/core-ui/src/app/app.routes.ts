@@ -15,6 +15,7 @@ import { WorldDetailComponent } from './creative-design-product/world-detail/wor
 import { CreativeBoardsComponent } from './creative-design-product/boards/creative-boards.component';
 import { CommunicationComponent } from './communication/communication.component';
 import { McpRegistryComponent } from './tools/mcp-registry.component';
+import { AttributionBrowserComponent } from './knowledge-attribution/attribution-browser.component';
 
 export const routes: Routes = [
   {
@@ -40,6 +41,10 @@ export const routes: Routes = [
   {
     path: 'knowledge',
     component: KnowledgebaseComponent,
+  },
+  {
+    path: 'knowledge-attribution',
+    component: AttributionBrowserComponent,
   },
   {
     path: 'analytics',

@@ -35,9 +35,13 @@
           <button mat-menu-item [routerLink]="['/workflows/history']"><mat-icon>history</mat-icon><span>History</span></button>
         </mat-menu>
 
-        <button mat-icon-button class="nav-item" [routerLink]="['/knowledge']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" matTooltip="Knowledge Base" matTooltipPosition="right">
+        <button mat-icon-button class="nav-item" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matMenuTriggerFor]="knowledgeMenu" #knowledgeMenuTrigger="matMenuTrigger" matTooltip="Knowledge" matTooltipPosition="right" (click)="openMenu('knowledge')">
           <mat-icon>psychology</mat-icon>
         </button>
+        <mat-menu #knowledgeMenu="matMenu" class="side-menu" xPosition="after" yPosition="below">
+          <button mat-menu-item [routerLink]="['/knowledge']"><mat-icon>folder</mat-icon><span>Knowledge Base</span></button>
+          <button mat-menu-item [routerLink]="['/knowledge-attribution']"><mat-icon>link</mat-icon><span>Attribution Browser</span></button>
+        </mat-menu>
 
         <button mat-icon-button class="nav-item" [routerLink]="['/analytics']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" matTooltip="Analytics" matTooltipPosition="right">
           <mat-icon>analytics</mat-icon>

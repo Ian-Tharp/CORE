@@ -15,6 +15,13 @@ import {
   FileSource,
   ActivityLog
 } from '../../models/knowledgebase.models';
+import {
+  KnowledgeAttribution,
+  AttributionFilter,
+  AttributedKnowledge,
+  AttributionStats,
+  AttributionVerificationStatus
+} from '../../models/attribution.models';
 import { AppConfigService } from '../config/app-config.service';
 
 @Injectable({
@@ -376,6 +383,64 @@ export class KnowledgebaseService {
       return throwError(() => ({ ...error, message: 'duplicate' }));
     }
     return throwError(() => error);
+  }
+
+  // Knowledge Attribution API
+  getAttributions(filter?: AttributionFilter): Observable<KnowledgeAttribution[]> {
+    const params = this.buildAttributionFilterParams(filter || {});
+    return this.http.get<KnowledgeAttribution[]>(`${this.apiUrl}/attributions`, { params }).pipe(
+      map(attributions => attributions.map(attr => ({
+        ...attr,
+        timestamp: new Date(attr.timestamp)
+      }))),
+      catchError(this.handleError)
+    );
+  }
+
+  getAttributedKnowledge(filter?: AttributionFilter): Observable<AttributedKnowledge[]> {
+    const params = this.buildAttributionFilterParams(filter || {});
+    return this.http.get<AttributedKnowledge[]>(`${this.apiUrl}/attributed-knowledge`, { params }).pipe(
+      map(knowledge => knowledge.map(k => ({
+        ...k,
+        attribution: {
+          ...k.attribution,
+          timestamp: new Date(k.attribution.timestamp)
+        }
+      }))),
+      catchError(this.handleError)
+    );
+  }
+
+  getAttributionStats(): Observable<AttributionStats> {
+    return this.http.get<AttributionStats>(`${this.apiUrl}/attributions/stats`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  verifyAttribution(attributionId: string): Observable<KnowledgeAttribution> {
+    return this.http.post<KnowledgeAttribution>(`${this.apiUrl}/attributions/${attributionId}/verify`, {}).pipe(
+      map(attr => ({
+        ...attr,
+        timestamp: new Date(attr.timestamp)
+      })),
+      catchError(this.handleError)
+    );
+  }
+
+  private buildAttributionFilterParams(filter: AttributionFilter): any {
+    const params: any = {};
+    
+    if (filter.instanceId) params.instanceId = filter.instanceId;
+    if (filter.searchQuery) params.q = filter.searchQuery;
+    if (filter.verificationStatus?.length) {
+      params.status = filter.verificationStatus.join(',');
+    }
+    if (filter.dateRange) {
+      params.startDate = filter.dateRange.start.toISOString();
+      params.endDate = filter.dateRange.end.toISOString();
+    }
+    
+    return params;
   }
 
   // Utility methods for file size formatting

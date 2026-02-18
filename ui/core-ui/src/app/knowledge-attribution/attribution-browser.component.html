@@ -1,0 +1,221 @@
+<div class="attribution-browser">
+  <!-- Header -->
+  <div class="browser-header">
+    <h2 class="page-title">
+      <i class="fas fa-link"></i>
+      Knowledge Attribution Browser
+    </h2>
+    <p class="page-description">
+      Browse and verify the provenance of attributed knowledge across instances
+    </p>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-section" *ngIf="attributionStats$ | async as stats">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.totalAttributions | number }}</div>
+        <div class="stat-label">Total Attributions</div>
+      </div>
+      <div class="stat-card verified">
+        <div class="stat-value">{{ stats.verifiedCount | number }}</div>
+        <div class="stat-label">Verified</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-value">{{ stats.pendingCount | number }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card failed">
+        <div class="stat-value">{{ stats.failedCount | number }}</div>
+        <div class="stat-label">Failed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filters-header">
+      <h3>Filters</h3>
+      <button class="btn btn-sm btn-secondary" (click)="clearFilters()">
+        <i class="fas fa-times"></i>
+        Clear All
+      </button>
+    </div>
+    
+    <div class="filters-grid">
+      <!-- Search Query -->
+      <div class="filter-group">
+        <label for="searchQuery">Search Knowledge</label>
+        <input
+          id="searchQuery"
+          type="text"
+          class="form-control"
+          [(ngModel)]="searchQuery"
+          placeholder="Search in knowledge content..."
+        />
+      </div>
+
+      <!-- Instance Filter -->
+      <div class="filter-group">
+        <label for="instanceId">Source Instance</label>
+        <input
+          id="instanceId"
+          type="text"
+          class="form-control"
+          [(ngModel)]="selectedInstanceId"
+          placeholder="Instance ID"
+        />
+      </div>
+
+      <!-- Verification Status -->
+      <div class="filter-group">
+        <label>Verification Status</label>
+        <div class="checkbox-group">
+          <label *ngFor="let option of verificationStatusOptions" class="checkbox-label">
+            <input
+              type="checkbox"
+              [value]="option.value"
+              [checked]="selectedStatuses.includes(option.value)"
+              (change)="$event.target.checked ? 
+                selectedStatuses.push(option.value) : 
+                selectedStatuses.splice(selectedStatuses.indexOf(option.value), 1)"
+            />
+            <span>{{ option.label }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Date Range -->
+      <div class="filter-group">
+        <label>Date Range</label>
+        <div class="date-range">
+          <input
+            type="date"
+            class="form-control"
+            [(ngModel)]="dateRangeStart"
+            placeholder="Start date"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            class="form-control"
+            [(ngModel)]="dateRangeEnd"
+            placeholder="End date"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="filters-actions">
+      <button class="btn btn-primary" (click)="applyFilters()">
+        <i class="fas fa-search"></i>
+        Apply Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-section" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading attributed knowledge...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-section" *ngIf="error">
+    <div class="alert alert-error">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{ error }}
+    </div>
+  </div>
+
+  <!-- Knowledge Results -->
+  <div class="results-section" *ngIf="!loading && !error">
+    <div class="results-header">
+      <h3>Attributed Knowledge</h3>
+      <div class="results-count" *ngIf="attributedKnowledge$ | async as knowledge">
+        {{ knowledge.length }} results
+      </div>
+    </div>
+
+    <div class="knowledge-list" *ngIf="attributedKnowledge$ | async as knowledge; else noResults">
+      <div class="knowledge-card" *ngFor="let item of knowledge; trackBy: trackByKnowledgeId">
+        <!-- Knowledge Content -->
+        <div class="knowledge-content">
+          <div class="knowledge-text">
+            {{ truncateText(item.chunkText) }}
+          </div>
+          <div class="knowledge-meta">
+            <span class="file-name">
+              <i class="fas fa-file"></i>
+              {{ item.fileName }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Attribution Info -->
+        <div class="attribution-info">
+          <div class="attribution-header">
+            <h4>Attribution</h4>
+            <span class="status-badge" [class]="getStatusBadgeClass(item.attribution.verificationStatus)">
+              {{ item.attribution.verificationStatus }}
+            </span>
+          </div>
+
+          <div class="attribution-details">
+            <div class="detail-row">
+              <strong>Source Instance:</strong>
+              <span class="instance-link">{{ item.attribution.sourceInstanceName }}</span>
+            </div>
+            <div class="detail-row">
+              <strong>Timestamp:</strong>
+              <span>{{ formatTimestamp(item.attribution.timestamp) }}</span>
+            </div>
+            <div class="detail-row" *ngIf="item.attribution.confidence">
+              <strong>Confidence:</strong>
+              <span class="confidence-score">{{ (item.attribution.confidence * 100) | number:'1.1-1' }}%</span>
+            </div>
+          </div>
+
+          <!-- Attribution Chain -->
+          <div class="attribution-chain" *ngIf="item.attribution.attributionChain?.length">
+            <strong>Attribution Chain:</strong>
+            <div class="chain-items">
+              <span 
+                *ngFor="let link of item.attribution.attributionChain; let last = last"
+                class="chain-link"
+              >
+                {{ link.instanceName }} ({{ link.role }})
+                <i class="fas fa-arrow-right" *ngIf="!last"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="attribution-actions">
+            <button 
+              class="btn btn-sm btn-primary"
+              *ngIf="item.attribution.verificationStatus === AttributionVerificationStatus.PENDING"
+              (click)="verifyAttribution(item.attribution)"
+            >
+              <i class="fas fa-check"></i>
+              Verify
+            </button>
+            <button class="btn btn-sm btn-secondary">
+              <i class="fas fa-external-link-alt"></i>
+              View Source
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Results -->
+    <ng-template #noResults>
+      <div class="no-results">
+        <i class="fas fa-search"></i>
+        <h3>No attributed knowledge found</h3>
+        <p>Try adjusting your filters to see more results.</p>
+      </div>
+    </ng-template>
+  </div>
+</div>
