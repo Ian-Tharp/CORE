@@ -362,6 +362,7 @@ async def list_recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
 
 
+
 async def search_chunks_by_instance(
     *,
     query_vec: List[float], 
@@ -423,3 +424,169 @@ async def list_instances() -> List[Dict[str, Any]]:
             """,
         )
         return [dict(r) for r in rows]
+
+
+# =============================================================================
+# KNOWLEDGE ATTRIBUTION FUNCTIONS
+# =============================================================================
+
+async def get_chunk_attributions(chunk_ids: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+    """
+    Get attribution metadata for multiple chunks.
+    
+    Args:
+        chunk_ids: List of chunk IDs to get attributions for
+        
+    Returns:
+        Dict mapping chunk_id -> attribution metadata (or None if no attribution)
+    """
+    if not chunk_ids:
+        return {}
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # For now, return empty attributions since the schema doesn't exist yet
+        # This is a placeholder for future attribution metadata
+        # When attribution schema is added, this would query something like:
+        # SELECT chunk_id, source_instance_id, created_at, metadata
+        # FROM kb_chunk_attributions WHERE chunk_id = ANY($1::uuid[])
+        
+        # Placeholder implementation - returns None for all chunks
+        return {chunk_id: None for chunk_id in chunk_ids}
+
+
+async def get_document_attribution(document_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get attribution metadata for a document.
+    
+    Args:
+        document_id: Document ID to get attribution for
+        
+    Returns:
+        Attribution metadata dict or None if no attribution exists
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Placeholder implementation - returns None since attribution schema doesn't exist yet
+        # When attribution schema is added, this would query something like:
+        # SELECT source_instance_id, created_at, metadata
+        # FROM kb_document_attributions WHERE document_id = $1
+        return None
+
+
+async def create_chunk_attribution(
+    *,
+    chunk_id: str,
+    source_instance_id: str,
+    metadata: Optional[Dict[str, Any]] = None
+) -> str:
+    """
+    Create attribution metadata for a chunk.
+    
+    Args:
+        chunk_id: ID of the chunk to attribute
+        source_instance_id: ID of the instance that contributed this knowledge
+        metadata: Optional metadata about the attribution
+        
+    Returns:
+        Attribution ID
+    """
+    attribution_id = str(uuid.uuid4())
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Placeholder - would create attribution record when schema exists
+        # await conn.execute(
+        #     """
+        #     INSERT INTO kb_chunk_attributions (id, chunk_id, source_instance_id, metadata)
+        #     VALUES ($1, $2, $3, $4)
+        #     """,
+        #     attribution_id, chunk_id, source_instance_id, _json.dumps(metadata or {})
+        # )
+        pass
+    return attribution_id
+
+
+async def create_document_attribution(
+    *,
+    document_id: str,
+    source_instance_id: str,
+    metadata: Optional[Dict[str, Any]] = None
+) -> str:
+    """
+    Create attribution metadata for a document.
+    
+    Args:
+        document_id: ID of the document to attribute
+        source_instance_id: ID of the instance that contributed this knowledge
+        metadata: Optional metadata about the attribution
+        
+    Returns:
+        Attribution ID
+    """
+    attribution_id = str(uuid.uuid4())
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Placeholder - would create attribution record when schema exists
+        # await conn.execute(
+        #     """
+        #     INSERT INTO kb_document_attributions (id, document_id, source_instance_id, metadata)
+        #     VALUES ($1, $2, $3, $4)
+        #     """,
+        #     attribution_id, document_id, source_instance_id, _json.dumps(metadata or {})
+        # )
+        pass
+    return attribution_id
+
+
+async def list_attributions_for_instance(instance_id: str) -> List[Dict[str, Any]]:
+    """
+    List all knowledge attributions for a given instance.
+    
+    Args:
+        instance_id: Instance ID to get attributions for
+        
+    Returns:
+        List of attribution records
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Placeholder - would query attribution tables when schema exists
+        # rows = await conn.fetch(
+        #     """
+        #     SELECT 'chunk' as type, chunk_id as entity_id, created_at, metadata
+        #     FROM kb_chunk_attributions WHERE source_instance_id = $1
+        #     UNION ALL
+        #     SELECT 'document' as type, document_id as entity_id, created_at, metadata  
+        #     FROM kb_document_attributions WHERE source_instance_id = $1
+        #     ORDER BY created_at DESC
+        #     """,
+        #     instance_id
+        # )
+        # return [dict(r) for r in rows]
+        return []
+
+
+async def delete_attributions_for_instance(instance_id: str) -> int:
+    """
+    Delete all attribution metadata for an instance (cleanup when instance is removed).
+    
+    Args:
+        instance_id: Instance ID to clean up attributions for
+        
+    Returns:
+        Number of attributions deleted
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Placeholder - would delete from attribution tables when schema exists
+        # chunk_deleted = await conn.execute(
+        #     "DELETE FROM kb_chunk_attributions WHERE source_instance_id = $1",
+        #     instance_id
+        # )
+        # doc_deleted = await conn.execute(
+        #     "DELETE FROM kb_document_attributions WHERE source_instance_id = $1", 
+        #     instance_id
+        # )
+        # return int(chunk_deleted.split()[-1]) + int(doc_deleted.split()[-1])
+        return 0
+

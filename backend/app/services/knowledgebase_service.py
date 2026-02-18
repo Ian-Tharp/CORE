@@ -708,3 +708,217 @@ def build_rag_messages(original_messages: List[Dict[str, str]], *, context_chunk
         ),
     }
     return [system_msg] + original_messages
+
+
+# =============================================================================
+# KNOWLEDGE ATTRIBUTION VERIFICATION
+# =============================================================================
+
+async def verify_knowledge_attribution(*, chunk_ids: List[str]) -> Dict[str, any]:
+    """
+    Verify knowledge attribution for given chunk IDs.
+    
+    Checks if attribution metadata exists and source instance is valid.
+    Returns verification report with warnings for orphaned attributions.
+    
+    Args:
+        chunk_ids: List of chunk IDs to verify attribution for
+        
+    Returns:
+        Dict with verification results and any warnings
+    """
+    if not chunk_ids:
+        return {"verified": [], "warnings": [], "total_chunks": 0}
+    
+    logger.info("Verifying attribution for %d chunks", len(chunk_ids))
+    
+    # Get chunk attribution data
+    chunk_attributions = await repo.get_chunk_attributions(chunk_ids)
+    
+    verified_chunks = []
+    warnings = []
+    
+    for chunk_id in chunk_ids:
+        chunk_attribution = chunk_attributions.get(chunk_id)
+        
+        if not chunk_attribution:
+            warnings.append({
+                "type": "missing_attribution",
+                "chunk_id": chunk_id,
+                "message": f"Chunk {chunk_id} has no attribution metadata"
+            })
+            continue
+            
+        # Check if source instance exists and is valid
+        source_instance_id = chunk_attribution.get("source_instance_id")
+        if source_instance_id:
+            from app.repository import instance_repository
+            instance = await instance_repository.get_instance(source_instance_id)
+            
+            if not instance:
+                warnings.append({
+                    "type": "orphaned_attribution",
+                    "chunk_id": chunk_id,
+                    "source_instance_id": source_instance_id,
+                    "message": f"Chunk {chunk_id} attributes to non-existent instance {source_instance_id}"
+                })
+            else:
+                verified_chunks.append({
+                    "chunk_id": chunk_id,
+                    "attribution": chunk_attribution,
+                    "source_instance": {
+                        "id": str(instance.id),
+                        "agent_id": instance.agent_id,
+                        "agent_role": instance.agent_role,
+                        "created_at": instance.created_at.isoformat()
+                    }
+                })
+        else:
+            warnings.append({
+                "type": "missing_source_instance",
+                "chunk_id": chunk_id,
+                "message": f"Chunk {chunk_id} has attribution but no source_instance_id"
+            })
+    
+    return {
+        "verified": verified_chunks,
+        "warnings": warnings,
+        "total_chunks": len(chunk_ids),
+        "verified_count": len(verified_chunks),
+        "warning_count": len(warnings)
+    }
+
+
+async def verify_document_knowledge_integrity(*, document_id: str) -> Dict[str, any]:
+    """
+    Verify knowledge integrity for all chunks in a document.
+    
+    Comprehensive verification of attribution metadata, instance validity,
+    and knowledge graph consistency for a single document.
+    
+    Args:
+        document_id: Document ID to verify
+        
+    Returns:
+        Dict with detailed integrity report
+    """
+    logger.info("Verifying knowledge integrity for document %s", document_id)
+    
+    # Get document info
+    document = await repo.get_document(document_id)
+    if not document:
+        return {
+            "error": f"Document {document_id} not found",
+            "verified": False
+        }
+    
+    # Get all chunks for the document
+    chunks = await repo.list_chunks_for_document(document_id)
+    chunk_ids = [chunk["id"] for chunk in chunks]
+    
+    if not chunk_ids:
+        return {
+            "document_id": document_id,
+            "verified": True,
+            "chunks_count": 0,
+            "message": "Document has no chunks to verify"
+        }
+    
+    # Verify attribution for all chunks
+    attribution_report = await verify_knowledge_attribution(chunk_ids=chunk_ids)
+    
+    # Additional document-level checks
+    doc_warnings = []
+    
+    # Check document-level attribution if it exists
+    doc_attribution = await repo.get_document_attribution(document_id)
+    if doc_attribution:
+        source_instance_id = doc_attribution.get("source_instance_id")
+        if source_instance_id:
+            from app.repository import instance_repository
+            instance = await instance_repository.get_instance(source_instance_id)
+            if not instance:
+                doc_warnings.append({
+                    "type": "orphaned_document_attribution",
+                    "document_id": document_id,
+                    "source_instance_id": source_instance_id,
+                    "message": f"Document {document_id} attributes to non-existent instance {source_instance_id}"
+                })
+    
+    return {
+        "document_id": document_id,
+        "document_title": document.get("title") or document.get("filename", "Unknown"),
+        "verified": len(attribution_report["warnings"]) == 0 and len(doc_warnings) == 0,
+        "chunks_count": len(chunks),
+        "chunk_attribution_report": attribution_report,
+        "document_warnings": doc_warnings,
+        "summary": {
+            "total_issues": len(attribution_report["warnings"]) + len(doc_warnings),
+            "chunk_issues": len(attribution_report["warnings"]),
+            "document_issues": len(doc_warnings)
+        }
+    }
+
+
+async def batch_verify_knowledge_attribution(*, limit: Optional[int] = None) -> Dict[str, any]:
+    """
+    Batch verification of knowledge attribution across the entire knowledge base.
+    
+    Scans all documents and chunks to identify attribution issues.
+    Useful for maintenance and integrity monitoring.
+    
+    Args:
+        limit: Optional limit on number of documents to process
+        
+    Returns:
+        Dict with comprehensive attribution health report
+    """
+    logger.info("Starting batch knowledge attribution verification (limit: %s)", limit)
+    
+    # Get all documents
+    documents = await repo.list_documents()
+    if limit:
+        documents = documents[:limit]
+    
+    total_documents = len(documents)
+    verified_documents = []
+    failed_verifications = []
+    total_warnings = 0
+    
+    for i, doc in enumerate(documents):
+        try:
+            logger.debug("Verifying document %d/%d: %s", i + 1, total_documents, doc["id"])
+            
+            verification_result = await verify_document_knowledge_integrity(document_id=doc["id"])
+            
+            if verification_result.get("error"):
+                failed_verifications.append({
+                    "document_id": doc["id"],
+                    "error": verification_result["error"]
+                })
+            else:
+                verified_documents.append(verification_result)
+                total_warnings += verification_result["summary"]["total_issues"]
+                
+        except Exception as exc:
+            logger.error("Failed to verify document %s: %s", doc["id"], exc)
+            failed_verifications.append({
+                "document_id": doc["id"],
+                "error": str(exc)
+            })
+    
+    # Generate summary statistics
+    healthy_documents = sum(1 for doc in verified_documents if doc["verified"])
+    
+    return {
+        "batch_verification_complete": True,
+        "processed_documents": total_documents,
+        "verified_documents": len(verified_documents),
+        "failed_verifications": len(failed_verifications),
+        "healthy_documents": healthy_documents,
+        "documents_with_issues": len(verified_documents) - healthy_documents,
+        "total_attribution_warnings": total_warnings,
+        "health_score": healthy_documents / total_documents if total_documents > 0 else 1.0,
+        "detailed_results": verified_documents,
+        "failures": failed_verifications
+    }
