@@ -196,6 +196,23 @@ async def get_session_full(session_id: UUID) -> Optional[CouncilSessionFull]:
     )
 
 
+async def count_sessions(
+    status: Optional[SessionStatus] = None,
+) -> int:
+    """Count sessions with optional status filter."""
+    pool = await get_db_pool()
+
+    if status:
+        query = "SELECT COUNT(*) FROM council_sessions WHERE status = $1"
+        params = (status.value,)
+    else:
+        query = "SELECT COUNT(*) FROM council_sessions"
+        params = ()
+
+    async with pool.acquire() as conn:
+        return await conn.fetchval(query, *params)
+
+
 async def list_sessions(
     status: Optional[SessionStatus] = None,
     limit: int = 50,

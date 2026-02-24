@@ -405,10 +405,11 @@ async def list_sessions(
     """
     try:
         sessions = await repo.list_sessions(status=status, limit=limit, offset=offset)
+        total = await repo.count_sessions(status=status)
         
         return ListSessionsResponse(
             sessions=sessions,
-            total=len(sessions),  # TODO: Add proper count query
+            total=total,
             limit=limit,
             offset=offset
         )
