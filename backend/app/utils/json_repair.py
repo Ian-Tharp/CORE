@@ -1,4 +1,4 @@
-"""
+﻿"""
 JSON Repair Utility
 
 Repairs common JSON issues from LLM outputs:
@@ -83,18 +83,19 @@ def repair_json(content: str) -> str:
         content = re.sub(r'//[^\n]*', '', content)
         content = re.sub(r'/\*[\s\S]*?\*/', '', content)
         
-        # 6. Fix unquoted string values that look like identifiers
-        # e.g., { "type": task } -> { "type": "task" }
-        content = re.sub(
-            r':\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}\]])', 
-            r': "\1"\2', 
-            content
-        )
-        
-        # 7. Fix True/False to true/false
+        # 6. Fix True/False to true/false (before unquoted value fix)
         content = re.sub(r'\bTrue\b', 'true', content)
         content = re.sub(r'\bFalse\b', 'false', content)
         content = re.sub(r'\bNone\b', 'null', content)
+
+        # 7. Fix unquoted string values that look like identifiers
+        # e.g., { "type": task } -> { "type": "task" }
+        # Skip JSON literals: true, false, null
+        content = re.sub(
+            r':\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}\]])',
+            lambda m: m.group(0) if m.group(1) in ("true", "false", "null") else f': "{m.group(1)}"' + m.group(2),
+            content
+        )
         
         if content != original:
             logger.debug(f"Repaired JSON: {original[:100]}... -> {content[:100]}...")
