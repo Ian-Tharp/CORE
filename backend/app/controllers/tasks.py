@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tasks Controller
 
 REST API endpoints for the Task Routing Engine.
@@ -19,9 +19,12 @@ from app.models.task_models import (
 )
 from app.repository.task_repository import (
     create_task, get_task, update_task_status, list_tasks,
-    get_task_metrics, get_agent_task_metrics, get_queued_tasks
+    get_task_metrics, get_agent_task_metrics, get_queued_tasks,
+    get_task_assignments, create_task_assignment
 )
 from app.services.task_router import task_router
+from app.services.bus_service import publish
+from app.models.bus_models import BusMessage, MessageType, MessagePriority
 from app.auth import require_api_key
 
 logger = logging.getLogger(__name__)
@@ -217,8 +220,8 @@ async def get_task_details(task_id: UUID, api_key: str = Depends(require_api_key
                 detail=f"Task {task_id} not found"
             )
         
-        # TODO: Get task assignments when implemented
-        assignments = []
+        # Fetch assignment history for this task
+        assignments = await get_task_assignments(task_id)
         
         return TaskResponse(task=task, assignments=assignments)
         
@@ -273,9 +276,36 @@ async def assign_task_manually(task_id: UUID, request: AssignTaskRequest, api_ke
                 detail="Failed to update task status"
             )
         
-        # TODO: Record override in trust metrics
-        # TODO: Create assignment record
-        # TODO: Notify agent
+
+        # Create assignment record for audit trail
+        assignment = TaskAssignment(
+            task_id=task_id,
+            agent_id=request.agent_id,
+            agent_response="accept",
+            refusal_reason=None,
+            suggested_agent=None,
+            confidence_score=1.0
+        )
+        await create_task_assignment(assignment)
+
+        # Notify agent via communication bus
+        try:
+            await publish(BusMessage(
+                sender_id="system",
+                recipients=[str(request.agent_id)],
+                message_type=MessageType.TASK_REQUEST,
+                topic="task.assigned",
+                payload={
+                    "task_id": str(task_id),
+                    "task_type": task.task_type,
+                    "priority": task.priority,
+                    "human_override": True,
+                    "override_reason": request.reason,
+                },
+                priority=MessagePriority.HIGH,
+            ))
+        except Exception as bus_err:
+            logger.warning(f"Failed to notify agent via bus: {bus_err}")
         
         logger.info(f"Task {task_id} manually assigned to agent {request.agent_id}: {request.reason}")
         
