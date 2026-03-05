@@ -1,4 +1,4 @@
-# Docker Compose for full containerized development
+﻿# Docker Compose for full containerized development
 
 services:
   # Backend - CORE FastAPI Application
@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: core-backend
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     environment:
       - PYTHONPATH=/app
       - CORE_ENV=development
@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile
     container_name: core-ui
     ports:
-      - "4200:4200"
+      - "127.0.0.1:4200:4200"
     environment:
       - NODE_ENV=development
       - BACKEND_URL=http://core-backend:8001
@@ -74,7 +74,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5434:5432"
     networks:
       - core-network
     restart: unless-stopped
@@ -89,7 +89,7 @@ services:
     image: redis:7-alpine
     container_name: core-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -106,7 +106,7 @@ services:
     image: ollama/ollama:latest
     container_name: core-ollama
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - C:/Users/Owner/.ollama:/root/.ollama
     environment:
@@ -127,6 +127,36 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # n8n - Workflow Automation
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: core-n8n
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      # CORE backend accessible at http://core-backend:8001 from within n8n
+      - CORE_BACKEND_URL=http://core-backend:8001
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks:
+      - core-network
+    depends_on:
+      - core-backend
+      - redis
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Ollama Model Warmup - Pre-loads models on startup
   ollama-warmup:
@@ -150,6 +180,7 @@ volumes:
   backend-venv:
   postgres-data:
   redis-data:
+  n8n-data:
   ollama-data:
 
 networks:
