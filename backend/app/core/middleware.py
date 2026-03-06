@@ -1,4 +1,4 @@
-"""
+﻿"""
 CORE Middleware - Request/Response logging and metrics.
 
 Provides:
@@ -39,9 +39,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Generate request ID
-        request_id = str(uuid.uuid4())[:8]
+        # Reuse correlation ID from incoming header for distributed tracing
+        request_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())[:8]
         request.state.request_id = request_id
+        request.state.correlation_id = request_id
         
         # Record start time
         start_time = time.time()
@@ -70,8 +71,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         # Calculate duration
         duration = (time.time() - start_time) * 1000
         
-        # Add headers
-        response.headers["X-Request-ID"] = request_id
+        # Add timing header (X-Request-ID and X-Correlation-ID set by CorrelationIDMiddleware)
         response.headers["X-Response-Time"] = f"{duration:.1f}ms"
         
         # Log response

@@ -1,11 +1,17 @@
-"""
+﻿"""
 CORE Middleware Package
 
 Provides middleware for:
+- Correlation ID tracing (distributed request tracing)
 - Rate limiting
-- Request logging
-- Error handling
+- Request logging helpers
 """
+
+from app.middleware.correlation import (
+    CorrelationIDMiddleware,
+    CORRELATION_HEADER,
+    REQUEST_ID_HEADER,
+)
 
 from app.middleware.rate_limit import (
     RateLimiter,
@@ -19,11 +25,14 @@ from app.middleware.rate_limit import (
 )
 
 from app.middleware.logging import (
-    RequestLoggingMiddleware,
     get_correlation_id,
 )
 
 __all__ = [
+    # Correlation / tracing
+    "CorrelationIDMiddleware",
+    "CORRELATION_HEADER",
+    "REQUEST_ID_HEADER",
     # Rate limiting
     "RateLimiter",
     "rate_limit",
@@ -34,6 +43,5 @@ __all__ = [
     "get_client_ip",
     "get_api_key",
     # Logging
-    "RequestLoggingMiddleware",
     "get_correlation_id",
 ]
