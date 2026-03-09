@@ -1,4 +1,4 @@
-import os
+﻿import os
 import asyncio
 from functools import lru_cache
 from typing import Optional
@@ -571,6 +571,29 @@ async def setup_db_schema() -> None:
             )
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_core_run_events_created_at ON core_run_events(created_at)"
+            )
+
+            # -----------------------------------------------------------------
+            # Health Snapshots: persistent health check history
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS health_snapshots (
+                    id VARCHAR(36) PRIMARY KEY,
+                    overall_status VARCHAR(32) NOT NULL,
+                    services JSONB NOT NULL,
+                    total_latency_ms DOUBLE PRECISION NOT NULL,
+                    summary JSONB NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_health_snapshots_created_at ON health_snapshots(created_at DESC)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_health_snapshots_status ON health_snapshots(overall_status)"
             )
 
             # -----------------------------------------------------------------

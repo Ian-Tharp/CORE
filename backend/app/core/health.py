@@ -1,4 +1,4 @@
-"""
+﻿"""
 CORE Health Check Aggregation
 
 Provides comprehensive health checks for all CORE services:
@@ -9,7 +9,7 @@ Provides comprehensive health checks for all CORE services:
 - WebSocket connections
 
 RSI TODO: Add custom health checks for MCP servers
-RSI TODO: Add health history tracking
+DONE: Health history tracking (health_repository + /health/history endpoints)
 RSI TODO: Add alerting webhooks for failures
 """
 

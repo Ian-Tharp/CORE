@@ -1,4 +1,4 @@
-"""
+﻿"""
 Health Check Controller
 
 Provides comprehensive health check endpoints for monitoring.
@@ -27,8 +27,9 @@ import time
 import logging
 from typing import Dict, Any
 from datetime import datetime, timezone
+from typing import Optional as OptionalType
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.services.health_aggregator import (
     get_comprehensive_health,
@@ -173,3 +174,90 @@ async def metrics() -> Dict[str, Any]:
         },
         "connections": len(process.connections())
     }
+
+
+@router.get("/history", status_code=status.HTTP_200_OK)
+async def health_history(
+    limit: int = Query(50, ge=1, le=500, description="Max results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    status_filter: OptionalType[str] = Query(None, alias="status", description="Filter by status"),
+    since: OptionalType[str] = Query(None, description="ISO timestamp lower bound"),
+    until: OptionalType[str] = Query(None, description="ISO timestamp upper bound"),
+) -> Dict[str, Any]:
+    """
+    Health check history.
+
+    Returns stored health snapshots for trend analysis and incident review.
+    Each deep health check is automatically recorded.
+
+    Query parameters:
+        - limit: Max results (1-500, default 50)
+        - offset: Pagination offset
+        - status: Filter by overall status (healthy/degraded/unhealthy)
+        - since: ISO timestamp lower bound
+        - until: ISO timestamp upper bound
+    """
+    from app.repository import health_repository
+
+    since_dt = datetime.fromisoformat(since) if since else None
+    until_dt = datetime.fromisoformat(until) if until else None
+
+    snapshots = await health_repository.get_history(
+        limit=limit,
+        offset=offset,
+        status_filter=status_filter,
+        since=since_dt,
+        until=until_dt,
+    )
+
+    return {
+        "count": len(snapshots),
+        "limit": limit,
+        "offset": offset,
+        "snapshots": snapshots,
+    }
+
+
+@router.get("/history/summary", status_code=status.HTTP_200_OK)
+async def health_summary(
+    hours: int = Query(24, ge=1, le=720, description="Lookback window in hours"),
+) -> Dict[str, Any]:
+    """
+    Aggregated health summary over a time window.
+
+    Returns uptime percentage, check counts by status, and average latency.
+    """
+    from app.repository import health_repository
+
+    return await health_repository.get_status_summary(hours=hours)
+
+
+@router.get("/history/{snapshot_id}", status_code=status.HTTP_200_OK)
+async def health_snapshot_detail(snapshot_id: str) -> Dict[str, Any]:
+    """
+    Get a single health snapshot by ID.
+    """
+    from app.repository import health_repository
+
+    snapshot = await health_repository.get_snapshot(snapshot_id)
+    if not snapshot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Snapshot {snapshot_id} not found",
+        )
+    return snapshot
+
+
+@router.delete("/history/prune", status_code=status.HTTP_200_OK)
+async def prune_health_history(
+    keep_days: int = Query(30, ge=1, le=365, description="Days of history to keep"),
+) -> Dict[str, Any]:
+    """
+    Prune old health snapshots.
+
+    Deletes snapshots older than keep_days. Useful for maintenance.
+    """
+    from app.repository import health_repository
+
+    deleted = await health_repository.prune_old_snapshots(keep_days=keep_days)
+    return {"deleted": deleted, "keep_days": keep_days}

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Health Aggregator Service
 
 Centralized health monitoring for all CORE services.
@@ -573,6 +573,26 @@ async def get_comprehensive_health() -> Dict[str, Any]:
     # Build response
     total_latency = (time.time() - start) * 1000
     
+    # Record snapshot for health history (fire-and-forget, never blocks response)
+    try:
+        from app.repository import health_repository
+        asyncio.ensure_future(
+            health_repository.record_snapshot(
+                overall_status=overall.value,
+                services={c.name: c.to_dict() for c in checks},
+                total_latency_ms=round(total_latency, 2),
+                summary={
+                    "total_services": len(checks),
+                    "healthy": sum(1 for c in checks if c.status == HealthStatus.HEALTHY),
+                    "degraded": sum(1 for c in checks if c.status == HealthStatus.DEGRADED),
+                    "unhealthy": sum(1 for c in checks if c.status == HealthStatus.UNHEALTHY),
+                    "unknown": sum(1 for c in checks if c.status == HealthStatus.UNKNOWN),
+                },
+            )
+        )
+    except Exception:
+        pass  # Never let history recording break health checks
+
     return {
         "status": overall.value,
         "service": "core-backend",
