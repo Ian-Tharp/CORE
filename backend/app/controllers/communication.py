@@ -1,4 +1,4 @@
-"""
+﻿"""
 REST endpoints for the Communication Commons.
 
 Provides API for channels, messages, presence, and reactions.
@@ -162,8 +162,13 @@ async def send_message(
     # If this is a reply, set thread_id to the parent's thread_id or parent_id
     thread_id = request.thread_id
     if request.parent_message_id and not thread_id:
-        # TODO: Look up parent message to get its thread_id
-        thread_id = request.parent_message_id
+        parent_msg = await comm_repo.get_message(request.parent_message_id)
+        if parent_msg and parent_msg.get("thread_id"):
+            # Reply to a reply: inherit the existing thread root
+            thread_id = parent_msg["thread_id"]
+        else:
+            # Reply to a top-level message: start thread from parent
+            thread_id = request.parent_message_id
 
     message = await comm_repo.create_message(
         message_id=message_id,
