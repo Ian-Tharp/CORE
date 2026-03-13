@@ -18,7 +18,6 @@ Usage:
 import time
 import logging
 from typing import Dict, Callable, Optional
-from collections import defaultdict
 from functools import wraps
 from fastapi import HTTPException, Request, status
 
@@ -37,12 +36,16 @@ class RateLimiter:
     def __init__(self, requests_per_minute: int = 60, burst_size: Optional[int] = None):
         self.rate = requests_per_minute / 60.0  # tokens per second
         self.burst_size = burst_size or requests_per_minute
-        self.tokens: Dict[str, float] = defaultdict(lambda: self.burst_size)
-        self.last_update: Dict[str, float] = defaultdict(time.time)
+        self.tokens: Dict[str, float] = {}
+        self.last_update: Dict[str, float] = {}
     
     def _refill(self, key: str) -> None:
         """Refill tokens based on time elapsed."""
         now = time.time()
+        if key not in self.tokens:
+            self.tokens[key] = self.burst_size
+            self.last_update[key] = now
+            return
         elapsed = now - self.last_update[key]
         self.tokens[key] = min(
             self.burst_size,
@@ -161,6 +164,8 @@ def rate_limit(
             if request:
                 await check_rate_limit(request, limiter, key_func, cost)
             
-            return await func(*args, request=request, **kwargs)
+            if request is not None:
+                kwargs["request"] = request
+            return await func(*args, **kwargs)
         return wrapper
     return decorator
