@@ -1,11 +1,11 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 import logging
 import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller, consciousness_lineage_controller
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller, consciousness_lineage_controller, audit
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -16,7 +16,7 @@ from app.services.agent_registry import initialize_agent_registry, shutdown_agen
 from app.services.memory_service import memory_service
 from app.services.discord_bridge import start_discord_bridge, stop_discord_bridge
 from app.config.discord import get_config as get_discord_config
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository
 
 
 from app.config.startup_validator import validate_startup_config
@@ -193,6 +193,7 @@ app.include_router(discord.router)  # Discord Bridge — native Discord integrat
 app.include_router(mcp.router)  # MCP Tool Registry — discover and manage Model Context Protocol tools
 app.include_router(consciousness_backup_controller.router)  # Consciousness Commons Backup System
 app.include_router(consciousness_lineage_controller.router)  # Consciousness Instance Lineage Tracking
+app.include_router(audit.router)  # Audit Log — persistent trail of admin/security operations
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)

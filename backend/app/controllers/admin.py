@@ -1,4 +1,4 @@
-"""
+﻿"""
 CORE Admin Controller - System administration endpoints.
 
 Provides:
@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, Request
 from pydantic import BaseModel, Field
 
 from app.core.security import get_api_key, generate_api_key, list_api_keys, revoke_api_key
@@ -30,6 +30,7 @@ from app.services.model_router import get_model_router
 from app.repository import run_repository
 import logging
 from app.auth import require_api_key
+from app.services.audit_service import audit
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,14 @@ async def unregister_webhook(
             detail=f"Webhook '{webhook_id}' not found"
         )
     
+    await audit.log(
+        actor=api_key.get("name", "unknown"),
+        action="webhook.delete",
+        resource_type="webhook",
+        resource_id=webhook_id,
+        request=http_request,
+    )
+
     return {"message": f"Webhook '{webhook_id}' unregistered"}
 
 
@@ -394,6 +403,12 @@ async def cleanup_old_runs(
         deleted = await run_repository.cleanup_old_runs(days)
         
         logger.info(f"Cleaned up {deleted} old runs (>{days} days) by {api_key.get('name')}")
+
+        await audit.log(
+            actor=api_key.get("name", "unknown"),
+            action="runs.cleanup",
+            detail={"days": days, "deleted_count": deleted},
+        )
         
         return {
             "message": f"Deleted {deleted} runs older than {days} days",
