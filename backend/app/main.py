@@ -16,10 +16,11 @@ from app.services.agent_registry import initialize_agent_registry, shutdown_agen
 from app.services.memory_service import memory_service
 from app.services.discord_bridge import start_discord_bridge, stop_discord_bridge
 from app.config.discord import get_config as get_discord_config
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository
 
 
 from app.config.startup_validator import validate_startup_config
+from app.core.security import load_keys_from_db
 from app.core.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)

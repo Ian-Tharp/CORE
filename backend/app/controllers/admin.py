@@ -103,7 +103,7 @@ async def create_api_key(
             detail="Permission 'admin:keys' required"
         )
     
-    key = generate_api_key(
+    key = await generate_api_key(
         name=request.name,
         description=request.description,
         permissions=request.permissions
@@ -141,7 +141,7 @@ async def delete_api_key(
     """
     Revoke an API key by name.
     """
-    if not revoke_api_key(key_name):
+    if not await revoke_api_key(key_name):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Key '{key_name}' not found"

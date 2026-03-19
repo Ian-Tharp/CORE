@@ -2,12 +2,13 @@
 Comprehensive unit tests for app.core.security module.
 
 Tests cover:
-- API key generation, validation, revocation, and listing
+- API key generation (sync and async), validation, revocation, and listing
 - Master key authentication
 - Rate limiter (per-minute and per-hour windows)
 - FastAPI dependencies (get_api_key, check_rate_limit)
 - Permission decorator (require_permission)
 - Security initialization (init_security)
+- Database-backed API key persistence (api_key_repository)
 """
 
 import os
@@ -18,6 +19,7 @@ import pytest
 
 from app.core.security import (
     generate_api_key,
+    generate_api_key_sync,
     validate_api_key,
     revoke_api_key,
     list_api_keys,
@@ -26,7 +28,8 @@ from app.core.security import (
     check_rate_limit,
     require_permission,
     init_security,
-    _API_KEYS,
+    load_keys_from_db,
+    _API_KEY_CACHE,
     _hash_key,
     _get_master_api_key,
 )
@@ -38,10 +41,10 @@ from app.core.security import (
 
 @pytest.fixture(autouse=True)
 def clean_api_keys():
-    """Clear the in-memory key store before and after each test."""
-    _API_KEYS.clear()
+    """Clear the in-memory key cache before and after each test."""
+    _API_KEY_CACHE.clear()
     yield
-    _API_KEYS.clear()
+    _API_KEY_CACHE.clear()
 
 
 @pytest.fixture
@@ -51,23 +54,23 @@ def rate_limiter():
 
 
 # ===================================================================
-# API Key Generation
+# API Key Generation (Sync - cache only)
 # ===================================================================
 
-class TestGenerateApiKey:
+class TestGenerateApiKeySync:
     def test_returns_string_starting_with_core_prefix(self):
-        key = generate_api_key("test-key")
+        key = generate_api_key_sync("test-key")
         assert key.startswith("core_")
 
     def test_key_is_long_enough(self):
-        key = generate_api_key("test-key")
+        key = generate_api_key_sync("test-key")
         # "core_" + 32-byte urlsafe-b64 (~43 chars)
         assert len(key) > 40
 
-    def test_stores_metadata_in_memory(self):
-        generate_api_key("my-agent", description="Agent key", permissions=["read"])
-        assert len(_API_KEYS) == 1
-        stored = list(_API_KEYS.values())[0]
+    def test_stores_metadata_in_cache(self):
+        generate_api_key_sync("my-agent", description="Agent key", permissions=["read"])
+        assert len(_API_KEY_CACHE) == 1
+        stored = list(_API_KEY_CACHE.values())[0]
         assert stored["name"] == "my-agent"
         assert stored["description"] == "Agent key"
         assert stored["permissions"] == ["read"]
@@ -75,19 +78,46 @@ class TestGenerateApiKey:
         assert stored["request_count"] == 0
 
     def test_default_permissions_is_wildcard(self):
-        generate_api_key("wildcard-key")
-        stored = list(_API_KEYS.values())[0]
+        generate_api_key_sync("wildcard-key")
+        stored = list(_API_KEY_CACHE.values())[0]
         assert stored["permissions"] == ["*"]
 
     def test_two_keys_are_unique(self):
-        k1 = generate_api_key("key-a")
-        k2 = generate_api_key("key-b")
+        k1 = generate_api_key_sync("key-a")
+        k2 = generate_api_key_sync("key-b")
         assert k1 != k2
 
     def test_key_hash_stored_not_raw(self):
-        key = generate_api_key("secure")
-        assert key not in _API_KEYS, "Raw key must not be a dict key"
-        assert _hash_key(key) in _API_KEYS
+        key = generate_api_key_sync("secure")
+        assert key not in _API_KEY_CACHE, "Raw key must not be a dict key"
+        assert _hash_key(key) in _API_KEY_CACHE
+
+
+# ===================================================================
+# API Key Generation (Async - with DB persistence)
+# ===================================================================
+
+class TestGenerateApiKeyAsync:
+    @pytest.mark.asyncio
+    async def test_returns_string_starting_with_core_prefix(self):
+        with patch("app.core.security.api_key_repository", create=True) as mock_repo:
+            mock_mod = MagicMock()
+            mock_mod.store_key = AsyncMock(return_value="fake-id")
+            with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+                with patch("app.repository.api_key_repository", mock_mod):
+                    key = await generate_api_key("test-async")
+                    assert key.startswith("core_")
+                    assert len(_API_KEY_CACHE) == 1
+
+    @pytest.mark.asyncio
+    async def test_stores_in_cache_even_if_db_fails(self):
+        """Cache should be populated even when DB persist throws."""
+        mock_mod = MagicMock()
+        mock_mod.store_key = AsyncMock(side_effect=Exception("DB down"))
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                key = await generate_api_key("resilient")
+                assert _hash_key(key) in _API_KEY_CACHE
 
 
 # ===================================================================
@@ -96,7 +126,7 @@ class TestGenerateApiKey:
 
 class TestValidateApiKey:
     def test_valid_key_returns_metadata(self):
-        key = generate_api_key("valid")
+        key = generate_api_key_sync("valid")
         result = validate_api_key(key)
         assert result is not None
         assert result["name"] == "valid"
@@ -105,16 +135,16 @@ class TestValidateApiKey:
         assert validate_api_key("core_totallyinvalid") is None
 
     def test_validation_updates_last_used(self):
-        key = generate_api_key("track")
+        key = generate_api_key_sync("track")
         validate_api_key(key)
-        stored = _API_KEYS[_hash_key(key)]
+        stored = _API_KEY_CACHE[_hash_key(key)]
         assert stored["last_used"] is not None
 
     def test_validation_increments_request_count(self):
-        key = generate_api_key("counter")
+        key = generate_api_key_sync("counter")
         for _ in range(5):
             validate_api_key(key)
-        stored = _API_KEYS[_hash_key(key)]
+        stored = _API_KEY_CACHE[_hash_key(key)]
         assert stored["request_count"] == 5
 
     @patch.dict(os.environ, {"CORE_API_KEY": "master-secret-123"})
@@ -130,37 +160,57 @@ class TestValidateApiKey:
         assert validate_api_key("wrong-master") is None
 
     def test_no_master_key_env_still_checks_registered(self):
-        key = generate_api_key("fallback")
+        key = generate_api_key_sync("fallback")
         with patch.dict(os.environ, {}, clear=True):
             result = validate_api_key(key)
             assert result is not None
 
 
 # ===================================================================
-# API Key Revocation
+# API Key Revocation (now async)
 # ===================================================================
 
 class TestRevokeApiKey:
-    def test_revoke_existing_key(self):
-        generate_api_key("doomed")
-        assert revoke_api_key("doomed") is True
-        assert len(_API_KEYS) == 0
+    @pytest.mark.asyncio
+    async def test_revoke_existing_key(self):
+        generate_api_key_sync("doomed")
+        mock_mod = MagicMock()
+        mock_mod.deactivate_by_name = AsyncMock(return_value=True)
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                assert await revoke_api_key("doomed") is True
+                assert len(_API_KEY_CACHE) == 0
 
-    def test_revoke_nonexistent_key(self):
-        assert revoke_api_key("ghost") is False
+    @pytest.mark.asyncio
+    async def test_revoke_nonexistent_key(self):
+        mock_mod = MagicMock()
+        mock_mod.deactivate_by_name = AsyncMock(return_value=False)
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                assert await revoke_api_key("ghost") is False
 
-    def test_revoked_key_no_longer_validates(self):
-        key = generate_api_key("temp")
-        revoke_api_key("temp")
-        assert validate_api_key(key) is None
+    @pytest.mark.asyncio
+    async def test_revoked_key_no_longer_validates(self):
+        key = generate_api_key_sync("temp")
+        mock_mod = MagicMock()
+        mock_mod.deactivate_by_name = AsyncMock(return_value=True)
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                await revoke_api_key("temp")
+                assert validate_api_key(key) is None
 
-    def test_revoke_only_target_key(self):
-        generate_api_key("keep")
-        generate_api_key("remove")
-        revoke_api_key("remove")
-        assert len(_API_KEYS) == 1
-        remaining = list(_API_KEYS.values())[0]
-        assert remaining["name"] == "keep"
+    @pytest.mark.asyncio
+    async def test_revoke_only_target_key(self):
+        generate_api_key_sync("keep")
+        generate_api_key_sync("remove")
+        mock_mod = MagicMock()
+        mock_mod.deactivate_by_name = AsyncMock(return_value=True)
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                await revoke_api_key("remove")
+                assert len(_API_KEY_CACHE) == 1
+                remaining = list(_API_KEY_CACHE.values())[0]
+                assert remaining["name"] == "keep"
 
 
 # ===================================================================
@@ -172,22 +222,21 @@ class TestListApiKeys:
         assert list_api_keys() == []
 
     def test_lists_all_keys(self):
-        generate_api_key("alpha")
-        generate_api_key("beta")
+        generate_api_key_sync("alpha")
+        generate_api_key_sync("beta")
         keys = list_api_keys()
         assert len(keys) == 2
         names = {k["name"] for k in keys}
         assert names == {"alpha", "beta"}
 
     def test_does_not_expose_raw_key(self):
-        raw = generate_api_key("secret")
+        raw = generate_api_key_sync("secret")
         keys = list_api_keys()
-        # Ensure raw key string doesn't appear in listing
         listing_str = str(keys)
         assert raw not in listing_str
 
     def test_listing_contains_expected_fields(self):
-        generate_api_key("fields-check", description="desc", permissions=["read"])
+        generate_api_key_sync("fields-check", description="desc", permissions=["read"])
         entry = list_api_keys()[0]
         assert "name" in entry
         assert "description" in entry
@@ -233,9 +282,7 @@ class TestRateLimiter:
     def test_separate_clients_independent(self, rate_limiter):
         for _ in range(3):
             rate_limiter.check_rate_limit("client-c")
-        # client-c blocked
         assert rate_limiter.check_rate_limit("client-c")["allowed"] is False
-        # client-d fine
         assert rate_limiter.check_rate_limit("client-d")["allowed"] is True
 
     def test_remaining_decrements(self, rate_limiter):
@@ -244,7 +291,6 @@ class TestRateLimiter:
         assert r1["minute_remaining"] > r2["minute_remaining"]
 
     def test_old_entries_cleaned(self, rate_limiter):
-        # Manually inject old timestamps
         rate_limiter._minute_buckets["client-f"] = [time.time() - 120]
         result = rate_limiter.check_rate_limit("client-f")
         assert result["allowed"] is True
@@ -277,7 +323,6 @@ class TestGetApiKeyDependency:
     @pytest.mark.asyncio
     @patch.dict(os.environ, {}, clear=False)
     async def test_no_key_raises_401(self):
-        # Ensure auth is NOT disabled
         os.environ.pop("CORE_AUTH_DISABLED", None)
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
@@ -295,22 +340,22 @@ class TestGetApiKeyDependency:
     @pytest.mark.asyncio
     async def test_valid_header_key(self):
         os.environ.pop("CORE_AUTH_DISABLED", None)
-        key = generate_api_key("header-test")
+        key = generate_api_key_sync("header-test")
         result = await get_api_key(api_key_header=key, api_key_query=None)
         assert result["name"] == "header-test"
 
     @pytest.mark.asyncio
     async def test_valid_query_key(self):
         os.environ.pop("CORE_AUTH_DISABLED", None)
-        key = generate_api_key("query-test")
+        key = generate_api_key_sync("query-test")
         result = await get_api_key(api_key_header=None, api_key_query=key)
         assert result["name"] == "query-test"
 
     @pytest.mark.asyncio
     async def test_header_preferred_over_query(self):
         os.environ.pop("CORE_AUTH_DISABLED", None)
-        key_h = generate_api_key("from-header")
-        key_q = generate_api_key("from-query")
+        key_h = generate_api_key_sync("from-header")
+        key_q = generate_api_key_sync("from-query")
         result = await get_api_key(api_key_header=key_h, api_key_query=key_q)
         assert result["name"] == "from-header"
 
@@ -422,10 +467,169 @@ class TestInitSecurity:
         init_security()
         init_security()
         keys = list_api_keys()
-        # Second call sees keys exist, skips generation
         assert len(keys) == 1
 
     @patch.dict(os.environ, {"CORE_ENV": "production"})
     def test_production_no_default_key(self):
         init_security()
         assert list_api_keys() == []
+
+
+# ===================================================================
+# Load Keys From DB
+# ===================================================================
+
+class TestLoadKeysFromDb:
+    @pytest.mark.asyncio
+    async def test_loads_keys_into_cache(self):
+        mock_keys = [
+            {
+                "key_hash": "abc123",
+                "name": "db-key-1",
+                "description": "From database",
+                "permissions": ["read"],
+                "created_at": "2026-01-01T00:00:00",
+                "last_used": None,
+                "request_count": 42,
+            }
+        ]
+        mock_mod = MagicMock()
+        mock_mod.list_all_active = AsyncMock(return_value=mock_keys)
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                await load_keys_from_db()
+                assert "abc123" in _API_KEY_CACHE
+                assert _API_KEY_CACHE["abc123"]["name"] == "db-key-1"
+                assert _API_KEY_CACHE["abc123"]["request_count"] == 42
+
+    @pytest.mark.asyncio
+    async def test_clears_cache_before_loading(self):
+        _API_KEY_CACHE["old-hash"] = {"name": "stale"}
+        mock_mod = MagicMock()
+        mock_mod.list_all_active = AsyncMock(return_value=[])
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                await load_keys_from_db()
+                assert "old-hash" not in _API_KEY_CACHE
+
+    @pytest.mark.asyncio
+    async def test_survives_db_failure(self):
+        """If DB is down, cache stays empty but no crash."""
+        generate_api_key_sync("pre-existing")
+        mock_mod = MagicMock()
+        mock_mod.list_all_active = AsyncMock(side_effect=Exception("Connection refused"))
+        with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch("app.repository.api_key_repository", mock_mod):
+                await load_keys_from_db()
+                # Should not crash; cache state is best-effort
+
+
+# ===================================================================
+# API Key Repository Unit Tests
+# ===================================================================
+
+class TestApiKeyRepository:
+    """Tests for the repository module itself (mocked DB)."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_tables_calls_execute(self):
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+        mock_conn.transaction = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(), __aexit__=AsyncMock()
+        ))
+
+        mock_pool = AsyncMock()
+        mock_pool.acquire = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_conn),
+            __aexit__=AsyncMock()
+        ))
+
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+            from app.repository import api_key_repository
+            await api_key_repository.ensure_api_key_tables()
+            assert mock_conn.execute.call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_store_key_inserts_record(self):
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+
+        mock_pool = AsyncMock()
+        mock_pool.acquire = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_conn),
+            __aexit__=AsyncMock()
+        ))
+
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+            from app.repository import api_key_repository
+            result = await api_key_repository.store_key(
+                key_hash="testhash",
+                name="test-store",
+                description="A test key",
+                permissions=["read"],
+            )
+            assert result is not None
+            mock_conn.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_by_hash_returns_none_for_missing(self):
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=None)
+
+        mock_pool = AsyncMock()
+        mock_pool.acquire = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_conn),
+            __aexit__=AsyncMock()
+        ))
+
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+            from app.repository import api_key_repository
+            result = await api_key_repository.get_by_hash("nonexistent")
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_deactivate_by_name_returns_true_when_found(self):
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        mock_pool = AsyncMock()
+        mock_pool.acquire = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_conn),
+            __aexit__=AsyncMock()
+        ))
+
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+            from app.repository import api_key_repository
+            result = await api_key_repository.deactivate_by_name("some-key")
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_deactivate_by_name_returns_false_when_not_found(self):
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock(return_value="UPDATE 0")
+
+        mock_pool = AsyncMock()
+        mock_pool.acquire = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_conn),
+            __aexit__=AsyncMock()
+        ))
+
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+            from app.repository import api_key_repository
+            result = await api_key_repository.deactivate_by_name("ghost")
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_list_all_active_returns_empty_on_error(self):
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(side_effect=Exception("DB down"))):
+            from app.repository import api_key_repository
+            result = await api_key_repository.list_all_active()
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_update_last_used_no_crash_on_error(self):
+        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(side_effect=Exception("DB down"))):
+            from app.repository import api_key_repository
+            # Should not raise
+            await api_key_repository.update_last_used("somehash")
