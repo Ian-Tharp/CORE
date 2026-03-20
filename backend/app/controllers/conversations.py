@@ -1,6 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """REST endpoints for managing chat conversations."""
+
+import logging
 
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import List
@@ -13,6 +15,7 @@ from app.repository.conversation_repository import (
 )
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
