@@ -1,15 +1,13 @@
-"""
+﻿"""
 CORE Webhook Service - Async callbacks for task completion.
 
 Provides:
-- Register webhook endpoints
-- Fire webhooks on events
+- Register webhook endpoints (persisted to database)
+- Fire webhooks on events with event-type filtering
 - Retry logic with exponential backoff
 - Webhook history and status tracking
-
-RSI TODO: Add webhook signature verification (HMAC)
-RSI TODO: Add webhook filtering by event type
-RSI TODO: Persist webhook registrations to database
+- HMAC signature verification
+- Delivery pruning for old records
 """
 
 from __future__ import annotations
@@ -19,7 +17,7 @@ import hashlib
 import hmac
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from enum import Enum
 from uuid import uuid4
@@ -27,11 +25,14 @@ from uuid import uuid4
 import httpx
 import logging
 
+from app.repository import webhook_repository
+
 logger = logging.getLogger(__name__)
 
 
 class WebhookEvent(str, Enum):
     """Webhook event types."""
+    WILDCARD = "*"
     RUN_STARTED = "run.started"
     RUN_COMPLETED = "run.completed"
     RUN_FAILED = "run.failed"
@@ -43,7 +44,7 @@ class WebhookEvent(str, Enum):
 
 class WebhookRegistration:
     """A registered webhook endpoint."""
-    
+
     def __init__(
         self,
         url: str,
@@ -51,28 +52,30 @@ class WebhookRegistration:
         secret: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         name: Optional[str] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
+        webhook_id: Optional[str] = None,
     ):
-        self.id = str(uuid4())[:8]
+        self.id = webhook_id or str(uuid4())[:8]
         self.url = url
         self.events = events
         self.secret = secret
         self.headers = headers or {}
         self.name = name or f"webhook-{self.id}"
         self.max_retries = max_retries
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.is_active = True
         self.delivery_count = 0
         self.failure_count = 0
         self.last_delivery = None
         self.last_error = None
-    
+
     def matches_event(self, event: WebhookEvent) -> bool:
         """Check if this webhook should receive the event."""
         if not self.is_active:
             return False
-        return event in self.events or WebhookEvent.RUN_COMPLETED in self.events  # wildcard
-    
+        # Match if subscribed to wildcard or the specific event
+        return WebhookEvent.WILDCARD in self.events or event in self.events
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -84,18 +87,54 @@ class WebhookRegistration:
             "failure_count": self.failure_count,
             "created_at": self.created_at.isoformat(),
             "last_delivery": self.last_delivery.isoformat() if self.last_delivery else None,
-            "last_error": self.last_error
+            "last_error": self.last_error,
         }
+
+    @classmethod
+    def from_db_dict(cls, data: Dict[str, Any]) -> "WebhookRegistration":
+        """Reconstruct from a database row dict."""
+        events = []
+        for e in data.get("events", []):
+            try:
+                events.append(WebhookEvent(e))
+            except ValueError:
+                logger.warning(f"Unknown webhook event type: {e}")
+        reg = cls(
+            url=data["url"],
+            events=events,
+            secret=data.get("secret"),
+            headers=data.get("headers", {}),
+            name=data.get("name"),
+            max_retries=data.get("max_retries", 3),
+            webhook_id=data["id"],
+        )
+        reg.is_active = data.get("is_active", True)
+        reg.delivery_count = data.get("delivery_count", 0)
+        reg.failure_count = data.get("failure_count", 0)
+        if data.get("last_delivery_at"):
+            reg.last_delivery = (
+                datetime.fromisoformat(data["last_delivery_at"])
+                if isinstance(data["last_delivery_at"], str)
+                else data["last_delivery_at"]
+            )
+        reg.last_error = data.get("last_error")
+        if data.get("created_at"):
+            reg.created_at = (
+                datetime.fromisoformat(data["created_at"])
+                if isinstance(data["created_at"], str)
+                else data["created_at"]
+            )
+        return reg
 
 
 class WebhookDelivery:
     """Record of a webhook delivery attempt."""
-    
+
     def __init__(
         self,
         webhook_id: str,
         event: WebhookEvent,
-        payload: Dict[str, Any]
+        payload: Dict[str, Any],
     ):
         self.id = str(uuid4())
         self.webhook_id = webhook_id
@@ -106,8 +145,8 @@ class WebhookDelivery:
         self.response_body: Optional[str] = None
         self.error: Optional[str] = None
         self.delivered_at: Optional[datetime] = None
-        self.created_at = datetime.utcnow()
-    
+        self.created_at = datetime.now(timezone.utc)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -117,28 +156,39 @@ class WebhookDelivery:
             "status_code": self.status_code,
             "error": self.error,
             "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
         }
 
 
 class WebhookService:
     """
     Manages webhook registrations and deliveries.
+
+    Registrations are persisted to the database and loaded on startup.
+    Deliveries are recorded asynchronously for history/debugging.
     """
-    
+
     def __init__(self):
         self.webhooks: Dict[str, WebhookRegistration] = {}
-        self.deliveries: List[WebhookDelivery] = []
         self._delivery_queue: asyncio.Queue = asyncio.Queue()
         self._worker_task: Optional[asyncio.Task] = None
         self._http_client: Optional[httpx.AsyncClient] = None
-    
+
     async def start(self):
-        """Start the webhook delivery worker."""
+        """Start the webhook delivery worker and load registrations from DB."""
         self._http_client = httpx.AsyncClient(timeout=30.0)
         self._worker_task = asyncio.create_task(self._delivery_worker())
-        logger.info("Webhook service started")
-    
+
+        # Load persisted registrations
+        try:
+            rows = await webhook_repository.list_registrations(active_only=False)
+            for row in rows:
+                reg = WebhookRegistration.from_db_dict(row)
+                self.webhooks[reg.id] = reg
+            logger.info(f"Webhook service started, loaded {len(rows)} registrations")
+        except Exception as e:
+            logger.warning(f"Webhook service started (DB load failed: {e})")
+
     async def stop(self):
         """Stop the webhook delivery worker."""
         if self._worker_task:
@@ -147,102 +197,141 @@ class WebhookService:
                 await self._worker_task
             except asyncio.CancelledError:
                 pass
-        
+
         if self._http_client:
             await self._http_client.aclose()
-        
+
         logger.info("Webhook service stopped")
-    
-    def register(
+
+    async def register(
         self,
         url: str,
         events: List[str],
         secret: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> WebhookRegistration:
         """
-        Register a new webhook.
-        
+        Register a new webhook and persist it to the database.
+
         Args:
             url: The endpoint URL to call
-            events: List of event types to receive
+            events: List of event types to receive (use "*" for all)
             secret: Optional HMAC secret for signature verification
             headers: Optional additional headers to send
             name: Optional human-readable name
-            
+
         Returns:
             The registered webhook
         """
         webhook_events = [WebhookEvent(e) for e in events]
-        
+
         webhook = WebhookRegistration(
             url=url,
             events=webhook_events,
             secret=secret,
             headers=headers,
-            name=name
+            name=name,
         )
-        
+
         self.webhooks[webhook.id] = webhook
+
+        # Persist to database (best-effort; service works in-memory if DB fails)
+        await webhook_repository.create_registration(
+            webhook_id=webhook.id,
+            name=webhook.name,
+            url=url,
+            events=events,
+            secret=secret,
+            headers=headers,
+            max_retries=webhook.max_retries,
+        )
+
         logger.info(f"Registered webhook {webhook.name} ({webhook.id}) for {url}")
-        
         return webhook
-    
-    def unregister(self, webhook_id: str) -> bool:
-        """Unregister a webhook."""
+
+    async def unregister(self, webhook_id: str) -> bool:
+        """Unregister a webhook and remove from database."""
         if webhook_id in self.webhooks:
             del self.webhooks[webhook_id]
+            await webhook_repository.delete_registration(webhook_id)
             logger.info(f"Unregistered webhook {webhook_id}")
             return True
         return False
-    
+
     def get_webhook(self, webhook_id: str) -> Optional[WebhookRegistration]:
         """Get a webhook by ID."""
         return self.webhooks.get(webhook_id)
-    
+
     def list_webhooks(self) -> List[WebhookRegistration]:
         """List all registered webhooks."""
         return list(self.webhooks.values())
-    
+
+    async def update_webhook(
+        self,
+        webhook_id: str,
+        **fields,
+    ) -> Optional[WebhookRegistration]:
+        """Update a webhook's configuration."""
+        webhook = self.webhooks.get(webhook_id)
+        if not webhook:
+            return None
+
+        # Update in-memory object
+        if "url" in fields:
+            webhook.url = fields["url"]
+        if "name" in fields:
+            webhook.name = fields["name"]
+        if "events" in fields:
+            webhook.events = [WebhookEvent(e) for e in fields["events"]]
+        if "secret" in fields:
+            webhook.secret = fields["secret"]
+        if "headers" in fields:
+            webhook.headers = fields["headers"]
+        if "is_active" in fields:
+            webhook.is_active = fields["is_active"]
+        if "max_retries" in fields:
+            webhook.max_retries = fields["max_retries"]
+
+        # Persist changes
+        await webhook_repository.update_registration(webhook_id, **fields)
+        return webhook
+
     async def fire(
         self,
         event: WebhookEvent,
         payload: Dict[str, Any],
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
     ):
         """
-        Fire a webhook event.
-        
+        Fire a webhook event to all matching registrations.
+
         Args:
             event: The event type
             payload: The event payload
-            run_id: Optional run ID for filtering
+            run_id: Optional run ID for context
         """
-        # Add metadata to payload
         full_payload = {
             "event": event.value,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "run_id": run_id,
-            **payload
+            **payload,
         }
-        
-        # Queue delivery for each matching webhook
+
         for webhook in self.webhooks.values():
             if webhook.matches_event(event):
                 delivery = WebhookDelivery(
                     webhook_id=webhook.id,
                     event=event,
-                    payload=full_payload
+                    payload=full_payload,
                 )
-                self.deliveries.append(delivery)
                 await self._delivery_queue.put((webhook, delivery))
                 logger.debug(f"Queued webhook delivery {delivery.id} for {webhook.name}")
-    
+
     async def _delivery_worker(self):
         """Background worker that processes webhook deliveries."""
         logger.info("Webhook delivery worker started")
-        
+
         while True:
             try:
                 webhook, delivery = await self._delivery_queue.get()
@@ -251,48 +340,60 @@ class WebhookService:
                 break
             except Exception as e:
                 logger.error(f"Webhook worker error: {e}")
-    
+
     async def _deliver(self, webhook: WebhookRegistration, delivery: WebhookDelivery):
         """Attempt to deliver a webhook with retries."""
-        retry_delays = [1, 5, 30]  # Seconds between retries
-        
+        retry_delays = [1, 5, 30]
+
         for attempt in range(webhook.max_retries):
             delivery.attempts = attempt + 1
-            
+
             try:
-                # Build headers
                 headers = {
                     "Content-Type": "application/json",
                     "X-Webhook-ID": webhook.id,
                     "X-Delivery-ID": delivery.id,
                     "X-Event-Type": delivery.event.value,
-                    **webhook.headers
+                    **webhook.headers,
                 }
-                
-                # Add signature if secret configured
+
+                # HMAC signature for payload verification
                 if webhook.secret:
                     payload_bytes = json.dumps(delivery.payload).encode()
                     signature = hmac.new(
                         webhook.secret.encode(),
                         payload_bytes,
-                        hashlib.sha256
+                        hashlib.sha256,
                     ).hexdigest()
                     headers["X-Webhook-Signature"] = f"sha256={signature}"
-                
-                # Make the request
+
                 response = await self._http_client.post(
                     webhook.url,
                     json=delivery.payload,
-                    headers=headers
+                    headers=headers,
                 )
-                
+
                 delivery.status_code = response.status_code
-                delivery.response_body = response.text[:500]  # Truncate
-                
+                delivery.response_body = response.text[:500]
+
                 if response.is_success:
-                    delivery.delivered_at = datetime.utcnow()
+                    delivery.delivered_at = datetime.now(timezone.utc)
                     webhook.delivery_count += 1
                     webhook.last_delivery = delivery.delivered_at
+
+                    # Persist success
+                    await webhook_repository.increment_delivery_count(webhook.id)
+                    await webhook_repository.record_delivery(
+                        delivery_id=delivery.id,
+                        webhook_id=webhook.id,
+                        event=delivery.event.value,
+                        payload=delivery.payload,
+                        attempts=delivery.attempts,
+                        status_code=delivery.status_code,
+                        response_body=delivery.response_body,
+                        delivered_at=delivery.delivered_at,
+                    )
+
                     logger.info(
                         f"Webhook {webhook.name} delivered: {delivery.event.value} "
                         f"(attempt {attempt + 1}, status {response.status_code})"
@@ -304,43 +405,63 @@ class WebhookService:
                         f"Webhook {webhook.name} failed with {response.status_code} "
                         f"(attempt {attempt + 1})"
                     )
-            
+
             except Exception as e:
                 delivery.error = str(e)
                 logger.warning(
                     f"Webhook {webhook.name} error: {e} (attempt {attempt + 1})"
                 )
-            
+
             # Retry with backoff (except last attempt)
             if attempt < webhook.max_retries - 1:
                 delay = retry_delays[min(attempt, len(retry_delays) - 1)]
                 await asyncio.sleep(delay)
-        
+
         # All retries exhausted
         webhook.failure_count += 1
         webhook.last_error = delivery.error
+
+        # Persist failure
+        await webhook_repository.increment_failure_count(webhook.id, delivery.error or "unknown")
+        await webhook_repository.record_delivery(
+            delivery_id=delivery.id,
+            webhook_id=webhook.id,
+            event=delivery.event.value,
+            payload=delivery.payload,
+            attempts=delivery.attempts,
+            status_code=delivery.status_code,
+            response_body=delivery.response_body,
+            error=delivery.error,
+        )
+
         logger.error(
             f"Webhook {webhook.name} failed after {webhook.max_retries} attempts"
         )
-    
-    def get_recent_deliveries(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get recent delivery attempts."""
-        return [d.to_dict() for d in self.deliveries[-limit:]]
-    
-    def get_stats(self) -> Dict[str, Any]:
+
+    async def get_recent_deliveries(
+        self,
+        webhook_id: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Get recent delivery attempts from the database."""
+        return await webhook_repository.get_deliveries(
+            webhook_id=webhook_id,
+            limit=limit,
+        )
+
+    async def get_stats(self) -> Dict[str, Any]:
         """Get webhook service statistics."""
-        total_deliveries = len(self.deliveries)
-        successful = sum(1 for d in self.deliveries if d.delivered_at)
-        
+        db_stats = await webhook_repository.get_delivery_stats(hours=24)
         return {
             "registered_webhooks": len(self.webhooks),
             "active_webhooks": sum(1 for w in self.webhooks.values() if w.is_active),
-            "total_deliveries": total_deliveries,
-            "successful_deliveries": successful,
-            "failed_deliveries": total_deliveries - successful,
-            "success_rate": successful / total_deliveries if total_deliveries > 0 else 0,
-            "queue_size": self._delivery_queue.qsize()
+            "queue_size": self._delivery_queue.qsize(),
+            "last_24h": db_stats,
         }
+
+    async def prune_deliveries(self, keep_days: int = 30) -> int:
+        """Prune old delivery records from the database."""
+        return await webhook_repository.prune_old_deliveries(keep_days)
 
 
 # Global webhook service instance
