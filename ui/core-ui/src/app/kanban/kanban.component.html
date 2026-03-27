@@ -1,0 +1,134 @@
+﻿<div class="kanban-page">
+  <!-- Header -->
+  <div class="kanban-header">
+    <div class="header-left">
+      <mat-icon class="header-icon">view_kanban</mat-icon>
+      <div>
+        <h1>Project Board</h1>
+        <span class="task-count">{{ getTotalTasks() }} tasks across {{ projects.length }} projects</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button mat-flat-button class="new-task-btn" (click)="openNewTaskDialog()">
+        <mat-icon>add</mat-icon>
+        New Task
+      </button>
+      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <mat-icon class="filter-icon">filter_list</mat-icon>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Project</mat-label>
+      <mat-select [(ngModel)]="filterProject" (selectionChange)="onFiltersChanged()">
+        <mat-option value="">All Projects</mat-option>
+        <mat-option *ngFor="let p of projects" [value]="p">{{ p }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Priority</mat-label>
+      <mat-select [(ngModel)]="filterPriority" (selectionChange)="onFiltersChanged()">
+        <mat-option value="">All Priorities</mat-option>
+        <mat-option *ngFor="let p of priorities" [value]="p">
+          <span class="priority-indicator" [ngClass]="'priority-' + p"></span>
+          {{ p | titlecase }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Assignee</mat-label>
+      <input matInput [(ngModel)]="filterAssignee" (ngModelChange)="onFiltersChanged()" placeholder="Filter by name...">
+    </mat-form-field>
+
+    <button mat-icon-button *ngIf="hasActiveFilters()" (click)="clearFilters()" matTooltip="Clear filters" class="clear-filters-btn">
+      <mat-icon>clear</mat-icon>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <span>Loading tasks...</span>
+  </div>
+
+  <!-- Board -->
+  <div class="board-container" *ngIf="!isLoading">
+    <div class="board-columns">
+      <div class="column" *ngFor="let column of columns">
+        <!-- Column Header -->
+        <div class="column-header">
+          <div class="column-title">
+            <mat-icon class="column-icon">{{ column.icon }}</mat-icon>
+            <span>{{ column.title }}</span>
+            <span class="task-badge" *ngIf="column.tasks.length > 0">{{ column.tasks.length }}</span>
+          </div>
+        </div>
+
+        <!-- Drop Zone -->
+        <div
+          cdkDropList
+          [id]="column.id"
+          [cdkDropListData]="column.tasks"
+          [cdkDropListConnectedTo]="connectedLists"
+          (cdkDropListDropped)="drop($event)"
+          class="task-list"
+          [class.empty-list]="column.tasks.length === 0">
+
+          <!-- Task Card -->
+          <div
+            class="task-card"
+            *ngFor="let task of column.tasks"
+            cdkDrag
+            [cdkDragData]="task">
+
+            <!-- Drag Preview -->
+            <div class="drag-placeholder" *cdkDragPlaceholder></div>
+
+            <!-- Priority Stripe -->
+            <div class="priority-stripe" [ngClass]="getPriorityClass(task)"></div>
+
+            <div class="card-content">
+              <!-- Card Header -->
+              <div class="card-header">
+                <h3 class="card-title">{{ getTaskTitle(task) }}</h3>
+              </div>
+
+              <!-- Description -->
+              <p class="card-description" *ngIf="getTaskDescription(task)">
+                {{ getTaskDescription(task) }}
+              </p>
+
+              <!-- Card Footer -->
+              <div class="card-footer">
+                <div class="card-tags">
+                  <span class="priority-chip" [ngClass]="getPriorityClass(task)">
+                    {{ getPriorityText(task) | titlecase }}
+                  </span>
+                  <span class="project-chip" *ngIf="getTaskProject(task)" [ngClass]="getProjectClass(getTaskProject(task))">
+                    {{ getTaskProject(task) }}
+                  </span>
+                </div>
+                <div class="assignee-avatar" *ngIf="getTaskAssignee(task)" [matTooltip]="getTaskAssignee(task)">
+                  {{ getAssigneeInitials(task) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-state" *ngIf="column.tasks.length === 0">
+            <mat-icon>layers_clear</mat-icon>
+            <span>No tasks here yet</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

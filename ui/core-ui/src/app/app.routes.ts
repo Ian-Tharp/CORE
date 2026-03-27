@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { LandingPageComponent } from './landing-page/landing-page.component';
 import { ConversationsPageComponent } from './conversations-page/conversations-page.component';
 import { KnowledgebaseComponent } from './knowledgebase/knowledgebase.component';
@@ -16,6 +16,7 @@ import { CreativeBoardsComponent } from './creative-design-product/boards/creati
 import { CommunicationComponent } from './communication/communication.component';
 import { McpRegistryComponent } from './tools/mcp-registry.component';
 import { AttributionBrowserComponent } from './knowledge-attribution/attribution-browser.component';
+import { KanbanComponent } from './kanban/kanban.component';
 
 export const routes: Routes = [
   {
@@ -71,6 +72,10 @@ export const routes: Routes = [
   { path: 'creative/wiki', component: WikiComponent },
   { path: 'creative/boards', component: CreativeBoardsComponent },
   { path: 'creative/marketplace', component: MarketplaceComponent },
+  {
+    path: 'kanban',
+    component: KanbanComponent
+  },
   {
     path: '**',
     redirectTo: ''

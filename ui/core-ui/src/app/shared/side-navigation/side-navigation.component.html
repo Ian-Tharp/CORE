@@ -1,4 +1,4 @@
-<nav class="side-nav">
+﻿<nav class="side-nav">
   <!-- Main Navigation -->
   <div class="nav-content">
     <!-- Primary Navigation -->
@@ -6,6 +6,10 @@
       <div class="nav-items">
         <button mat-icon-button class="nav-item" [routerLink]="['/dashboard']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Dashboard" matTooltipPosition="right">
           <mat-icon>dashboard</mat-icon>
+        </button>
+        
+        <button mat-icon-button class="nav-item" [routerLink]="['/kanban']" routerLinkActive="active" matTooltip="Project Board" matTooltipPosition="right">
+          <mat-icon>view_kanban</mat-icon>
         </button>
         
         <button mat-icon-button class="nav-item" [routerLink]="['/communication']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Communication Commons" matTooltipPosition="right">

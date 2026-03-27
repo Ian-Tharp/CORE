@@ -206,7 +206,7 @@ setup_middleware(app)
 # Set CORE_ALLOWED_ORIGINS env var to a comma-separated list for production.
 ALLOWED_ORIGINS = os.getenv(
     "CORE_ALLOWED_ORIGINS",
-    "http://localhost:4200,http://localhost:8001",
+    "http://localhost:4200,http://localhost:8001,http://127.0.0.1:4200",
 ).split(",")
 
 app.add_middleware(

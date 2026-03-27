@@ -1,4 +1,4 @@
-<div class="attribution-browser">
+﻿<div class="attribution-browser">
   <!-- Header -->
   <div class="browser-header">
     <h2 class="page-title">
@@ -76,7 +76,7 @@
               type="checkbox"
               [value]="option.value"
               [checked]="selectedStatuses.includes(option.value)"
-              (change)="$event.target.checked ? 
+              (change)="$any($event.target).checked ? 
                 selectedStatuses.push(option.value) : 
                 selectedStatuses.splice(selectedStatuses.indexOf(option.value), 1)"
             />
