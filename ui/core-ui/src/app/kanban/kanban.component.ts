@@ -13,6 +13,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatMenuModule } from '@angular/material/menu';
 import { Subject, takeUntil } from 'rxjs';
 import { KanbanService, KanbanTask } from '../services/kanban/kanban.service';
 import { TaskDialogComponent } from './task-dialog.component';
@@ -22,6 +23,7 @@ interface BoardColumn {
   title: string;
   icon: string;
   tasks: KanbanTask[];
+  accentColor: string;
 }
 
 @Component({
@@ -40,7 +42,8 @@ interface BoardColumn {
     MatDialogModule,
     MatBadgeModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatMenuModule
   ],
   templateUrl: './kanban.component.html',
   styleUrl: './kanban.component.scss'
@@ -48,13 +51,22 @@ interface BoardColumn {
 export class KanbanComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   isLoading = true;
+  hoveredTaskId: string | null = null;
+
+  columnAccentColors: { [key: string]: string } = {
+    backlog: '#64748b',
+    ready: '#14b8a6',
+    in_progress: '#f59e0b',
+    review: '#a855f7',
+    done: '#10b981'
+  };
 
   columns: BoardColumn[] = [
-    { id: 'backlog', title: 'Backlog', icon: 'inbox', tasks: [] },
-    { id: 'ready', title: 'Ready', icon: 'playlist_add_check', tasks: [] },
-    { id: 'in_progress', title: 'In Progress', icon: 'trending_up', tasks: [] },
-    { id: 'review', title: 'Review', icon: 'rate_review', tasks: [] },
-    { id: 'done', title: 'Done', icon: 'check_circle', tasks: [] }
+    { id: 'backlog', title: 'Backlog', icon: 'inbox', tasks: [], accentColor: '#64748b' },
+    { id: 'ready', title: 'Ready', icon: 'playlist_add_check', tasks: [], accentColor: '#14b8a6' },
+    { id: 'in_progress', title: 'In Progress', icon: 'trending_up', tasks: [], accentColor: '#f59e0b' },
+    { id: 'review', title: 'Review', icon: 'rate_review', tasks: [], accentColor: '#a855f7' },
+    { id: 'done', title: 'Done', icon: 'check_circle', tasks: [], accentColor: '#10b981' }
   ];
 
   connectedLists: string[] = [];
@@ -118,7 +130,6 @@ export class KanbanComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Sort by priority (higher number = more urgent = top)
     this.columns.forEach(col => {
       col.tasks.sort((a, b) => (b.priority || 5) - (a.priority || 5));
     });
@@ -242,13 +253,70 @@ export class KanbanComponent implements OnInit, OnDestroy {
       });
   }
 
+  openEditDialog(task: KanbanTask): void {
+    const dialogRef = this.dialog.open(TaskDialogComponent, {
+      width: '600px',
+      panelClass: 'kanban-dialog',
+      data: {
+        mode: 'edit',
+        task: {
+          title: this.getTaskTitle(task),
+          description: task.payload?.['description'] || '',
+          project: this.getTaskProject(task),
+          priority: task.payload?.['priority_label'] || this.getPriorityLabel(task.priority),
+          assignee: this.getTaskAssignee(task),
+          status_column: task.payload?.['status_column'] || this.mapStatusToColumn(task.status)
+        }
+      }
+    });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        if (result) {
+          this.snackBar.open('Task updated (local only)', '', { duration: 2000 });
+          if (task.payload) {
+            task.payload['title'] = result.title;
+            task.payload['description'] = result.description;
+            task.payload['project'] = result.project;
+            task.payload['priority_label'] = result.priority;
+            task.payload['assignee'] = result.assignee;
+            task.payload['status_column'] = result.status_column;
+          }
+          this.distributeTasksToColumns();
+        }
+      });
+  }
+
+  getRelativeTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return diffMin + 'm ago';
+    if (diffHr < 24) return diffHr + 'h ago';
+    if (diffDay < 7) return diffDay + 'd ago';
+    if (diffDay < 30) return Math.floor(diffDay / 7) + 'w ago';
+    return Math.floor(diffDay / 30) + 'mo ago';
+  }
+
+  onCardHover(taskId: string | null): void {
+    this.hoveredTaskId = taskId;
+  }
+
   getTaskTitle(task: KanbanTask): string {
     return task.payload?.['title'] || task.task_type || 'Untitled';
   }
 
   getTaskDescription(task: KanbanTask): string {
     const desc = task.payload?.['description'] || '';
-    return desc.length > 100 ? desc.substring(0, 100) + '...' : desc;
+    return desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   }
 
   getTaskProject(task: KanbanTask): string {
@@ -271,7 +339,11 @@ export class KanbanComponent implements OnInit, OnDestroy {
   }
 
   getPriorityText(task: KanbanTask): string {
-    return task.payload?.['priority_label'] || this.getPriorityLabel(task.priority);
+    const label = task.payload?.['priority_label'];
+    if (label && typeof label === 'string' && isNaN(Number(label))) {
+      return label;
+    }
+    return this.getPriorityLabel(task.priority);
   }
 
   getProjectClass(project: string): string {
@@ -288,5 +360,9 @@ export class KanbanComponent implements OnInit, OnDestroy {
 
   getTotalTasks(): number {
     return this.columns.reduce((sum, col) => sum + col.tasks.length, 0);
+  }
+
+  getTaskCreatedDate(task: KanbanTask): string {
+    return (task as any).created_at || (task as any).createdAt || '';
   }
 }

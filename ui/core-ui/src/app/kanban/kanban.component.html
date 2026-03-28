@@ -2,25 +2,28 @@
   <!-- Header -->
   <div class="kanban-header">
     <div class="header-left">
-      <mat-icon class="header-icon">view_kanban</mat-icon>
-      <div>
+      <div class="header-icon-wrap">
+        <mat-icon class="header-icon">view_kanban</mat-icon>
+      </div>
+      <div class="header-text">
         <h1>Project Board</h1>
         <span class="task-count">{{ getTotalTasks() }} tasks across {{ projects.length }} projects</span>
       </div>
     </div>
     <div class="header-actions">
-      <button mat-flat-button class="new-task-btn" (click)="openNewTaskDialog()">
+      <button mat-flat-button class="new-task-btn" (click)="openNewTaskDialog()" matTooltip="Keyboard shortcut: N">
         <mat-icon>add</mat-icon>
         New Task
+        <span class="kbd-hint">N</span>
       </button>
-      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh">
+      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh board" class="refresh-btn">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
   </div>
 
   <!-- Filter Bar -->
-  <div class="filter-bar">
+  <div class="filter-bar" [class.has-filters]="hasActiveFilters()">
     <mat-icon class="filter-icon">filter_list</mat-icon>
 
     <mat-form-field appearance="outline" class="filter-field">
@@ -44,30 +47,35 @@
 
     <mat-form-field appearance="outline" class="filter-field">
       <mat-label>Assignee</mat-label>
-      <input matInput [(ngModel)]="filterAssignee" (ngModelChange)="onFiltersChanged()" placeholder="Filter by name...">
+      <input matInput [(ngModel)]="filterAssignee" (ngModelChange)="onFiltersChanged()" placeholder="Search...">
     </mat-form-field>
 
-    <button mat-icon-button *ngIf="hasActiveFilters()" (click)="clearFilters()" matTooltip="Clear filters" class="clear-filters-btn">
-      <mat-icon>clear</mat-icon>
+    <button mat-icon-button *ngIf="hasActiveFilters()" (click)="clearFilters()" matTooltip="Clear all filters" class="clear-filters-btn">
+      <mat-icon>close</mat-icon>
     </button>
   </div>
 
   <!-- Loading State -->
   <div class="loading-overlay" *ngIf="isLoading">
-    <mat-spinner diameter="48"></mat-spinner>
+    <mat-spinner diameter="40"></mat-spinner>
     <span>Loading tasks...</span>
   </div>
 
   <!-- Board -->
   <div class="board-container" *ngIf="!isLoading">
     <div class="board-columns">
-      <div class="column" *ngFor="let column of columns">
+      <div class="column" *ngFor="let column of columns" [attr.data-column]="column.id">
+        <!-- Column Accent Bar -->
+        <div class="column-accent" [style.background]="column.accentColor"></div>
+
         <!-- Column Header -->
         <div class="column-header">
-          <div class="column-title">
-            <mat-icon class="column-icon">{{ column.icon }}</mat-icon>
-            <span>{{ column.title }}</span>
-            <span class="task-badge" *ngIf="column.tasks.length > 0">{{ column.tasks.length }}</span>
+          <div class="column-title-row">
+            <mat-icon class="column-icon" [style.color]="column.accentColor">{{ column.icon }}</mat-icon>
+            <span class="column-title-text">{{ column.title }}</span>
+            <span class="task-badge" *ngIf="column.tasks.length > 0" [attr.data-column]="column.id">
+              {{ column.tasks.length }}
+            </span>
           </div>
         </div>
 
@@ -86,7 +94,11 @@
             class="task-card"
             *ngFor="let task of column.tasks"
             cdkDrag
-            [cdkDragData]="task">
+            [cdkDragData]="task"
+            (mouseenter)="onCardHover(task.id)"
+            (mouseleave)="onCardHover(null)"
+            (dblclick)="openEditDialog(task)"
+            [class.is-hovered]="hoveredTaskId === task.id">
 
             <!-- Drag Preview -->
             <div class="drag-placeholder" *cdkDragPlaceholder></div>
@@ -95,15 +107,21 @@
             <div class="priority-stripe" [ngClass]="getPriorityClass(task)"></div>
 
             <div class="card-content">
-              <!-- Card Header -->
+              <!-- Card Top Row -->
               <div class="card-header">
                 <h3 class="card-title">{{ getTaskTitle(task) }}</h3>
+                <button mat-icon-button class="card-menu-btn" (click)="openEditDialog(task); $event.stopPropagation()">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
               </div>
 
               <!-- Description -->
               <p class="card-description" *ngIf="getTaskDescription(task)">
                 {{ getTaskDescription(task) }}
               </p>
+
+              <!-- Divider -->
+              <div class="card-divider" *ngIf="getTaskDescription(task) || getTaskProject(task)"></div>
 
               <!-- Card Footer -->
               <div class="card-footer">
@@ -115,8 +133,13 @@
                     {{ getTaskProject(task) }}
                   </span>
                 </div>
-                <div class="assignee-avatar" *ngIf="getTaskAssignee(task)" [matTooltip]="getTaskAssignee(task)">
-                  {{ getAssigneeInitials(task) }}
+                <div class="card-meta">
+                  <span class="card-time" *ngIf="getTaskCreatedDate(task)" [matTooltip]="getTaskCreatedDate(task)">
+                    {{ getRelativeTime(getTaskCreatedDate(task)) }}
+                  </span>
+                  <div class="assignee-avatar" *ngIf="getTaskAssignee(task)" [matTooltip]="getTaskAssignee(task)">
+                    {{ getAssigneeInitials(task) }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -125,7 +148,8 @@
           <!-- Empty State -->
           <div class="empty-state" *ngIf="column.tasks.length === 0">
             <mat-icon>layers_clear</mat-icon>
-            <span>No tasks here yet</span>
+            <span>No tasks</span>
+            <span class="empty-hint">Drag a card here or create a new task</span>
           </div>
         </div>
       </div>

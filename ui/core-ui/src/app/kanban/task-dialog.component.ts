@@ -33,120 +33,182 @@ export interface TaskDialogData {
     MatIconModule
   ],
   template: `
-    <div class="task-dialog">
-      <h2 mat-dialog-title>
-        <mat-icon class="dialog-icon">{{ data.mode === 'create' ? 'add_task' : 'edit_note' }}</mat-icon>
-        {{ data.mode === 'create' ? 'New Task' : 'Edit Task' }}
-      </h2>
+    <div class="task-dialog-wrap">
+      <div class="dialog-header">
+        <div class="dialog-icon-wrap" [class.edit-mode]="data.mode === 'edit'">
+          <mat-icon>{{ data.mode === 'create' ? 'add_task' : 'edit_note' }}</mat-icon>
+        </div>
+        <div class="dialog-header-text">
+          <h2>{{ data.mode === 'create' ? 'Create New Task' : 'Edit Task' }}</h2>
+          <span class="dialog-subtitle">{{ data.mode === 'create' ? 'Add a task to the project board' : 'Modify task details' }}</span>
+        </div>
+      </div>
 
       <mat-dialog-content>
         <div class="form-grid">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Title</mat-label>
-            <input matInput [(ngModel)]="task.title" placeholder="Task title..." required>
+            <mat-label>Task Title</mat-label>
+            <input matInput [(ngModel)]="task.title" placeholder="What needs to be done?" required autocomplete="off">
+            
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Description</mat-label>
-            <textarea matInput [(ngModel)]="task.description" placeholder="Describe the task..." rows="4"></textarea>
+            <textarea matInput [(ngModel)]="task.description" placeholder="Add details, context, or requirements..." rows="3"></textarea>
           </mat-form-field>
 
           <div class="form-row">
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="half-field">
               <mat-label>Project</mat-label>
               <mat-select [(ngModel)]="task.project">
                 <mat-option *ngFor="let p of projects" [value]="p">{{ p }}</mat-option>
               </mat-select>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="half-field">
               <mat-label>Priority</mat-label>
               <mat-select [(ngModel)]="task.priority">
                 <mat-option value="critical">
-                  <span class="priority-dot critical"></span> Critical
+                  <span class="priority-dot priority-critical"></span> Critical
                 </mat-option>
                 <mat-option value="high">
-                  <span class="priority-dot high"></span> High
+                  <span class="priority-dot priority-high"></span> High
                 </mat-option>
                 <mat-option value="medium">
-                  <span class="priority-dot medium"></span> Medium
+                  <span class="priority-dot priority-medium"></span> Medium
                 </mat-option>
                 <mat-option value="low">
-                  <span class="priority-dot low"></span> Low
+                  <span class="priority-dot priority-low"></span> Low
                 </mat-option>
               </mat-select>
             </mat-form-field>
           </div>
 
           <div class="form-row">
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="half-field">
               <mat-label>Assignee</mat-label>
-              <input matInput [(ngModel)]="task.assignee" placeholder="Who's working on this?">
+              <input matInput [(ngModel)]="task.assignee" placeholder="Who's responsible?" autocomplete="off">
+              
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Status</mat-label>
+            <mat-form-field appearance="outline" class="half-field">
+              <mat-label>Status Column</mat-label>
               <mat-select [(ngModel)]="task.status_column">
-                <mat-option value="backlog">Backlog</mat-option>
-                <mat-option value="ready">Ready</mat-option>
-                <mat-option value="in_progress">In Progress</mat-option>
-                <mat-option value="review">Review</mat-option>
-                <mat-option value="done">Done</mat-option>
+                <mat-option value="backlog">
+                  <span class="status-dot" style="background:#64748b"></span> Backlog
+                </mat-option>
+                <mat-option value="ready">
+                  <span class="status-dot" style="background:#14b8a6"></span> Ready
+                </mat-option>
+                <mat-option value="in_progress">
+                  <span class="status-dot" style="background:#f59e0b"></span> In Progress
+                </mat-option>
+                <mat-option value="review">
+                  <span class="status-dot" style="background:#a855f7"></span> Review
+                </mat-option>
+                <mat-option value="done">
+                  <span class="status-dot" style="background:#10b981"></span> Done
+                </mat-option>
               </mat-select>
             </mat-form-field>
           </div>
         </div>
       </mat-dialog-content>
 
-      <mat-dialog-actions align="end">
+      <div class="dialog-actions">
         <button mat-button (click)="onCancel()" class="cancel-btn">Cancel</button>
         <button mat-flat-button (click)="onSave()" class="save-btn" [disabled]="!task.title">
-          <mat-icon>{{ data.mode === 'create' ? 'add' : 'save' }}</mat-icon>
+          <mat-icon>{{ data.mode === 'create' ? 'add' : 'check' }}</mat-icon>
           {{ data.mode === 'create' ? 'Create Task' : 'Save Changes' }}
         </button>
-      </mat-dialog-actions>
+      </div>
     </div>
   `,
   styles: [`
-    .task-dialog {
-      min-width: 500px;
+    :host {
+      display: block;
     }
 
-    h2[mat-dialog-title] {
+    .task-dialog-wrap {
+      min-width: 520px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .dialog-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: #f59e0b;
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 16px 24px;
+      gap: 14px;
+      padding: 20px 24px 12px;
     }
 
-    .dialog-icon {
-      color: #f59e0b;
+    .dialog-icon-wrap {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(#f59e0b, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        color: #f59e0b;
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+
+      &.edit-mode {
+        background: rgba(#14b8a6, 0.1);
+        mat-icon { color: #14b8a6; }
+      }
+    }
+
+    .dialog-header-text {
+      h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #e5e7eb;
+        letter-spacing: -0.2px;
+      }
+
+      .dialog-subtitle {
+        font-size: 12px;
+        color: #6b7280;
+      }
     }
 
     mat-dialog-content {
-      padding: 0 24px;
+      padding: 8px 24px 0;
+      max-height: 60vh;
     }
 
     .form-grid {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .form-row {
       display: flex;
-      gap: 16px;
+      gap: 14px;
     }
 
-    .form-row mat-form-field {
+    .half-field {
       flex: 1;
     }
 
     .full-width {
       width: 100%;
+    }
+
+    .field-icon {
+      color: #6b7280;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
     }
 
     .priority-dot {
@@ -155,19 +217,38 @@ export interface TaskDialogData {
       height: 8px;
       border-radius: 50%;
       margin-right: 8px;
+      vertical-align: middle;
     }
 
-    .priority-dot.critical { background: #ef4444; }
-    .priority-dot.high { background: #f97316; }
-    .priority-dot.medium { background: #f59e0b; }
-    .priority-dot.low { background: #10b981; }
+    .priority-critical { background: #ef4444; }
+    .priority-high { background: #f97316; }
+    .priority-medium { background: #f59e0b; }
+    .priority-low { background: #10b981; }
 
-    mat-dialog-actions {
-      padding: 12px 24px 16px;
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 24px 20px;
     }
 
     .cancel-btn {
       color: #9ca3af;
+      border-radius: 8px;
+      font-weight: 500;
+
+      &:hover {
+        background: rgba(#9ca3af, 0.08);
+      }
     }
 
     .save-btn {
@@ -175,28 +256,49 @@ export interface TaskDialogData {
       color: #0a0f0d;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 0 20px;
+      height: 38px;
+      transition: all 0.2s ease;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover:not(:disabled) {
+        box-shadow: 0 0 20px rgba(#f59e0b, 0.3);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+      }
     }
 
-    .save-btn:disabled {
-      opacity: 0.5;
-    }
-
-    ::ng-deep .task-dialog .mat-mdc-form-field {
+    ::ng-deep .task-dialog-wrap .mat-mdc-form-field {
       --mdc-outlined-text-field-outline-color: #2d3b35;
       --mdc-outlined-text-field-focus-outline-color: #f59e0b;
-      --mdc-outlined-text-field-label-text-color: #9ca3af;
+      --mdc-outlined-text-field-label-text-color: #6b7280;
       --mdc-outlined-text-field-focus-label-text-color: #f59e0b;
       --mdc-outlined-text-field-input-text-color: #e5e7eb;
+      --mdc-outlined-text-field-container-shape: 10px;
+    }
+
+    ::ng-deep .task-dialog-wrap .mat-mdc-form-field-subscript-wrapper {
+      display: none;
     }
 
     @media (max-width: 600px) {
-      .task-dialog {
+      .task-dialog-wrap {
         min-width: unset;
       }
       .form-row {
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
       }
     }
   `]
