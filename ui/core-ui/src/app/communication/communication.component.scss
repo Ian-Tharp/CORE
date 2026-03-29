@@ -377,6 +377,12 @@
       margin: 8px 0;
       border-radius: 12px;
       position: relative;
+      border-left: 3px solid rgba(0, 255, 200, 0.15);
+      transition: border-color var(--transition-fast, 0.15s ease);
+
+      &:hover {
+        border-left-color: rgba(0, 255, 200, 0.3);
+      }
 
       &.own-message {
         flex-direction: row-reverse;

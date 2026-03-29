@@ -117,7 +117,7 @@
                           {{task.description}}
                         </p>
                         <div class="task-meta">
-                          <mat-chip class="priority-chip" [style.background-color]="getPriorityColor(task.priority)">
+                          <mat-chip class="priority-chip" [class]="'priority-chip priority-' + task.priority.toLowerCase()">
                             {{task.priority}}
                           </mat-chip>
                           <span class="assigned-to" *ngIf="task.assignedTo">
