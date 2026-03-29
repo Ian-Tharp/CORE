@@ -27,6 +27,25 @@ html, body {
   overflow-x: hidden;
 }
 
+/* ── Scan-line CRT overlay (CSS-only, barely perceptible) ─────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 200, 0.015) 2px,
+    rgba(0, 255, 200, 0.015) 4px
+  );
+  z-index: 9999;
+}
+
 body {
   background:
     radial-gradient(ellipse at 20% 50%, rgba(0, 255, 200, 0.04) 0%, transparent 60%),

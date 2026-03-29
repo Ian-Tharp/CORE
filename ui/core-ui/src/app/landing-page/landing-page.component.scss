@@ -1,10 +1,19 @@
+// Ambient background shift — very slow, barely perceptible
+@keyframes ambientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
 // Landing page container
 .landing-container {
   min-height: calc(100vh - 64px);
   background:
     radial-gradient(ellipse at 15% 70%, rgba(0, 255, 200, 0.06) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 15%, rgba(0, 210, 255, 0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 100, 200, 0.03) 0%, transparent 70%),
     transparent;
+  background-size: 200% 200%;
+  animation: ambientShift 30s ease-in-out infinite;
   color: var(--core-text-primary);
   padding: 0 0.5rem 0.25rem 0;
   overflow-x: hidden;
@@ -242,21 +251,27 @@
       gap: 16px;
       
       .primary-action {
-        background: linear-gradient(135deg, #00ffff 0%, #0088ff 100%);
-        color: #000000;
+        background: rgba(0, 8, 20, 0.85) !important;
+        color: #00ffc8 !important;
         font-weight: 600;
         padding: 12px 24px;
         border-radius: 8px;
-        box-shadow: 
-          0 4px 20px rgba(0, 255, 255, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(0, 255, 200, 0.45) !important;
+        box-shadow:
+          0 0 10px rgba(0, 255, 200, 0.12),
+          inset 0 1px 0 rgba(0, 255, 200, 0.07);
         transition: all 0.3s ease;
-        
+
+        mat-icon { color: #00ffc8 !important; }
+
         &:hover {
+          background: rgba(0, 255, 200, 0.07) !important;
+          border-color: rgba(0, 255, 200, 0.75) !important;
           transform: translateY(-2px);
-          box-shadow: 
-            0 6px 25px rgba(0, 255, 255, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          box-shadow:
+            0 0 18px rgba(0, 255, 200, 0.22),
+            0 4px 14px rgba(0, 0, 0, 0.45),
+            inset 0 1px 0 rgba(0, 255, 200, 0.12);
         }
       }
       
@@ -401,6 +416,42 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+// Generic empty state (used in @empty blocks throughout the dashboard)
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+
+  mat-icon {
+    font-size: 44px;
+    width: 44px;
+    height: 44px;
+    color: rgba(0, 255, 200, 0.48);
+    margin-bottom: 14px;
+    animation: emptyStatePulse 3s ease-in-out infinite;
+  }
+
+  p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+  }
+}
+
+// Empty state breathing animation
+@keyframes emptyStatePulse {
+  0%, 100% {
+    opacity: 0.45;
+    filter: drop-shadow(0 0 4px rgba(0, 255, 200, 0.2));
+  }
+  50% {
+    opacity: 0.75;
+    filter: drop-shadow(0 0 12px rgba(0, 255, 200, 0.5));
+  }
+}
+
 // Agents card
 .agents-card {
   .empty-state {
@@ -409,24 +460,25 @@
     align-items: center;
     text-align: center;
     padding: 40px 20px;
-    
+
     mat-icon {
       font-size: 48px;
       width: 48px;
       height: 48px;
-      color: rgba(255, 255, 255, 0.3);
+      color: rgba(0, 255, 200, 0.5);
       margin-bottom: 16px;
+      animation: emptyStatePulse 3s ease-in-out infinite;
     }
-    
+
     h4 {
       margin: 0 0 8px 0;
       color: #ffffff;
       font-size: 1.2rem;
     }
-    
+
     p {
       margin: 0 0 24px 0;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.72);
     }
   }
   
@@ -808,18 +860,19 @@
     align-items: center;
     text-align: center;
     padding: 40px 20px;
-    
+
     mat-icon {
       font-size: 48px;
       width: 48px;
       height: 48px;
-      color: rgba(255, 255, 255, 0.3);
+      color: rgba(0, 255, 200, 0.5);
       margin-bottom: 16px;
+      animation: emptyStatePulse 3s ease-in-out infinite;
     }
-    
+
     p {
       margin: 0;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.72);
     }
   }
   
@@ -1200,6 +1253,57 @@
   }
 }
 
+// System Health sidebar panel — glassmorphism card
+.system-health {
+  background: var(--core-card-bg);
+  backdrop-filter: var(--core-card-blur);
+  border: 1px solid var(--core-card-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--core-shadow-base),
+              inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color var(--transition-normal),
+              box-shadow var(--transition-normal);
+
+  &:hover {
+    border-color: var(--core-border-normal);
+    box-shadow: var(--core-shadow-raised), var(--core-glow-energy-sm);
+  }
+
+  .health-status {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .health-uptime {
+    font-size: 0.75rem;
+    color: var(--core-text-secondary);
+    margin-bottom: 10px;
+  }
+
+  .service-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    border-left: 2px solid rgba(0, 255, 200, 0.2);
+    background: rgba(255, 255, 255, 0.02);
+    margin-bottom: 4px;
+
+    .service-name {
+      font-size: 0.78rem;
+      color: var(--core-text-primary);
+      text-transform: capitalize;
+    }
+  }
+}
+
 // System resources panel
 .system-resources {
   display: flex;
@@ -1207,13 +1311,18 @@
   gap: 10px;
   background: var(--core-card-bg);
   backdrop-filter: var(--core-card-blur);
-  border: 1px solid var(--core-border-subtle);
+  border: 1px solid var(--core-card-border);
   border-radius: var(--radius-lg);
   padding: 16px;
-  margin-top: 1rem;
-  transition: border-color var(--transition-normal);
+  box-shadow: var(--core-shadow-base),
+              inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color var(--transition-normal),
+              box-shadow var(--transition-normal);
 
-  &:hover { border-color: var(--core-border-normal); }
+  &:hover {
+    border-color: var(--core-border-normal);
+    box-shadow: var(--core-shadow-raised), var(--core-glow-energy-sm);
+  }
 
   .resources-title {
     display: flex;
@@ -1244,9 +1353,35 @@
 
     // Progress bar styling inside resources
     mat-progress-bar {
-      height: 6px !important;
-      border-radius: 3px !important;
+      height: 7px !important;
+      border-radius: 4px !important;
       overflow: hidden;
+    }
+
+    ::ng-deep mat-progress-bar {
+      .mdc-linear-progress {
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      // Track background
+      .mdc-linear-progress__buffer-bar {
+        background: rgba(0, 255, 200, 0.06) !important;
+      }
+
+      // Gradient fill — scales with the determinate value
+      .mdc-linear-progress__primary-bar {
+        background: linear-gradient(90deg, #071a2e 0%, #00ffc8 100%) !important;
+        border-radius: 0 4px 4px 0;
+        filter: drop-shadow(0 0 4px rgba(0, 255, 200, 0.5));
+      }
+
+      // Hide the default border-top color approach
+      .mdc-linear-progress__bar-inner {
+        border-top-width: 0 !important;
+        border: none !important;
+        background: transparent !important;
+      }
     }
 
     .resource-value {

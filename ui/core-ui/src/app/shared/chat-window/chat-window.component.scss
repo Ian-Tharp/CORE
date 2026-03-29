@@ -285,8 +285,11 @@
       will-change: height;
 
       &:focus {
-        border-color: #00ffff;
-        background: rgba(0, 255, 255, 0.05);
+        border-color: #00ffc8;
+        background: rgba(0, 255, 200, 0.05);
+        box-shadow: 0 0 0 1px rgba(0, 255, 200, 0.18),
+                    0 0 14px rgba(0, 255, 200, 0.12);
+        outline: none;
       }
 
       &::placeholder {
