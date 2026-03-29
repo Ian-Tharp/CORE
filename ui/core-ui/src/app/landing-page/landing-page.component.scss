@@ -685,7 +685,56 @@
   }
 }
 
-// Task Summary Card
+// Task Summary Card (dashboard .tasks-card)
+.tasks-card {
+  .task-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+
+    .task-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 12px;
+      background: rgba(0, 255, 200, 0.03);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--core-border-subtle);
+      transition: all var(--transition-normal);
+
+      &:hover {
+        background: rgba(0, 255, 200, 0.06);
+        border-color: var(--core-border-normal);
+      }
+
+      .task-count {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 6px;
+
+        &.queued   { color: var(--core-teal); }
+        &.running  { color: var(--core-energy); }
+        &.completed { color: var(--core-success); }
+        &.failed   { color: var(--core-danger); }
+      }
+
+      .task-label {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--core-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 600;
+        text-align: center;
+      }
+    }
+  }
+}
+
+// Task Summary Card (legacy selector kept for backward compat)
 .task-summary-card {
   .task-stats {
     display: grid;
@@ -896,7 +945,7 @@
       }
 
       // Primary (Deploy Agent) — teal, subdued not blinding
-      &[color="primary"] {
+      &.action-primary {
         background: rgba(0, 255, 200, 0.08) !important;
         color: var(--core-energy) !important;
         border: 1px solid var(--core-border-subtle) !important;
@@ -912,8 +961,7 @@
       }
 
       // Accent / Warn (Security Scan) — amber not orange
-      &[color="accent"],
-      &[color="warn"] {
+      &.action-accent {
         background: rgba(255, 179, 71, 0.06) !important;
         color: var(--core-amber) !important;
         border: 1px solid var(--core-border-amber) !important;

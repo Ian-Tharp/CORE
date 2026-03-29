@@ -230,6 +230,15 @@
           height: 1.5rem; // Reduced label height
           line-height: 1.5rem;
         }
+
+        // Subtle grid lines between calendar cells
+        .mat-calendar-body td {
+          border: 1px solid rgba(0, 255, 200, 0.08);
+        }
+
+        .mat-calendar-table {
+          border-collapse: collapse;
+        }
       }
     }
   }
@@ -383,6 +392,31 @@
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.025rem;
+
+          &.priority-low {
+            background: rgba(76, 175, 80, 0.2) !important;
+            color: #4caf50 !important;
+            border: 1px solid rgba(76, 175, 80, 0.35) !important;
+          }
+
+          &.priority-medium {
+            background: rgba(0, 255, 200, 0.12) !important;
+            color: #00ffc8 !important;
+            border: 1px solid rgba(0, 255, 200, 0.3) !important;
+          }
+
+          &.priority-high {
+            background: rgba(255, 179, 71, 0.18) !important;
+            color: #ffb347 !important;
+            border: 1px solid rgba(255, 179, 71, 0.4) !important;
+          }
+
+          &.priority-urgent {
+            background: rgba(255, 71, 87, 0.18) !important;
+            color: #ff4757 !important;
+            border: 1px solid rgba(255, 71, 87, 0.45) !important;
+            animation: urgentPulse 1.8s ease-in-out infinite;
+          }
         }
         
         .assigned-to,
@@ -727,6 +761,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes urgentPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+    border-color: rgba(255, 71, 87, 0.45) !important;
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(255, 71, 87, 0.4);
+    border-color: rgba(255, 71, 87, 0.8) !important;
   }
 }
 
