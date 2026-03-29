@@ -1,11 +1,11 @@
 .side-nav {
   width: 3.75rem;
   height: 100vh;
-  background: linear-gradient(180deg, 
-    rgba(10, 10, 10, 0.95) 0%, 
-    rgba(26, 26, 46, 0.95) 50%, 
-    rgba(22, 33, 62, 0.95) 100%);
-  border-right: 0.0625rem solid rgba(0, 255, 255, 0.2);
+  background: linear-gradient(180deg,
+    rgba(3, 13, 26, 0.97) 0%,
+    rgba(6, 15, 32, 0.97) 50%,
+    rgba(10, 22, 40, 0.97) 100%);
+  border-right: 1px solid var(--core-border-subtle);
   backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
@@ -13,9 +13,10 @@
   left: 0;
   top: 0;
   z-index: 1100;
-  transition: all 0.3s ease;
+  transition: all var(--transition-normal);
   overflow-y: auto;
   overflow-x: hidden;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.4);
 
   &::-webkit-scrollbar {
     width: 0.25rem;
@@ -81,29 +82,29 @@
       position: relative;
       
       &.operational {
-        background: #00ff88;
-        box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
-        
+        background: var(--core-success);
+        box-shadow: 0 0 8px rgba(46, 213, 115, 0.6);
+
         .status-pulse {
           position: absolute;
           top: -0.125rem;
           left: -0.125rem;
           right: -0.125rem;
           bottom: -0.125rem;
-          border: 0.125rem solid #00ff88;
+          border: 0.125rem solid var(--core-success);
           border-radius: 50%;
           animation: pulse-ring 2s ease-out infinite;
         }
       }
-      
+
       &.warning {
-        background: #ffaa00;
-        box-shadow: 0 0 10px rgba(255, 170, 0, 0.6);
+        background: var(--core-amber);
+        box-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
       }
-      
+
       &.error {
-        background: #ff4444;
-        box-shadow: 0 0 10px rgba(255, 68, 68, 0.6);
+        background: var(--core-danger);
+        box-shadow: 0 0 8px rgba(255, 71, 87, 0.6);
       }
     }
   }
@@ -240,37 +241,60 @@
   .nav-content .nav-items .nav-item .nav-badge {
     display: none;
   }
+
   .nav-content .nav-items .nav-item {
     justify-content: center !important;
     padding: 0 !important;
-    margin: 0.5rem auto !important;
+    margin: 0.3rem auto !important;
     width: 2.75rem !important;
     height: 2.75rem !important;
-    border-radius: 50% !important;
-    border: none !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid transparent !important;
     display: flex;
     align-items: center;
     background: transparent !important;
-    transition: transform 0.25s ease, filter 0.25s ease;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                box-shadow var(--transition-fast) !important;
+    position: relative;
 
     &:hover {
-      background: transparent !important;
+      background: rgba(0, 255, 200, 0.08) !important;
+      border-color: var(--core-border-subtle) !important;
+      box-shadow: var(--core-glow-energy-sm) !important;
 
       mat-icon {
-        transform: scale(1.1);
-        color: #00ffff;
-        filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.6));
+        transform: scale(1.15);
+        color: var(--core-energy) !important;
+        filter: drop-shadow(0 0 7px rgba(0, 255, 200, 0.6));
       }
     }
 
-    &:focus {
-      outline: none;
-    }
+    &:focus { outline: none; }
 
     &.active {
+      background: rgba(0, 255, 200, 0.1) !important;
+      border-color: var(--core-border-subtle) !important;
+      box-shadow: var(--core-glow-energy-sm),
+                  inset 0 0 0 1px rgba(0, 255, 200, 0.08) !important;
+
+      // Prominent left-border glow indicator
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 25%;
+        bottom: 25%;
+        width: 2px;
+        background: var(--core-energy);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 8px rgba(0, 255, 200, 0.7);
+      }
+
       mat-icon {
-        animation: pulse-glow 2s ease-in-out infinite alternate;
-        color: #00ffff;
+        color: var(--core-energy) !important;
+        filter: drop-shadow(0 0 8px rgba(0, 255, 200, 0.7));
+        animation: none;
       }
     }
 
@@ -279,6 +303,14 @@
       --mat-icon-button-hover-state-layer-opacity: 0;
       --mat-icon-button-focus-state-layer-opacity: 0;
     }
+  }
+
+  .nav-content .nav-items .nav-item mat-icon {
+    font-size: 1.375rem !important;
+    width: 1.375rem !important;
+    height: 1.375rem !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    transition: all var(--transition-fast) !important;
   }
 }
 

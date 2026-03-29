@@ -1,156 +1,218 @@
-/* You can add global styles to this file, and also import other style files */
+/* CORE System — Global Styles
+   Solarpunk × Starcraft LCARS aesthetic
+   ─────────────────────────────────────── */
 
-/* Angular Material Theme Configuration */
 @use '@angular/material' as mat;
 @use './solarpunk-theme' as solarpunk;
 @use './styles/agents/components' as *;
 
-// Include the common styles for Angular Material
 @include mat.core();
 
 :root {
-  // Apply our custom solarpunk theme
   @include solarpunk.solarpunk-theme();
 }
 
-// Dark Mode Support
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-neutral-light: #1a1a1a;
-    --color-neutral-dark: #ffffff;
-    --color-white: #2d2d2d;
-    --gradient-background: linear-gradient(135deg, rgba(27, 94, 32, 0.1) 0%, rgba(0, 172, 193, 0.1) 100%);
-  }
-}
+/* ── Box Model & Root ─────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
 
-/* Global Styles */
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  background: linear-gradient(135deg, var(--mdc-sys-color-surface-container-low) 0%, var(--mdc-sys-color-surface) 100%);
-  color: var(--mdc-sys-color-on-surface);
+  font-family: var(--font-body, 'Inter', 'Roboto', sans-serif);
+  background: var(--core-bg-base);
+  color: var(--core-text-primary);
   overflow-x: hidden;
 }
 
 body {
-  background: linear-gradient(135deg, var(--mdc-sys-color-surface-container-low) 0%, var(--mdc-sys-color-surface) 100%);
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0, 255, 200, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 210, 255, 0.03) 0%, transparent 60%),
+    linear-gradient(160deg, #030d1a 0%, #060f20 40%, #0a1628 100%);
+  background-attachment: fixed;
 }
 
-/* Custom scrollbar (see refined rules later using theme variables) */
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6,
+.display-text,
+.mat-mdc-card-title,
+.mat-toolbar-row {
+  font-family: var(--font-display, 'Rajdhani', sans-serif);
+  letter-spacing: 0.5px;
+}
 
-/* Custom Material overrides */
+/* ── Card Standardisation ─────────────────────────────────────────────────── */
 .mat-mdc-card {
-  /* Fallback for browsers that don't yet support color-mix() */
-  background: linear-gradient(135deg, rgba(13, 20, 33, 0.8) 0%, rgba(26, 26, 46, 0.8) 100%) !important;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface-container) 80%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface) 80%, transparent) 100%) !important;
-  color: var(--mdc-sys-color-on-surface) !important;
-  border: 1px solid var(--mdc-sys-color-outline-variant, rgba(0, 255, 255, 0.2)) !important;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface) 90%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface-high) 90%, transparent) 100%) !important;
+  background: var(--core-card-bg) !important;
+  backdrop-filter: var(--core-card-blur) !important;
+  border: 1px solid var(--core-card-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--core-shadow-base),
+              inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  color: var(--core-text-primary) !important;
+  transition: border-color var(--transition-normal),
+              box-shadow var(--transition-normal),
+              transform var(--transition-normal) !important;
+
+  &:hover {
+    border-color: var(--core-border-normal) !important;
+    box-shadow: var(--core-shadow-raised),
+                var(--core-glow-energy-sm) !important;
+  }
 }
 
-/* Standardized card header padding - ensures consistent spacing between header and content */
 .mat-mdc-card .mat-mdc-card-header {
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
-/* Ensure readable text within cards globally */
+.mat-mdc-card .mat-mdc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--core-text-primary) !important;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  mat-icon {
+    color: var(--core-energy);
+    filter: drop-shadow(0 0 5px rgba(0, 255, 200, 0.4));
+  }
+}
+
 .mat-mdc-card .mat-mdc-card-content,
 .mat-mdc-card .mat-mdc-card-content p {
-  color: #e8f0ff !important;
+  color: var(--core-text-primary) !important;
 }
 
-/* Utility for strong on-surface text */
-.text-strong { color: #ffffff !important; }
-
-.mat-mdc-button {
-  border-radius: 8px !important;
-}
-
-/* Ensure consistent border radius across all Material button variants */
+/* ── Button System ────────────────────────────────────────────────────────── */
 .mat-mdc-button-base,
 .mat-mdc-raised-button,
 .mat-mdc-unelevated-button,
 .mat-mdc-outlined-button,
-.mat-mdc-stroked-button {
-  border-radius: 0.5rem !important;
-}
-
-/* Icon buttons: keep rounded corners matching the system */
+.mat-mdc-stroked-button,
+.mat-mdc-button,
 .mat-mdc-icon-button {
-  border-radius: 0.5rem !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-normal) !important;
 }
 
+/* Primary — energy teal with glow */
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary {
+  background: var(--core-gradient-energy) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  font-family: var(--font-display) !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 4px 16px rgba(0, 255, 200, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+
+  &:hover:not([disabled]) {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 24px rgba(0, 255, 200, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+
+  &:active:not([disabled]) {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 10px rgba(0, 255, 200, 0.3) !important;
+  }
+}
+
+/* Accent / Warn — amber gold */
+.mat-mdc-raised-button.mat-accent,
+.mat-mdc-unelevated-button.mat-accent {
+  background: var(--core-gradient-amber) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(255, 179, 71, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+
+  &:hover:not([disabled]) {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 24px rgba(255, 179, 71, 0.45) !important;
+  }
+}
+
+/* Outlined secondary */
+.mat-mdc-outlined-button,
+.mat-mdc-stroked-button {
+  border: 1px solid var(--core-border-normal) !important;
+  color: var(--core-energy) !important;
+  background: transparent !important;
+
+  &:hover:not([disabled]) {
+    background: rgba(0, 255, 200, 0.06) !important;
+    border-color: var(--core-border-bright) !important;
+    box-shadow: var(--core-glow-energy-sm) !important;
+  }
+}
+
+/* Ghost / text buttons */
+.mat-mdc-button:not(.mat-mdc-raised-button):not(.mat-mdc-outlined-button) {
+  color: var(--core-text-secondary) !important;
+
+  &:hover:not([disabled]) {
+    color: var(--core-energy) !important;
+    background: rgba(0, 255, 200, 0.06) !important;
+  }
+}
+
+/* Raised default shadow */
 .mat-mdc-raised-button {
-  box-shadow: 
-    0 3px 12px rgba(0, 0, 0, 0.3),
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.35),
     0 1px 4px rgba(0, 0, 0, 0.2) !important;
+
+  &:hover {
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.45),
+      0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  }
 }
 
-.mat-mdc-raised-button:hover {
-  box-shadow: 
-    0 6px 20px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.3) !important;
+/* FAB */
+.mat-mdc-fab.mat-accent {
+  background: var(--core-gradient-energy) !important;
+
+  &:hover {
+    transform: scale(1.08);
+    box-shadow: var(--core-glow-energy) !important;
+  }
 }
 
-/* Progress bar customization */
-.mat-mdc-progress-bar {
-  --mdc-linear-progress-track-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-/* Chip customization */
-.mat-mdc-standard-chip {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(5px);
-  border-radius: 0.75rem !important;
-}
-
-/* Icon vertical alignment consistency */
-.mat-icon {
-  vertical-align: middle;
-}
-
-/* --- Next-Gen Glass Inputs & Selects (global) ------------------------ */
+/* ── Form Fields / Inputs ─────────────────────────────────────────────────── */
 .mat-mdc-form-field-wrapper {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(10, 22, 40, 0.65);
   backdrop-filter: blur(12px);
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  transition: all 0.3s ease;
-  background-clip: padding-box; /* avoid inner light seams next to border */
-}
-/* Also style the MDC text-field wrapper used by mat-select */
-.mat-mdc-form-field .mat-mdc-text-field-wrapper {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  transition: all 0.3s ease;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--core-border-subtle);
+  transition: all var(--transition-normal);
   background-clip: padding-box;
-  /* subtle inner fill to eliminate any light seam */
-  box-shadow: inset 0 0 0 1px rgba(53, 255, 137, 0.08);
+}
+
+.mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  background: rgba(10, 22, 40, 0.65);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--core-border-subtle);
+  transition: all var(--transition-normal);
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px rgba(0, 255, 200, 0.05);
   outline: none !important;
 }
-/* Kill the default white notched outline and rely on our custom wrapper border */
+
+/* Kill default notched outline */
 .mat-mdc-form-field-appearance-outline .mdc-notched-outline,
-.mat-mdc-form-field-appearance-outline .mat-mdc-notched-outline {
-  display: none !important;
-}
-/* Additionally neutralize any remaining notched outline borders */
+.mat-mdc-form-field-appearance-outline .mat-mdc-notched-outline,
 .mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
 .mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing,
 .mat-mdc-form-field-appearance-outline .mdc-notched-outline__notch {
+  display: none !important;
   border-color: transparent !important;
   opacity: 0 !important;
   border-width: 0 !important;
@@ -158,7 +220,6 @@ body {
   box-shadow: none !important;
 }
 
-/* Hard stop: remove all borders from the notched outline so only our custom border remains */
 .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline,
 .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
 .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing,
@@ -169,204 +230,220 @@ body {
   background: transparent !important;
   box-shadow: none !important;
 }
-.mat-mdc-form-field:hover .mat-mdc-form-field-wrapper {
-  border-color: rgba(0, 255, 136, 0.4);
-  background: rgba(30, 41, 59, 0.8);
+
+.mat-mdc-form-field:hover .mat-mdc-form-field-wrapper,
+.mat-mdc-form-field:hover .mat-mdc-text-field-wrapper {
+  border-color: var(--core-border-normal);
+  background: rgba(10, 22, 40, 0.8);
 }
-.mat-mdc-form-field.mat-focused .mat-mdc-form-field-wrapper {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(0, 255, 136, 0.5);
-}
-/* Focused style for MDC text-field wrapper */
+
+.mat-mdc-form-field.mat-focused .mat-mdc-form-field-wrapper,
 .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(0, 255, 136, 0.5);
-  box-shadow: 0 0 0 3px rgba(53, 255, 137, 0.15);
+  background: rgba(10, 22, 40, 0.9);
+  border-color: var(--core-energy);
+  box-shadow: 0 0 0 3px rgba(0, 255, 200, 0.12);
 }
-/* Remove default focus overlay that can appear as a white outline */
-.mat-mdc-form-field-focus-overlay {
-  opacity: 0 !important;
-  background: transparent !important;
-}
-/* Remove default outline since we now have a custom border */
-.mat-mdc-form-field-outline {
-  display: none !important;
-}
-/* Unified input & select text colour */
+
+.mat-mdc-form-field-focus-overlay { opacity: 0 !important; background: transparent !important; }
+.mat-mdc-form-field-outline { display: none !important; }
+
 .mat-mdc-select-value,
-.mat-mdc-input-element {
-  color: #ffffff;
-}
-/* Select trigger + arrow theming */
-.mat-mdc-select {
-  color: var(--mdc-sys-color-on-surface, #e8f0ff);
-}
-.mat-mdc-select .mat-mdc-select-arrow {
-  color: var(--mdc-sys-color-secondary, #00eaff);
-}
-/* Global select dropdown panel */
+.mat-mdc-input-element { color: var(--core-text-primary); }
+
+.mat-mdc-select { color: var(--core-text-primary); }
+.mat-mdc-select .mat-mdc-select-arrow { color: var(--core-energy); }
+
+/* Select dropdown */
 .mat-mdc-select-panel {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--mdc-sys-color-surface-container-high) 92%, transparent) 0%,
-    color-mix(in srgb, var(--mdc-sys-color-surface) 92%, transparent) 100%
-  ) !important;
-  border: 1px solid transparent;
-  border-image: var(--gradient-solarpunk) 1;
-  border-radius: 10px;
-  backdrop-filter: blur(18px);
-  outline: none !important;
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(53, 255, 137, 0.15);
-  overflow: hidden;
+  background: linear-gradient(135deg, var(--core-bg-surface-2) 0%, var(--core-bg-surface) 100%) !important;
+  border: 1px solid var(--core-border-normal) !important;
+  border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(18px) !important;
+  box-shadow: var(--core-shadow-float),
+              0 0 0 1px rgba(0, 255, 200, 0.1) !important;
+  overflow: hidden !important;
 }
-/* Neon scrollbar for select panel; remove white corners */
-.mat-mdc-select-panel::-webkit-scrollbar { width: 8px; }
-.mat-mdc-select-panel::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
-.mat-mdc-select-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #35ff89, #00eaff); border-radius: 8px; }
-.mat-mdc-select-panel::-webkit-scrollbar-corner { background: transparent; }
-/* Make option hover + active clearer */
+
+.mat-mdc-select-panel::-webkit-scrollbar { width: 6px; }
+.mat-mdc-select-panel::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.15); }
+.mat-mdc-select-panel::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--core-energy), var(--core-teal));
+  border-radius: 6px;
+}
+
 .mat-mdc-option {
   outline: none !important;
-  color: var(--mdc-sys-color-on-surface, #e8f0ff) !important;
-  min-height: 42px;
+  color: var(--core-text-primary) !important;
+  min-height: 40px;
   padding: 0 16px !important;
   margin: 2px 6px !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm) !important;
 }
+
 .mat-mdc-option:hover:not(.mat-mdc-option-disabled) {
-  background: linear-gradient(135deg, rgba(0, 200, 83, 0.12), rgba(0, 234, 255, 0.12));
+  background: rgba(0, 255, 200, 0.08) !important;
 }
+
 .mat-mdc-option.mat-mdc-option-active,
 .mat-mdc-option.mdc-list-item--selected {
-  background: linear-gradient(135deg, rgba(0, 200, 83, 0.2), rgba(0, 234, 255, 0.2)) !important;
-  color: #ffffff !important;
-  text-shadow: 0 0 6px rgba(0, 234, 255, 0.25);
+  background: rgba(0, 255, 200, 0.14) !important;
+  color: #fff !important;
 }
-.mat-mdc-option .mdc-list-item__primary-text {
-  color: inherit !important;
-}
-/* Reduce white outlines/ink on options for paginator select */
-.mat-mdc-option .mat-pseudo-checkbox-minimal,
-.mat-mdc-option .mat-pseudo-checkbox-checked.mat-pseudo-checkbox-minimal {
-  border-color: rgba(0, 255, 136, 0.35) !important;
-}
+
+.mat-mdc-option .mdc-list-item__primary-text { color: inherit !important; }
 .mat-mdc-option .mdc-list-item__ripple { background-color: transparent !important; }
 
-/* Menu customization */
-.mat-mdc-menu-panel {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mdc-sys-color-surface-container) 95%, transparent) 0%, color-mix(in srgb, var(--mdc-sys-color-surface) 95%, transparent) 100%) !important;
-  border: 1px solid var(--mdc-sys-color-outline-variant, rgba(0, 255, 255, 0.3)) !important;
-  border-radius: 8px !important;
-  backdrop-filter: blur(15px) !important;
+/* ── Progress Bars ────────────────────────────────────────────────────────── */
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-track-color: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+
+  .mdc-linear-progress__bar-inner {
+    border-color: var(--core-energy) !important;
+  }
 }
 
-/* Glass dialog theming for dark solarpunk UI */
+/* Progress bar gradient fills via CSS */
+.mat-mdc-progress-bar .mdc-linear-progress__primary-bar,
+.mat-mdc-progress-bar .mdc-linear-progress__secondary-bar {
+  background: linear-gradient(90deg, var(--core-energy-dim), var(--core-energy), var(--core-energy-bright)) !important;
+  box-shadow: 0 0 8px rgba(0, 255, 200, 0.4) !important;
+}
+
+/* ── Chips ────────────────────────────────────────────────────────────────── */
+.mat-mdc-standard-chip {
+  background: rgba(0, 255, 200, 0.08) !important;
+  border: 1px solid var(--core-border-subtle) !important;
+  color: var(--core-text-primary) !important;
+  backdrop-filter: blur(5px) !important;
+  border-radius: var(--radius-xl) !important;
+  transition: all var(--transition-normal) !important;
+
+  &:hover {
+    background: rgba(0, 255, 200, 0.14) !important;
+    border-color: var(--core-border-normal) !important;
+  }
+
+  &.mat-mdc-chip-selected {
+    background: rgba(0, 255, 200, 0.18) !important;
+    border-color: var(--core-border-bright) !important;
+    color: var(--core-energy) !important;
+    box-shadow: var(--core-glow-energy-sm) !important;
+  }
+}
+
+/* ── Menu ─────────────────────────────────────────────────────────────────── */
+.mat-mdc-menu-panel {
+  background: linear-gradient(135deg, var(--core-bg-surface-2) 0%, var(--core-bg-surface) 100%) !important;
+  border: 1px solid var(--core-border-normal) !important;
+  border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(16px) !important;
+  box-shadow: var(--core-shadow-float) !important;
+}
+
+.mat-mdc-menu-item {
+  color: var(--core-text-primary) !important;
+
+  &:hover {
+    background: rgba(0, 255, 200, 0.07) !important;
+
+    mat-icon { color: var(--core-energy) !important; }
+  }
+
+  mat-icon {
+    color: var(--core-text-secondary) !important;
+    transition: color var(--transition-fast) !important;
+  }
+}
+
+/* ── Dialogs ──────────────────────────────────────────────────────────────── */
 .glass-dialog .mdc-dialog__surface,
 .glass-dialog .mat-mdc-dialog-surface {
-  background: linear-gradient(135deg, rgb(8, 28, 35), rgb(14, 45, 55)) !important;
-  color: #c8fff0 !important;
-  border: 1px solid rgba(0,255,200,0.25) !important;
-  box-shadow: 0 0.6rem 2rem rgba(0,0,0,0.6), 0 0 1rem rgba(0, 255, 200, 0.1) !important;
-  border-radius: 0.75rem !important;
+  background: linear-gradient(135deg, var(--core-bg-surface) 0%, var(--core-bg-surface-2) 100%) !important;
+  color: var(--core-text-primary) !important;
+  border: 1px solid var(--core-border-normal) !important;
+  box-shadow: var(--core-shadow-float),
+              var(--core-glow-energy-sm) !important;
+  border-radius: var(--radius-lg) !important;
 }
 
-/* Ensure dialog backdrop fully obscures the background */
 .glass-dialog + .cdk-overlay-backdrop,
 .cdk-overlay-dark-backdrop {
-  background: rgba(0, 10, 15, 0.85) !important;
+  background: rgba(1, 5, 14, 0.88) !important;
   backdrop-filter: blur(4px) !important;
 }
 
-/* Toolbar customization */
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
 .mat-toolbar {
-  background: linear-gradient(135deg, var(--mdc-sys-color-surface-container) 0%, var(--mdc-sys-color-surface) 50%, var(--mdc-sys-color-surface-container-high) 100%) !important;
-  color: var(--mdc-sys-color-on-surface) !important;
+  background: linear-gradient(135deg,
+    var(--core-bg-surface) 0%,
+    var(--core-bg-surface-2) 100%) !important;
+  color: var(--core-text-primary) !important;
+  border-bottom: 1px solid var(--core-border-subtle) !important;
 }
 
-/* Utility classes */
-.text-glow {
-  text-shadow: 0 0 10px currentColor;
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.mat-mdc-tab-header {
+  border-bottom: 1px solid var(--core-border-subtle) !important;
 }
 
-.border-glow {
-  box-shadow: 0 0 10px currentColor;
-}
+.mat-mdc-tab {
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  color: var(--core-text-secondary) !important;
+  opacity: 1 !important;
+  transition: color var(--transition-normal) !important;
 
-.backdrop-blur {
-  backdrop-filter: blur(10px);
-}
+  &:hover .mdc-tab__text-label { color: var(--core-text-primary) !important; }
 
-/* Animation classes */
-.fade-in {
-  animation: fadeIn 0.5s ease-in;
-}
-
-.slide-up {
-  animation: slideUp 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+  &.mdc-tab--active .mdc-tab__text-label {
+    color: var(--core-energy) !important;
+    text-shadow: 0 0 12px rgba(0, 255, 200, 0.4);
   }
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
+.mat-mdc-tab-group .mdc-tab-indicator__content--underline {
+  border-color: var(--core-energy) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.5) !important;
+}
+
+/* ── Paginator ────────────────────────────────────────────────────────────── */
+.mat-mdc-paginator {
+  background: transparent !important;
+  color: var(--core-text-primary) !important;
+  padding: 0.25rem 0 !important;
+
+  .mat-mdc-paginator-container {
+    background: rgba(10, 22, 40, 0.7);
+    border: 1px solid var(--core-border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0.25rem 0.75rem;
   }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+
+  .mat-mdc-icon-button { color: var(--core-energy) !important; }
+  .mat-mdc-select-trigger { color: var(--core-teal) !important; }
 }
 
-/* Focus styles */
-.mat-mdc-button:focus,
-.mat-mdc-icon-button:focus {
-  outline: 2px solid var(--mdc-sys-color-secondary);
-  outline-offset: 2px;
+/* ── Tooltips ─────────────────────────────────────────────────────────────── */
+.mat-mdc-tooltip .mdc-tooltip__surface {
+  background-color: var(--core-bg-surface-2) !important;
+  opacity: 1 !important;
+  color: var(--core-text-primary) !important;
+  border: 1px solid var(--core-border-normal) !important;
+  font-size: 0.8125rem !important;
+  padding: 7px 12px !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--core-shadow-raised),
+              0 0 10px rgba(0, 255, 200, 0.12) !important;
 }
 
-/* Selection styles */
-::selection {
-  background: var(--mdc-sys-color-secondary-container, rgba(0, 234, 255, 0.3));
-  color: var(--mdc-sys-color-on-secondary-container, #ffffff);
-}
+.mat-tooltip-panel { opacity: 1 !important; }
+.mdc-tooltip__surface { background-color: var(--core-bg-surface-2) !important; opacity: 1 !important; }
 
-::-moz-selection {
-  background: var(--mdc-sys-color-secondary-container, rgba(0, 234, 255, 0.3));
-  color: var(--mdc-sys-color-on-secondary-container, #ffffff);
-}
-
-/* Elevate Angular CDK overlay (tooltips, menus, dialogs) above side-nav */
-.cdk-overlay-container,
-.cdk-overlay-pane {
-  z-index: 1300 !important; /* side-nav is 1100 */
-}
-
-/* Material Tooltip Styling */
-.mat-mdc-tooltip {
-  .mdc-tooltip__surface {
-    background-color: #0d1421 !important;
-    opacity: 1 !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(0, 255, 255, 0.3) !important;
-    font-size: 0.875rem !important;
-    padding: 8px 12px !important;
-    box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.8),
-      0 0 10px rgba(0, 255, 255, 0.2) !important;
-  }
-}
-
-/* Material Badge Styling - Global */
+/* ── Badges ───────────────────────────────────────────────────────────────── */
 .mat-badge-content {
   font-weight: 700;
   font-size: 10px;
@@ -376,170 +453,152 @@ body {
 }
 
 .mat-badge-accent .mat-badge-content {
-  background: var(--mdc-sys-color-tertiary);
-  color: var(--mdc-sys-color-on-tertiary);
+  background: var(--core-amber);
+  color: #000;
 }
 
 .mat-badge-primary .mat-badge-content {
-  background: var(--mdc-sys-color-primary);
-  color: var(--mdc-sys-color-on-primary);
+  background: var(--core-energy);
+  color: #000;
 }
 
 .mat-badge-warn .mat-badge-content {
-  background: var(--mdc-sys-color-error);
-  color: var(--mdc-sys-color-on-error);
+  background: var(--core-danger);
+  color: #fff;
 }
 
-/* Ensure tooltip has no transparency */
-.mat-tooltip-panel {
-  opacity: 1 !important;
-  
-  .mat-mdc-tooltip {
-    opacity: 1 !important;
-    background-color: #0d1421 !important;
-  }
+::ng-deep .mat-badge-content {
+  background: var(--core-energy) !important;
+  color: #000 !important;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(0, 255, 200, 0.5);
 }
 
-/* Force opaque background on all tooltip surfaces */
-.mdc-tooltip__surface {
-  background-color: #0d1421 !important;
-  opacity: 1 !important;
-}
-
-/* Global Base Styles (deduplicated; keep the definitions above) */
-
-/* Utility Classes */
-.solarpunk-gradient {
-  background: var(--gradient-solarpunk);
-}
-
-.text-primary {
-  color: var(--color-primary-green);
-}
-
-.text-secondary {
-  color: var(--color-secondary-teal);
-}
-
-.shadow-glow {
-  box-shadow: var(--shadow-glow);
-}
-
-.glass-effect {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 200, 83, 0.2);
-}
-
-/* Animation Keyframes */
-@keyframes pulse-gentle {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes bounce-gentle {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-0.5rem);
-  }
-}
-
-@keyframes sparkle {
-  0%, 100% {
-    transform: rotate(0deg) scale(1);
-  }
-  25% {
-    transform: rotate(5deg) scale(1.05);
-  }
-  75% {
-    transform: rotate(-5deg) scale(1.05);
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(1rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Global Material Design Overrides */
-.mat-mdc-fab.mat-accent {
-  background: var(--gradient-solarpunk) !important;
-  
-  &:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-glow);
-  }
-}
-
-.mat-mdc-raised-button.mat-primary {
-  background: var(--gradient-solarpunk) !important;
-  border: none !important;
-  
-  &:hover {
-    box-shadow: var(--shadow-strong);
-  }
-}
-
-/* Global paginator theme (use everywhere) */
-.mat-mdc-paginator {
-  background: transparent !important;
-  color: var(--mdc-sys-color-on-surface, #e8f0ff) !important;
-  padding: 0.25rem 0 !important;
-
-  .mat-mdc-paginator-container {
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--mdc-sys-color-surface-container-high) 85%, transparent) 0%,
-      color-mix(in srgb, var(--mdc-sys-color-surface) 85%, transparent) 100%
-    );
-    border: 1px solid rgba(0, 255, 136, 0.2);
-    border-radius: 10px;
-    padding: 0.25rem 0.75rem;
-  }
-
-  .mat-mdc-icon-button { color: var(--color-primary-green) !important; }
-  .mat-mdc-paginator-page-size { color: inherit; }
-  .mat-mdc-select-trigger { color: var(--color-secondary-teal) !important; }
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 0.5rem;
-}
+/* ── Scrollbars ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-light-moss);
-  border-radius: var(--radius-small);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--gradient-solarpunk);
-  border-radius: var(--radius-small);
-  
-  &:hover {
-    background: var(--color-primary-green);
-  }
+  background: linear-gradient(180deg, var(--core-energy-dim), var(--core-teal));
+  border-radius: 3px;
+
+  &:hover { background: var(--core-energy); }
+}
+
+/* ── Status / Health State Classes ───────────────────────────────────────── */
+
+/* Pulsing danger glow for UNHEALTHY states */
+.status-unhealthy,
+.status-danger {
+  color: var(--core-danger) !important;
+  animation: core-pulse-danger 2s ease-in-out infinite;
+}
+
+.status-degraded,
+.status-warning {
+  color: var(--core-amber) !important;
+}
+
+.status-healthy,
+.status-operational {
+  color: var(--core-success) !important;
+}
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(0, 255, 200, 0.25);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(0, 255, 200, 0.25);
+  color: #fff;
+}
+
+/* ── Z-index ──────────────────────────────────────────────────────────────── */
+.cdk-overlay-container,
+.cdk-overlay-pane {
+  z-index: 1300 !important;
+}
+
+/* ── Utility Classes ──────────────────────────────────────────────────────── */
+.text-strong  { color: #ffffff !important; }
+.text-primary { color: var(--core-energy) !important; }
+.text-secondary { color: var(--core-teal) !important; }
+.text-muted   { color: var(--core-text-secondary) !important; }
+.text-danger  { color: var(--core-danger) !important; }
+.text-success { color: var(--core-success) !important; }
+.text-amber   { color: var(--core-amber) !important; }
+
+.text-glow    { text-shadow: 0 0 10px currentColor; }
+.border-glow  { box-shadow: 0 0 10px currentColor; }
+.backdrop-blur { backdrop-filter: blur(10px); }
+
+.solarpunk-gradient { background: var(--core-gradient-energy); }
+.shadow-glow        { box-shadow: var(--core-glow-energy); }
+
+.glass-effect {
+  background: rgba(10, 22, 40, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--core-border-subtle);
+}
+
+/* Icon alignment */
+.mat-icon { vertical-align: middle; }
+
+/* ── Global Keyframes ─────────────────────────────────────────────────────── */
+@keyframes core-pulse-danger {
+  0%, 100% { text-shadow: 0 0 6px rgba(255, 71, 87, 0.4); opacity: 1; }
+  50%       { text-shadow: 0 0 16px rgba(255, 71, 87, 0.8); opacity: 0.85; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse-gentle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.04); opacity: 0.85; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-0.4rem); }
+}
+
+@keyframes sparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25%       { transform: rotate(4deg) scale(1.04); }
+  75%       { transform: rotate(-4deg) scale(1.04); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animation classes */
+.fade-in  { animation: fadeIn 0.4s ease-in; }
+.slide-up { animation: slideUp 0.4s ease-out; }
+
+/* Focus rings */
+.mat-mdc-button:focus-visible,
+.mat-mdc-icon-button:focus-visible {
+  outline: 2px solid var(--core-energy);
+  outline-offset: 2px;
 }

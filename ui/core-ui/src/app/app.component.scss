@@ -2,9 +2,9 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-  color: #ffffff;
-  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  background: var(--core-bg-base);
+  color: var(--core-text-primary);
+  font-family: var(--font-body, 'Inter', 'Roboto', sans-serif);
 }
 
 .app-container {
@@ -17,6 +17,7 @@
   margin-left: 3.75rem;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .page-content {

@@ -1,422 +1,452 @@
 @use '@angular/material' as mat;
 
-// Solarpunk Theme - Direct Custom Palette
-// This method doesn't rely on Material's SCSS functions
+// ============================================================================
+// CORE SYSTEM — Solarpunk × Starcraft LCARS Design Tokens
+// "Optimistic Futuristic" — cyan energy, amber accent, deep navy space
+// ============================================================================
 
-// Define our color palette directly
-$solarpunk-primary:        #35ff89;  // Bio Green
-$solarpunk-primary-light:  #6affab;  // Lighter Bio Green
-$solarpunk-primary-dark:   #00d86a;  // Darker Bio Green
+// Primary palette — Cyan/Teal energy
+$core-energy:         #00ffc8;   // Primary energy (cyan-teal)
+$core-energy-bright:  #33ffda;   // Hover/highlight variant
+$core-energy-dim:     #00b894;   // Subdued variant
+$core-energy-deep:    #00796b;   // Container/pressed variant
 
-$solarpunk-secondary:        #00eaff; // Neon Teal
-$solarpunk-secondary-light:  #5bf5ff; // Lighter Neon Teal
-$solarpunk-secondary-dark:   #00b4cc; // Darker Neon Teal
+// Accent palette — Warm Amber/Gold
+$core-amber:          #ffb347;   // Accent amber (replaces jarring orange)
+$core-amber-bright:   #ffd580;   // Lighter amber
+$core-amber-dim:      #e0922a;   // Darker amber
 
-$solarpunk-tertiary:        #ffc82e; // Solar Gold
-$solarpunk-tertiary-light:  #ffd75e; // Lighter Gold
-$solarpunk-tertiary-dark:   #d99e00; // Darker Gold
+// Danger / Error — Softer red with glow
+$core-danger:         #ff4757;   // Danger (softer red)
+$core-danger-dark:    #c0392b;   // Container
 
-$solarpunk-error:        #ff5757;
-$solarpunk-error-light:  #ff8899;
-$solarpunk-error-dark:   #d9365c;
+// Success — Organic green
+$core-success:        #2ed573;   // Success green
+$core-success-dark:   #1a8a4a;   // Container
 
-$solarpunk-background:       #0b0d16;
-$solarpunk-surface:          #141925;
-$solarpunk-surface-high:     #1b2232;
-$solarpunk-surface-variant:  #223042;
+// Secondary teal (for info/links)
+$core-teal:           #00d2ff;   // Secondary teal
+$core-teal-dim:       #0099bb;   // Container
 
-$solarpunk-on-primary:   #000000;
-$solarpunk-on-secondary: #000000;
-$solarpunk-on-tertiary:  #000000;
-$solarpunk-on-error:     #ffffff;
+// Background depth layers — deep navy / space black
+$core-bg-base:        #030d1a;   // Deepest layer (app bg)
+$core-bg-surface:     #0a1628;   // Cards / panels
+$core-bg-surface-2:   #0f1f38;   // Elevated cards
+$core-bg-surface-3:   #162542;   // Hover state / highest
 
-$solarpunk-on-background: #e8f0ff;
-$solarpunk-on-surface:    #e8f0ff;
+// Text hierarchy
+$core-text-primary:   #e8e8e8;   // Primary text (off-white)
+$core-text-secondary: #8892b0;   // Muted secondary
+$core-text-accent:    #00ffc8;   // Accent highlights (same as energy)
+$core-text-dim:       #4a5568;   // Disabled/placeholder
 
-$solarpunk-outline:         rgba(207,216,220,.20);  // Soft silver outline
-$solarpunk-outline-variant: rgba(207,216,220,.10);
+// Border tokens
+$core-border-subtle:  rgba(0, 255, 200, 0.12);   // Default card border
+$core-border-normal:  rgba(0, 255, 200, 0.25);   // Hover/focused border
+$core-border-bright:  rgba(0, 255, 200, 0.5);    // Active/selected border
+$core-border-amber:   rgba(255, 179, 71, 0.25);  // Amber border
 
-/* Global brand gradient */
-$gradient-core: linear-gradient(
-  90deg,
-  #35ff89 0%,
-  #00eaff 45%,
-  #ffc82e 100%
-);
+// Glow tokens
+$core-glow-energy:    0 0 20px rgba(0, 255, 200, 0.25);
+$core-glow-energy-sm: 0 0 10px rgba(0, 255, 200, 0.2);
+$core-glow-amber:     0 0 20px rgba(255, 179, 71, 0.25);
+$core-glow-danger:    0 0 16px rgba(255, 71, 87, 0.3);
+$core-glow-success:   0 0 16px rgba(46, 213, 115, 0.25);
+
+// Shadow system
+$core-shadow-base:    0 4px 16px rgba(0, 0, 0, 0.4);
+$core-shadow-raised:  0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+$core-shadow-float:   0 16px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 255, 200, 0.08);
+
+// Material M3 on-colors
+$core-on-energy:  #000000;
+$core-on-amber:   #000000;
+$core-on-danger:  #ffffff;
+$core-on-success: #000000;
 
 // This mixin creates all the CSS variables
 @mixin solarpunk-theme() {
-  // System Colors (Material Design M3 naming convention)
-  --mdc-sys-color-primary: #{$solarpunk-primary};
-  --mdc-sys-color-primary-container: #{$solarpunk-primary-dark};
-  --mdc-sys-color-on-primary: #{$solarpunk-on-primary};
-  --mdc-sys-color-on-primary-container: #{$solarpunk-on-primary};
-  
-  --mdc-sys-color-secondary: #{$solarpunk-secondary};
-  --mdc-sys-color-secondary-container: #{$solarpunk-secondary-dark};
-  --mdc-sys-color-on-secondary: #{$solarpunk-on-secondary};
-  --mdc-sys-color-on-secondary-container: #{$solarpunk-on-secondary};
-  
-  --mdc-sys-color-tertiary: #{$solarpunk-tertiary};
-  --mdc-sys-color-tertiary-container: #{$solarpunk-tertiary-dark};
-  --mdc-sys-color-on-tertiary: #{$solarpunk-on-tertiary};
-  --mdc-sys-color-on-tertiary-container: #{$solarpunk-on-tertiary};
-  
-  --mdc-sys-color-error: #{$solarpunk-error};
-  --mdc-sys-color-error-container: #{$solarpunk-error-dark};
-  --mdc-sys-color-on-error: #{$solarpunk-on-error};
-  --mdc-sys-color-on-error-container: #{$solarpunk-on-error};
-  
-  --mdc-sys-color-background: #{$solarpunk-background};
-  --mdc-sys-color-on-background: #{$solarpunk-on-background};
-  
-  --mdc-sys-color-surface: #{$solarpunk-surface};
-  --mdc-sys-color-surface-dim: #{$solarpunk-background};
-  --mdc-sys-color-surface-bright: #{$solarpunk-surface-high};
-  --mdc-sys-color-surface-container: #{$solarpunk-surface};
-  --mdc-sys-color-surface-container-low: #{$solarpunk-background};
-  --mdc-sys-color-surface-container-high: #{$solarpunk-surface-high};
-  --mdc-sys-color-surface-container-highest: #{$solarpunk-surface-high};
-  --mdc-sys-color-surface-variant: #{$solarpunk-surface-variant};
-  
-  --mdc-sys-color-on-surface: #{$solarpunk-on-surface};
-  --mdc-sys-color-on-surface-variant: #{$solarpunk-on-surface};
-  
-  --mdc-sys-color-outline: #{$solarpunk-outline};
-  --mdc-sys-color-outline-variant: #{$solarpunk-outline-variant};
-  
-  // Additional Brand Variables
-  --color-success: #{$solarpunk-secondary};
-  --color-warning: #{$solarpunk-tertiary};
-  --color-danger: #{$solarpunk-error};
-  
-  // For scrollbar and UI effects
-  --color-primary-glow: #{rgba($solarpunk-primary, 0.3)};
-  --color-secondary-glow: #{rgba($solarpunk-secondary, 0.3)};
-  --gradient-core: #{$gradient-core};
+  // ── Material M3 System Colors ──────────────────────────────────────────────
+  --mdc-sys-color-primary:                  #{$core-energy};
+  --mdc-sys-color-primary-container:        #{$core-energy-deep};
+  --mdc-sys-color-on-primary:               #{$core-on-energy};
+  --mdc-sys-color-on-primary-container:     #{$core-on-energy};
 
-  // Brand Tokens (moved from global styles to centralize theme tokens)
-  // Color Palette
-  --color-primary-green: #00c853;
-  --color-secondary-teal: #00acc1;
-  --color-accent-gold: #ffd600;
-  --color-deep-forest: #1b5e20;
-  --color-light-moss: #e8f5e9;
-  --color-cyber-purple: #7c4dff;
-  --color-warm-orange: #ff6d00;
+  --mdc-sys-color-secondary:                #{$core-teal};
+  --mdc-sys-color-secondary-container:      #{$core-teal-dim};
+  --mdc-sys-color-on-secondary:             #{$core-on-energy};
+  --mdc-sys-color-on-secondary-container:   #{$core-on-energy};
 
-  // Neutrals
-  --color-neutral-dark: #212121;
-  --color-neutral-light: #fafafa;
-  --color-neutral-medium: #757575;
-  --color-white: #ffffff;
-  --color-black: #000000;
+  --mdc-sys-color-tertiary:                 #{$core-amber};
+  --mdc-sys-color-tertiary-container:       #{$core-amber-dim};
+  --mdc-sys-color-on-tertiary:              #{$core-on-amber};
+  --mdc-sys-color-on-tertiary-container:    #{$core-on-amber};
 
-  // Semantic Colors
-  --color-success: #4caf50;
-  --color-warning: #ff9800;
-  --color-error: #f44336;
-  --color-info: #2196f3;
+  --mdc-sys-color-error:                    #{$core-danger};
+  --mdc-sys-color-error-container:          #{$core-danger-dark};
+  --mdc-sys-color-on-error:                 #{$core-on-danger};
+  --mdc-sys-color-on-error-container:       #{$core-on-danger};
 
-  // Opacity Variants
-  --color-primary-alpha-10: #{rgba(#00c853, 0.1)};
-  --color-primary-alpha-20: #{rgba(#00c853, 0.2)};
-  --color-primary-alpha-30: #{rgba(#00c853, 0.3)};
-  --color-secondary-alpha-10: #{rgba(#00acc1, 0.1)};
-  --color-secondary-alpha-20: #{rgba(#00acc1, 0.2)};
+  --mdc-sys-color-background:               #{$core-bg-base};
+  --mdc-sys-color-on-background:            #{$core-text-primary};
 
-  // Gradients
-  --gradient-solarpunk: linear-gradient(135deg, var(--color-primary-green) 0%, var(--color-secondary-teal) 100%);
-  --gradient-organic: radial-gradient(circle at 30% 30%, rgba(255, 214, 0, 0.2) 0%, transparent 70%);
-  --gradient-background: linear-gradient(135deg, rgba(27, 94, 32, 0.03) 0%, rgba(0, 172, 193, 0.03) 100%);
+  --mdc-sys-color-surface:                  #{$core-bg-surface};
+  --mdc-sys-color-surface-dim:              #{$core-bg-base};
+  --mdc-sys-color-surface-bright:           #{$core-bg-surface-2};
+  --mdc-sys-color-surface-container:        #{$core-bg-surface};
+  --mdc-sys-color-surface-container-low:    #{$core-bg-base};
+  --mdc-sys-color-surface-container-high:   #{$core-bg-surface-2};
+  --mdc-sys-color-surface-container-highest:#{$core-bg-surface-3};
+  --mdc-sys-color-surface-variant:          #{$core-bg-surface-3};
+
+  --mdc-sys-color-on-surface:               #{$core-text-primary};
+  --mdc-sys-color-on-surface-variant:       #{$core-text-secondary};
+
+  --mdc-sys-color-outline:                  #{$core-border-subtle};
+  --mdc-sys-color-outline-variant:          #{$core-border-subtle};
+
+  // ── Core Design Tokens ────────────────────────────────────────────────────
+  // Energy / Primary
+  --core-energy:            #{$core-energy};
+  --core-energy-bright:     #{$core-energy-bright};
+  --core-energy-dim:        #{$core-energy-dim};
+  --core-energy-deep:       #{$core-energy-deep};
+
+  // Accent / Amber
+  --core-amber:             #{$core-amber};
+  --core-amber-bright:      #{$core-amber-bright};
+  --core-amber-dim:         #{$core-amber-dim};
+
+  // Semantic status
+  --core-danger:            #{$core-danger};
+  --core-danger-dark:       #{$core-danger-dark};
+  --core-success:           #{$core-success};
+  --core-success-dark:      #{$core-success-dark};
+  --core-teal:              #{$core-teal};
+  --core-teal-dim:          #{$core-teal-dim};
+
+  // Background layers
+  --core-bg-base:           #{$core-bg-base};
+  --core-bg-surface:        #{$core-bg-surface};
+  --core-bg-surface-2:      #{$core-bg-surface-2};
+  --core-bg-surface-3:      #{$core-bg-surface-3};
+
+  // Text hierarchy
+  --core-text-primary:      #{$core-text-primary};
+  --core-text-secondary:    #{$core-text-secondary};
+  --core-text-accent:       #{$core-text-accent};
+  --core-text-dim:          #{$core-text-dim};
+
+  // Borders
+  --core-border-subtle:     #{$core-border-subtle};
+  --core-border-normal:     #{$core-border-normal};
+  --core-border-bright:     #{$core-border-bright};
+  --core-border-amber:      #{$core-border-amber};
+
+  // Glows
+  --core-glow-energy:       #{$core-glow-energy};
+  --core-glow-energy-sm:    #{$core-glow-energy-sm};
+  --core-glow-amber:        #{$core-glow-amber};
+  --core-glow-danger:       #{$core-glow-danger};
+  --core-glow-success:      #{$core-glow-success};
 
   // Shadows
-  --shadow-subtle: 0 2px 10px rgba(0, 0, 0, 0.05);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.1);
-  --shadow-strong: 0 8px 30px rgba(0, 200, 83, 0.2);
-  --shadow-glow: 0 0 20px rgba(0, 200, 83, 0.3);
+  --core-shadow-base:       #{$core-shadow-base};
+  --core-shadow-raised:     #{$core-shadow-raised};
+  --core-shadow-float:      #{$core-shadow-float};
 
-  // Border Radius
-  --radius-small: 0.5rem;
-  --radius-medium: 0.75rem;
-  --radius-large: 1rem;
-  --radius-xl: 1.5rem;
+  // Gradients
+  --core-gradient-energy:   linear-gradient(135deg, #{$core-energy} 0%, #{$core-teal} 100%);
+  --core-gradient-amber:    linear-gradient(135deg, #{$core-amber} 0%, #{$core-amber-dim} 100%);
+  --core-gradient-brand:    linear-gradient(90deg, #{$core-energy} 0%, #{$core-teal} 50%, #{$core-amber} 100%);
+  --core-gradient-bg:       linear-gradient(135deg, #{$core-bg-base} 0%, #{$core-bg-surface} 50%, #{$core-bg-surface-2} 100%);
+  --core-gradient-card:     linear-gradient(135deg, rgba(10, 22, 40, 0.85) 0%, rgba(15, 31, 56, 0.85) 100%);
 
-  // Spacing
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-xxl: 3rem;
+  // Card / Panel glass
+  --core-card-bg:           rgba(10, 22, 40, 0.75);
+  --core-card-border:       #{$core-border-subtle};
+  --core-card-hover-border: #{$core-border-normal};
+  --core-card-blur:         blur(12px);
 
   // Typography
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2rem;
-  --font-size-4xl: 2.5rem;
+  --font-display:           'Rajdhani', 'Inter', sans-serif;
+  --font-body:              'Inter', 'Roboto', sans-serif;
+  --font-mono:              'JetBrains Mono', 'Courier New', monospace;
 
-  // Animation
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
-  --transition-bounce: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  // Border Radius
+  --radius-sm:    0.375rem;
+  --radius-md:    0.625rem;
+  --radius-lg:    0.875rem;
+  --radius-xl:    1.25rem;
+  // Legacy aliases
+  --radius-small:  0.5rem;
+  --radius-medium: 0.75rem;
+  --radius-large:  1rem;
+  --radius-xl:     1.5rem;
+
+  // Spacing
+  --spacing-xs:   0.25rem;
+  --spacing-sm:   0.5rem;
+  --spacing-md:   1rem;
+  --spacing-lg:   1.5rem;
+  --spacing-xl:   2rem;
+  --spacing-xxl:  3rem;
+
+  // Typography sizes
+  --font-size-xs:   0.6875rem;
+  --font-size-sm:   0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg:   1.0625rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+  --font-size-3xl:  2rem;
+  --font-size-4xl:  2.5rem;
+
+  // Animation timing
+  --transition-fast:   0.12s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow:   0.45s ease;
+  --transition-spring: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  // Legacy compat aliases (used in existing components)
+  --color-primary-green:   #{$core-energy};
+  --color-secondary-teal:  #{$core-teal};
+  --color-accent-gold:     #{$core-amber};
+  --color-light-moss:      #{$core-bg-surface-2};
+  --color-cyber-purple:    #7c4dff;
+  --color-warm-orange:     #{$core-amber};
+
+  --color-neutral-dark:    #212121;
+  --color-neutral-light:   #fafafa;
+  --color-neutral-medium:  #{$core-text-secondary};
+  --color-white:           #ffffff;
+  --color-black:           #000000;
+
+  --color-success: #{$core-success};
+  --color-warning: #{$core-amber};
+  --color-danger:  #{$core-danger};
+  --color-error:   #{$core-danger};
+  --color-info:    #{$core-teal};
+
+  --color-primary-alpha-10: #{rgba($core-energy, 0.1)};
+  --color-primary-alpha-20: #{rgba($core-energy, 0.2)};
+  --color-primary-alpha-30: #{rgba($core-energy, 0.3)};
+  --color-secondary-alpha-10: #{rgba($core-teal, 0.1)};
+  --color-secondary-alpha-20: #{rgba($core-teal, 0.2)};
+
+  --color-primary-glow:   #{rgba($core-energy, 0.3)};
+  --color-secondary-glow: #{rgba($core-teal, 0.3)};
+
+  --gradient-core:       linear-gradient(90deg, #{$core-energy} 0%, #{$core-teal} 50%, #{$core-amber} 100%);
+  --gradient-solarpunk:  linear-gradient(135deg, #{$core-energy} 0%, #{$core-teal} 100%);
+  --gradient-organic:    radial-gradient(circle at 30% 30%, rgba(255, 179, 71, 0.12) 0%, transparent 70%);
+  --gradient-background: linear-gradient(135deg, rgba(0, 255, 200, 0.02) 0%, rgba(0, 210, 255, 0.02) 100%);
+
+  --shadow-subtle: 0 2px 10px rgba(0, 0, 0, 0.2);
+  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-strong: #{$core-shadow-raised};
+  --shadow-glow:   #{$core-glow-energy};
 }
 
 // ============================================================================
-// SOLARPUNK DESIGN SYSTEM - Reusable Utility Classes
+// UTILITY CLASSES
 // ============================================================================
 
-// Gradient Text Utilities
+// Gradient text
 .sp-gradient-text-primary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-primary) 0%,
-    var(--mdc-sys-color-secondary) 100%);
+  background: var(--core-gradient-energy);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .sp-gradient-text-secondary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-secondary) 0%,
-    var(--mdc-sys-color-tertiary) 100%);
+  background: linear-gradient(135deg, var(--core-teal) 0%, var(--core-amber) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .sp-gradient-text-full {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-primary) 0%,
-    var(--mdc-sys-color-secondary) 50%,
-    var(--mdc-sys-color-tertiary) 100%);
+  background: var(--core-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-// Glass Panel Utilities
+// Glass panels
 .sp-glass-panel {
-  background: linear-gradient(180deg,
-    rgba(20, 25, 37, 0.95) 0%,
-    rgba(27, 34, 50, 0.95) 100%);
-  backdrop-filter: blur(10px);
-  border-radius: var(--radius-medium);
+  background: var(--core-card-bg);
+  backdrop-filter: var(--core-card-blur);
+  border: 1px solid var(--core-card-border);
+  border-radius: var(--radius-md);
 }
 
 .sp-glass-panel-light {
-  background: rgba(35, 48, 66, 0.6);
+  background: rgba(15, 31, 56, 0.6);
   backdrop-filter: blur(10px);
-  border-radius: var(--radius-medium);
+  border-radius: var(--radius-md);
 }
 
 .sp-glass-surface {
-  background: linear-gradient(135deg,
-    rgba(20, 25, 37, 0.95) 0%,
-    rgba(27, 34, 50, 0.95) 100%);
+  background: var(--core-card-bg);
   backdrop-filter: blur(20px);
 }
 
-// Border Utilities
-.sp-border-primary {
-  border: 1px solid rgba(53, 255, 137, 0.2);
-}
-
-.sp-border-secondary {
-  border: 1px solid rgba(0, 234, 255, 0.2);
-}
+// Borders
+.sp-border-primary  { border: 1px solid var(--core-border-subtle); }
+.sp-border-secondary { border: 1px solid rgba(0, 210, 255, 0.2); }
 
 .sp-border-gradient-primary {
-  border: 3px solid transparent;
-  border-image: linear-gradient(180deg,
-    var(--mdc-sys-color-primary) 0%,
-    transparent 100%) 1;
+  border: 2px solid transparent;
+  border-image: var(--core-gradient-energy) 1;
 }
 
-.sp-border-gradient-secondary {
-  border: 3px solid transparent;
-  border-image: linear-gradient(180deg,
-    var(--mdc-sys-color-secondary) 0%,
-    transparent 100%) 1;
-}
-
-// Glow & Shadow Utilities
-.sp-glow-primary {
-  box-shadow: 0 0 20px rgba(53, 255, 137, 0.3);
-}
-
-.sp-glow-secondary {
-  box-shadow: 0 0 20px rgba(0, 234, 255, 0.3);
-}
-
-.sp-glow-tertiary {
-  box-shadow: 0 0 20px rgba(255, 198, 46, 0.3);
-}
+// Glows
+.sp-glow-primary   { box-shadow: var(--core-glow-energy); }
+.sp-glow-secondary { box-shadow: 0 0 20px rgba(0, 210, 255, 0.3); }
+.sp-glow-tertiary  { box-shadow: var(--core-glow-amber); }
 
 .sp-shadow-elevated {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: var(--core-shadow-raised), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .sp-shadow-inset {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-// Icon Utilities
+// Icon utilities
 .sp-icon-gradient-primary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-primary) 0%,
-    var(--mdc-sys-color-secondary) 100%);
+  background: var(--core-gradient-energy);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 4px rgba(53, 255, 137, 0.3));
+  filter: drop-shadow(0 0 4px rgba(0, 255, 200, 0.4));
 }
 
 .sp-icon-gradient-secondary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-secondary) 0%,
-    var(--mdc-sys-color-tertiary) 100%);
+  background: linear-gradient(135deg, var(--core-teal) 0%, var(--core-amber) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 4px rgba(0, 234, 255, 0.3));
+  filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.4));
 }
 
-// Badge Utilities
+// Badges
 .sp-badge-primary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-primary) 0%,
-    var(--mdc-sys-color-secondary) 100%);
-  color: var(--mdc-sys-color-on-primary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(53, 255, 137, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--core-energy) 0%, var(--core-teal) 100%);
+  color: #000;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 255, 200, 0.3);
 }
 
 .sp-badge-secondary {
-  background: rgba(0, 234, 255, 0.1);
-  color: var(--mdc-sys-color-secondary);
-  border: 1px solid var(--mdc-sys-color-secondary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
+  background: rgba(0, 210, 255, 0.1);
+  color: var(--core-teal);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
 }
 
 .sp-badge-tertiary {
-  background: rgba(255, 198, 46, 0.1);
-  color: var(--mdc-sys-color-tertiary);
-  border: 1px solid var(--mdc-sys-color-tertiary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 10px rgba(255, 198, 46, 0.2);
+  background: rgba(255, 179, 71, 0.1);
+  color: var(--core-amber);
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
 }
 
-// Button Gradient Utilities
+// Buttons
 .sp-btn-gradient-primary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-primary) 0%,
-    var(--mdc-sys-color-secondary) 100%) !important;
-  color: var(--mdc-sys-color-on-primary) !important;
-  box-shadow: 0 4px 16px rgba(53, 255, 137, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 16px !important;
+  background: var(--core-gradient-energy) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(0, 255, 200, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all var(--transition-normal) !important;
+  border-radius: var(--radius-md) !important;
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 24px rgba(53, 255, 137, 0.6),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 255, 200, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 .sp-btn-gradient-secondary {
-  background: linear-gradient(135deg,
-    var(--mdc-sys-color-secondary) 0%,
-    var(--mdc-sys-color-tertiary) 100%) !important;
-  color: var(--mdc-sys-color-on-secondary) !important;
-  box-shadow: 0 4px 16px rgba(0, 234, 255, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 16px !important;
+  background: linear-gradient(135deg, var(--core-teal) 0%, var(--core-amber) 100%) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(0, 210, 255, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all var(--transition-normal) !important;
+  border-radius: var(--radius-md) !important;
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 24px rgba(0, 234, 255, 0.6),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 210, 255, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
-// Divider Utilities
+// Dividers
 .sp-divider-gradient-horizontal {
   height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    var(--mdc-sys-color-primary) 50%,
-    transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--core-energy) 50%, transparent 100%);
+  opacity: 0.3;
 }
 
 .sp-divider-gradient-vertical {
   width: 1px;
-  background: linear-gradient(180deg,
-    transparent 0%,
-    var(--mdc-sys-color-primary) 50%,
-    transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, var(--core-energy) 50%, transparent 100%);
+  opacity: 0.3;
 }
 
-// Input Utilities
+// Input
 .sp-input-glass {
-  background: rgba(35, 48, 66, 0.6);
-  border: 1px solid rgba(53, 255, 137, 0.2);
-  border-radius: 12px;
-  color: var(--mdc-sys-color-on-surface);
-  transition: all 0.3s ease;
+  background: rgba(10, 22, 40, 0.7);
+  border: 1px solid var(--core-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--core-text-primary);
+  transition: all var(--transition-normal);
   backdrop-filter: blur(10px);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 
   &:focus {
     outline: none;
-    border-color: var(--mdc-sys-color-primary);
-    background: rgba(35, 48, 66, 0.8);
-    box-shadow: 0 0 0 3px rgba(53, 255, 137, 0.1),
+    border-color: var(--core-energy);
+    background: rgba(10, 22, 40, 0.9);
+    box-shadow: 0 0 0 3px rgba(0, 255, 200, 0.1),
                 inset 0 1px 3px rgba(0, 0, 0, 0.3),
-                0 0 20px rgba(53, 255, 137, 0.15);
+                0 0 16px rgba(0, 255, 200, 0.12);
   }
 
-  &::placeholder {
-    color: rgba(232, 240, 255, 0.4);
-  }
+  &::placeholder { color: var(--core-text-dim); }
 }
 
-// Avatar Utilities
+// Avatar
 .sp-avatar-gradient-border {
   position: relative;
   border-radius: 50%;
-  background: linear-gradient(135deg,
-    rgba(53, 255, 137, 0.1) 0%,
-    rgba(0, 234, 255, 0.1) 100%);
+  background: rgba(0, 255, 200, 0.08);
 
   &::before {
     content: '';
@@ -424,89 +454,76 @@ $gradient-core: linear-gradient(
     inset: -2px;
     border-radius: 50%;
     padding: 2px;
-    background: linear-gradient(135deg,
-      var(--mdc-sys-color-primary) 0%,
-      var(--mdc-sys-color-secondary) 100%);
+    background: var(--core-gradient-energy);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
   }
 }
 
-// Animation Utilities
-@keyframes sp-pulse-glow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.2);
-  }
-}
-
-.sp-animate-pulse-glow {
-  animation: sp-pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes sp-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.sp-animate-fade-in {
-  animation: sp-fade-in 0.5s ease-out;
-}
-
-// Status Indicator Utilities
+// Status dots
 .sp-status-online {
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--mdc-sys-color-primary);
-  box-shadow: 0 0 8px var(--mdc-sys-color-primary);
+  background: var(--core-success);
+  box-shadow: 0 0 8px var(--core-success);
+  animation: sp-pulse-status 2.5s ease-in-out infinite;
 }
 
 .sp-status-away {
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--mdc-sys-color-tertiary);
-  box-shadow: 0 0 8px var(--mdc-sys-color-tertiary);
+  background: var(--core-amber);
+  box-shadow: 0 0 8px var(--core-amber);
 }
 
 .sp-status-busy {
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--mdc-sys-color-error);
-  box-shadow: 0 0 8px var(--mdc-sys-color-error);
+  background: var(--core-danger);
+  box-shadow: 0 0 8px var(--core-danger);
 }
 
-// Header Utilities
+// Header gradient bar
 .sp-header-gradient {
   background: linear-gradient(135deg,
-    rgba(53, 255, 137, 0.08) 0%,
-    rgba(0, 234, 255, 0.05) 100%);
-  border-bottom: 1px solid rgba(53, 255, 137, 0.2);
+    rgba(0, 255, 200, 0.06) 0%,
+    rgba(0, 210, 255, 0.04) 100%);
+  border-bottom: 1px solid var(--core-border-subtle);
   position: relative;
 
   &::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      var(--mdc-sys-color-primary) 50%,
-      transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, var(--core-energy) 50%, transparent 100%);
+    opacity: 0.5;
   }
-} 
+}
+
+// ── Animations ──────────────────────────────────────────────────────────────
+
+@keyframes sp-pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.75; transform: scale(1.08); }
+}
+
+@keyframes sp-pulse-status {
+  0%, 100% { box-shadow: 0 0 6px currentColor; }
+  50%       { box-shadow: 0 0 14px currentColor; }
+}
+
+@keyframes sp-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sp-scan-line {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  40%  { opacity: 0.6; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+.sp-animate-pulse-glow { animation: sp-pulse-glow 2.5s ease-in-out infinite; }
+.sp-animate-fade-in    { animation: sp-fade-in 0.4s ease-out; }

@@ -1,13 +1,13 @@
 .agent-builder-container {
   min-height: calc(100vh - 64px);
-  background: 
-    radial-gradient(circle at 10% 20%, rgba(0, 255, 255, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(0, 255, 136, 0.08) 0%, transparent 40%),
-    linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-  color: #ffffff;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(0, 255, 200, 0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 210, 255, 0.04) 0%, transparent 40%),
+    transparent;
+  color: var(--core-text-primary);
   display: flex;
   flex-direction: column;
-  padding: 2rem;
+  padding: 1.5rem;
   position: relative;
   overflow: hidden;
 

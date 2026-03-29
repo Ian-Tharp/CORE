@@ -1,12 +1,12 @@
 // Boards container
 .boards-container {
-  min-height: calc(100vh - 64px); // Subtract toolbar height
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
-    linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-  color: #ffffff;
-  padding: 1rem 0.5rem 0.25rem 0rem;
+  min-height: calc(100vh - 64px);
+  background:
+    radial-gradient(ellipse at 15% 75%, rgba(0, 255, 200, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 15%, rgba(0, 210, 255, 0.04) 0%, transparent 50%),
+    transparent;
+  color: var(--core-text-primary);
+  padding: 1rem 0.5rem 0.25rem 0;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -74,21 +74,18 @@
 .tasks-card,
 .events-card,
 .stats-card {
-  background: linear-gradient(135deg, rgba(13, 20, 33, 0.8) 0%, rgba(26, 26, 46, 0.8) 100%);
-  border: 1px solid rgba(0, 255, 255, 0.2);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(10px);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  background: var(--core-card-bg);
+  border: 1px solid var(--core-card-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--core-card-blur);
+  box-shadow: var(--core-shadow-base),
+              inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color var(--transition-normal),
+              box-shadow var(--transition-normal);
 
   &:hover {
-    border-color: rgba(0, 255, 255, 0.4);
-    box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.4),
-      0 0 20px rgba(0, 255, 255, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: var(--core-border-normal);
+    box-shadow: var(--core-shadow-raised), var(--core-glow-energy-sm);
   }
 }
 
