@@ -18,8 +18,8 @@
   // Hover state
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(0, 255, 200, 0.1);
+    border-color: rgba(0, 255, 200, 0.25);
 
     .status-pulse {
       animation-duration: 1.5s !important;
@@ -30,8 +30,13 @@
     }
   }
 
+  &:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+
   &:focus-visible {
-    outline: 2px solid #00ffff;
+    outline: 2px solid #00ffc8;
     outline-offset: 2px;
   }
 
