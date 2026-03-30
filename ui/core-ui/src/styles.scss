@@ -621,3 +621,156 @@ h1, h2, h3, h4, h5, h6,
   outline: 2px solid var(--core-energy);
   outline-offset: 2px;
 }
+
+/* ── Snackbar / Toast ─────────────────────────────────────────────────────── */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: transparent !important;
+
+  .mdc-snackbar__surface {
+    background: rgba(10, 22, 40, 0.92) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid var(--core-border-normal) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--core-shadow-float),
+                var(--core-glow-energy-sm) !important;
+    color: var(--core-text-primary) !important;
+  }
+
+  .mdc-snackbar__label {
+    color: var(--core-text-primary) !important;
+    font-family: var(--font-body) !important;
+  }
+
+  .mat-mdc-snack-bar-action {
+    color: var(--core-energy) !important;
+    font-weight: 600 !important;
+  }
+
+  &.snack-success .mdc-snackbar__surface {
+    border-color: var(--core-success) !important;
+    box-shadow: var(--core-shadow-float),
+                0 0 12px rgba(46, 213, 115, 0.2) !important;
+  }
+
+  &.snack-error .mdc-snackbar__surface {
+    border-color: var(--core-danger) !important;
+    box-shadow: var(--core-shadow-float),
+                0 0 12px rgba(255, 71, 87, 0.2) !important;
+  }
+
+  &.snack-warn .mdc-snackbar__surface {
+    border-color: var(--core-amber) !important;
+    box-shadow: var(--core-shadow-float),
+                0 0 12px rgba(255, 179, 71, 0.2) !important;
+  }
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+a:not([class*="mat-"]):not([class*="mdc-"]) {
+  color: var(--core-energy);
+  text-decoration: none;
+  transition: color var(--transition-fast),
+              text-shadow var(--transition-fast);
+
+  &:hover {
+    color: var(--core-energy-bright, #7fffee);
+    text-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+    text-decoration: underline;
+  }
+
+  &:visited {
+    color: var(--core-teal);
+  }
+}
+
+/* ── Data Tables ──────────────────────────────────────────────────────────── */
+.mat-mdc-table {
+  background: rgba(10, 22, 40, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid var(--core-border-subtle) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+}
+
+.mat-mdc-header-row {
+  background: rgba(0, 255, 200, 0.05) !important;
+  border-bottom: 2px solid var(--core-border-normal) !important;
+}
+
+.mat-mdc-header-cell {
+  color: var(--core-energy) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  border-bottom: none !important;
+}
+
+.mat-mdc-row {
+  background: transparent !important;
+  border-bottom: 1px solid var(--core-border-subtle) !important;
+  transition: background var(--transition-fast) !important;
+
+  &:hover {
+    background: rgba(0, 255, 200, 0.04) !important;
+  }
+
+  &:last-child {
+    border-bottom: none !important;
+  }
+}
+
+.mat-mdc-cell {
+  color: var(--core-text-primary) !important;
+  border-bottom: none !important;
+}
+
+/* ── Micro-interactions ───────────────────────────────────────────────────── */
+
+/* Ensure all interactive elements signal clickability */
+button,
+[role="button"],
+[mat-button],
+[mat-icon-button],
+[mat-raised-button],
+[mat-stroked-button],
+mat-chip,
+mat-list-item,
+.mat-list-item,
+.mat-mdc-list-item {
+  cursor: pointer !important;
+}
+
+/* Active/pressed scale for buttons */
+.mat-mdc-button-base:active:not([disabled]),
+.mat-mdc-raised-button:active:not([disabled]),
+.mat-mdc-outlined-button:active:not([disabled]),
+.mat-mdc-unelevated-button:active:not([disabled]) {
+  transform: scale(0.98) translateY(0) !important;
+}
+
+/* Smooth transitions on any element missing it */
+.mat-mdc-chip,
+mat-chip,
+.mat-mdc-list-item,
+.mat-list-item {
+  transition: all var(--transition-normal) !important;
+}
+
+/* ── Dialog global override (ensure glassmorphism without class) ──────────── */
+.mat-mdc-dialog-surface,
+.mdc-dialog__surface {
+  background: linear-gradient(135deg, var(--core-bg-surface) 0%, var(--core-bg-surface-2) 100%) !important;
+  color: var(--core-text-primary) !important;
+  border: 1px solid var(--core-border-normal) !important;
+  box-shadow: var(--core-shadow-float), var(--core-glow-energy-sm) !important;
+  border-radius: var(--radius-lg) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Backdrop for all dialogs */
+.cdk-overlay-backdrop.cdk-overlay-dark-backdrop {
+  background: rgba(1, 5, 14, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
+}
