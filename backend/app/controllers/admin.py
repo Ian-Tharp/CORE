@@ -1,4 +1,4 @@
-﻿"""
+"""
 CORE Admin Controller - System administration endpoints.
 
 Provides:
@@ -10,7 +10,7 @@ Provides:
 
 These endpoints require authentication (except health).
 
-RSI TODO: Add audit logging for all admin actions
+DONE: Audit logging for all admin mutation actions
 RSI TODO: Add role-based access control
 """
 
@@ -111,6 +111,14 @@ async def create_api_key(
     
     logger.info(f"API key created: {request.name} by {api_key.get('name')}")
     
+    await audit.log(
+        actor=api_key.get("name", "unknown"),
+        action="api_key.create",
+        resource_type="api_key",
+        resource_id=request.name,
+        detail={"permissions": request.permissions},
+    )
+    
     return CreateKeyResponse(
         key=key,
         name=request.name,
@@ -148,6 +156,13 @@ async def delete_api_key(
         )
     
     logger.info(f"API key revoked: {key_name} by {api_key.get('name')}")
+    
+    await audit.log(
+        actor=api_key.get("name", "unknown"),
+        action="api_key.revoke",
+        resource_type="api_key",
+        resource_id=key_name,
+    )
     
     return {"message": f"Key '{key_name}' revoked"}
 
@@ -195,6 +210,14 @@ async def register_webhook(
     
     logger.info(f"Webhook registered: {webhook.name} ({webhook.id})")
     
+    await audit.log(
+        actor=api_key.get("name", "unknown"),
+        action="webhook.create",
+        resource_type="webhook",
+        resource_id=webhook.id,
+        detail={"url": request.url, "events": request.events},
+    )
+    
     return webhook.to_dict()
 
 
@@ -215,6 +238,7 @@ async def list_webhooks(api_key: dict = Depends(get_api_key), _auth_key: str = D
 @router.delete("/webhooks/{webhook_id}")
 async def unregister_webhook(
     webhook_id: str,
+    request: Request,
     api_key: dict = Depends(get_api_key),
     _auth_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
@@ -234,7 +258,7 @@ async def unregister_webhook(
         action="webhook.delete",
         resource_type="webhook",
         resource_id=webhook_id,
-        request=http_request,
+        request=request,
     )
 
     return {"message": f"Webhook '{webhook_id}' unregistered"}
@@ -310,6 +334,11 @@ async def reset_metrics(api_key: dict = Depends(get_api_key), _auth_key: str = D
     
     logger.info(f"Metrics reset by {api_key.get('name')}")
     
+    await audit.log(
+        actor=api_key.get("name", "unknown"),
+        action="metrics.reset",
+    )
+    
     return {"message": "Metrics reset"}
 
 
@@ -344,7 +373,7 @@ async def get_system_stats(api_key: dict = Depends(get_api_key), _auth_key: str 
 @router.get("/runs")
 async def list_runs(
     user_id: Optional[str] = None,
-    status: Optional[str] = None,
+    run_status: Optional[str] = Query(None, alias="status", description="Filter by run status"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     api_key: dict = Depends(get_api_key),
@@ -356,7 +385,7 @@ async def list_runs(
     try:
         runs = await run_repository.list_runs(
             user_id=user_id,
-            status=status,
+            status=run_status,
             limit=limit,
             offset=offset
         )
