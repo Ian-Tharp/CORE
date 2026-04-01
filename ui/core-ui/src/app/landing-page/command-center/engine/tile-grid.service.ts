@@ -131,8 +131,24 @@ export class TileGridService {
     return h >>> 0;
   }
 
-  createTileGrid(config: TileGridConfig): void {
+  createTileGrid(rawConfig: TileGridConfig): void {
     if (!this.engine) throw new Error('Engine not initialized');
+
+    // Normalize config — guards against legacy API responses that use `radius` instead of
+    // `cellRadius`, and against null/NaN/0 values that produce NaN positions in ShapeGeometry.
+    const legacyRadius = (rawConfig as any).radius;
+    const resolvedRadius =
+      typeof rawConfig.cellRadius === 'number' && isFinite(rawConfig.cellRadius) && rawConfig.cellRadius > 0
+        ? rawConfig.cellRadius
+        : typeof legacyRadius === 'number' && isFinite(legacyRadius) && legacyRadius > 0
+          ? legacyRadius
+          : 1;
+    const config: TileGridConfig = {
+      cellRadius: resolvedRadius,
+      gridWidth: rawConfig.gridWidth || 50,
+      gridHeight: rawConfig.gridHeight || 50,
+      elevation: typeof rawConfig.elevation === 'number' && isFinite(rawConfig.elevation) ? rawConfig.elevation : 0.1,
+    };
 
     // Dispose existing
     if (this.instancedMesh) {
