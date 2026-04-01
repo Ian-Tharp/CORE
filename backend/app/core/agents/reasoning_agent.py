@@ -21,6 +21,7 @@ import httpx
 
 from app.dependencies import get_openai_client_sync
 from app.models.core_state import ExecutionPlan, PlanStep, StepResult
+from app.core.tools.dispatcher import ToolDispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,13 @@ class ReasoningAgent:
 
     def __init__(self, model: str = "gpt-oss:20b"):
         self.model = model
-        # RSI TODO: Initialize tool registry here
-        self.tools = {}
+        workspace = os.getenv("CORE_WORKSPACE_DIR", os.getcwd())
+        api_key = os.getenv("CORE_API_KEY", "")
+        self.tool_dispatcher = ToolDispatcher(
+            workspace_dir=workspace,
+            core_base_url=_CORE_BASE_URL,
+            core_api_key=api_key,
+        )
 
     # ------------------------------------------------------------------
     # Knowledge base retrieval
@@ -159,16 +165,18 @@ class ReasoningAgent:
                 outputs = {"result": f"Simulated execution of: {step.description}"}
                 artifacts = []
                 logs = [f"Dry-run: Would execute {step.name}"]
-            elif step.tool and step.tool in ["file_operations", "git", "database", "web_research"]:
-                # RSI TODO: Implement actual tool execution
-                outputs = self._simulate_tool_call(step.tool, step.params)
-                artifacts = self._simulate_artifacts(step.tool)
+            elif step.tool and step.tool in self.tool_dispatcher.available_tools:
+                outputs = self.tool_dispatcher.dispatch(step.tool, step.params)
+                artifacts = self.tool_dispatcher.get_artifacts(step.tool, outputs)
+                tool_status = outputs.get("status", "success")
                 logs = [
                     f"Executing {step.name}",
                     f"Tool: {step.tool}",
                     f"Parameters: {step.params}",
-                    "Execution completed successfully (simulated)"
+                    f"Tool status: {tool_status}",
                 ]
+                if tool_status == "error":
+                    raise RuntimeError(outputs.get("result", "Tool execution failed"))
             else:
                 logger.info(f"Reasoning executing step via LLM: {step.name}")
                 outputs = self._execute_with_llm(step)
@@ -262,44 +270,5 @@ Please complete this step and provide the result. Be concise and direct."""
             logger.error(f"LLM execution failed for step '{step.name}': {e}", exc_info=True)
             return {"result": f"Error executing with LLM: {str(e)}"}
 
-    # ------------------------------------------------------------------
-    # Tool simulation stubs
-    # ------------------------------------------------------------------
-
-    def _simulate_tool_call(self, tool_name: str, params: dict) -> dict:
-        """
-        Simulate tool execution.
-
-        RSI TODO: Replace with actual tool registry lookup and execution
-        """
-        if tool_name == "file_operations":
-            return {
-                "files_modified": ["src/components/Header.tsx"],
-                "changes_made": "Added login button component"
-            }
-        elif tool_name == "git":
-            return {
-                "branch": "feature/add-login-button",
-                "commit_sha": "abc123def456",
-                "files_changed": 1
-            }
-        elif tool_name == "database":
-            return {
-                "query_result": [{"id": 1, "name": "example"}],
-                "rows_affected": 1
-            }
-        else:
-            return {"result": f"Executed {tool_name} with params {params}"}
-
-    def _simulate_artifacts(self, tool_name: str) -> List[str]:
-        """
-        Simulate artifact generation.
-
-        RSI TODO: Return actual file paths, git diffs, etc.
-        """
-        if tool_name == "file_operations":
-            return ["src/components/LoginButton.tsx"]
-        elif tool_name == "git":
-            return ["git.diff"]
-        else:
-            return []
+    # Tool dispatch is now handled by self.tool_dispatcher (ToolDispatcher).
+    # See app/core/tools/dispatcher.py for per-tool handler implementations.
