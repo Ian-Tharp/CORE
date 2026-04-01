@@ -255,3 +255,119 @@ class TestAnalyzeIntentRAG:
         assert intent.type == "question"
         assert intent.confidence == pytest.approx(0.95)
         assert intent.requires_tools is False
+
+
+# ---------------------------------------------------------------------------
+# detect_ambiguities — pure regex pattern matching (UNTESTED before this block)
+# ---------------------------------------------------------------------------
+
+class TestDetectAmbiguities:
+    def setup_method(self):
+        self.agent = ComprehensionAgent()
+
+    def test_empty_input_returns_empty_list(self):
+        """
+        SENTINEL — empty input must return [].
+        Raise on empty → caller crashes on blank input → test fails.
+        """
+        assert self.agent.detect_ambiguities("") == []
+
+    def test_whitespace_only_returns_empty_list(self):
+        """Whitespace-only input must return []."""
+        assert self.agent.detect_ambiguities("   \t\n") == []
+
+    def test_clear_input_returns_empty_list(self):
+        """Input with no ambiguities must return []."""
+        result = self.agent.detect_ambiguities("Please add a login button to the navbar.")
+        assert result == []
+
+    def test_pronoun_it_detected(self):
+        """
+        SENTINEL — 'it' must trigger the unresolved-pronoun pattern.
+        Remove pronoun pattern → unclear references silently accepted → test fails.
+        """
+        result = self.agent.detect_ambiguities("Fix it now")
+        assert any("it" in r.lower() or "pronoun" in r.lower() for r in result)
+
+    def test_pronoun_that_detected(self):
+        """'that' must be flagged as an ambiguous reference."""
+        result = self.agent.detect_ambiguities("Update that component")
+        assert len(result) > 0
+
+    def test_underspecified_artifact_detected(self):
+        """
+        SENTINEL — 'the file' must trigger the underspecified-artifact pattern.
+        Remove artifact pattern → users say 'the function' and agent guesses → test fails.
+        """
+        result = self.agent.detect_ambiguities("Edit the file")
+        assert any("file" in r.lower() or "artifact" in r.lower() for r in result)
+
+    def test_vague_quantity_detected(self):
+        """
+        SENTINEL — 'some' and 'a few' must trigger the vague-quantity pattern.
+        Remove quantity pattern → 'add some tests' accepted → agent writes random count → test fails.
+        """
+        result = self.agent.detect_ambiguities("Add some tests")
+        assert any("some" in r.lower() or "quantity" in r.lower() for r in result)
+
+    def test_comparative_without_referent_detected(self):
+        """
+        SENTINEL — 'better than' must trigger the comparative pattern.
+        Remove comparative pattern → 'make it faster than' unanswered → test fails.
+        """
+        result = self.agent.detect_ambiguities("Make it faster than before")
+        assert any("comparative" in r.lower() or "better" in r.lower() or "faster" in r.lower() for r in result)
+
+    def test_deduplication_applied(self):
+        """
+        SENTINEL — repeated ambiguous words must produce only one entry per unique message.
+        Skip dedup → same message appears multiple times → noisy output → test fails.
+        """
+        # 'it' appears twice — should yield only one entry about 'it'
+        result = self.agent.detect_ambiguities("Fix it before it breaks")
+        it_entries = [r for r in result if "it" in r.lower()]
+        # Each unique message should appear only once
+        assert len(it_entries) == len(set(it_entries))
+
+    def test_multiple_patterns_can_match(self):
+        """Input matching several patterns must produce multiple entries."""
+        # 'it' (pronoun), 'some' (quantity)
+        result = self.agent.detect_ambiguities("Fix it with some changes")
+        assert len(result) >= 2
+
+
+# ---------------------------------------------------------------------------
+# _build_system_prompt — sanity check on required content
+# ---------------------------------------------------------------------------
+
+class TestBuildSystemPrompt:
+    def setup_method(self):
+        self.agent = ComprehensionAgent()
+
+    def test_returns_non_empty_string(self):
+        """
+        SENTINEL — system prompt must be a non-empty string.
+        Return None → LLM call fails with type error → test fails.
+        """
+        prompt = self.agent._build_system_prompt()
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+
+    def test_prompt_contains_intent_types(self):
+        """
+        SENTINEL — prompt must describe the intent types (task, conversation, question, clarification).
+        Omit intent descriptions → LLM doesn't know valid types → misclassifies inputs → test fails.
+        """
+        prompt = self.agent._build_system_prompt()
+        assert "task" in prompt
+        assert "conversation" in prompt
+        assert "question" in prompt
+        assert "clarification" in prompt
+
+    def test_prompt_requests_json_format(self):
+        """
+        SENTINEL — prompt must instruct the LLM to respond in JSON.
+        Remove JSON instruction → LLM responds in prose → JSON parsing fails → test fails.
+        """
+        prompt = self.agent._build_system_prompt()
+        assert "json" in prompt.lower() or "JSON" in prompt
