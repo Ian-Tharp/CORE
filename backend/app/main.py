@@ -19,7 +19,7 @@ from app.config.discord import (
     get_config as get_discord_config,
     load_config_from_store as load_discord_config_from_store,
 )
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository, discord_repository
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository, discord_repository, model_metrics_repository
 
 
 from app.config.startup_validator import validate_startup_config
@@ -95,6 +95,10 @@ async def lifespan(app: FastAPI):
             # Ensure Discord bridge tables exist
             await discord_repository.ensure_discord_tables()
             logger.info("Discord bridge tables ensured")
+
+            # Ensure model metrics table exists
+            await model_metrics_repository.ensure_model_metrics_tables()
+            logger.info("Model metrics tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;

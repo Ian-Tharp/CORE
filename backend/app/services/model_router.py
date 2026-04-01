@@ -7,7 +7,6 @@ Provides:
 - Fallback chains when primary model fails
 - Cost tracking and optimization
 
-RSI TODO: Add model performance tracking
 RSI TODO: Add automatic model selection based on task type
 RSI TODO: Add caching layer for common prompts
 """
@@ -348,7 +347,24 @@ class ModelRouter:
                     (usage.completion_tokens / 1000) * config.cost_per_1k_output
                 )
                 self._track_usage(model_id, usage.prompt_tokens, usage.completion_tokens, cost, duration)
-            
+
+            total_tokens = usage.total_tokens if usage else None
+            duration_ms = duration * 1000
+
+            # Persist per-request metrics (non-blocking, best-effort)
+            try:
+                import asyncio
+                from app.repository.model_metrics_repository import record_metric
+                loop = asyncio.get_running_loop()
+                loop.create_task(record_metric(
+                    model_id=model_id,
+                    latency_ms=duration_ms,
+                    success=True,
+                    token_count=total_tokens,
+                ))
+            except Exception:
+                pass
+
             return {
                 "content": response.choices[0].message.content,
                 "tool_calls": response.choices[0].message.tool_calls if hasattr(response.choices[0].message, "tool_calls") else None,
@@ -358,11 +374,25 @@ class ModelRouter:
                     "completion_tokens": usage.completion_tokens if usage else 0,
                     "total_tokens": usage.total_tokens if usage else 0
                 },
-                "duration_ms": duration * 1000
+                "duration_ms": duration_ms
             }
-        
+
         except Exception as e:
             logger.error(f"Model {model_id} failed: {e}")
+
+            # Persist failure metric (best-effort)
+            try:
+                import asyncio
+                from app.repository.model_metrics_repository import record_metric
+                duration_ms = (time.time() - start_time) * 1000
+                loop = asyncio.get_running_loop()
+                loop.create_task(record_metric(
+                    model_id=model_id,
+                    latency_ms=duration_ms,
+                    success=False,
+                ))
+            except Exception:
+                pass
             
             # Try fallback
             for fallback_id in self.fallback_chain:

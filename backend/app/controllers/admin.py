@@ -478,3 +478,19 @@ async def get_model_usage(api_key: dict = Depends(get_api_key), _auth_key: str =
     """
     router = get_model_router()
     return router.get_usage_stats()
+
+
+@router.get("/metrics/models")
+async def get_model_performance_metrics(
+    model_id: Optional[str] = Query(None, description="Filter to a specific model"),
+    api_key: dict = Depends(get_api_key),
+    _auth_key: str = Depends(require_api_key),
+) -> Dict[str, Any]:
+    """
+    Get persisted model performance metrics.
+
+    Returns p50/p95 latency and error rate per model.
+    Data is sourced from the model_metrics table populated per request.
+    """
+    from app.repository.model_metrics_repository import get_model_stats
+    return await get_model_stats(model_id=model_id)

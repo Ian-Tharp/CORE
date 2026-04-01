@@ -4,6 +4,6 @@ CORE Repository Layer
 Database access layer for CORE data persistence.
 """
 
-from app.repository import run_repository, council_repository, memory_repository, api_key_repository
+from app.repository import run_repository, council_repository, memory_repository, api_key_repository, model_metrics_repository
 
-__all__ = ["run_repository", "council_repository", "memory_repository", "api_key_repository"]
+__all__ = ["run_repository", "council_repository", "memory_repository", "api_key_repository", "model_metrics_repository"]
