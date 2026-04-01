@@ -182,6 +182,51 @@ class RequestMetrics:
             )[:10]
         }
     
+    def to_prometheus(self) -> str:
+        """
+        Serialize current metrics in Prometheus text exposition format (version 0.0.4).
+
+        Produces counters and gauges for total requests, error count, average latency,
+        requests-per-second, per-status-code counts, and per-endpoint counts.
+        """
+        stats = self.get_stats()
+        lines: list[str] = []
+
+        def _line(name: str, help_text: str, type_: str, value: float, labels: dict | None = None) -> None:
+            lines.append(f"# HELP {name} {help_text}")
+            lines.append(f"# TYPE {name} {type_}")
+            label_str = ""
+            if labels:
+                label_parts = ",".join(f'{k}="{v}"' for k, v in labels.items())
+                label_str = f"{{{label_parts}}}"
+            lines.append(f"{name}{label_str} {value:.6g}")
+
+        _line("core_http_requests_total", "Total HTTP requests processed", "counter",
+              stats["total_requests"])
+        _line("core_http_errors_total", "Total HTTP requests with 4xx/5xx status", "counter",
+              stats["error_requests"])
+        _line("core_http_request_duration_ms_avg", "Average request duration in milliseconds", "gauge",
+              stats["avg_duration_ms"])
+        _line("core_http_requests_per_second", "Requests per second (since start)", "gauge",
+              stats["requests_per_second"])
+        _line("core_uptime_seconds", "Service uptime in seconds", "gauge",
+              stats["uptime_seconds"])
+
+        # Per-status-code counters
+        lines.append("# HELP core_http_requests_by_status Requests grouped by HTTP status code")
+        lines.append("# TYPE core_http_requests_by_status counter")
+        for status_code, count in stats["by_status"].items():
+            lines.append(f'core_http_requests_by_status{{status="{status_code}"}} {count}')
+
+        # Per-endpoint request counts
+        lines.append("# HELP core_endpoint_request_count Request count per endpoint")
+        lines.append("# TYPE core_endpoint_request_count counter")
+        for endpoint in stats["top_endpoints"]:
+            safe_path = endpoint["path"].replace('"', '\\"')
+            lines.append(f'core_endpoint_request_count{{endpoint="{safe_path}"}} {endpoint["count"]}')
+
+        return "\n".join(lines) + "\n"
+
     def reset(self):
         """Reset metrics."""
         self.__init__()

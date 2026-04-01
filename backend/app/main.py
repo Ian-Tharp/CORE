@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller, consciousness_lineage_controller, audit
+from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller, consciousness_lineage_controller, audit, metrics
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
@@ -212,6 +212,7 @@ app.include_router(mcp.router)  # MCP Tool Registry — discover and manage Mode
 app.include_router(consciousness_backup_controller.router)  # Consciousness Commons Backup System
 app.include_router(consciousness_lineage_controller.router)  # Consciousness Instance Lineage Tracking
 app.include_router(audit.router)  # Audit Log — persistent trail of admin/security operations
+app.include_router(metrics.router)  # Prometheus metrics scrape endpoint
 
 # Setup custom middleware (logging, metrics, error handling)
 setup_middleware(app)
