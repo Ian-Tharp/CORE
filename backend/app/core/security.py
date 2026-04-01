@@ -1,13 +1,12 @@
 ﻿"""
-CORE Security Module - API Key Authentication and Rate Limiting
+CORE Security Module - API Key Authentication, Rate Limiting, and RBAC
 
 Provides:
 - API key validation and management (database-backed with in-memory cache)
 - Request rate limiting
-- Security middleware
+- Role-Based Access Control (RBAC)
 
 RSI TODO: Add JWT support for user sessions
-RSI TODO: Add role-based access control (RBAC)
 """
 
 from __future__ import annotations
@@ -18,11 +17,12 @@ import secrets
 import hashlib
 import time
 from datetime import datetime
-from typing import Optional, Dict, Any
+from enum import Enum
+from typing import Optional, Dict, Any, Callable
 from collections import defaultdict
 from functools import wraps
 
-from fastapi import HTTPException, Security, Request, status
+from fastapi import Depends, HTTPException, Security, Request, status
 from fastapi.security import APIKeyHeader, APIKeyQuery
 import logging
 
@@ -396,6 +396,87 @@ def require_permission(permission: str):
 
         return wrapper
     return decorator
+
+
+# =============================================================================
+# Role-Based Access Control (RBAC)
+# =============================================================================
+
+class Role(str, Enum):
+    """
+    CORE role hierarchy.
+
+    ADMIN  > AGENT > VIEWER
+
+    Roles are stored as permission strings on API keys (e.g. "role:admin").
+    Keys with the wildcard permission "*" pass all role checks.
+    When checking a role, all higher roles also pass:
+        require_role(AGENT) accepts keys with role:admin OR role:agent.
+        require_role(ADMIN) accepts only role:admin (and "*").
+    """
+
+    ADMIN = "admin"
+    AGENT = "agent"
+    VIEWER = "viewer"
+
+
+# Permission string format stored in API key permissions list
+_ROLE_PERMISSION = {
+    Role.ADMIN: "role:admin",
+    Role.AGENT: "role:agent",
+    Role.VIEWER: "role:viewer",
+}
+
+# Roles that satisfy a given minimum role requirement (inclusive hierarchy)
+_ROLE_SATISFIES: Dict[Role, set] = {
+    Role.VIEWER: {"role:admin", "role:agent", "role:viewer"},
+    Role.AGENT:  {"role:admin", "role:agent"},
+    Role.ADMIN:  {"role:admin"},
+}
+
+
+def require_role(minimum_role: Role) -> Callable:
+    """
+    FastAPI dependency factory for role-based access control.
+
+    Returns a dependency that:
+    1. Authenticates via get_api_key (inherits all existing auth logic)
+    2. Checks that the key's permissions satisfy the minimum_role
+    3. Raises HTTP 403 if the role requirement is not met
+    4. Returns the key metadata dict on success (same as get_api_key)
+
+    Usage:
+        @router.post("/admin/keys")
+        async def create_key(key_data: dict = Depends(require_role(Role.ADMIN))):
+            ...
+
+    Role hierarchy (each role also accepts higher roles):
+        require_role(Role.VIEWER) — accepts VIEWER, AGENT, ADMIN, and "*"
+        require_role(Role.AGENT)  — accepts AGENT, ADMIN, and "*"
+        require_role(Role.ADMIN)  — accepts only ADMIN and "*"
+    """
+    satisfying_perms = _ROLE_SATISFIES[minimum_role]
+
+    async def _check_role(key_data: Dict[str, Any] = Depends(get_api_key)) -> Dict[str, Any]:
+        permissions = key_data.get("permissions", [])
+
+        # Wildcard grants all roles
+        if "*" in permissions:
+            return key_data
+
+        # Check if any permission satisfies the required role
+        if satisfying_perms.intersection(permissions):
+            return key_data
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Insufficient permissions. Role '{minimum_role.value}' or higher required. "
+                f"Current key permissions: {permissions}"
+            ),
+        )
+
+    return _check_role
 
 
 # =============================================================================

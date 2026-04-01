@@ -29,8 +29,9 @@ from typing import Dict, Any
 from datetime import datetime, timezone
 from typing import Optional as OptionalType
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.core.security import require_role, Role
 from app.services.health_aggregator import (
     get_comprehensive_health,
     quick_health,
@@ -63,7 +64,9 @@ async def health_check() -> Dict[str, Any]:
 
 
 @router.get("/deep", status_code=status.HTTP_200_OK)
-async def deep_health_check() -> Dict[str, Any]:
+async def deep_health_check(
+    api_key: dict = Depends(require_role(Role.AGENT)),
+) -> Dict[str, Any]:
     """
     Deep health check with comprehensive service status.
     

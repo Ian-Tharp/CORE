@@ -28,6 +28,7 @@ from pydantic import BaseModel
 from app.models.core_state import COREState
 from app.core.langgraph.core_graph_v2 import get_core_graph
 from app.auth import optional_api_key, require_api_key
+from app.core.security import require_role, Role
 from app.repository import run_repository
 from app.services.webhook_service import get_webhook_service, WebhookEvent
 import logging
@@ -90,7 +91,7 @@ class RunResponse(BaseModel):
 # ======================
 
 @router.post("/run", response_model=RunResponse)
-async def run_core(request: RunRequest, api_key: str = Depends(require_api_key)) -> RunResponse:
+async def run_core(request: RunRequest, api_key: dict = Depends(require_role(Role.AGENT))) -> RunResponse:
     """
     Execute the CORE cognitive pipeline for a user input.
 
@@ -212,7 +213,7 @@ async def run_core(request: RunRequest, api_key: str = Depends(require_api_key))
 
 
 @router.post("/run/stream")
-async def run_core_stream(request: RunRequest, api_key: str = Depends(require_api_key)):
+async def run_core_stream(request: RunRequest, api_key: dict = Depends(require_role(Role.AGENT))):
     """
     Execute CORE pipeline with real-time streaming progress.
     

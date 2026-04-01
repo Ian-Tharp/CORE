@@ -22,7 +22,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Request
 from pydantic import BaseModel, Field
 
-from app.core.security import get_api_key, generate_api_key, list_api_keys, revoke_api_key
+from app.core.security import get_api_key, generate_api_key, list_api_keys, revoke_api_key, require_role, Role
 from app.core.health import get_full_health, quick_health
 from app.core.middleware import get_metrics
 from app.services.webhook_service import get_webhook_service, WebhookEvent
@@ -87,22 +87,15 @@ class CreateKeyResponse(BaseModel):
 @router.post("/keys", response_model=CreateKeyResponse)
 async def create_api_key(
     request: CreateKeyRequest,
-    api_key: dict = Depends(get_api_key),
-    _auth_key: str = Depends(require_api_key),
+    api_key: dict = Depends(require_role(Role.ADMIN)),
 ) -> CreateKeyResponse:
     """
     Generate a new API key.
-    
-    Requires admin permissions.
-    
+
+    Requires Role.ADMIN.
+
     The returned key is shown only once - save it securely!
     """
-    if "admin:keys" not in api_key.get("permissions", []) and "*" not in api_key.get("permissions", []):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission 'admin:keys' required"
-        )
-    
     key = await generate_api_key(
         name=request.name,
         description=request.description,
@@ -127,7 +120,7 @@ async def create_api_key(
 
 
 @router.get("/keys")
-async def get_api_keys(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_api_keys(api_key: dict = Depends(require_role(Role.ADMIN))) -> Dict[str, Any]:
     """
     List all registered API keys.
     
@@ -143,8 +136,7 @@ async def get_api_keys(api_key: dict = Depends(get_api_key), _auth_key: str = De
 @router.delete("/keys/{key_name}")
 async def delete_api_key(
     key_name: str,
-    api_key: dict = Depends(get_api_key),
-    _auth_key: str = Depends(require_api_key),
+    api_key: dict = Depends(require_role(Role.ADMIN)),
 ) -> Dict[str, str]:
     """
     Revoke an API key by name.
@@ -183,8 +175,7 @@ class RegisterWebhookRequest(BaseModel):
 @router.post("/webhooks")
 async def register_webhook(
     request: RegisterWebhookRequest,
-    api_key: dict = Depends(get_api_key),
-    _auth_key: str = Depends(require_api_key),
+    api_key: dict = Depends(require_role(Role.ADMIN)),
 ) -> Dict[str, Any]:
     """
     Register a new webhook endpoint.
@@ -222,7 +213,7 @@ async def register_webhook(
 
 
 @router.get("/webhooks")
-async def list_webhooks(api_key: dict = Depends(get_api_key), _auth_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def list_webhooks(api_key: dict = Depends(require_role(Role.ADMIN))) -> Dict[str, Any]:
     """
     List all registered webhooks.
     """
@@ -239,8 +230,7 @@ async def list_webhooks(api_key: dict = Depends(get_api_key), _auth_key: str = D
 async def unregister_webhook(
     webhook_id: str,
     request: Request,
-    api_key: dict = Depends(get_api_key),
-    _auth_key: str = Depends(require_api_key),
+    api_key: dict = Depends(require_role(Role.ADMIN)),
 ) -> Dict[str, str]:
     """
     Unregister a webhook.
