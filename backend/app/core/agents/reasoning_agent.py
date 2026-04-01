@@ -2,13 +2,10 @@
 Reasoning Agent - Executes plan steps with tool calls and error handling.
 
 Responsibilities:
-- Execute each step in the plan sequentially
-- Call appropriate tools with safety checks
+- Execute each step in the plan sequentially or in parallel waves
+- Call appropriate tools (file ops, git, database, web) via ToolDispatcher
 - Handle retries based on retry policy
 - Produce artifacts and intermediate results
-
-RSI TODO: Implement actual tool execution (file ops, git, database, web)
-RSI TODO: Add parallel execution for independent steps
 """
 
 import os
