@@ -7,10 +7,10 @@ Provides comprehensive health checks for all CORE services:
 - Redis cache
 - Ollama LLM
 - WebSocket connections
+- Alerting webhooks for degraded/unhealthy states
 
 RSI TODO: Add custom health checks for MCP servers
 DONE: Health history tracking (health_repository + /health/history endpoints)
-RSI TODO: Add alerting webhooks for failures
 """
 
 from __future__ import annotations
@@ -239,10 +239,52 @@ async def check_engine_state() -> HealthCheck:
         )
 
 
+async def fire_health_alert(overall: HealthStatus, health_result: Dict[str, Any]) -> None:
+    """
+    Fire a webhook alert when the overall health status is degraded or unhealthy.
+
+    Uses the global webhook service so any registered ``health.degraded`` or
+    ``health.unhealthy`` subscriber receives the payload.  Failures are logged
+    and swallowed — alerting must never block or crash the health endpoint.
+
+    Args:
+        overall: The aggregated health status (DEGRADED or UNHEALTHY).
+        health_result: The full health result dict to include in the payload.
+    """
+    try:
+        from app.services.webhook_service import get_webhook_service, WebhookEvent
+        service = get_webhook_service()
+
+        event = (
+            WebhookEvent.HEALTH_UNHEALTHY
+            if overall == HealthStatus.UNHEALTHY
+            else WebhookEvent.HEALTH_DEGRADED
+        )
+
+        await service.fire(
+            event=event,
+            payload={
+                "status": overall.value,
+                "timestamp": health_result.get("timestamp"),
+                "summary": health_result.get("summary", {}),
+                "failed_checks": [
+                    c for c in health_result.get("checks", [])
+                    if c.get("status") != HealthStatus.HEALTHY.value
+                ],
+            },
+        )
+        logger.debug("Health alert fired for status '%s'", overall.value)
+    except Exception as exc:
+        logger.warning("Health alert webhook failed (non-critical): %s", exc)
+
+
 async def get_full_health() -> Dict[str, Any]:
     """
     Run all health checks and return aggregated status.
-    
+
+    Fires a webhook alert (non-blocking) when overall status is degraded or
+    unhealthy so external monitoring systems can react.
+
     Returns:
         Dict with overall status and individual check results
     """
@@ -255,7 +297,7 @@ async def get_full_health() -> Dict[str, Any]:
         check_engine_state(),
         return_exceptions=True
     )
-    
+
     # Process results
     results = []
     for check in checks:
@@ -267,18 +309,18 @@ async def get_full_health() -> Dict[str, Any]:
             ))
         else:
             results.append(check)
-    
+
     # Determine overall status
     statuses = [c.status for c in results]
-    
+
     if all(s == HealthStatus.HEALTHY for s in statuses):
         overall = HealthStatus.HEALTHY
     elif any(s == HealthStatus.UNHEALTHY for s in statuses):
         overall = HealthStatus.UNHEALTHY
     else:
         overall = HealthStatus.DEGRADED
-    
-    return {
+
+    health_result = {
         "status": overall.value,
         "timestamp": datetime.utcnow().isoformat(),
         "checks": [c.to_dict() for c in results],
@@ -289,6 +331,12 @@ async def get_full_health() -> Dict[str, Any]:
             "unhealthy": sum(1 for s in statuses if s == HealthStatus.UNHEALTHY)
         }
     }
+
+    # Fire alerting webhook when health is not fully OK (non-blocking)
+    if overall != HealthStatus.HEALTHY:
+        asyncio.create_task(fire_health_alert(overall, health_result))
+
+    return health_result
 
 
 async def quick_health() -> Dict[str, str]:

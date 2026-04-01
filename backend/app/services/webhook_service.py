@@ -40,6 +40,9 @@ class WebhookEvent(str, Enum):
     NODE_COMPLETED = "node.completed"
     STEP_EXECUTED = "step.executed"
     AGENT_STATUS_CHANGED = "agent.status_changed"
+    # Health alerting events
+    HEALTH_DEGRADED = "health.degraded"
+    HEALTH_UNHEALTHY = "health.unhealthy"
 
 
 class WebhookRegistration:
