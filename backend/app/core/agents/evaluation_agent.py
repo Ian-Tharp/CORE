@@ -75,7 +75,11 @@ Respond in JSON format:
         step_results: List[StepResult]
     ) -> EvaluationResult:
         """
-        Evaluate the execution results.
+        Evaluate execution results using LLM for nuanced quality assessment.
+
+        Calls the LLM to determine whether the user's request was satisfied,
+        assess output quality, and decide the next action. Falls back to
+        rule-based evaluation if the LLM call fails.
 
         Args:
             user_input: Original user input
@@ -84,140 +88,180 @@ Respond in JSON format:
             step_results: Results from each step execution
 
         Returns:
-            EvaluationResult with assessment and next action
+            EvaluationResult with LLM-assessed quality and next action
         """
-        # For now, use simple rule-based evaluation
-        # RSI TODO: Replace with LLM-based evaluation for nuanced assessment
+        return self._llm_evaluate(user_input, plan, step_results, intent=intent)
 
-        # Check if all steps succeeded
-        all_succeeded = all(r.status == "success" for r in step_results)
+    def _rule_based_evaluate(self, step_results: List[StepResult]) -> EvaluationResult:
+        """
+        Rule-based fallback evaluation when LLM is unavailable.
+
+        Uses step success/failure counts to determine outcome.
+        Called automatically when _llm_evaluate raises an exception.
+        """
+        if not step_results:
+            return EvaluationResult(
+                overall_status="failure",
+                confidence=0.4,
+                meets_requirements=False,
+                quality_score=0.5,
+                feedback="No steps were executed. User input needed.",
+                next_action="ask_user",
+            )
+
         failed_steps = [r for r in step_results if r.status == "failure"]
-
-        # Calculate confidence based on step success rate
-        if step_results:
-            success_rate = sum(1 for r in step_results if r.status == "success") / len(step_results)
-        else:
-            success_rate = 0.0
-
-        # Determine overall status and next action
-        if all_succeeded:
-            overall_status = "success"
-            next_action = "finalize"
-            meets_requirements = True
-            quality_score = 0.85  # High quality for all successful
-            feedback = f"All {len(step_results)} steps completed successfully."
-            retry_step_id = None
-            confidence = 0.9
-
-        elif failed_steps and len(failed_steps) < len(step_results):
-            # Some steps failed
-            overall_status = "needs_retry"
-            next_action = "retry_step"
-            meets_requirements = False
-            quality_score = success_rate
-            feedback = f"{len(failed_steps)} step(s) failed. Retrying failed steps."
-            retry_step_id = failed_steps[0].step_id  # Retry first failed step
-            confidence = 0.6
-
-        elif len(failed_steps) == len(step_results):
-            # All steps failed - plan is bad
-            overall_status = "needs_revision"
-            next_action = "revise_plan"
-            meets_requirements = False
-            quality_score = 0.2
-            feedback = "All steps failed. The plan may be flawed and needs revision."
-            retry_step_id = None
-            confidence = 0.3
-
-        else:
-            # Edge case
-            overall_status = "failure"
-            next_action = "ask_user"
-            meets_requirements = False
-            quality_score = 0.5
-            feedback = "Unable to determine outcome. User input needed."
-            retry_step_id = None
-            confidence = 0.4
-
-        return EvaluationResult(
-            overall_status=overall_status,
-            confidence=confidence,
-            meets_requirements=meets_requirements,
-            quality_score=quality_score,
-            feedback=feedback,
-            next_action=next_action,
-            retry_step_id=retry_step_id
+        all_succeeded = not failed_steps
+        success_rate = (
+            sum(1 for r in step_results if r.status == "success") / len(step_results)
+            if step_results else 0.0
         )
+
+        if all_succeeded:
+            return EvaluationResult(
+                overall_status="success",
+                confidence=0.9,
+                meets_requirements=True,
+                quality_score=0.85,
+                feedback=f"All {len(step_results)} steps completed successfully.",
+                next_action="finalize",
+            )
+        elif failed_steps and len(failed_steps) < len(step_results):
+            return EvaluationResult(
+                overall_status="needs_retry",
+                confidence=0.6,
+                meets_requirements=False,
+                quality_score=success_rate,
+                feedback=f"{len(failed_steps)} step(s) failed. Retrying failed steps.",
+                next_action="retry_step",
+                retry_step_id=failed_steps[0].step_id,
+            )
+        elif step_results and len(failed_steps) == len(step_results):
+            return EvaluationResult(
+                overall_status="needs_revision",
+                confidence=0.3,
+                meets_requirements=False,
+                quality_score=0.2,
+                feedback="All steps failed. The plan may be flawed and needs revision.",
+                next_action="revise_plan",
+            )
+        else:
+            return EvaluationResult(
+                overall_status="failure",
+                confidence=0.4,
+                meets_requirements=False,
+                quality_score=0.5,
+                feedback="Unable to determine outcome. User input needed.",
+                next_action="ask_user",
+            )
 
     def _llm_evaluate(
         self,
         user_input: str,
         plan: ExecutionPlan,
-        step_results: List[StepResult]
+        step_results: List[StepResult],
+        intent: Optional[UserIntent] = None,
     ) -> EvaluationResult:
         """
-        Use LLM to evaluate execution quality (future implementation).
+        Use LLM to evaluate execution quality with nuanced assessment.
 
-        RSI TODO: Implement this when we have more sophisticated evaluation needs
+        Builds a rich context from the user request, intent, plan goal, and
+        per-step results, then asks the LLM to decide:
+        - Did the execution satisfy the user's request?
+        - What is the output quality?
+        - What should happen next (finalize / retry / revise / ask)?
+
+        Falls back to rule-based evaluation if the LLM call fails.
+
+        Args:
+            user_input: Original user request text
+            plan: The execution plan that was run
+            step_results: Results for each executed step
+            intent: Optional comprehension result providing task context
         """
-        client = get_openai_client_sync()
+        # Build intent context line
+        if intent:
+            intent_line = f"Intent type: {intent.type} — {intent.description}"
+        else:
+            intent_line = "Intent: not available"
 
-        # Build evaluation context
-        context = f"""User wanted: {user_input}
-
-Plan created: {plan.goal}
-Steps: {len(plan.steps)}
-
-Execution results:
-"""
+        # Build per-step summaries, including output snippets
+        step_lines = []
         for i, result in enumerate(step_results, 1):
-            context += f"{i}. {result.status}: {result.outputs}\n"
+            output_preview = str(result.outputs.get("result", result.outputs))[:200]
+            error_suffix = f" [error: {result.error}]" if result.error else ""
+            step_lines.append(
+                f"{i}. [{result.status.upper()}] {output_preview}{error_suffix}"
+            )
+
+        steps_block = "\n".join(step_lines) if step_lines else "No steps were executed."
+
+        context = f"""User requested: {user_input}
+
+{intent_line}
+Plan goal: {plan.goal}
+Plan steps: {len(plan.steps)}
+
+Step execution results:
+{steps_block}
+
+Evaluate whether the user's request was satisfied by the execution above."""
 
         try:
-            logger.info(f"Evaluation assessing execution with model={self.model}")
+            client = get_openai_client_sync()
+            logger.info("Evaluation assessing execution with model=%s", self.model)
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": context}
+                    {"role": "user", "content": context},
                 ],
                 temperature=0.2,  # Low temperature for consistent evaluation
-                # Note: Ollama may not support response_format, removed for compatibility
             )
 
             content = response.choices[0].message.content
-            logger.info(f"Evaluation LLM response: {content}")
+            logger.info("Evaluation LLM response: %s", content)
             if not content:
                 raise ValueError("Empty response from LLM")
 
             # Extract and repair JSON from response
             extracted = extract_json_object(content)
             if extracted:
-                logger.info(f"Evaluation: Extracted JSON object")
+                logger.debug("Evaluation: extracted JSON object from response")
             else:
                 extracted = content
-            
+
             data = safe_json_loads(extracted)
             if data is None:
                 raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
 
+            # Validate next_action — default to finalize if LLM returns garbage
+            valid_actions = {"finalize", "retry_step", "revise_plan", "ask_user"}
+            next_action = data.get("next_action", "finalize")
+            if next_action not in valid_actions:
+                logger.warning(
+                    "LLM returned invalid next_action '%s', defaulting to 'finalize'", next_action
+                )
+                next_action = "finalize"
+
+            # Validate overall_status
+            valid_statuses = {"success", "failure", "needs_revision", "needs_retry"}
+            overall_status = data.get("overall_status", "success")
+            if overall_status not in valid_statuses:
+                overall_status = "success"
+
             return EvaluationResult(
-                overall_status=data.get("overall_status", "success"),
+                overall_status=overall_status,
                 confidence=float(data.get("confidence", 0.7)),
-                meets_requirements=data.get("meets_requirements", True),
+                meets_requirements=bool(data.get("meets_requirements", True)),
                 quality_score=float(data.get("quality_score", 0.7)),
-                feedback=data.get("feedback", ""),
-                next_action=data.get("next_action", "finalize"),
-                retry_step_id=data.get("retry_step_id")
+                feedback=str(data.get("feedback", "")),
+                next_action=next_action,
+                retry_step_id=data.get("retry_step_id"),
             )
 
-        except Exception as e:
-            # Fallback to success on error
-            return EvaluationResult(
-                overall_status="success",
-                confidence=0.5,
-                meets_requirements=True,
-                quality_score=0.5,
-                feedback=f"Evaluation error: {str(e)}. Defaulting to success.",
-                next_action="finalize"
+        except Exception as exc:
+            logger.warning(
+                "LLM evaluation failed for model=%s (using rule-based fallback): %s",
+                self.model, exc,
             )
+            return self._rule_based_evaluate(step_results)
