@@ -111,6 +111,7 @@ class COREState(BaseModel):
 
     # Evaluation outputs
     eval_result: Optional[EvaluationResult] = None
+    plan_revisions: int = Field(default=0, description="Number of plan revisions attempted this run")
 
     # Conversation outputs
     response: Optional[str] = None

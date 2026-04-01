@@ -14,6 +14,10 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 
+# Maximum number of plan revisions before forcing finalization.
+# Prevents infinite revise_plan → orchestration → reasoning → evaluation loops.
+_MAX_PLAN_REVISIONS = int(os.getenv("CORE_MAX_PLAN_REVISIONS", "3"))
+
 from app.models.core_state import COREState, UserIntent, ExecutionPlan, PlanStep, EvaluationResult
 from app.core.agents.comprehension_agent import ComprehensionAgent
 from app.core.agents.orchestration_agent import OrchestrationAgent
@@ -164,8 +168,9 @@ class COREGraph:
             state.add_execution_node("orchestration")
 
             try:
-                # If this is a plan revision, increment revision number
+                # If this is a plan revision, increment revision counter
                 if state.plan and state.eval_result:
+                    state.plan_revisions += 1
                     revision_num = state.plan.revision + 1
                     feedback = state.eval_result.feedback
                 else:
@@ -173,6 +178,7 @@ class COREGraph:
                     feedback = None
 
                 span.set_attribute("plan.revision", revision_num)
+                span.set_attribute("plan.revision_count", state.plan_revisions)
 
                 # Run orchestration agent to create/revise plan
                 plan = self.orchestration_agent.create_plan(
@@ -425,6 +431,15 @@ class COREGraph:
         """
         if not state.eval_result:
             return "conversation"  # Default to conversation on error
+
+        # Loop guard: cap plan revisions to prevent infinite cycles
+        if (state.eval_result.next_action == "revise_plan"
+                and state.plan_revisions >= _MAX_PLAN_REVISIONS):
+            import logging
+            logging.getLogger(__name__).warning(
+                "Max plan revisions (%d) reached — forcing finalization", _MAX_PLAN_REVISIONS
+            )
+            return "conversation"
 
         action_routes = {
             "finalize": "conversation",

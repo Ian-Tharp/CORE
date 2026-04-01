@@ -6,15 +6,10 @@ Produces:
 - Tool selections and parameters for each step
 - Dependency graph between steps
 - Retry policies and HITL checkpoints
-
-RSI TODO: Implement dynamic plan revision based on execution feedback
-RSI TODO: Add cost estimation for plan execution
-RSI TODO: Integrate with tool registry for capability discovery
 """
 
-import json
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from app.dependencies import get_openai_client_sync
@@ -22,6 +17,11 @@ from app.models.core_state import UserIntent, ExecutionPlan, PlanStep
 from app.utils.json_repair import safe_json_loads, extract_json_object
 
 logger = logging.getLogger(__name__)
+
+# Token estimates per step type (rough heuristics for cost prediction)
+_TOKENS_PER_LLM_STEP = 400
+_TOKENS_PER_TOOL_STEP = 100
+_HIGH_RISK_TOOLS = {"git", "database"}  # tools that mutate external state
 
 
 class OrchestrationAgent:
@@ -36,9 +36,44 @@ class OrchestrationAgent:
         self.model = model
         self.system_prompt = self._build_system_prompt()
 
+    # ------------------------------------------------------------------
+    # Tool registry integration
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_available_tools() -> List[str]:
+        """
+        Return the list of available tool names from the ToolDispatcher.
+
+        Falls back to a hardcoded list if the dispatcher cannot be imported
+        (e.g. during unit tests that stub out the tools package).
+        """
+        try:
+            from app.core.tools.dispatcher import ToolDispatcher
+            return ToolDispatcher().available_tools
+        except Exception:
+            return ["file_operations", "git", "web_research", "database"]
+
+    @staticmethod
+    def _tool_descriptions(tools: List[str]) -> str:
+        """Return a human-readable bullet list of tool capabilities."""
+        _descriptions: Dict[str, str] = {
+            "file_operations": "read / write / list / search files within the workspace",
+            "git": "read-only git operations: status, diff, log, show, branch, ls-files",
+            "web_research": "HTTP GET for external pages, documentation, and references",
+            "database": "query CORE data via the REST API (conversations, KB, metrics)",
+        }
+        lines = []
+        for tool in tools:
+            desc = _descriptions.get(tool, "custom tool")
+            lines.append(f"- **{tool}**: {desc}")
+        return "\n".join(lines) if lines else "- (no tools registered)"
+
     def _build_system_prompt(self) -> str:
-        """Build the system prompt for plan generation."""
-        return """You are the Orchestration layer of the CORE cognitive system.
+        """Build the system prompt using dynamically discovered tools."""
+        tools = self._get_available_tools()
+        tool_section = self._tool_descriptions(tools)
+        return f"""You are the Orchestration layer of the CORE cognitive system.
 
 Your job is to create an execution plan for accomplishing the user's task.
 
@@ -50,26 +85,23 @@ Break down the task into concrete, executable steps. For each step:
 5. Determine if human review is needed (HITL checkpoint)
 
 Available Tools:
-- **file_operations**: read_file, write_file, edit_file, search_files
-- **git**: create_branch, commit_changes, create_pr, diff
-- **database**: query, get_schema, explain_query
-- **web_research**: search, fetch_page, search_docs
+{tool_section}
 
 Respond in JSON format:
-{
+{{
   "goal": "High-level description of what we're trying to accomplish",
   "reasoning": "Why this plan was chosen",
   "steps": [
-    {
+    {{
       "name": "Step name",
       "description": "What this step does",
       "tool": "tool_name or null",
-      "params": {"param1": "value1"},
+      "params": {{"param1": "value1"}},
       "dependencies": ["step_1_id"],
       "requires_hitl": false
-    }
+    }}
   ]
-}
+}}
 
 Guidelines:
 - Keep steps atomic and focused
@@ -77,6 +109,61 @@ Guidelines:
 - Use HITL sparingly (only for risky operations)
 - If the task is simple, use fewer steps (1-3)
 - If complex, break down thoroughly (5-10 steps)"""
+
+    # ------------------------------------------------------------------
+    # Cost estimation
+    # ------------------------------------------------------------------
+
+    def estimate_plan_cost(self, plan: ExecutionPlan) -> Dict[str, Any]:
+        """
+        Estimate the cost of executing a plan.
+
+        Returns a dict with:
+          step_count        — total steps
+          tool_step_count   — steps that use a registered tool
+          llm_step_count    — steps relying on LLM (no tool or unknown tool)
+          estimated_tokens  — rough token budget for execution
+          hitl_checkpoints  — steps requiring human approval
+          risk_level        — "low" | "medium" | "high" based on tool types
+          tool_breakdown    — {tool_name: count}
+        """
+        available_tools = self._get_available_tools()
+        tool_counts: Dict[str, int] = {}
+        llm_steps = 0
+        hitl_steps = 0
+
+        for step in plan.steps:
+            if step.requires_hitl:
+                hitl_steps += 1
+            if step.tool and step.tool in available_tools:
+                tool_counts[step.tool] = tool_counts.get(step.tool, 0) + 1
+            else:
+                llm_steps += 1
+
+        tool_step_count = sum(tool_counts.values())
+        estimated_tokens = (
+            llm_steps * _TOKENS_PER_LLM_STEP
+            + tool_step_count * _TOKENS_PER_TOOL_STEP
+        )
+
+        # Risk: high if any high-risk tools used + HITL required, medium if one condition, low otherwise
+        uses_high_risk = bool(_HIGH_RISK_TOOLS.intersection(tool_counts))
+        if uses_high_risk and hitl_steps > 0:
+            risk_level = "high"
+        elif uses_high_risk or hitl_steps > 0:
+            risk_level = "medium"
+        else:
+            risk_level = "low"
+
+        return {
+            "step_count": len(plan.steps),
+            "tool_step_count": tool_step_count,
+            "llm_step_count": llm_steps,
+            "estimated_tokens": estimated_tokens,
+            "hitl_checkpoints": hitl_steps,
+            "risk_level": risk_level,
+            "tool_breakdown": tool_counts,
+        }
 
     def create_plan(
         self,
