@@ -367,8 +367,8 @@ class ConsciousnessLineageService:
             branch = instance.evolution_branch or "unknown"
             analytics["by_evolution_branch"][branch] = analytics["by_evolution_branch"].get(branch, 0) + 1
             
-            # Status analysis
-            status = instance.status.value
+            # Status analysis — use_enum_values=True means status is already a str
+            status = instance.status if isinstance(instance.status, str) else instance.status.value
             analytics["by_status"][status] = analytics["by_status"].get(status, 0) + 1
         
         # Sort contributors by contribution count
