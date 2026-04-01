@@ -1,4 +1,4 @@
-﻿"""
+"""
 REST endpoints for the Communication Commons.
 
 Provides API for channels, messages, presence, and reactions.
@@ -9,13 +9,11 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-import asyncio
 import uuid
 
 from app.repository import communication_repository as comm_repo
 from app.websocket_manager import manager
-from app.services.agent_response_service import get_agent_response_service
-from app.services.discord_bridge import get_discord_bridge
+from app.services.communication_service import get_communication_service
 
 router = APIRouter(prefix="/communication", tags=["communication"])
 
@@ -157,21 +155,7 @@ async def send_message(
     sender_type: str = Query(..., pattern="^(human|agent|consciousness_instance)$")
 ) -> Dict[str, Any]:
     """Send a message to a channel."""
-    message_id = str(uuid.uuid4())
-
-    # If this is a reply, set thread_id to the parent's thread_id or parent_id
-    thread_id = request.thread_id
-    if request.parent_message_id and not thread_id:
-        parent_msg = await comm_repo.get_message(request.parent_message_id)
-        if parent_msg and parent_msg.get("thread_id"):
-            # Reply to a reply: inherit the existing thread root
-            thread_id = parent_msg["thread_id"]
-        else:
-            # Reply to a top-level message: start thread from parent
-            thread_id = request.parent_message_id
-
-    message = await comm_repo.create_message(
-        message_id=message_id,
+    return await get_communication_service().create_and_dispatch_message(
         channel_id=channel_id,
         sender_id=sender_id,
         sender_name=sender_name,
@@ -179,53 +163,10 @@ async def send_message(
         content=request.content,
         message_type=request.message_type,
         parent_message_id=request.parent_message_id,
-        thread_id=thread_id,
-        metadata=request.metadata
+        thread_id=request.thread_id,
+        metadata=request.metadata,
+        message_id=str(uuid.uuid4()),
     )
-
-    # Fetch reactions (will be empty for new message)
-    reactions = await comm_repo.get_message_reactions(message_id)
-    message['reactions'] = reactions
-
-    # Broadcast message via WebSocket to all channel subscribers
-    await manager.broadcast_to_channel(
-        channel_id=channel_id,
-        message={
-            "type": "message",
-            "channel_id": channel_id,
-            "message": message
-        }
-    )
-
-    # Forward to Discord if this channel is bridged (outbound: CORE → Discord)
-    discord_bridge = get_discord_bridge()
-    if discord_bridge.is_connected:
-        # Find Discord channel ID for this CORE channel
-        for discord_ch_id, mapping in discord_bridge.get_channel_mappings().items():
-            if mapping.core_channel_id == channel_id:
-                # Don't echo back messages that originated from Discord
-                metadata = request.metadata or {}
-                if metadata.get("source") != "discord":
-                    asyncio.create_task(
-                        discord_bridge.send_to_discord(
-                            discord_channel_id=discord_ch_id,
-                            content=f"**{sender_name}**: {request.content}"
-                        )
-                    )
-                break
-
-    # Process message for agent mentions (async, non-blocking)
-    # This checks for @mentions and triggers agent responses
-    asyncio.create_task(
-        get_agent_response_service().process_message(
-            message_id=message_id,
-            channel_id=channel_id,
-            content=request.content,
-            sender_id=sender_id
-        )
-    )
-
-    return message
 
 
 # =============================================================================

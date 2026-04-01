@@ -10,21 +10,24 @@ Provides endpoints for managing the Discord bridge:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status, Query, Body
+import uuid
+
+from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any
 
+from app.repository import discord_repository
 from app.services.discord_bridge import (
     get_discord_bridge,
     start_discord_bridge,
     stop_discord_bridge,
-    BridgeStatus,
 )
 from app.config.discord import (
     DiscordChannelMapping,
-    DiscordConfig,
     get_config,
-    update_config,
+    persist_config,
+    persist_channel_mapping,
+    delete_channel_mapping as delete_persisted_channel_mapping,
 )
 
 router = APIRouter(prefix="/discord", tags=["discord"])
@@ -84,6 +87,18 @@ class ChannelMappingResponse(BaseModel):
     core_channel_name: Optional[str]
     require_mention: bool
     enabled: bool
+
+
+class DiscordMetricsResponse(BaseModel):
+    """High-level Discord gateway metrics."""
+    status: Dict[str, Any]
+    mappings_count: int
+    message_links_count: int
+    message_links_by_direction: Dict[str, int]
+    delivery_events_count: int
+    delivery_events_by_status: Dict[str, int]
+    delivery_events_by_direction: Dict[str, int]
+    recent_failures: List[Dict[str, Any]]
 
 
 # =============================================================================
@@ -181,17 +196,18 @@ async def add_channel_mapping(request: ChannelMappingRequest) -> ChannelMappingR
         enabled=request.enabled,
     )
     
-    bridge.add_channel_mapping(mapping)
+    persisted_mapping = await persist_channel_mapping(mapping)
+    bridge.add_channel_mapping(persisted_mapping)
     
     return ChannelMappingResponse(
-        discord_channel_id=mapping.discord_channel_id,
-        discord_channel_name=mapping.discord_channel_name,
-        discord_guild_id=mapping.discord_guild_id,
-        discord_guild_name=mapping.discord_guild_name,
-        core_channel_id=mapping.core_channel_id,
-        core_channel_name=mapping.core_channel_name,
-        require_mention=mapping.require_mention,
-        enabled=mapping.enabled,
+        discord_channel_id=persisted_mapping.discord_channel_id,
+        discord_channel_name=persisted_mapping.discord_channel_name,
+        discord_guild_id=persisted_mapping.discord_guild_id,
+        discord_guild_name=persisted_mapping.discord_guild_name,
+        core_channel_id=persisted_mapping.core_channel_id,
+        core_channel_name=persisted_mapping.core_channel_name,
+        require_mention=persisted_mapping.require_mention,
+        enabled=persisted_mapping.enabled,
     )
 
 
@@ -199,8 +215,11 @@ async def add_channel_mapping(request: ChannelMappingRequest) -> ChannelMappingR
 async def remove_channel_mapping(discord_channel_id: str):
     """Remove a channel mapping."""
     bridge = get_discord_bridge()
-    
-    if not bridge.remove_channel_mapping(discord_channel_id):
+
+    removed_from_bridge = bridge.remove_channel_mapping(discord_channel_id)
+    deleted_from_store = await delete_persisted_channel_mapping(discord_channel_id)
+
+    if not removed_from_bridge and not deleted_from_store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No mapping found for Discord channel {discord_channel_id}"
@@ -224,19 +243,134 @@ async def send_message(request: SendMessageRequest) -> Dict[str, Any]:
             detail="Discord bridge is not connected"
         )
     
-    success = await bridge.send_to_discord(
+    message_ids = await bridge.send_to_discord(
         discord_channel_id=request.discord_channel_id,
         content=request.content,
         reply_to_message_id=request.reply_to_message_id,
     )
-    
-    if success:
-        return {"message": "Message sent", "success": True}
-    else:
+
+    try:
+        await discord_repository.create_delivery_event(
+            event_id=str(uuid.uuid4()),
+            status="success" if message_ids else "failed",
+            direction="core_to_discord",
+            discord_message_id=message_ids[0] if message_ids else None,
+            discord_channel_id=request.discord_channel_id,
+            error=None if message_ids else "Manual send failed",
+            metadata={
+                "source": "manual_api",
+                "reply_to_message_id": request.reply_to_message_id,
+                "message_count": len(message_ids),
+                "message_ids": message_ids,
+            },
+        )
+    except Exception:
+        # Best-effort observability only; response should reflect the actual send result.
+        pass
+
+    if not message_ids:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send message to Discord"
         )
+
+    return {
+        "message": "Message sent",
+        "success": True,
+        "message_ids": message_ids,
+        "message_count": len(message_ids),
+    }
+
+
+@router.get("/message-links", status_code=status.HTTP_200_OK)
+async def get_message_links(
+    limit: int = Query(50, ge=1, le=200),
+    core_message_id: Optional[str] = None,
+    core_channel_id: Optional[str] = None,
+    discord_channel_id: Optional[str] = None,
+    direction: Optional[str] = Query(None, pattern="^(discord_to_core|core_to_discord)$"),
+) -> Dict[str, Any]:
+    """Inspect persisted Discord↔CORE message link records."""
+    links = await discord_repository.list_message_links(
+        limit=limit,
+        core_message_id=core_message_id,
+        core_channel_id=core_channel_id,
+        discord_channel_id=discord_channel_id,
+        direction=direction,
+    )
+    return {
+        "links": links,
+        "count": len(links),
+        "filters": {
+            "core_message_id": core_message_id,
+            "core_channel_id": core_channel_id,
+            "discord_channel_id": discord_channel_id,
+            "direction": direction,
+            "limit": limit,
+        },
+    }
+
+
+@router.get("/deliveries", status_code=status.HTTP_200_OK)
+async def get_delivery_events(
+    limit: int = Query(50, ge=1, le=200),
+    status_filter: Optional[str] = Query(None, alias="status", pattern="^(success|failed|skipped)$"),
+    direction: Optional[str] = Query(None, pattern="^(discord_to_core|core_to_discord)$"),
+    core_channel_id: Optional[str] = None,
+    discord_channel_id: Optional[str] = None,
+    core_message_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Inspect persisted Discord delivery/ingest events."""
+    events = await discord_repository.list_delivery_events(
+        limit=limit,
+        status=status_filter,
+        direction=direction,
+        core_channel_id=core_channel_id,
+        discord_channel_id=discord_channel_id,
+        core_message_id=core_message_id,
+    )
+    return {
+        "events": events,
+        "count": len(events),
+        "filters": {
+            "status": status_filter,
+            "direction": direction,
+            "core_channel_id": core_channel_id,
+            "discord_channel_id": discord_channel_id,
+            "core_message_id": core_message_id,
+            "limit": limit,
+        },
+    }
+
+
+@router.get("/metrics", status_code=status.HTTP_200_OK, response_model=DiscordMetricsResponse)
+async def get_metrics(
+    recent_failures_limit: int = Query(10, ge=1, le=100),
+) -> DiscordMetricsResponse:
+    """Get Discord bridge observability metrics for validation and debugging."""
+    bridge = get_discord_bridge()
+
+    mappings_count = await discord_repository.count_channel_mappings()
+    message_links_count = await discord_repository.count_message_links()
+    message_links_by_direction = await discord_repository.count_message_links_by_direction()
+    delivery_events_count = await discord_repository.count_delivery_events()
+    delivery_events_by_status = await discord_repository.count_delivery_events_by_status()
+    delivery_events_by_direction = await discord_repository.count_delivery_events_by_direction()
+    recent_failures = await discord_repository.list_delivery_events(
+        limit=recent_failures_limit,
+        status="failed",
+    )
+
+    return DiscordMetricsResponse(
+        status=bridge.get_status_info(),
+        mappings_count=mappings_count,
+        message_links_count=message_links_count,
+        message_links_by_direction=message_links_by_direction,
+        delivery_events_count=delivery_events_count,
+        delivery_events_by_status=delivery_events_by_status,
+        delivery_events_by_direction=delivery_events_by_direction,
+        recent_failures=recent_failures,
+    )
 
 
 # =============================================================================
@@ -279,7 +413,7 @@ async def update_configuration(request: ConfigUpdateRequest) -> Dict[str, Any]:
     if request.response_prefix is not None:
         config.response_prefix = request.response_prefix
     
-    update_config(config)
+    await persist_config(config)
     
     return {
         "message": "Configuration updated",

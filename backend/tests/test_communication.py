@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for communication controller and repository.
 
 Covers: channel CRUD, message sending (threading, metadata),
@@ -186,204 +186,40 @@ class TestUpdatePresenceRequest:
 
 
 # =============================================================================
-# THREAD_ID RESOLUTION (the fixed TODO)
+# MESSAGE CONTROLLER WIRING
 # =============================================================================
 
-class TestThreadIdResolution:
-    """Verify that send_message properly resolves thread_id from parent messages."""
+class TestSendMessageEndpoint:
+    """Verify that the controller delegates to the shared communication service."""
 
     @pytest.mark.asyncio
-    @patch("app.controllers.communication.get_agent_response_service")
-    @patch("app.controllers.communication.get_discord_bridge")
-    @patch("app.controllers.communication.manager")
-    @patch("app.controllers.communication.comm_repo")
-    async def test_reply_to_top_level_creates_thread(self, mock_repo_mod, mock_ws, mock_bridge, mock_ars):
-        """Replying to a top-level message sets thread_id = parent message_id."""
-        parent_id = str(uuid.uuid4())
-        mock_repo = _mock_comm_repo()
-        # Copy all attrs to the patched module
-        for attr in dir(mock_repo):
-            if not attr.startswith("_"):
-                setattr(mock_repo_mod, attr, getattr(mock_repo, attr))
+    @patch("app.controllers.communication.get_communication_service")
+    async def test_send_message_delegates_to_shared_service(self, mock_get_service):
+        # Arrange
+        service = MagicMock()
+        service.create_and_dispatch_message = AsyncMock(return_value=_make_message())
+        mock_get_service.return_value = service
+        request = SendMessageRequest(content="reply", parent_message_id="parent-1")
 
-        # Parent has no thread_id (top-level)
-        mock_repo_mod.get_message = AsyncMock(return_value=_make_message(
-            message_id=parent_id, thread_id=None
-        ))
-        mock_repo_mod.create_message = AsyncMock(return_value=_make_message(
-            parent_message_id=parent_id, thread_id=parent_id
-        ))
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[])
-
-        mock_ws.broadcast_to_channel = AsyncMock()
-        bridge_inst = MagicMock()
-        bridge_inst.is_connected = False
-        mock_bridge.return_value = bridge_inst
-        ars_inst = MagicMock()
-        ars_inst.process_message = AsyncMock()
-        mock_ars.return_value = ars_inst
-
-        req = SendMessageRequest(content="reply", parent_message_id=parent_id)
-        await send_message(
-            channel_id="ch_1", request=req,
-            sender_id="user_1", sender_name="Test", sender_type="human",
+        # Act
+        result = await send_message(
+            channel_id="ch_1",
+            request=request,
+            sender_id="user_1",
+            sender_name="Test",
+            sender_type="human",
         )
 
-        # create_message should have thread_id = parent_id
-        call_kwargs = mock_repo_mod.create_message.call_args
-        assert call_kwargs.kwargs.get("thread_id") == parent_id
-
-    @pytest.mark.asyncio
-    @patch("app.controllers.communication.get_agent_response_service")
-    @patch("app.controllers.communication.get_discord_bridge")
-    @patch("app.controllers.communication.manager")
-    @patch("app.controllers.communication.comm_repo")
-    async def test_reply_to_reply_inherits_thread(self, mock_repo_mod, mock_ws, mock_bridge, mock_ars):
-        """Replying to a reply inherits the root thread_id from the parent."""
-        thread_root = str(uuid.uuid4())
-        parent_id = str(uuid.uuid4())
-
-        mock_repo = _mock_comm_repo()
-        for attr in dir(mock_repo):
-            if not attr.startswith("_"):
-                setattr(mock_repo_mod, attr, getattr(mock_repo, attr))
-
-        mock_repo_mod.get_message = AsyncMock(return_value=_make_message(
-            message_id=parent_id, thread_id=thread_root
-        ))
-        mock_repo_mod.create_message = AsyncMock(return_value=_make_message(
-            parent_message_id=parent_id, thread_id=thread_root
-        ))
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[])
-
-        mock_ws.broadcast_to_channel = AsyncMock()
-        bridge_inst = MagicMock()
-        bridge_inst.is_connected = False
-        mock_bridge.return_value = bridge_inst
-        ars_inst = MagicMock()
-        ars_inst.process_message = AsyncMock()
-        mock_ars.return_value = ars_inst
-
-        req = SendMessageRequest(content="nested reply", parent_message_id=parent_id)
-        await send_message(
-            channel_id="ch_1", request=req,
-            sender_id="user_2", sender_name="User2", sender_type="human",
-        )
-
-        # Should inherit thread_root, NOT parent_id
-        call_kwargs = mock_repo_mod.create_message.call_args
-        assert call_kwargs.kwargs["thread_id"] == thread_root
-
-    @pytest.mark.asyncio
-    @patch("app.controllers.communication.get_agent_response_service")
-    @patch("app.controllers.communication.get_discord_bridge")
-    @patch("app.controllers.communication.manager")
-    @patch("app.controllers.communication.comm_repo")
-    async def test_explicit_thread_id_not_overridden(self, mock_repo_mod, mock_ws, mock_bridge, mock_ars):
-        """If sender provides explicit thread_id, don't override it."""
-        explicit_thread = str(uuid.uuid4())
-        parent_id = str(uuid.uuid4())
-
-        mock_repo = _mock_comm_repo()
-        for attr in dir(mock_repo):
-            if not attr.startswith("_"):
-                setattr(mock_repo_mod, attr, getattr(mock_repo, attr))
-
-        mock_repo_mod.create_message = AsyncMock(return_value=_make_message(
-            parent_message_id=parent_id, thread_id=explicit_thread
-        ))
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[])
-
-        mock_ws.broadcast_to_channel = AsyncMock()
-        bridge_inst = MagicMock()
-        bridge_inst.is_connected = False
-        mock_bridge.return_value = bridge_inst
-        ars_inst = MagicMock()
-        ars_inst.process_message = AsyncMock()
-        mock_ars.return_value = ars_inst
-
-        req = SendMessageRequest(
-            content="explicit thread",
-            parent_message_id=parent_id,
-            thread_id=explicit_thread,
-        )
-        await send_message(
-            channel_id="ch_1", request=req,
-            sender_id="user_1", sender_name="Test", sender_type="human",
-        )
-
-        # get_message should NOT be called (explicit thread_id provided)
-        mock_repo_mod.get_message.assert_not_called()
-
-    @pytest.mark.asyncio
-    @patch("app.controllers.communication.get_agent_response_service")
-    @patch("app.controllers.communication.get_discord_bridge")
-    @patch("app.controllers.communication.manager")
-    @patch("app.controllers.communication.comm_repo")
-    async def test_top_level_message_no_thread(self, mock_repo_mod, mock_ws, mock_bridge, mock_ars):
-        """Top-level messages (no parent) have no thread_id."""
-        mock_repo = _mock_comm_repo()
-        for attr in dir(mock_repo):
-            if not attr.startswith("_"):
-                setattr(mock_repo_mod, attr, getattr(mock_repo, attr))
-
-        mock_repo_mod.create_message = AsyncMock(return_value=_make_message())
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[])
-
-        mock_ws.broadcast_to_channel = AsyncMock()
-        bridge_inst = MagicMock()
-        bridge_inst.is_connected = False
-        mock_bridge.return_value = bridge_inst
-        ars_inst = MagicMock()
-        ars_inst.process_message = AsyncMock()
-        mock_ars.return_value = ars_inst
-
-        req = SendMessageRequest(content="top level")
-        await send_message(
-            channel_id="ch_1", request=req,
-            sender_id="user_1", sender_name="Test", sender_type="human",
-        )
-
-        call_kwargs = mock_repo_mod.create_message.call_args
-        assert call_kwargs.kwargs.get("thread_id") is None
-        mock_repo_mod.get_message.assert_not_called()
-
-    @pytest.mark.asyncio
-    @patch("app.controllers.communication.get_agent_response_service")
-    @patch("app.controllers.communication.get_discord_bridge")
-    @patch("app.controllers.communication.manager")
-    @patch("app.controllers.communication.comm_repo")
-    async def test_parent_not_found_falls_back_to_parent_id(self, mock_repo_mod, mock_ws, mock_bridge, mock_ars):
-        """If parent message is not found in DB, fall back to parent_id as thread_id."""
-        parent_id = str(uuid.uuid4())
-
-        mock_repo = _mock_comm_repo()
-        for attr in dir(mock_repo):
-            if not attr.startswith("_"):
-                setattr(mock_repo_mod, attr, getattr(mock_repo, attr))
-
-        mock_repo_mod.get_message = AsyncMock(return_value=None)
-        mock_repo_mod.create_message = AsyncMock(return_value=_make_message(
-            parent_message_id=parent_id, thread_id=parent_id
-        ))
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[])
-
-        mock_ws.broadcast_to_channel = AsyncMock()
-        bridge_inst = MagicMock()
-        bridge_inst.is_connected = False
-        mock_bridge.return_value = bridge_inst
-        ars_inst = MagicMock()
-        ars_inst.process_message = AsyncMock()
-        mock_ars.return_value = ars_inst
-
-        req = SendMessageRequest(content="reply", parent_message_id=parent_id)
-        await send_message(
-            channel_id="ch_1", request=req,
-            sender_id="user_1", sender_name="Test", sender_type="human",
-        )
-
-        call_kwargs = mock_repo_mod.create_message.call_args
-        assert call_kwargs.kwargs["thread_id"] == parent_id
+        # Assert
+        assert result["channel_id"] == "ch_1"
+        service.create_and_dispatch_message.assert_awaited_once()
+        call_kwargs = service.create_and_dispatch_message.await_args.kwargs
+        assert call_kwargs["channel_id"] == "ch_1"
+        assert call_kwargs["sender_id"] == "user_1"
+        assert call_kwargs["sender_name"] == "Test"
+        assert call_kwargs["sender_type"] == "human"
+        assert call_kwargs["content"] == "reply"
+        assert call_kwargs["parent_message_id"] == "parent-1"
 
 
 # =============================================================================

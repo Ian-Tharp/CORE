@@ -1,4 +1,4 @@
-﻿from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager
 import logging
 import os
 
@@ -15,8 +15,11 @@ from app.services.webhook_service import init_webhook_service, shutdown_webhook_
 from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
 from app.services.memory_service import memory_service
 from app.services.discord_bridge import start_discord_bridge, stop_discord_bridge
-from app.config.discord import get_config as get_discord_config
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository
+from app.config.discord import (
+    get_config as get_discord_config,
+    load_config_from_store as load_discord_config_from_store,
+)
+from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository, discord_repository
 
 
 from app.config.startup_validator import validate_startup_config
@@ -88,6 +91,10 @@ async def lifespan(app: FastAPI):
             # Ensure MMCNC tables exist (Macro/Micro/Cluster/Node hierarchy)
             await mmcnc_repository.ensure_mmcnc_tables()
             logger.info("MMCNC tables ensured")
+
+            # Ensure Discord bridge tables exist
+            await discord_repository.ensure_discord_tables()
+            logger.info("Discord bridge tables ensured")
         except Exception as init_exc:  # noqa: BLE001
             logger.error("Failed to initialize DB pool: %s", init_exc)
             # Do not raise here to allow health endpoint and other features to run;
@@ -114,8 +121,14 @@ async def lifespan(app: FastAPI):
         except Exception as memory_exc:
             logger.error("Failed to initialize memory service: %s", memory_exc)
 
-        # Initialize Discord bridge (if enabled)
-        discord_config = get_discord_config()
+        # Load Discord bridge configuration, then initialize bridge if enabled
+        try:
+            discord_config = await load_discord_config_from_store()
+            logger.info("Discord bridge configuration loaded")
+        except Exception as discord_config_exc:
+            logger.error("Failed to load Discord bridge configuration: %s", discord_config_exc)
+            discord_config = get_discord_config()
+
         if discord_config.enabled:
             try:
                 success = await start_discord_bridge()

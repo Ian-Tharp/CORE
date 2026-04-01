@@ -10,6 +10,8 @@ import os
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from app.repository import discord_repository
+
 
 class DiscordChannelMapping(BaseModel):
     """Maps a Discord channel to a CORE Communication Commons channel."""
@@ -83,6 +85,90 @@ def get_discord_config() -> DiscordConfig:
         config.allowed_users = [u.strip() for u in allowed_users_env.split(",") if u.strip()]
     
     return config
+
+
+async def load_config_from_store() -> DiscordConfig:
+    """
+    Load persisted Discord bridge configuration and merge it with environment
+    values for sensitive settings like the bot token.
+    """
+    config = get_discord_config()
+
+    stored_config = await discord_repository.get_bridge_config()
+    if stored_config:
+        config.enabled = stored_config.get("enabled", config.enabled)
+        config.allowed_users = stored_config.get("allowed_users") or []
+        config.default_core_channel = stored_config.get("default_core_channel")
+        config.auto_create_channels = stored_config.get(
+            "auto_create_channels",
+            config.auto_create_channels,
+        )
+        config.message_prefix = stored_config.get("message_prefix") or ""
+        config.response_prefix = stored_config.get("response_prefix") or ""
+        config.reconnect_delay_seconds = stored_config.get(
+            "reconnect_delay_seconds",
+            config.reconnect_delay_seconds,
+        )
+        config.max_reconnect_attempts = stored_config.get(
+            "max_reconnect_attempts",
+            config.max_reconnect_attempts,
+        )
+
+    stored_mappings = await discord_repository.list_channel_mappings()
+    if stored_mappings:
+        config.channel_mappings = {
+            mapping["discord_channel_id"]: DiscordChannelMapping(**mapping)
+            for mapping in stored_mappings
+        }
+
+    update_config(config)
+    return config
+
+
+async def persist_config(config: DiscordConfig) -> DiscordConfig:
+    """Persist the non-sensitive Discord bridge configuration."""
+    await discord_repository.upsert_bridge_config(
+        enabled=config.enabled,
+        allowed_users=config.allowed_users,
+        default_core_channel=config.default_core_channel,
+        auto_create_channels=config.auto_create_channels,
+        message_prefix=config.message_prefix,
+        response_prefix=config.response_prefix,
+        reconnect_delay_seconds=config.reconnect_delay_seconds,
+        max_reconnect_attempts=config.max_reconnect_attempts,
+    )
+    update_config(config)
+    return config
+
+
+async def persist_channel_mapping(mapping: DiscordChannelMapping) -> DiscordChannelMapping:
+    """Persist a Discord channel mapping and update the config singleton."""
+    stored_mapping = await discord_repository.upsert_channel_mapping(
+        discord_channel_id=mapping.discord_channel_id,
+        discord_channel_name=mapping.discord_channel_name,
+        discord_guild_id=mapping.discord_guild_id,
+        discord_guild_name=mapping.discord_guild_name,
+        core_channel_id=mapping.core_channel_id,
+        core_channel_name=mapping.core_channel_name,
+        require_mention=mapping.require_mention,
+        enabled=mapping.enabled,
+    )
+    persisted = DiscordChannelMapping(**stored_mapping)
+
+    config = get_config()
+    config.channel_mappings[persisted.discord_channel_id] = persisted
+    update_config(config)
+    return persisted
+
+
+async def delete_channel_mapping(discord_channel_id: str) -> bool:
+    """Delete a Discord channel mapping from storage and the config singleton."""
+    deleted = await discord_repository.delete_channel_mapping(discord_channel_id)
+    if deleted:
+        config = get_config()
+        config.channel_mappings.pop(discord_channel_id, None)
+        update_config(config)
+    return deleted
 
 
 # Singleton instance

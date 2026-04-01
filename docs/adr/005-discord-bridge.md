@@ -11,6 +11,11 @@ Full bidirectional messaging working:
 - ✅ CORE UI → Discord (messages appear in channel)
 - ✅ Agent → CORE → Discord (Vigil posts to CORE, forwarded to Discord)
 - ✅ Vigil registered in CORE presence system
+- ✅ Discord bridge configuration and channel mappings persisted in PostgreSQL
+- ✅ Discord/Core message links persisted for dedupe and reply correlation
+- ✅ Shared communication flow service now powers controller, agents, and Discord ingress
+- ✅ Delivery event observability and inspection endpoints added for bridge validation
+- ✅ Angular admin dashboard added for bridge status, mappings, links, and failure inspection
 
 ## Context
 
@@ -57,32 +62,51 @@ Discord Server
 
 2. **DiscordConfig** (`backend/app/config/discord.py`)
    - Bot token (from environment)
-   - Channel mappings (Discord channel ID → CORE channel ID)
-   - User allowlists
-   - Feature flags
+   - PostgreSQL-backed channel mappings (Discord channel ID → CORE channel ID)
+   - PostgreSQL-backed bridge settings for allowlists and routing behavior
+   - Environment remains the source for sensitive bot credentials
 
 3. **DiscordController** (`backend/app/controllers/discord.py`)
    - REST endpoints for bridge management
    - GET /discord/status
-   - POST /discord/channels/map
+   - POST /discord/channels
    - GET /discord/channels
+
+4. **DiscordRepository** (`backend/app/repository/discord_repository.py`)
+   - Persists bridge settings and channel mappings
+   - Enables restart-safe native gateway behavior
+
+5. **CommunicationService** (`backend/app/services/communication_service.py`)
+   - Centralizes message creation, thread resolution, WebSocket broadcast, Discord forwarding, and agent mention triggering
+   - Prevents drift between controller, agent, and bridge code paths
+
+6. **Discord observability endpoints** (`backend/app/controllers/discord.py`)
+   - `GET /discord/metrics`
+   - `GET /discord/message-links`
+   - `GET /discord/deliveries`
+   - Provide validation and debugging visibility for the native gateway
+
+7. **Discord Bridge Dashboard** (`ui/core-ui/src/app/tools/discord-bridge-dashboard/`)
+   - Displays live bridge status, mappings, message links, deliveries, and recent failures
+   - Gives operators an in-app validation surface instead of relying only on raw API calls
 
 ### Message Flow
 
 **Inbound (Discord → CORE):**
 1. Discord message arrives via discord.py
 2. Bridge checks allowlist/channel mapping
-3. Bridge creates Communication Commons message via existing API
-4. Agent Response Service detects @mentions, triggers agents
-5. Response written to Communication Commons
-6. Bridge's WebSocket subscription catches response
-7. Bridge sends to Discord
+3. Shared communication service deduplicates via stored message links
+4. Shared communication service creates the Communication Commons message
+5. Agent Response Service detects @mentions, triggers agents
+6. Response written to Communication Commons through the same shared service
+7. Shared communication service forwards replies back to Discord and records outbound links
 
 **Outbound (CORE → Discord):**
 1. Agent/user creates message in Communication Commons
-2. WebSocket broadcasts to subscribers
-3. Bridge receives via WebSocket subscription
+2. Shared communication service broadcasts to subscribers
+3. Shared communication service looks up parent Discord link when replying
 4. Bridge sends to mapped Discord channel
+5. Sent Discord message IDs are stored for future correlation
 
 ### Integration Points
 
@@ -91,6 +115,8 @@ Uses existing CORE infrastructure:
 - `websocket_manager.py` — real-time updates
 - `agent_response_service.py` — @mention handling
 - `container_manager.py` — sandboxed execution (already built!)
+- `communication_service.py` — shared message lifecycle coordination
+- `discord_message_links` — persistent reply/dedupe correlation layer
 
 ## Configuration
 
@@ -130,11 +156,14 @@ allowed_users = ["155385542165397504", "1469753119981179173"]
 ## Implementation Plan
 
 ### Phase 1: Core Bridge (Today)
-- [ ] DiscordBridgeService with discord.py
-- [ ] Channel mapping configuration
-- [ ] Inbound message routing to Communication Commons
-- [ ] Outbound response routing to Discord
-- [ ] Basic presence sync
+- [x] DiscordBridgeService with discord.py
+- [x] Channel mapping configuration
+- [x] Inbound message routing to Communication Commons
+- [x] Outbound response routing to Discord
+- [x] Basic presence sync
+- [x] Persist bridge config and channel mappings in PostgreSQL
+- [x] Persist Discord/Core message links for dedupe and reply correlation
+- [x] Centralize message lifecycle in a shared communication service
 
 ### Phase 2: Enhanced Features (Later)
 - [ ] Reaction bridging
@@ -142,6 +171,8 @@ allowed_users = ["155385542165397504", "1469753119981179173"]
 - [ ] Media/attachment handling
 - [ ] Slash commands
 - [ ] Presence sync (online/away/busy)
+- [x] Bridge observability for links, recent failures, and delivery counts
+- [x] Admin validation UI for bridge diagnostics and operator workflows
 
 ### Phase 3: Full Feature Parity (Optional)
 - [ ] Message editing/deletion sync

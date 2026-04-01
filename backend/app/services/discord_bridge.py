@@ -19,10 +19,14 @@ import discord
 from discord import Client, Intents, Message, TextChannel, DMChannel, Thread
 from discord.errors import LoginFailure, ConnectionClosed
 
-from app.config.discord import DiscordConfig, DiscordChannelMapping, get_config
+from app.config.discord import (
+    DiscordConfig,
+    DiscordChannelMapping,
+    get_config,
+    load_config_from_store,
+    persist_channel_mapping,
+)
 from app.repository import communication_repository as comm_repo
-from app.websocket_manager import manager as ws_manager
-from app.services.agent_response_service import get_agent_response_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +106,8 @@ class DiscordBridgeService:
         Returns:
             True if started successfully, False otherwise.
         """
+        self.config = await load_config_from_store()
+
         if not self.config.enabled:
             logger.info("Discord bridge is disabled")
             return False
@@ -247,6 +253,7 @@ class DiscordBridgeService:
                     logger.info(f"Created CORE channel {mapping.core_channel_id} for Discord channel {discord_channel_id}")
                 
                 self._bridged_core_channels.add(mapping.core_channel_id)
+                await persist_channel_mapping(mapping)
                 
             except Exception as e:
                 logger.error(f"Error initializing channel mapping for {discord_channel_id}: {e}")
@@ -275,7 +282,7 @@ class DiscordBridgeService:
         
         if not mapping:
             # Check if we should auto-create mapping
-            if self.config.auto_create_channels and self.config.default_core_channel:
+            if self.config.auto_create_channels:
                 core_channel_id = f"discord_{channel_id}"
                 mapping = DiscordChannelMapping(
                     discord_channel_id=channel_id,
@@ -296,6 +303,7 @@ class DiscordBridgeService:
                     initial_members=[]
                 )
                 self._bridged_core_channels.add(core_channel_id)
+                await persist_channel_mapping(mapping)
             else:
                 logger.debug(f"No mapping for Discord channel {channel_id}")
                 return
@@ -309,60 +317,27 @@ class DiscordBridgeService:
         
         # Create message in CORE Communication Commons
         try:
-            import uuid
-            message_id = str(uuid.uuid4())
-            
             # Clean content (remove bot mention if present)
             content = message.content
             if self._client.user in message.mentions:
                 content = content.replace(f'<@{self._client.user.id}>', '').strip()
                 content = content.replace(f'<@!{self._client.user.id}>', '').strip()
-            
-            # Add message prefix if configured
-            if self.config.message_prefix:
-                content = f"{self.config.message_prefix}{content}"
-            
-            # Create the message in Communication Commons
-            core_message = await comm_repo.create_message(
-                message_id=message_id,
-                channel_id=mapping.core_channel_id,
-                sender_id=f"discord_{message.author.id}",
-                sender_name=message.author.display_name,
-                sender_type="human",
-                content=content,
-                message_type="text",
-                parent_message_id=None,
-                thread_id=str(message.channel.id) if isinstance(message.channel, Thread) else None,
-                metadata={
-                    "source": "discord",
-                    "discord_message_id": str(message.id),
-                    "discord_channel_id": str(message.channel.id),
-                    "discord_author_id": str(message.author.id),
-                    "discord_guild_id": str(message.guild.id) if message.guild else None,
-                }
+
+            from app.services.communication_service import get_communication_service
+
+            core_message = await get_communication_service().ingest_discord_message(
+                mapping=mapping,
+                discord_message=message,
+                cleaned_content=content,
+                message_prefix=self.config.message_prefix,
             )
-            
-            # Broadcast via WebSocket
-            await ws_manager.broadcast_to_channel(
-                channel_id=mapping.core_channel_id,
-                message={
-                    "type": "message",
-                    "channel_id": mapping.core_channel_id,
-                    "message": core_message
-                }
-            )
-            
-            # Process for agent mentions (triggers CORE's agent response system)
-            asyncio.create_task(
-                get_agent_response_service().process_message(
-                    message_id=message_id,
-                    channel_id=mapping.core_channel_id,
-                    content=content,
-                    sender_id=f"discord_{message.author.id}"
+
+            if core_message:
+                logger.debug(
+                    "Bridged Discord message %s to CORE channel %s",
+                    message.id,
+                    mapping.core_channel_id,
                 )
-            )
-            
-            logger.debug(f"Bridged Discord message {message.id} to CORE channel {mapping.core_channel_id}")
             
         except Exception as e:
             logger.error(f"Error bridging Discord message: {e}")
@@ -372,7 +347,7 @@ class DiscordBridgeService:
         discord_channel_id: str,
         content: str,
         reply_to_message_id: Optional[str] = None
-    ) -> bool:
+    ) -> List[str]:
         """
         Send a message to a Discord channel.
         
@@ -382,21 +357,21 @@ class DiscordBridgeService:
             reply_to_message_id: Optional message ID to reply to.
             
         Returns:
-            True if sent successfully, False otherwise.
+            List of created Discord message IDs. Empty list indicates failure.
         """
         if not self.is_connected:
             logger.warning("Cannot send to Discord: bridge not connected")
-            return False
+            return []
         
         try:
             channel = self._client.get_channel(int(discord_channel_id))
             if not channel:
                 logger.error(f"Discord channel {discord_channel_id} not found")
-                return False
+                return []
             
             if not isinstance(channel, (TextChannel, DMChannel, Thread)):
                 logger.error(f"Discord channel {discord_channel_id} is not a text channel")
-                return False
+                return []
             
             # Add response prefix if configured
             if self.config.response_prefix:
@@ -404,23 +379,26 @@ class DiscordBridgeService:
             
             # Split long messages (Discord limit is 2000 chars)
             chunks = self._split_message(content, 2000)
-            
+            created_message_ids: List[str] = []
+
             for chunk in chunks:
                 if reply_to_message_id:
                     try:
                         reply_msg = await channel.fetch_message(int(reply_to_message_id))
-                        await reply_msg.reply(chunk)
+                        sent_message = await reply_msg.reply(chunk)
                     except:
-                        await channel.send(chunk)
+                        sent_message = await channel.send(chunk)
                     reply_to_message_id = None  # Only reply to first chunk
                 else:
-                    await channel.send(chunk)
+                    sent_message = await channel.send(chunk)
+
+                created_message_ids.append(str(sent_message.id))
             
-            return True
+            return created_message_ids
             
         except Exception as e:
             logger.error(f"Error sending to Discord: {e}")
-            return False
+            return []
     
     async def start_typing(self, discord_channel_id: str) -> None:
         """

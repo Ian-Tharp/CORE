@@ -47,21 +47,14 @@ import re
 from typing import List, Dict, Any, Optional
 
 from app.models.agent_models import AgentConfig
-from app.repository.agent_repository import get_agent, get_agents_by_ids
+from app.repository.agent_repository import get_agents_by_ids
 from app.repository.communication_repository import (
     list_messages,
-    create_message,
 )
 from app.services.agent_factory_service import get_agent_factory
-from app.websocket_manager import manager as websocket_manager
 from app.repository.communication_repository import get_message
 
 logger = logging.getLogger(__name__)
-
-
-# Feature flag: during migration, emit both legacy "new_message" and canonical "message" events
-# Set to False after UI fully migrates.
-DUAL_WS_MESSAGE_EVENT = True
 
 class AgentResponseService:
     """
@@ -556,12 +549,9 @@ Please respond naturally to the conversation, staying true to your personality a
         """
 
         try:
-            import uuid as _uuid
+            from app.services.communication_service import get_communication_service
 
-            # Create message from agent (repository expects explicit fields)
-            new_message_id = str(_uuid.uuid4())
-            created = await create_message(
-                message_id=new_message_id,
+            created = await get_communication_service().create_and_dispatch_message(
                 channel_id=channel_id,
                 sender_id=agent.agent_id,
                 sender_name=agent.agent_name,
@@ -570,63 +560,13 @@ Please respond naturally to the conversation, staying true to your personality a
                 message_type="text",
                 parent_message_id=reply_to,
                 metadata={"tools_used": tools_used} if tools_used else None,
+                process_mentions=False,
             )
 
             logger.info(
                 f"Posted response from {agent.agent_name} "
                 f"in channel {channel_id}: {created.get('message_id')}"
             )
-
-            # Broadcast via WebSocket using the created message dict
-            # Canonical event
-            await websocket_manager.broadcast_to_channel(
-                channel_id=channel_id,
-                message={
-                    "type": "message",
-                    "channel_id": channel_id,
-                    "message": {
-                        "message_id": created.get("message_id"),
-                        "channel_id": created.get("channel_id"),
-                        "sender_id": created.get("sender_id"),
-                        "sender_name": created.get("sender_name"),
-                        "sender_type": created.get("sender_type"),
-                        "content": created.get("content"),
-                        "message_type": created.get("message_type"),
-                        "created_at": created.get("created_at"),
-                        "parent_message_id": created.get("parent_message_id"),
-                        "thread_id": created.get("thread_id"),
-                    },
-                },
-            )
-
-            # Legacy event (optional, for migration period)
-            if DUAL_WS_MESSAGE_EVENT:
-                await websocket_manager.broadcast_to_channel(
-                    channel_id=channel_id,
-                    message={
-                        "type": "new_message",
-                        "message": {
-                            "message_id": created.get("message_id"),
-                            "channel_id": created.get("channel_id"),
-                            "sender_id": created.get("sender_id"),
-                            "sender_name": created.get("sender_name"),
-                            "sender_type": created.get("sender_type"),
-                            "content": created.get("content"),
-                            "message_type": created.get("message_type"),
-                            "created_at": created.get("created_at"),
-                            "parent_message_id": created.get("parent_message_id"),
-                            "thread_id": created.get("thread_id"),
-                        },
-                    },
-                )
-
-            # Forward to Discord if the original message came from Discord
-            if reply_to:
-                await self._forward_to_discord_if_needed(
-                    reply_to_message_id=reply_to,
-                    agent_name=agent.agent_name,
-                    content=content
-                )
 
         except Exception as e:
             logger.error(
@@ -670,68 +610,6 @@ Please respond naturally to the conversation, staying true to your personality a
         except Exception as e:
             # Don't fail agent invocation just because typing indicator failed
             logger.debug(f"Failed to start typing indicator: {e}")
-
-    async def _forward_to_discord_if_needed(
-        self,
-        reply_to_message_id: str,
-        agent_name: str,
-        content: str
-    ) -> None:
-        """
-        Forward agent response to Discord if the original message came from Discord.
-
-        Checks the metadata of the original message to see if it originated
-        from Discord (has source="discord" and discord_channel_id).
-        If so, sends the response back to that Discord channel.
-
-        Args:
-            reply_to_message_id: The message ID we're replying to
-            agent_name: Name of the agent responding
-            content: Response content
-        """
-        try:
-            # Get the original message to check if it came from Discord
-            original_message = await get_message(reply_to_message_id)
-            if not original_message:
-                return
-
-            metadata = original_message.get("metadata", {}) or {}
-            if metadata.get("source") != "discord":
-                return
-
-            discord_channel_id = metadata.get("discord_channel_id")
-            discord_message_id = metadata.get("discord_message_id")
-
-            if not discord_channel_id:
-                return
-
-            # Import here to avoid circular import
-            from app.services.discord_bridge import get_discord_bridge
-
-            bridge = get_discord_bridge()
-            if not bridge.is_connected:
-                logger.debug("Discord bridge not connected, skipping forward")
-                return
-
-            # Format response with agent name
-            formatted_response = f"**{agent_name}:** {content}"
-
-            # Send to Discord
-            success = await bridge.send_to_discord(
-                discord_channel_id=discord_channel_id,
-                content=formatted_response,
-                reply_to_message_id=discord_message_id
-            )
-
-            if success:
-                logger.info(f"Forwarded agent response to Discord channel {discord_channel_id}")
-            else:
-                logger.warning(f"Failed to forward response to Discord channel {discord_channel_id}")
-
-        except Exception as e:
-            # Don't fail the main response posting just because Discord forward failed
-            logger.warning(f"Error forwarding to Discord: {e}")
-
 
 # =============================================================================
 # SINGLETON INSTANCE
