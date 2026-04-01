@@ -235,9 +235,10 @@ def list_api_keys() -> list:
 
 class RateLimiter:
     """
-    Simple sliding window rate limiter.
+    In-process sliding window rate limiter.
 
-    RSI TODO: Use Redis for distributed rate limiting
+    Suitable for single-instance deployments. For distributed (multi-process)
+    rate limiting, see RedisRateLimiter below.
     """
 
     def __init__(
@@ -289,8 +290,96 @@ class RateLimiter:
         }
 
 
-# Global rate limiter
-_rate_limiter = RateLimiter()
+class RedisRateLimiter:
+    """
+    Redis-backed distributed rate limiter using INCR + EXPIRE (fixed window).
+
+    Each client gets two Redis counters:
+        core:ratelimit:{client_id}:minute  — expires in 60 s
+        core:ratelimit:{client_id}:hour    — expires in 3600 s
+
+    On first request the key is created and an expiry is set atomically.
+    Falls back to the in-memory RateLimiter when Redis is unreachable.
+
+    Usage:
+        limiter = RedisRateLimiter(redis_url="redis://localhost:6379/0")
+        result  = await limiter.check_rate_limit("192.168.1.1")
+    """
+
+    _KEY_PREFIX = "core:ratelimit"
+
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379/0",
+        requests_per_minute: int = 60,
+        requests_per_hour: int = 1000,
+    ):
+        self.redis_url = redis_url
+        self.rpm = requests_per_minute
+        self.rph = requests_per_hour
+        self._fallback = RateLimiter(requests_per_minute=rpm, requests_per_hour=rph) \
+            if False else RateLimiter(requests_per_minute=requests_per_minute,
+                                     requests_per_hour=requests_per_hour)
+        self._client: Optional[Any] = None  # redis.asyncio.Redis
+
+    async def _get_client(self) -> Any:
+        """Return (or create) the Redis client."""
+        if self._client is None:
+            import redis.asyncio as aioredis
+            self._client = aioredis.from_url(self.redis_url, decode_responses=True)
+        return self._client
+
+    async def check_rate_limit(self, client_id: str) -> Dict[str, Any]:
+        """
+        Increment Redis counters and check against configured limits.
+
+        Returns the same shape as RateLimiter.check_rate_limit().
+        Falls back to in-memory rate limiting on any Redis error.
+        """
+        try:
+            redis = await self._get_client()
+            minute_key = f"{self._KEY_PREFIX}:{client_id}:minute"
+            hour_key = f"{self._KEY_PREFIX}:{client_id}:hour"
+
+            # Increment both counters; INCR creates the key at 0 and returns 1 on first call
+            pipe = redis.pipeline(transaction=False)
+            pipe.incr(minute_key)
+            pipe.incr(hour_key)
+            minute_count, hour_count = await pipe.execute()
+
+            # Set TTL only on first access (count == 1) — avoids resetting the window
+            if minute_count == 1:
+                await redis.expire(minute_key, 60)
+            if hour_count == 1:
+                await redis.expire(hour_key, 3600)
+
+            allowed = minute_count <= self.rpm and hour_count <= self.rph
+
+            if not allowed:
+                # Roll back the increment so the counter stays accurate
+                rollback_pipe = redis.pipeline(transaction=False)
+                rollback_pipe.decr(minute_key)
+                rollback_pipe.decr(hour_key)
+                await rollback_pipe.execute()
+
+            return {
+                "allowed": allowed,
+                "minute_remaining": max(0, self.rpm - minute_count),
+                "hour_remaining": max(0, self.rph - hour_count),
+                "retry_after": 60 if minute_count > self.rpm else None,
+                "backend": "redis",
+            }
+
+        except Exception as exc:
+            logger.warning("Redis rate limiter unavailable, using in-memory fallback: %s", exc)
+            result = self._fallback.check_rate_limit(client_id)
+            result["backend"] = "memory_fallback"
+            return result
+
+
+# Global rate limiter — uses Redis if REDIS_URL env var is set, otherwise in-memory
+_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+_rate_limiter: Any = RedisRateLimiter(redis_url=_redis_url) if os.getenv("REDIS_URL") else RateLimiter()
 
 
 # =============================================================================
@@ -345,7 +434,10 @@ async def check_rate_limit(request: Request) -> Dict[str, Any]:
 
     client_id = request.client.host if request.client else "unknown"
 
-    result = _rate_limiter.check_rate_limit(client_id)
+    if asyncio.iscoroutinefunction(_rate_limiter.check_rate_limit):
+        result = await _rate_limiter.check_rate_limit(client_id)
+    else:
+        result = _rate_limiter.check_rate_limit(client_id)
 
     if not result["allowed"]:
         raise HTTPException(
