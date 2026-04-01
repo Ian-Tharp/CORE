@@ -3,10 +3,6 @@ CORE Cognitive Graph v2 - Production Implementation
 
 Implements the full CORE pipeline with proper state management and conditional routing:
 START → Comprehension → Orchestration → Reasoning → Evaluation → Conversation → END
-
-RSI TODO: Add tool execution safety layer with confirmation dialogs
-RSI TODO: Implement HITL (Human-in-the-Loop) checkpoints
-RSI TODO: Add Intelligence Layer logging for learning
 """
 
 import os
@@ -24,6 +20,7 @@ from app.core.agents.orchestration_agent import OrchestrationAgent
 from app.core.agents.reasoning_agent import ReasoningAgent
 from app.core.agents.evaluation_agent import EvaluationAgent
 from app.core.telemetry import get_tracer
+from app.core.intelligence_log import record_pipeline_run
 
 
 class COREGraph:
@@ -133,9 +130,6 @@ class COREGraph:
 
                 span.set_attribute("intent.type", intent.type if intent else "unknown")
                 span.set_attribute("intent.confidence", float(intent.confidence) if intent else 0.0)
-
-                # RSI TODO: Query knowledge base for relevant context
-                # RSI TODO: Check if user input needs clarification
 
             except Exception as e:
                 span.record_exception(e)
@@ -396,6 +390,12 @@ class COREGraph:
                 span.set_attribute("error", True)
                 state.add_error(f"Conversation failed: {str(e)}")
                 state.response = "An error occurred while formulating the response."
+
+            # Intelligence Layer: emit structured pipeline run summary for learning/analysis
+            try:
+                record_pipeline_run(state)
+            except Exception as _intel_exc:
+                logger.debug("Intelligence log failed (non-critical): %s", _intel_exc)
 
         return state
 
