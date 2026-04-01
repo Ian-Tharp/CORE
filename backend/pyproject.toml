@@ -28,6 +28,9 @@ dependencies = [
     "discord-py>=2.3.0",
     "pymupdf>=1.25.0",
     "redis>=5.0.1",
+    "opentelemetry-api>=1.40.0",
+    "opentelemetry-sdk>=1.40.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.40.0",
 ]
 
 [dependency-groups]

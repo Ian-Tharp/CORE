@@ -19,6 +19,7 @@ from app.core.agents.comprehension_agent import ComprehensionAgent
 from app.core.agents.orchestration_agent import OrchestrationAgent
 from app.core.agents.reasoning_agent import ReasoningAgent
 from app.core.agents.evaluation_agent import EvaluationAgent
+from app.core.telemetry import get_tracer
 
 
 class COREGraph:
@@ -114,24 +115,34 @@ class COREGraph:
         - What tools/capabilities are needed?
         - Is there ambiguity that needs clarification?
         """
-        state.add_execution_node("comprehension")
+        tracer = get_tracer()
+        with tracer.start_as_current_span("core.comprehension") as span:
+            span.set_attribute("node.name", "comprehension")
+            span.set_attribute("pipeline.stage", "1_comprehension")
 
-        try:
-            # Run comprehension agent
-            intent = self.comprehension_agent.analyze_intent(state.user_input)
-            state.intent = intent
+            state.add_execution_node("comprehension")
 
-            # RSI TODO: Query knowledge base for relevant context
-            # RSI TODO: Check if user input needs clarification
+            try:
+                # Run comprehension agent
+                intent = self.comprehension_agent.analyze_intent(state.user_input)
+                state.intent = intent
 
-        except Exception as e:
-            state.add_error(f"Comprehension failed: {str(e)}")
-            # Fallback to conversation mode on error
-            state.intent = UserIntent(
-                type="conversation",
-                description="Error in comprehension, falling back to chat",
-                confidence=0.5
-            )
+                span.set_attribute("intent.type", intent.type if intent else "unknown")
+                span.set_attribute("intent.confidence", float(intent.confidence) if intent else 0.0)
+
+                # RSI TODO: Query knowledge base for relevant context
+                # RSI TODO: Check if user input needs clarification
+
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("error", True)
+                state.add_error(f"Comprehension failed: {str(e)}")
+                # Fallback to conversation mode on error
+                state.intent = UserIntent(
+                    type="conversation",
+                    description="Error in comprehension, falling back to chat",
+                    confidence=0.5
+                )
 
         return state
 
@@ -145,30 +156,41 @@ class COREGraph:
         - Dependency graph between steps
         - Retry policies and HITL checkpoints
         """
-        state.add_execution_node("orchestration")
+        tracer = get_tracer()
+        with tracer.start_as_current_span("core.orchestration") as span:
+            span.set_attribute("node.name", "orchestration")
+            span.set_attribute("pipeline.stage", "2_orchestration")
 
-        try:
-            # If this is a plan revision, increment revision number
-            if state.plan and state.eval_result:
-                revision_num = state.plan.revision + 1
-                feedback = state.eval_result.feedback
-            else:
-                revision_num = 1
-                feedback = None
+            state.add_execution_node("orchestration")
 
-            # Run orchestration agent to create/revise plan
-            plan = self.orchestration_agent.create_plan(
-                user_input=state.user_input,
-                intent=state.intent,
-                previous_plan=state.plan,
-                evaluation_feedback=feedback,
-                revision=revision_num
-            )
+            try:
+                # If this is a plan revision, increment revision number
+                if state.plan and state.eval_result:
+                    revision_num = state.plan.revision + 1
+                    feedback = state.eval_result.feedback
+                else:
+                    revision_num = 1
+                    feedback = None
 
-            state.plan = plan
+                span.set_attribute("plan.revision", revision_num)
 
-        except Exception as e:
-            state.add_error(f"Orchestration failed: {str(e)}")
+                # Run orchestration agent to create/revise plan
+                plan = self.orchestration_agent.create_plan(
+                    user_input=state.user_input,
+                    intent=state.intent,
+                    previous_plan=state.plan,
+                    evaluation_feedback=feedback,
+                    revision=revision_num
+                )
+
+                state.plan = plan
+                if plan:
+                    span.set_attribute("plan.step_count", len(plan.steps))
+
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("error", True)
+                state.add_error(f"Orchestration failed: {str(e)}")
 
         return state
 
@@ -182,36 +204,50 @@ class COREGraph:
         - Handles retries based on retry policy
         - Produces artifacts and intermediate results
         """
-        state.add_execution_node("reasoning")
+        tracer = get_tracer()
+        with tracer.start_as_current_span("core.reasoning") as span:
+            span.set_attribute("node.name", "reasoning")
+            span.set_attribute("pipeline.stage", "3_reasoning")
 
-        if not state.plan:
-            state.add_error("No plan available for reasoning")
-            return state
+            state.add_execution_node("reasoning")
 
-        try:
-            # If evaluation requested retry of a specific step, start there
-            if state.eval_result and state.eval_result.retry_step_id:
-                start_step_id = state.eval_result.retry_step_id
-            else:
-                start_step_id = None
+            if not state.plan:
+                state.add_error("No plan available for reasoning")
+                span.set_attribute("error", True)
+                span.set_attribute("error.reason", "no_plan")
+                return state
 
-            # Execute the plan
-            results = self.reasoning_agent.execute_plan(
-                plan=state.plan,
-                start_from_step=start_step_id,
-                enable_tools=state.config.get("enable_tools", True)
-            )
+            try:
+                # If evaluation requested retry of a specific step, start there
+                if state.eval_result and state.eval_result.retry_step_id:
+                    start_step_id = state.eval_result.retry_step_id
+                else:
+                    start_step_id = None
 
-            # Update state with results
-            if start_step_id:
-                # Replace result for retried step
-                state.step_results = [
-                    r for r in state.step_results if r.step_id != start_step_id
-                ]
-            state.step_results.extend(results)
+                span.set_attribute("plan.goal", state.plan.goal or "")
+                span.set_attribute("plan.step_count", len(state.plan.steps))
 
-        except Exception as e:
-            state.add_error(f"Reasoning failed: {str(e)}")
+                # Execute the plan
+                results = self.reasoning_agent.execute_plan(
+                    plan=state.plan,
+                    start_from_step=start_step_id,
+                    enable_tools=state.config.get("enable_tools", True)
+                )
+
+                # Update state with results
+                if start_step_id:
+                    # Replace result for retried step
+                    state.step_results = [
+                        r for r in state.step_results if r.step_id != start_step_id
+                    ]
+                state.step_results.extend(results)
+
+                span.set_attribute("steps.executed", len(results))
+
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("error", True)
+                state.add_error(f"Reasoning failed: {str(e)}")
 
         return state
 
@@ -224,117 +260,136 @@ class COREGraph:
         - What's the quality/confidence of the output?
         - Should we retry a step, revise the plan, or finalize?
         """
-        state.add_execution_node("evaluation")
+        tracer = get_tracer()
+        with tracer.start_as_current_span("core.evaluation") as span:
+            span.set_attribute("node.name", "evaluation")
+            span.set_attribute("pipeline.stage", "4_evaluation")
 
-        try:
-            # Run evaluation agent
-            evaluation = self.evaluation_agent.evaluate_execution(
-                user_input=state.user_input,
-                intent=state.intent,
-                plan=state.plan,
-                step_results=state.step_results,
-            )
+            state.add_execution_node("evaluation")
 
-            state.eval_result = evaluation
+            try:
+                # Run evaluation agent
+                evaluation = self.evaluation_agent.evaluate_execution(
+                    user_input=state.user_input,
+                    intent=state.intent,
+                    plan=state.plan,
+                    step_results=state.step_results,
+                )
 
-        except Exception as e:
-            state.add_error(f"Evaluation failed: {str(e)}")
-            # Default to success on evaluation failure to avoid infinite loops
-            state.eval_result = EvaluationResult(
-                overall_status="success",
-                confidence=0.5,
-                meets_requirements=True,
-                quality_score=0.5,
-                feedback="Evaluation failed, defaulting to success",
-                next_action="finalize"
-            )
+                state.eval_result = evaluation
+
+                if evaluation:
+                    span.set_attribute("eval.status", evaluation.overall_status or "unknown")
+                    span.set_attribute("eval.next_action", evaluation.next_action or "unknown")
+                    span.set_attribute("eval.confidence", float(evaluation.confidence or 0.0))
+
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("error", True)
+                state.add_error(f"Evaluation failed: {str(e)}")
+                # Default to success on evaluation failure to avoid infinite loops
+                state.eval_result = EvaluationResult(
+                    overall_status="success",
+                    confidence=0.5,
+                    meets_requirements=True,
+                    quality_score=0.5,
+                    feedback="Evaluation failed, defaulting to success",
+                    next_action="finalize"
+                )
 
         return state
 
     def conversation_node(self, state: COREState) -> COREState:
         """
         Conversation Node: Formulate final response to user.
-        
+
         Produces:
         - Natural language response (primary content first!)
         - Minimal metadata (only if debugging enabled or low confidence)
         """
         import logging
         logger = logging.getLogger(__name__)
-        
-        state.add_execution_node("conversation")
-        logger.info(f"[CONVERSATION] Starting. step_results={len(state.step_results)}, plan={state.plan is not None}, eval={state.eval_result is not None}")
 
-        try:
-            # For simple conversations (no task execution)
-            if state.intent and state.intent.type == "conversation":
-                state.response = f"I understand you're saying: {state.user_input}. How can I help?"
+        tracer = get_tracer()
+        with tracer.start_as_current_span("core.conversation") as span:
+            span.set_attribute("node.name", "conversation")
+            span.set_attribute("pipeline.stage", "5_conversation")
 
-            # For task executions
-            elif state.plan and state.eval_result:
-                response_parts = []
+            state.add_execution_node("conversation")
+            logger.info(f"[CONVERSATION] Starting. step_results={len(state.step_results)}, plan={state.plan is not None}, eval={state.eval_result is not None}")
 
-                # PRIMARY: Add the actual task outputs first (what the user actually wants!)
-                logger.info(f"[CONVERSATION] Processing {len(state.step_results)} step results")
-                for result in state.step_results:
-                    logger.info(f"[CONVERSATION] Step {result.step_id}: outputs={result.outputs}")
-                    if result.outputs:
-                        for key, value in result.outputs.items():
-                            if key in ("result", "output", "content"):
-                                logger.info(f"[CONVERSATION] Found '{key}' output: {str(value)[:100]}")
-                                response_parts.append(str(value))
-                            elif key not in ("files_modified", "query_result", "rows_affected", "branch", "commit_sha", "files_changed"):
-                                # Skip technical outputs, include named content
-                                response_parts.append(str(value))
+            try:
+                # For simple conversations (no task execution)
+                if state.intent and state.intent.type == "conversation":
+                    state.response = f"I understand you're saying: {state.user_input}. How can I help?"
 
-                # If no outputs found, check logs for meaningful content
-                if not response_parts:
+                # For task executions
+                elif state.plan and state.eval_result:
+                    response_parts = []
+
+                    # PRIMARY: Add the actual task outputs first (what the user actually wants!)
+                    logger.info(f"[CONVERSATION] Processing {len(state.step_results)} step results")
                     for result in state.step_results:
-                        if result.logs:
-                            # Filter out technical logs
-                            meaningful_logs = [
-                                log for log in result.logs 
-                                if not log.startswith(("Executing", "Tool:", "Parameters:", "Model:", "LLM"))
-                            ]
-                            response_parts.extend(meaningful_logs)
+                        logger.info(f"[CONVERSATION] Step {result.step_id}: outputs={result.outputs}")
+                        if result.outputs:
+                            for key, value in result.outputs.items():
+                                if key in ("result", "output", "content"):
+                                    logger.info(f"[CONVERSATION] Found '{key}' output: {str(value)[:100]}")
+                                    response_parts.append(str(value))
+                                elif key not in ("files_modified", "query_result", "rows_affected", "branch", "commit_sha", "files_changed"):
+                                    # Skip technical outputs, include named content
+                                    response_parts.append(str(value))
 
-                # SECONDARY: Add artifacts only if present (useful info)
-                artifacts = [a for r in state.step_results for a in r.artifacts]
-                if artifacts:
-                    response_parts.append("")  # blank line
-                    response_parts.append("📎 Generated files:")
-                    response_parts.extend([f"  • {a}" for a in artifacts[:5]])
+                    # If no outputs found, check logs for meaningful content
+                    if not response_parts:
+                        for result in state.step_results:
+                            if result.logs:
+                                # Filter out technical logs
+                                meaningful_logs = [
+                                    log for log in result.logs
+                                    if not log.startswith(("Executing", "Tool:", "Parameters:", "Model:", "LLM"))
+                                ]
+                                response_parts.extend(meaningful_logs)
 
-                # METADATA: Only show if debugging enabled or low confidence
-                show_metadata = state.config.get("show_metadata", False)
-                if show_metadata or state.eval_result.confidence < 0.7:
-                    response_parts.append("")
-                    completed_steps = [s for s in state.plan.steps if s.status == "completed"]
-                    response_parts.append(
-                        f"✓ Completed: {state.plan.goal} "
-                        f"({len(completed_steps)} steps, {state.eval_result.quality_score:.0%} quality)"
-                    )
-                    
-                    if state.eval_result.confidence < 0.7:
+                    # SECONDARY: Add artifacts only if present (useful info)
+                    artifacts = [a for r in state.step_results for a in r.artifacts]
+                    if artifacts:
+                        response_parts.append("")  # blank line
+                        response_parts.append("📎 Generated files:")
+                        response_parts.extend([f"  • {a}" for a in artifacts[:5]])
+
+                    # METADATA: Only show if debugging enabled or low confidence
+                    show_metadata = state.config.get("show_metadata", False)
+                    if show_metadata or state.eval_result.confidence < 0.7:
+                        response_parts.append("")
+                        completed_steps = [s for s in state.plan.steps if s.status == "completed"]
                         response_parts.append(
-                            f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
+                            f"✓ Completed: {state.plan.goal} "
+                            f"({len(completed_steps)} steps, {state.eval_result.quality_score:.0%} quality)"
                         )
 
-                state.response = "\n".join(response_parts) if response_parts else "Task completed."
-                logger.info(f"[CONVERSATION] Final response set (len={len(state.response)}): {state.response[:200] if state.response else 'NONE'}")
+                        if state.eval_result.confidence < 0.7:
+                            response_parts.append(
+                                f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
+                            )
 
-            else:
-                state.response = "Task processed. Check execution history for details."
-                logger.info("[CONVERSATION] No plan or eval_result, using default response")
+                    state.response = "\n".join(response_parts) if response_parts else "Task completed."
+                    logger.info(f"[CONVERSATION] Final response set (len={len(state.response)}): {state.response[:200] if state.response else 'NONE'}")
 
-            # Mark as complete
-            state.completed_at = state.updated_at
-            logger.info(f"[CONVERSATION] Complete. response={state.response[:100] if state.response else 'NONE'}")
+                else:
+                    state.response = "Task processed. Check execution history for details."
+                    logger.info("[CONVERSATION] No plan or eval_result, using default response")
 
-        except Exception as e:
-            logger.error(f"[CONVERSATION] Exception: {e}", exc_info=True)
-            state.add_error(f"Conversation failed: {str(e)}")
-            state.response = "An error occurred while formulating the response."
+                # Mark as complete
+                state.completed_at = state.updated_at
+                logger.info(f"[CONVERSATION] Complete. response={state.response[:100] if state.response else 'NONE'}")
+
+            except Exception as e:
+                logger.error(f"[CONVERSATION] Exception: {e}", exc_info=True)
+                span.record_exception(e)
+                span.set_attribute("error", True)
+                state.add_error(f"Conversation failed: {str(e)}")
+                state.response = "An error occurred while formulating the response."
 
         return state
 
