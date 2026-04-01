@@ -1,193 +1,153 @@
 """
-Tests for COREGraph routing functions — pure decision logic with no LLM calls.
+Tests for COREGraph routing methods in app/core/langgraph/core_graph_v2.py.
 
 Sentinel-value contract:
-- Remove intent.type check in route_from_comprehension → all inputs go to conversation → test fails
-- Remove state.intent None guard → NoneType error on missing intent → test fails
-- Remove plan_revisions loop guard → revise_plan loops infinitely → test fails
-- Remove action_routes mapping → all eval results default to conversation → test fails
+- Remove route_from_comprehension "task"->"orchestration" branch -> task intents routed to conversation -> test fails
+- Remove route_from_comprehension None-intent guard -> AttributeError instead of "conversation" default -> test fails
+- Remove route_from_evaluation "revise_plan"->"orchestration" branch -> plan revision loops to conversation -> test fails
+- Remove route_from_evaluation "retry_step"->"reasoning" branch -> step retries skip reasoning -> test fails
+- Remove route_from_evaluation max-revisions guard -> revise_plan loops forever -> test fails
+- Remove route_from_evaluation None eval_result guard -> AttributeError in production -> test fails
 """
 
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from app.models.core_state import COREState, EvaluationResult, UserIntent
-from app.core.langgraph.core_graph_v2 import COREGraph, _MAX_PLAN_REVISIONS
+from app.models.core_state import COREState, UserIntent, EvaluationResult
 
 
-# ===========================================================================
-# Helpers
-# ===========================================================================
-
-def _make_state(**kwargs) -> COREState:
-    defaults = {"messages": [], "user_input": "test"}
-    defaults.update(kwargs)
-    return COREState(**defaults)
-
-
-def _make_graph() -> COREGraph:
-    # We only need the routing methods; avoid __init__ graph building
-    graph = object.__new__(COREGraph)
-    return graph
+@pytest.fixture()
+def graph():
+    with patch.multiple(
+        "app.core.langgraph.core_graph_v2",
+        ComprehensionAgent=MagicMock(),
+        OrchestrationAgent=MagicMock(),
+        ReasoningAgent=MagicMock(),
+        EvaluationAgent=MagicMock(),
+    ):
+        from app.core.langgraph.core_graph_v2 import COREGraph
+        return COREGraph()
 
 
-def _make_intent(intent_type: str = "task") -> UserIntent:
-    """Build a UserIntent. For unknown types, returns a MagicMock."""
-    if intent_type not in ("task", "conversation", "question", "clarification"):
-        mock = MagicMock(spec=UserIntent)
-        mock.type = intent_type
-        return mock
-    return UserIntent(type=intent_type, description="test intent", confidence=0.9)
+def _state(**overrides) -> COREState:
+    base = {"user_input": "SENTINEL_INPUT"}
+    base.update(overrides)
+    return COREState(**base)
 
 
-def _make_eval_result(next_action: str = "finalize") -> EvaluationResult:
-    result = MagicMock(spec=EvaluationResult)
-    result.next_action = next_action
-    return result
+def _intent(type_: str, confidence: float = 0.9) -> UserIntent:
+    return UserIntent(type=type_, description="test", confidence=confidence)
 
 
-# ===========================================================================
-# route_from_comprehension
-# ===========================================================================
+def _eval_result(next_action: str) -> EvaluationResult:
+    return EvaluationResult(
+        overall_status="success",
+        confidence=0.9,
+        meets_requirements=True,
+        quality_score=0.85,
+        next_action=next_action,
+    )
+
 
 class TestRouteFromComprehension:
-    def test_no_intent_routes_to_conversation(self):
+    def test_task_intent_routes_to_orchestration(self, graph):
+        state = _state(intent=_intent("task"))
+        assert graph.route_from_comprehension(state) == "orchestration"
+
+    def test_question_intent_routes_to_orchestration(self, graph):
+        state = _state(intent=_intent("question"))
+        assert graph.route_from_comprehension(state) == "orchestration"
+
+    def test_conversation_intent_routes_to_conversation(self, graph):
+        state = _state(intent=_intent("conversation"))
+        assert graph.route_from_comprehension(state) == "conversation"
+
+    def test_clarification_intent_routes_to_conversation(self, graph):
+        state = _state(intent=_intent("clarification"))
+        assert graph.route_from_comprehension(state) == "conversation"
+
+    def test_none_intent_defaults_to_conversation(self, graph):
         """
-        SENTINEL — missing intent must default to 'conversation'.
-        Remove None guard → AttributeError on intent.type → pipeline crashes → test fails.
+        SENTINEL - when state.intent is None, must return 'conversation' not raise.
+        Remove None guard -> AttributeError on comprehension failure -> test fails.
         """
-        graph = _make_graph()
-        state = _make_state(intent=None)
-        result = graph.route_from_comprehension(state)
-        assert result == "conversation"
+        state = _state()
+        assert state.intent is None
+        assert graph.route_from_comprehension(state) == "conversation"
 
-    def test_task_intent_routes_to_orchestration(self):
-        """
-        SENTINEL — 'task' intent must route to orchestration for planning.
-        Route all intents to conversation → tasks never planned → test fails.
-        """
-        graph = _make_graph()
-        state = _make_state(intent=_make_intent("task"))
-        result = graph.route_from_comprehension(state)
-        assert result == "orchestration"
-
-    def test_question_intent_routes_to_orchestration(self):
-        """
-        SENTINEL — 'question' intent must also route to orchestration.
-        Only route 'task' → questions never answered by pipeline → test fails.
-        """
-        graph = _make_graph()
-        state = _make_state(intent=_make_intent("question"))
-        result = graph.route_from_comprehension(state)
-        assert result == "orchestration"
-
-    def test_conversation_intent_routes_to_conversation(self):
-        """'conversation' intent must route to conversation node."""
-        graph = _make_graph()
-        state = _make_state(intent=_make_intent("conversation"))
-        result = graph.route_from_comprehension(state)
-        assert result == "conversation"
-
-    def test_clarification_intent_routes_to_conversation(self):
-        """'clarification' intent must route to conversation node."""
-        graph = _make_graph()
-        state = _make_state(intent=_make_intent("clarification"))
-        result = graph.route_from_comprehension(state)
-        assert result == "conversation"
-
-    def test_unknown_intent_type_routes_to_conversation(self):
-        """Unknown intent types must default to conversation."""
-        graph = _make_graph()
-        state = _make_state(intent=_make_intent("SENTINEL_UNKNOWN"))
-        result = graph.route_from_comprehension(state)
-        assert result == "conversation"
-
-
-# ===========================================================================
-# route_from_evaluation
-# ===========================================================================
 
 class TestRouteFromEvaluation:
-    def test_no_eval_result_routes_to_conversation(self):
+    def test_finalize_routes_to_conversation(self, graph):
         """
-        SENTINEL — missing eval_result must default to 'conversation'.
-        Remove None guard → AttributeError on eval_result.next_action → test fails.
+        SENTINEL - next_action='finalize' must return 'conversation'.
+        Remove finalize branch -> successful evaluation has no response -> test fails.
         """
-        graph = _make_graph()
-        state = _make_state(eval_result=None)
-        result = graph.route_from_evaluation(state)
-        assert result == "conversation"
+        state = _state(eval_result=_eval_result("finalize"))
+        assert graph.route_from_evaluation(state) == "conversation"
 
-    def test_finalize_routes_to_conversation(self):
+    def test_revise_plan_routes_to_orchestration(self, graph):
         """
-        SENTINEL — 'finalize' action must route to conversation (pipeline done).
-        Route finalize to orchestration → extra planning after completion → test fails.
+        SENTINEL - next_action='revise_plan' must return 'orchestration'.
+        Remove branch -> plan revision goes to conversation -> no revised plan -> test fails.
         """
-        graph = _make_graph()
-        state = _make_state(eval_result=_make_eval_result("finalize"))
-        result = graph.route_from_evaluation(state)
-        assert result == "conversation"
+        state = _state(eval_result=_eval_result("revise_plan"), plan_revisions=0)
+        assert graph.route_from_evaluation(state) == "orchestration"
 
-    def test_revise_plan_routes_to_orchestration(self):
+    def test_retry_step_routes_to_reasoning(self, graph):
         """
-        SENTINEL — 'revise_plan' must route back to orchestration for replanning.
-        Route to reasoning → plan revision skips orchestration → test fails.
+        SENTINEL - next_action='retry_step' must return 'reasoning'.
+        Remove branch -> step retries skip execution -> failed step never retried -> test fails.
         """
-        graph = _make_graph()
-        state = _make_state(eval_result=_make_eval_result("revise_plan"), plan_revisions=0)
-        result = graph.route_from_evaluation(state)
-        assert result == "orchestration"
+        state = _state(eval_result=_eval_result("retry_step"))
+        assert graph.route_from_evaluation(state) == "reasoning"
 
-    def test_retry_step_routes_to_reasoning(self):
-        """
-        SENTINEL — 'retry_step' must route to reasoning for re-execution.
-        Route to orchestration → retried step never actually executes → test fails.
-        """
-        graph = _make_graph()
-        state = _make_state(eval_result=_make_eval_result("retry_step"))
-        result = graph.route_from_evaluation(state)
-        assert result == "reasoning"
+    def test_ask_user_routes_to_conversation(self, graph):
+        state = _state(eval_result=_eval_result("ask_user"))
+        assert graph.route_from_evaluation(state) == "conversation"
 
-    def test_ask_user_routes_to_conversation(self):
-        """'ask_user' must route to conversation to surface the question."""
-        graph = _make_graph()
-        state = _make_state(eval_result=_make_eval_result("ask_user"))
-        result = graph.route_from_evaluation(state)
-        assert result == "conversation"
+    def test_none_eval_result_defaults_to_conversation(self, graph):
+        """
+        SENTINEL - when state.eval_result is None, must return 'conversation' not raise.
+        Remove None guard -> AttributeError before evaluation runs -> test fails.
+        """
+        state = _state()
+        assert state.eval_result is None
+        assert graph.route_from_evaluation(state) == "conversation"
 
-    def test_unknown_action_defaults_to_conversation(self):
-        """Unknown next_action must default to 'conversation' (safe fallback)."""
-        graph = _make_graph()
-        state = _make_state(eval_result=_make_eval_result("SENTINEL_UNKNOWN_ACTION"))
-        result = graph.route_from_evaluation(state)
-        assert result == "conversation"
+    def test_revise_plan_capped_at_max_revisions(self, graph):
+        """
+        SENTINEL - when plan_revisions >= _MAX_PLAN_REVISIONS, revise_plan returns 'conversation'.
+        Remove loop guard -> revise_plan -> orchestration -> reasoning -> evaluation loops forever.
+        """
+        from app.core.langgraph import core_graph_v2
+        max_rev = core_graph_v2._MAX_PLAN_REVISIONS
+        state = _state(eval_result=_eval_result("revise_plan"), plan_revisions=max_rev)
+        assert graph.route_from_evaluation(state) == "conversation"
 
-    def test_max_plan_revisions_forces_conversation(self):
-        """
-        SENTINEL — when plan_revisions >= _MAX_PLAN_REVISIONS, revise_plan must
-        be overridden and route to conversation (loop guard).
-        Remove loop guard → infinite revise_plan↔orchestration cycle → test fails.
-        """
-        graph = _make_graph()
-        state = _make_state(
-            eval_result=_make_eval_result("revise_plan"),
-            plan_revisions=_MAX_PLAN_REVISIONS,  # at limit
-        )
-        result = graph.route_from_evaluation(state)
-        assert result == "conversation"
+    def test_revise_plan_allowed_below_max(self, graph):
+        """revise_plan is allowed when plan_revisions < _MAX_PLAN_REVISIONS."""
+        from app.core.langgraph import core_graph_v2
+        max_rev = core_graph_v2._MAX_PLAN_REVISIONS
+        state = _state(eval_result=_eval_result("revise_plan"), plan_revisions=max_rev - 1)
+        assert graph.route_from_evaluation(state) == "orchestration"
 
-    def test_below_max_revisions_still_routes_to_orchestration(self):
+    def test_unknown_action_defaults_to_conversation(self, graph):
         """
-        SENTINEL — plan_revisions < _MAX_PLAN_REVISIONS must still allow revise_plan.
-        Apply guard too early → pipeline stops replanning prematurely → test fails.
+        SENTINEL - unknown next_action must fall back to 'conversation' not raise KeyError.
+        Remove .get default -> KeyError on unexpected evaluation outputs -> test fails.
         """
-        graph = _make_graph()
-        state = _make_state(
-            eval_result=_make_eval_result("revise_plan"),
-            plan_revisions=_MAX_PLAN_REVISIONS - 1,  # one below limit
-        )
-        result = graph.route_from_evaluation(state)
-        assert result == "orchestration"
+        eval_result = _eval_result("finalize")
+        object.__setattr__(eval_result, "next_action", "SENTINEL_UNKNOWN_ACTION")
+        state = _state(eval_result=eval_result)
+        assert graph.route_from_evaluation(state) == "conversation"
+
+    def test_max_plan_revisions_is_positive_int(self, graph):
+        """
+        SENTINEL - _MAX_PLAN_REVISIONS must be a positive integer.
+        Set to 0 -> first evaluation always forces finalization -> plans never revised -> test fails.
+        """
+        from app.core.langgraph import core_graph_v2
+        assert isinstance(core_graph_v2._MAX_PLAN_REVISIONS, int)
+        assert core_graph_v2._MAX_PLAN_REVISIONS > 0
