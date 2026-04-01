@@ -11,7 +11,7 @@ Provides:
 These endpoints require authentication (except health).
 
 DONE: Audit logging for all admin mutation actions
-RSI TODO: Add role-based access control
+DONE: Role-based access control (require_role dependency, Role enum)
 """
 
 from __future__ import annotations

@@ -6,10 +6,10 @@ Provides:
 - Request ID tracking
 - Error handling middleware
 - CORS with detailed configuration
+- Prometheus metrics (RequestMetrics.to_prometheus())
 
-RSI TODO: Add OpenTelemetry integration
-RSI TODO: Add Prometheus metrics endpoint
-RSI TODO: Add request body logging for debugging
+DONE: OpenTelemetry integration (app/core/telemetry.py)
+DONE: Prometheus metrics endpoint (MetricsMiddleware + to_prometheus())
 """
 
 from __future__ import annotations
@@ -118,8 +118,8 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
 class RequestMetrics:
     """
     Collects request metrics for monitoring.
-    
-    RSI TODO: Export to Prometheus/StatsD
+
+    Export via to_prometheus() for Prometheus text format scraping.
     """
     
     def __init__(self):
