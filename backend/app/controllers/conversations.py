@@ -2,13 +2,15 @@
 
 """REST endpoints for managing chat conversations."""
 
+import asyncio
 import logging
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, status, Query
-from typing import List
 
 from app.repository.conversation_repository import (
     list_conversations,
+    count_conversations,
     create_conversation,
     get_conversation,
     update_title,
@@ -19,11 +21,20 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def get_conversations(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200)) -> List[dict]:
-    """Return a list of all conversations (id, title, message count)."""
+async def get_conversations(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    search: Optional[str] = Query(None, max_length=200),
+) -> dict:
+    """Return paginated conversations with total count.
+
+    Response shape: {conversations, total, page, page_size}
+    """
     try:
-        convs = await list_conversations(page=page, page_size=page_size)
-        # If repository returns aggregated counts, normalize shape
+        convs, total = await asyncio.gather(
+            list_conversations(page=page, page_size=page_size, search=search),
+            count_conversations(search=search),
+        )
         result: List[dict] = []
         for c in convs:
             if "messages" in c and isinstance(c["messages"], int):
@@ -34,11 +45,10 @@ async def get_conversations(page: int = Query(1, ge=1), page_size: int = Query(5
                     "title": c.get("title", ""),
                     "messages": len(c.get("messages", [])),
                 })
-        return result
+        return {"conversations": result, "total": total, "page": page, "page_size": page_size}
     except Exception:
-        # Fail gracefully in dev if DB is unavailable
-        # RSI TODO: Log exception details with context; return proper error in non-dev environments.
-        return []
+        logger.exception("Failed to list conversations")
+        return {"conversations": [], "total": 0, "page": page, "page_size": page_size}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

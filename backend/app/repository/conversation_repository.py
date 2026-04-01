@@ -32,32 +32,66 @@ class _Conversation(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-async def list_conversations(*, page: int = 1, page_size: int = 50) -> List[Dict[str, Any]]:
+async def list_conversations(
+    *,
+    page: int = 1,
+    page_size: int = 50,
+    search: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Return list of conversations with message counts.
 
-    Shape matches controller expectations: `{id, title, messages}` where
-    `messages` is the count of messages in the conversation.
+    Shape: `{id, title, messages}` where `messages` is the message count.
+    Supports optional title search and offset-based pagination.
     """
-    # RSI TODO: Add pagination and optional search/sort parameters (e.g., by last_activity).
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT c.conversation_id AS id,
-                   COALESCE(c.title, '') AS title,
-                   COUNT(m.id) AS messages,
-                   COALESCE(MAX(m.timestamp), MAX(c.updated_at)) AS last_activity
-            FROM conversations c
-            LEFT JOIN messages m ON m.conversation_id = c.conversation_id
-            GROUP BY c.conversation_id, c.title
-            ORDER BY last_activity DESC NULLS LAST
-            LIMIT $1 OFFSET $2
-            """,
-            page_size,
-            max(0, (page - 1) * page_size),
-        )
-        # Do not expose last_activity field to the controller response shape
+        if search:
+            rows = await conn.fetch(
+                """
+                SELECT c.conversation_id AS id,
+                       COALESCE(c.title, '') AS title,
+                       COUNT(m.id) AS messages,
+                       COALESCE(MAX(m.timestamp), MAX(c.updated_at)) AS last_activity
+                FROM conversations c
+                LEFT JOIN messages m ON m.conversation_id = c.conversation_id
+                WHERE c.title ILIKE $3
+                GROUP BY c.conversation_id, c.title
+                ORDER BY last_activity DESC NULLS LAST
+                LIMIT $1 OFFSET $2
+                """,
+                page_size,
+                max(0, (page - 1) * page_size),
+                f"%{search}%",
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT c.conversation_id AS id,
+                       COALESCE(c.title, '') AS title,
+                       COUNT(m.id) AS messages,
+                       COALESCE(MAX(m.timestamp), MAX(c.updated_at)) AS last_activity
+                FROM conversations c
+                LEFT JOIN messages m ON m.conversation_id = c.conversation_id
+                GROUP BY c.conversation_id, c.title
+                ORDER BY last_activity DESC NULLS LAST
+                LIMIT $1 OFFSET $2
+                """,
+                page_size,
+                max(0, (page - 1) * page_size),
+            )
         return [{"id": r["id"], "title": r["title"], "messages": r["messages"]} for r in rows]
+
+
+async def count_conversations(*, search: Optional[str] = None) -> int:
+    """Return total count of conversations (filtered by search if provided)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        if search:
+            return await conn.fetchval(
+                "SELECT COUNT(*) FROM conversations WHERE title ILIKE $1",
+                f"%{search}%",
+            )
+        return await conn.fetchval("SELECT COUNT(*) FROM conversations")
 
 
 async def get_conversation(conv_id: str) -> Optional[_Conversation]:
