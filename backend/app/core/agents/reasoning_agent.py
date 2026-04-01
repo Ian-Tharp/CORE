@@ -14,7 +14,8 @@ RSI TODO: Add parallel execution for independent steps
 import os
 import time
 import logging
-from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Optional, Set
 from datetime import datetime
 
 import httpx
@@ -116,14 +117,21 @@ class ReasoningAgent:
     # Plan execution
     # ------------------------------------------------------------------
 
+    # Maximum worker threads for parallel step execution within a wave.
+    _MAX_PARALLEL_WORKERS = int(os.getenv("CORE_MAX_PARALLEL_STEPS", "4"))
+
     def execute_plan(
         self,
         plan: ExecutionPlan,
         start_from_step: Optional[str] = None,
-        enable_tools: bool = True
+        enable_tools: bool = True,
     ) -> List[StepResult]:
         """
-        Execute the plan step by step.
+        Execute the plan respecting dependency ordering.
+
+        Steps with no mutual dependencies are executed in parallel within
+        each "wave" (topological level).  Steps whose dependency steps failed
+        are skipped automatically.
 
         Args:
             plan: The execution plan to run
@@ -131,27 +139,135 @@ class ReasoningAgent:
             enable_tools: Whether to actually call tools (False for dry-run)
 
         Returns:
-            List of StepResult objects for each executed step
+            List of StepResult objects in plan order (skipped steps included).
         """
-        results = []
-
         if start_from_step:
+            # Retry mode: single-step, no parallelism needed
             steps_to_execute = [s for s in plan.steps if s.id == start_from_step]
-        else:
-            steps_to_execute = plan.steps
+            results = []
+            for step in steps_to_execute:
+                result = self._execute_step(step, enable_tools)
+                self._apply_step_status(step, result)
+                results.append(result)
+            return results
 
-        for step in steps_to_execute:
-            result = self._execute_step(step, enable_tools)
-            results.append(result)
+        return self._execute_with_parallelism(plan.steps, enable_tools)
 
-            if result.status == "success":
-                step.status = "completed"
-            elif result.status == "failure":
-                step.status = "failed"
+    def _build_execution_waves(self, steps: List) -> List[List]:
+        """
+        Topological sort: return ordered list of waves.
+
+        Each wave is a list of steps whose declared dependencies have all
+        appeared in earlier waves.  Steps with missing dependency IDs are
+        treated as having no dependencies (fail-safe).
+        """
+        step_by_id: Dict[str, object] = {s.id: s for s in steps}
+        completed_ids: Set[str] = set()
+        remaining = list(steps)
+        waves: List[List] = []
+
+        while remaining:
+            # Pick all steps whose deps are satisfied
+            ready = [
+                s for s in remaining
+                if all(dep not in step_by_id or dep in completed_ids
+                       for dep in s.dependencies)
+            ]
+            if not ready:
+                # Circular dependency or unresolvable — run the rest sequentially
+                logger.warning(
+                    "Could not resolve dependencies for %d step(s); running sequentially",
+                    len(remaining),
+                )
+                waves.append(remaining)
+                break
+
+            waves.append(ready)
+            completed_ids.update(s.id for s in ready)
+            remaining = [s for s in remaining if s not in ready]
+
+        return waves
+
+    def _execute_with_parallelism(self, steps: List, enable_tools: bool) -> List[StepResult]:
+        """Execute steps wave by wave; run each wave in parallel."""
+        waves = self._build_execution_waves(steps)
+        results_by_id: Dict[str, StepResult] = {}
+
+        for wave in waves:
+            # Determine which steps in this wave have failed deps → skip them
+            runnable, skipped = [], []
+            for step in wave:
+                failed_deps = [
+                    dep for dep in step.dependencies
+                    if dep in results_by_id and results_by_id[dep].status == "failure"
+                ]
+                if failed_deps:
+                    logger.info(
+                        "Skipping step '%s' — dependency %s failed", step.name, failed_deps[0]
+                    )
+                    skipped.append(step)
+                else:
+                    runnable.append(step)
+
+            # Record skipped steps
+            for step in skipped:
+                step.status = "skipped"
+                results_by_id[step.id] = StepResult(
+                    step_id=step.id,
+                    status="failure",
+                    outputs={},
+                    logs=[f"Skipped: dependency failed"],
+                    error="Dependency failed",
+                )
+
+            if not runnable:
+                continue
+
+            if len(runnable) == 1:
+                # No parallelism overhead for single step
+                result = self._execute_step(runnable[0], enable_tools)
+                self._apply_step_status(runnable[0], result)
+                results_by_id[runnable[0].id] = result
             else:
-                step.status = "completed"
+                # Execute wave in parallel
+                logger.info("Executing wave of %d independent steps in parallel", len(runnable))
+                wave_results: Dict[str, StepResult] = {}
+                with ThreadPoolExecutor(
+                    max_workers=min(len(runnable), self._MAX_PARALLEL_WORKERS)
+                ) as executor:
+                    future_to_step = {
+                        executor.submit(self._execute_step, step, enable_tools): step
+                        for step in runnable
+                    }
+                    for future in as_completed(future_to_step):
+                        step = future_to_step[future]
+                        try:
+                            result = future.result()
+                        except Exception as exc:
+                            result = StepResult(
+                                step_id=step.id,
+                                status="failure",
+                                outputs={},
+                                logs=[f"Parallel execution error: {exc}"],
+                                error=str(exc),
+                            )
+                        self._apply_step_status(step, result)
+                        wave_results[step.id] = result
 
-        return results
+                results_by_id.update(wave_results)
+
+        # Return results in original step order
+        return [results_by_id[s.id] for s in steps if s.id in results_by_id]
+
+    @staticmethod
+    def _apply_step_status(step, result: StepResult) -> None:
+        """Synchronise step.status with the StepResult outcome."""
+        if result.status == "success":
+            step.status = "completed"
+        elif result.status == "failure":
+            step.status = "failed"
+        else:
+            step.status = "completed"
 
     def _execute_step(self, step: PlanStep, enable_tools: bool) -> StepResult:
         """Execute a single plan step."""
