@@ -12,10 +12,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any
 
+from app.auth import require_api_key
 from app.repository import discord_repository
 from app.services.discord_bridge import (
     get_discord_bridge,
@@ -106,7 +107,7 @@ class DiscordMetricsResponse(BaseModel):
 # =============================================================================
 
 @router.get("/status", status_code=status.HTTP_200_OK, response_model=StatusResponse)
-async def get_status() -> StatusResponse:
+async def get_status(_auth: str = Depends(require_api_key)) -> StatusResponse:
     """Get Discord bridge status."""
     bridge = get_discord_bridge()
     info = bridge.get_status_info()
@@ -114,7 +115,7 @@ async def get_status() -> StatusResponse:
 
 
 @router.post("/start", status_code=status.HTTP_200_OK)
-async def start_bridge() -> Dict[str, Any]:
+async def start_bridge(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Start the Discord bridge."""
     success = await start_discord_bridge()
     if success:
@@ -138,14 +139,14 @@ async def start_bridge() -> Dict[str, Any]:
 
 
 @router.post("/stop", status_code=status.HTTP_200_OK)
-async def stop_bridge() -> Dict[str, str]:
+async def stop_bridge(_auth: str = Depends(require_api_key)) -> Dict[str, str]:
     """Stop the Discord bridge."""
     await stop_discord_bridge()
     return {"message": "Discord bridge stopped", "status": "disconnected"}
 
 
 @router.post("/restart", status_code=status.HTTP_200_OK)
-async def restart_bridge() -> Dict[str, str]:
+async def restart_bridge(_auth: str = Depends(require_api_key)) -> Dict[str, str]:
     """Restart the Discord bridge."""
     await stop_discord_bridge()
     success = await start_discord_bridge()
@@ -160,7 +161,7 @@ async def restart_bridge() -> Dict[str, str]:
 # =============================================================================
 
 @router.get("/channels", status_code=status.HTTP_200_OK)
-async def get_channel_mappings() -> Dict[str, Any]:
+async def get_channel_mappings(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get all channel mappings."""
     bridge = get_discord_bridge()
     mappings = bridge.get_channel_mappings()
@@ -183,7 +184,7 @@ async def get_channel_mappings() -> Dict[str, Any]:
 
 
 @router.post("/channels", status_code=status.HTTP_201_CREATED)
-async def add_channel_mapping(request: ChannelMappingRequest) -> ChannelMappingResponse:
+async def add_channel_mapping(request: ChannelMappingRequest, _auth: str = Depends(require_api_key)) -> ChannelMappingResponse:
     """Add or update a channel mapping."""
     bridge = get_discord_bridge()
     
@@ -212,7 +213,7 @@ async def add_channel_mapping(request: ChannelMappingRequest) -> ChannelMappingR
 
 
 @router.delete("/channels/{discord_channel_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_channel_mapping(discord_channel_id: str):
+async def remove_channel_mapping(discord_channel_id: str, _auth: str = Depends(require_api_key)):
     """Remove a channel mapping."""
     bridge = get_discord_bridge()
 
@@ -233,7 +234,7 @@ async def remove_channel_mapping(discord_channel_id: str):
 # =============================================================================
 
 @router.post("/send", status_code=status.HTTP_200_OK)
-async def send_message(request: SendMessageRequest) -> Dict[str, Any]:
+async def send_message(request: SendMessageRequest, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Send a message to a Discord channel."""
     bridge = get_discord_bridge()
     
@@ -289,6 +290,7 @@ async def get_message_links(
     core_channel_id: Optional[str] = None,
     discord_channel_id: Optional[str] = None,
     direction: Optional[str] = Query(None, pattern="^(discord_to_core|core_to_discord)$"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Inspect persisted Discord↔CORE message link records."""
     links = await discord_repository.list_message_links(
@@ -319,6 +321,7 @@ async def get_delivery_events(
     core_channel_id: Optional[str] = None,
     discord_channel_id: Optional[str] = None,
     core_message_id: Optional[str] = None,
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Inspect persisted Discord delivery/ingest events."""
     events = await discord_repository.list_delivery_events(
@@ -346,6 +349,7 @@ async def get_delivery_events(
 @router.get("/metrics", status_code=status.HTTP_200_OK, response_model=DiscordMetricsResponse)
 async def get_metrics(
     recent_failures_limit: int = Query(10, ge=1, le=100),
+    _auth: str = Depends(require_api_key),
 ) -> DiscordMetricsResponse:
     """Get Discord bridge observability metrics for validation and debugging."""
     bridge = get_discord_bridge()
@@ -378,7 +382,7 @@ async def get_metrics(
 # =============================================================================
 
 @router.get("/config", status_code=status.HTTP_200_OK)
-async def get_configuration() -> Dict[str, Any]:
+async def get_configuration(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get Discord bridge configuration (excluding sensitive data)."""
     config = get_config()
     return {
@@ -396,7 +400,7 @@ async def get_configuration() -> Dict[str, Any]:
 
 
 @router.patch("/config", status_code=status.HTTP_200_OK)
-async def update_configuration(request: ConfigUpdateRequest) -> Dict[str, Any]:
+async def update_configuration(request: ConfigUpdateRequest, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Update Discord bridge configuration."""
     config = get_config()
     

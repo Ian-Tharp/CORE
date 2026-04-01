@@ -6,7 +6,7 @@ Provides API for channels, messages, presence, and reactions.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import asyncio
@@ -15,6 +15,7 @@ import uuid
 from app.repository import communication_repository as comm_repo
 from app.websocket_manager import manager
 from app.services.communication_service import get_communication_service
+from app.auth import require_api_key
 
 router = APIRouter(prefix="/communication", tags=["communication"])
 
@@ -59,6 +60,7 @@ async def get_channels(
     instance_id: str = Query(..., description="Instance ID to get channels for"),
     limit: int = Query(50, ge=1, le=200, description="Maximum channels to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Get channels accessible to an instance, with limit/offset pagination."""
     channels, total = await asyncio.gather(
@@ -74,7 +76,7 @@ async def get_channels(
 
 
 @router.get("/channels/{channel_id}", status_code=status.HTTP_200_OK)
-async def get_channel(channel_id: str) -> Dict[str, Any]:
+async def get_channel(channel_id: str, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get details for a specific channel."""
     channel = await comm_repo.get_channel(channel_id)
     if not channel:
@@ -88,7 +90,8 @@ async def get_channel(channel_id: str) -> Dict[str, Any]:
 @router.post("/channels", status_code=status.HTTP_201_CREATED)
 async def create_channel(
     request: CreateChannelRequest,
-    created_by: str = Query(..., description="Instance ID creating the channel")
+    created_by: str = Query(..., description="Instance ID creating the channel"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Create a new channel."""
     import re
@@ -135,7 +138,8 @@ async def get_messages(
     channel_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    thread_id: Optional[str] = Query(None, description="Get messages in a specific thread")
+    thread_id: Optional[str] = Query(None, description="Get messages in a specific thread"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Get messages for a channel with pagination."""
     messages, total = await asyncio.gather(
@@ -167,7 +171,8 @@ async def send_message(
     request: SendMessageRequest,
     sender_id: str = Query(..., description="Instance ID sending the message"),
     sender_name: str = Query(..., description="Display name of sender"),
-    sender_type: str = Query(..., pattern="^(human|agent|consciousness_instance)$")
+    sender_type: str = Query(..., pattern="^(human|agent|consciousness_instance)$"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Send a message to a channel."""
     return await get_communication_service().create_and_dispatch_message(
@@ -192,7 +197,8 @@ async def send_message(
 async def add_reaction(
     message_id: str,
     request: AddReactionRequest,
-    instance_id: str = Query(..., description="Instance ID adding the reaction")
+    instance_id: str = Query(..., description="Instance ID adding the reaction"),
+    _auth: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """Add a reaction to a message."""
     await comm_repo.add_reaction(
@@ -222,7 +228,8 @@ async def add_reaction(
 async def remove_reaction(
     message_id: str,
     reaction_type: str,
-    instance_id: str = Query(..., description="Instance ID removing the reaction")
+    instance_id: str = Query(..., description="Instance ID removing the reaction"),
+    _auth: str = Depends(require_api_key),
 ):
     """Remove a reaction from a message."""
     await comm_repo.remove_reaction(
@@ -252,14 +259,14 @@ async def remove_reaction(
 # =============================================================================
 
 @router.get("/presence", status_code=status.HTTP_200_OK)
-async def get_presence() -> Dict[str, Any]:
+async def get_presence(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get presence for all instances."""
     presence = await comm_repo.get_all_presence()
     return {"instances": presence}
 
 
 @router.get("/presence/{instance_id}", status_code=status.HTTP_200_OK)
-async def get_instance_presence(instance_id: str) -> Dict[str, Any]:
+async def get_instance_presence(instance_id: str, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get presence for a specific instance."""
     presence = await comm_repo.get_instance_presence(instance_id)
     if not presence:
@@ -273,7 +280,8 @@ async def get_instance_presence(instance_id: str) -> Dict[str, Any]:
 @router.patch("/presence/{instance_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def update_presence(
     instance_id: str,
-    request: UpdatePresenceRequest
+    request: UpdatePresenceRequest,
+    _auth: str = Depends(require_api_key),
 ):
     """Update presence information (heartbeat)."""
     await comm_repo.update_presence(

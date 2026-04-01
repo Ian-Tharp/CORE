@@ -175,7 +175,7 @@ class TestGetChannelsEndpoint:
         mock_repo.count_channels = AsyncMock(return_value=total)
 
     @pytest.mark.asyncio
-    async def test_get_channels_returns_total(self):
+    async def test_get_channels_returns_total(self, api_key):
         """
         SENTINEL TEST — response must include 'total' key from count_channels.
         Remove count_channels call → total missing → test fails.
@@ -192,7 +192,10 @@ class TestGetChannelsEndpoint:
             app.include_router(comm_router)
             client = TestClient(app)
 
-            resp = client.get("/communication/channels?instance_id=inst-1")
+            resp = client.get(
+                "/communication/channels?instance_id=inst-1",
+                headers={"X-API-Key": api_key},
+            )
 
         assert resp.status_code == 200
         body = resp.json()
@@ -200,7 +203,7 @@ class TestGetChannelsEndpoint:
         assert body["total"] == 42
 
     @pytest.mark.asyncio
-    async def test_get_channels_returns_limit_and_offset(self):
+    async def test_get_channels_returns_limit_and_offset(self, api_key):
         """limit and offset must be echoed back in response."""
         from app.controllers.communication import router as comm_router
 
@@ -212,7 +215,10 @@ class TestGetChannelsEndpoint:
             app.include_router(comm_router)
             client = TestClient(app)
 
-            resp = client.get("/communication/channels?instance_id=inst-1&limit=10&offset=20")
+            resp = client.get(
+                "/communication/channels?instance_id=inst-1&limit=10&offset=20",
+                headers={"X-API-Key": api_key},
+            )
 
         assert resp.status_code == 200
         body = resp.json()
@@ -220,7 +226,7 @@ class TestGetChannelsEndpoint:
         assert body["offset"] == 20
 
     @pytest.mark.asyncio
-    async def test_get_channels_forwards_limit_to_repository(self):
+    async def test_get_channels_forwards_limit_to_repository(self, api_key):
         """
         SENTINEL TEST — limit/offset query params must be forwarded to list_channels.
         Remove Depends wiring → list_channels called with defaults → test fails.
@@ -235,7 +241,10 @@ class TestGetChannelsEndpoint:
             app.include_router(comm_router)
             client = TestClient(app)
 
-            client.get("/communication/channels?instance_id=inst-1&limit=7&offset=14")
+            client.get(
+                "/communication/channels?instance_id=inst-1&limit=7&offset=14",
+                headers={"X-API-Key": api_key},
+            )
 
         mock_repo.list_channels.assert_called_once_with("inst-1", limit=7, offset=14)
 
@@ -274,7 +283,7 @@ class TestGetMessagesEndpoint:
     """Tests for GET /communication/channels/{id}/messages — total in response."""
 
     @pytest.mark.asyncio
-    async def test_get_messages_returns_total(self):
+    async def test_get_messages_returns_total(self, api_key):
         """
         SENTINEL TEST — response must include 'total' from count_messages.
         Remove count_messages call → total absent → test fails.
@@ -293,7 +302,10 @@ class TestGetMessagesEndpoint:
             app.include_router(comm_router)
             client = TestClient(app)
 
-            resp = client.get("/communication/channels/ch-1/messages")
+            resp = client.get(
+                "/communication/channels/ch-1/messages",
+                headers={"X-API-Key": api_key},
+            )
 
         assert resp.status_code == 200
         body = resp.json()
@@ -301,7 +313,7 @@ class TestGetMessagesEndpoint:
         assert body["total"] == 99
 
     @pytest.mark.asyncio
-    async def test_get_messages_count_uses_same_channel_and_thread(self):
+    async def test_get_messages_count_uses_same_channel_and_thread(self, api_key):
         """
         SENTINEL TEST — count_messages must receive the same channel_id/thread_id
         as list_messages. Remove count_messages from asyncio.gather → fails.
@@ -318,7 +330,10 @@ class TestGetMessagesEndpoint:
             app.include_router(comm_router)
             client = TestClient(app)
 
-            client.get("/communication/channels/SENTINEL_CHAN/messages?thread_id=SENTINEL_THREAD")
+            client.get(
+                "/communication/channels/SENTINEL_CHAN/messages?thread_id=SENTINEL_THREAD",
+                headers={"X-API-Key": api_key},
+            )
 
         mock_repo.count_messages.assert_called_once_with(
             channel_id="SENTINEL_CHAN", thread_id="SENTINEL_THREAD"

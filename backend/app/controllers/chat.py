@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Request as FastAPIRequest, status, HTTPException
+﻿from fastapi import APIRouter, Depends, Request as FastAPIRequest, status, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from typing import List, AsyncGenerator, Optional
@@ -6,6 +6,7 @@ import logging
 import uuid
 import asyncio
 
+from app.auth import require_api_key
 from app.services.chat_service import chat_service
 from app.repository.conversation_repository import (
     create_conversation,
@@ -124,7 +125,11 @@ def _validate_total_size(messages: List[Message]) -> None:
 @router.post(
     "/chat/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK
 )
-async def chat_stream(request: ChatRequest, raw_request: FastAPIRequest):
+async def chat_stream(
+    request: ChatRequest,
+    raw_request: FastAPIRequest,
+    _auth: str = Depends(require_api_key),
+):
     """
     Stream chat responses from LLM providers.
     """
