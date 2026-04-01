@@ -5,8 +5,9 @@ Provides:
 - API key validation and management (database-backed with in-memory cache)
 - Request rate limiting
 - Role-Based Access Control (RBAC)
+- JWT session tokens (create_jwt_token / decode_jwt_token / get_jwt_bearer)
 
-RSI TODO: Add JWT support for user sessions
+DONE: JWT support for user sessions (HS256 signed, configurable expiry)
 """
 
 from __future__ import annotations
@@ -16,14 +17,16 @@ import os
 import secrets
 import hashlib
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional, Dict, Any, Callable
 from collections import defaultdict
 from functools import wraps
 
+import jwt as _pyjwt
+
 from fastapi import Depends, HTTPException, Security, Request, status
-from fastapi.security import APIKeyHeader, APIKeyQuery
+from fastapi.security import APIKeyHeader, APIKeyQuery, HTTPBearer, HTTPAuthorizationCredentials
 import logging
 
 logger = logging.getLogger(__name__)
@@ -569,6 +572,156 @@ def require_role(minimum_role: Role) -> Callable:
         )
 
     return _check_role
+
+
+# =============================================================================
+# JWT Session Tokens
+# =============================================================================
+
+# Secret key for signing JWTs. Must be set in production via CORE_JWT_SECRET.
+# Falls back to a random value per process (tokens are session-scoped only).
+_JWT_SECRET: str = os.getenv("CORE_JWT_SECRET", secrets.token_hex(32))
+_JWT_ALGORITHM = "HS256"
+_JWT_DEFAULT_EXPIRY_MINUTES = int(os.getenv("CORE_JWT_EXPIRY_MINUTES", "60"))
+_JWT_ISSUER = "core"
+
+# FastAPI bearer-token extractor (auto_error=False so we can produce a clean 401)
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+class JWTError(Exception):
+    """Raised when a JWT cannot be validated."""
+
+
+def create_jwt_token(
+    subject: str,
+    role: "Role",
+    expires_minutes: int = _JWT_DEFAULT_EXPIRY_MINUTES,
+    extra_claims: Optional[Dict[str, Any]] = None,
+) -> str:
+    """
+    Create a signed JWT session token.
+
+    Args:
+        subject: Unique identifier for the session/user (e.g. username or API key name).
+        role: The CORE Role granted to this token.
+        expires_minutes: Token lifetime in minutes (default: CORE_JWT_EXPIRY_MINUTES env var or 60).
+        extra_claims: Optional dict of additional claims to embed in the payload.
+
+    Returns:
+        Signed JWT string (HS256).
+    """
+    now = datetime.now(tz=timezone.utc)
+    payload: Dict[str, Any] = {
+        "iss": _JWT_ISSUER,
+        "sub": subject,
+        "role": role.value,
+        "iat": now,
+        "exp": now + timedelta(minutes=expires_minutes),
+    }
+    if extra_claims:
+        payload.update(extra_claims)
+    return _pyjwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
+
+
+def decode_jwt_token(token: str) -> Dict[str, Any]:
+    """
+    Verify and decode a JWT session token.
+
+    Args:
+        token: A JWT string previously produced by create_jwt_token().
+
+    Returns:
+        The decoded payload dict (includes sub, role, exp, etc.).
+
+    Raises:
+        JWTError: If the token is invalid, expired, or has the wrong issuer.
+    """
+    try:
+        payload = _pyjwt.decode(
+            token,
+            _JWT_SECRET,
+            algorithms=[_JWT_ALGORITHM],
+            issuer=_JWT_ISSUER,
+        )
+        return payload
+    except _pyjwt.ExpiredSignatureError as exc:
+        raise JWTError("Token has expired") from exc
+    except _pyjwt.InvalidIssuerError as exc:
+        raise JWTError("Token issuer invalid") from exc
+    except _pyjwt.PyJWTError as exc:
+        raise JWTError(f"Token validation failed: {exc}") from exc
+
+
+async def get_jwt_bearer(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
+) -> Dict[str, Any]:
+    """
+    FastAPI dependency: authenticate via JWT Bearer token.
+
+    Extracts the ``Authorization: Bearer <token>`` header, verifies the JWT,
+    and returns a key-data dict compatible with the rest of the auth pipeline
+    (same shape as validate_api_key output: ``name``, ``permissions``, ``role``).
+
+    Raises HTTP 401 if the header is missing or the token is invalid/expired.
+    """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bearer token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        payload = decode_jwt_token(credentials.credentials)
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    role_str = payload.get("role", Role.VIEWER.value)
+    # Map role string to the matching role permission so require_role() works
+    role_permission = f"role:{role_str}"
+    return {
+        "name": payload.get("sub", "jwt-session"),
+        "permissions": [role_permission],
+        "role": role_str,
+        "jwt_subject": payload.get("sub"),
+        "jwt_exp": payload.get("exp"),
+    }
+
+
+def require_jwt_role(minimum_role: "Role") -> Callable:
+    """
+    FastAPI dependency factory: authenticate via JWT and enforce a minimum role.
+
+    Same semantics as require_role() but reads credentials from a Bearer token
+    rather than the X-API-Key header.
+
+    Usage::
+
+        @router.get("/admin/stats")
+        async def stats(key_data = Depends(require_jwt_role(Role.ADMIN))):
+            ...
+    """
+    satisfying_perms = _ROLE_SATISFIES[minimum_role]
+
+    async def _check(
+        key_data: Dict[str, Any] = Depends(get_jwt_bearer),
+    ) -> Dict[str, Any]:
+        permissions = key_data.get("permissions", [])
+        if satisfying_perms.intersection(permissions):
+            return key_data
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Insufficient role. '{minimum_role.value}' or higher required. "
+                f"Token role: {key_data.get('role')}"
+            ),
+        )
+
+    return _check
 
 
 # =============================================================================
