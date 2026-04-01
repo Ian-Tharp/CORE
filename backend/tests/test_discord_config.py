@@ -171,6 +171,87 @@ class TestPersistChannelMapping:
         assert discord_config_module.get_config().channel_mappings["123"].discord_guild_id == "456"
 
 
+class TestGetDiscordConfig:
+    """Tests for the env-var parsing logic in get_discord_config()."""
+
+    def test_defaults_when_no_env(self):
+        """No Discord env vars → enabled=False, empty mappings and allowlist."""
+        with patch.dict(os.environ, {}, clear=True):
+            cfg = discord_config_module.get_discord_config()
+        assert cfg.enabled is False
+        assert cfg.channel_mappings == {}
+        assert cfg.allowed_users == []
+
+    def test_discord_enabled_true(self):
+        """DISCORD_ENABLED=true must set enabled=True."""
+        with patch.dict(os.environ, {"DISCORD_ENABLED": "true"}, clear=False):
+            cfg = discord_config_module.get_discord_config()
+        assert cfg.enabled is True
+
+    def test_channel_map_parsed_from_env(self):
+        """
+        SENTINEL — DISCORD_CHANNEL_MAP must be parsed into channel_mappings.
+        Remove env parsing → no channel mappings loaded at startup → test fails.
+        """
+        with patch.dict(os.environ, {"DISCORD_CHANNEL_MAP": "123:core-ch-1,456:core-ch-2"},
+                        clear=False):
+            cfg = discord_config_module.get_discord_config()
+        assert "123" in cfg.channel_mappings
+        assert "456" in cfg.channel_mappings
+        assert cfg.channel_mappings["123"].core_channel_id == "core-ch-1"
+
+    def test_channel_map_entry_without_colon_skipped(self):
+        """
+        SENTINEL — malformed entry without ':' must be silently skipped.
+        Crash on split → one bad entry breaks all channel mappings → test fails.
+        """
+        with patch.dict(os.environ, {"DISCORD_CHANNEL_MAP": "no-colon,valid:ch"},
+                        clear=False):
+            cfg = discord_config_module.get_discord_config()
+        assert "no-colon" not in cfg.channel_mappings
+        assert "valid" in cfg.channel_mappings
+
+    def test_allowed_users_parsed_from_env(self):
+        """
+        SENTINEL — DISCORD_ALLOWED_USERS must be split into a list.
+        Skip parsing → allowlist always empty → all users can interact → test fails.
+        """
+        with patch.dict(os.environ, {"DISCORD_ALLOWED_USERS": "user1,user2"},
+                        clear=False):
+            cfg = discord_config_module.get_discord_config()
+        assert "user1" in cfg.allowed_users
+        assert "user2" in cfg.allowed_users
+
+    def test_allowed_users_whitespace_stripped(self):
+        """Whitespace around user IDs must be stripped."""
+        with patch.dict(os.environ, {"DISCORD_ALLOWED_USERS": " user1 , user2 "},
+                        clear=False):
+            cfg = discord_config_module.get_discord_config()
+        assert "user1" in cfg.allowed_users
+        assert " user1 " not in cfg.allowed_users
+
+
+class TestGetConfigSingleton:
+    def test_get_config_returns_same_instance(self):
+        """
+        SENTINEL — get_config must return the same singleton on repeated calls.
+        Create new instance each call → config mutations lost → test fails.
+        """
+        c1 = discord_config_module.get_config()
+        c2 = discord_config_module.get_config()
+        assert c1 is c2
+
+    def test_update_config_replaces_singleton(self):
+        """
+        SENTINEL — update_config must replace the module-level singleton.
+        Skip assignment → singleton never reflects persisted changes → test fails.
+        """
+        new_cfg = discord_config_module.DiscordConfig(bot_token="SENTINEL_NEW")
+        discord_config_module.update_config(new_cfg)
+        assert discord_config_module.get_config() is new_cfg
+        assert discord_config_module.get_config().bot_token == "SENTINEL_NEW"
+
+
 class TestDeleteChannelMapping:
     @pytest.mark.asyncio
     async def test_delete_channel_mapping_removes_singleton_entry(self):
