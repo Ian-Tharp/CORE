@@ -1,4 +1,4 @@
-﻿import { Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { LandingPageComponent } from './landing-page/landing-page.component';
 import { ConversationsPageComponent } from './conversations-page/conversations-page.component';
 import { KnowledgebaseComponent } from './knowledgebase/knowledgebase.component';
@@ -15,6 +15,7 @@ import { WorldDetailComponent } from './creative-design-product/world-detail/wor
 import { CreativeBoardsComponent } from './creative-design-product/boards/creative-boards.component';
 import { CommunicationComponent } from './communication/communication.component';
 import { McpRegistryComponent } from './tools/mcp-registry.component';
+import { DiscordBridgeDashboardComponent } from './tools/discord-bridge-dashboard/discord-bridge-dashboard.component';
 import { AttributionBrowserComponent } from './knowledge-attribution/attribution-browser.component';
 import { KanbanComponent } from './kanban/kanban.component';
 
@@ -34,6 +35,15 @@ export const routes: Routes = [
   {
     path: 'communication',
     component: CommunicationComponent
+  },
+  {
+    path: 'tools/discord-brdige',
+    redirectTo: 'tools/discord-bridge',
+    pathMatch: 'full'
+  },
+  {
+    path: 'tools/discord-bridge',
+    component: DiscordBridgeDashboardComponent
   },
   {
     path: 'tools',

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,9 +9,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { ChatWindowComponent } from '../shared/chat-window/chat-window.component';
-import { StatusIndicatorComponent } from '../shared/status-indicator/status-indicator.component';
-import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { SystemMonitorService } from '../services/system-monitor/system-monitor.service';
 import { InstanceService } from '../services/instance.service';
@@ -26,10 +25,13 @@ import {
   TaskSummary,
   DashboardState
 } from '../models/instance.models';
+import { DiscordBridgeService } from '../services/discord-bridge/discord-bridge.service';
+import { DiscordBridgeStatusBadgeComponent } from '../shared/discord-bridge-status-badge/discord-bridge-status-badge.component';
 
 @Component({
   selector: 'app-landing-page',
   imports: [
+    AsyncPipe,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -41,18 +43,19 @@ import {
     MatSnackBarModule,
     MatProgressSpinnerModule,
     ChatWindowComponent,
-    StatusIndicatorComponent,
     CommonModule,
     HttpClientModule,
     BoardsComponent,
     MyAgentsPageComponent,
-    RouterLink
+    RouterLink,
+    DiscordBridgeStatusBadgeComponent
   ],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.scss'
 })
 export class LandingPageComponent implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+  private readonly _discordBridgeService = inject(DiscordBridgeService);
+  private readonly destroy$ = new Subject<void>();
 
   // Dashboard state
   dashboardState: DashboardState = {
@@ -80,6 +83,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   };
 
   // New real-time data
+  public readonly discordBridgeIndicator$ = this._discordBridgeService.indicator$;
   activeAgents: AgentInstanceUI[] = [];
   systemHealth: SystemHealth | null = null;
   recentActivities: ActivityEvent[] = [];
@@ -91,9 +95,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   deploymentLoading = false;
 
   constructor(
-    private systemMonitor: SystemMonitorService,
-    private instanceService: InstanceService,
-    private snackBar: MatSnackBar
+    private readonly systemMonitor: SystemMonitorService,
+    private readonly instanceService: InstanceService,
+    private readonly snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {

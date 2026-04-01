@@ -6,7 +6,8 @@
 
 // Landing page container
 .landing-container {
-  min-height: calc(100vh - 64px);
+  height: 100%;
+  min-height: 100%;
   background:
     radial-gradient(ellipse at 15% 70%, rgba(0, 255, 200, 0.06) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 15%, rgba(0, 210, 255, 0.04) 0%, transparent 55%),
@@ -15,10 +16,12 @@
   background-size: 200% 200%;
   animation: ambientShift 30s ease-in-out infinite;
   color: var(--core-text-primary);
-  padding: 0 0.5rem 0.25rem 0;
+  padding: 0 0.5rem 0.5rem 0;
   overflow-x: hidden;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 // Loading and Error States
@@ -217,12 +220,14 @@
     max-width: 1200px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 60px;
     align-items: center;
   }
   
   .welcome-message {
+    min-width: 0;
+
     .hero-title {
       font-size: 3rem;
       font-weight: 900;
@@ -249,6 +254,7 @@
     .hero-actions {
       display: flex;
       gap: 16px;
+      flex-wrap: wrap;
       
       .primary-action {
         background: rgba(0, 8, 20, 0.85) !important;
@@ -295,8 +301,8 @@
   // Status hologram - Fixed centering
   .status-hologram {
     position: relative;
-    width: 250px;
-    height: 250px;
+    width: clamp(11rem, 18vw, 15.625rem);
+    height: clamp(11rem, 18vw, 15.625rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -372,6 +378,7 @@
   display: grid;
   gap: 16px;
   flex: 1;
+  align-content: start;
 
   .dashboard-card {
     background: var(--core-card-bg);
@@ -970,7 +977,7 @@
 .actions-card {
   .quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
 
     .quick-action {
@@ -1047,6 +1054,38 @@
         text-align: center;
         line-height: 1.2;
         letter-spacing: 0.3px;
+      }
+
+      .quick-action-status {
+        margin-top: auto;
+      }
+    }
+
+    .quick-action-discord {
+      background: rgba(59, 130, 246, 0.08) !important;
+      border-color: rgba(96, 165, 250, 0.3) !important;
+
+      &:hover {
+        background: rgba(59, 130, 246, 0.14) !important;
+        border-color: rgba(96, 165, 250, 0.45) !important;
+      }
+
+      mat-icon {
+        color: #9ec5ff !important;
+      }
+    }
+
+    .quick-action-tools {
+      background: rgba(129, 140, 248, 0.08) !important;
+      border-color: rgba(165, 180, 252, 0.26) !important;
+
+      &:hover {
+        background: rgba(129, 140, 248, 0.14) !important;
+        border-color: rgba(165, 180, 252, 0.42) !important;
+      }
+
+      mat-icon {
+        color: #c7d2fe !important;
       }
     }
   }
@@ -1147,7 +1186,11 @@
 }
 
 .main-tabs {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 
   .mat-mdc-tab-header {
     min-height: 32px;
@@ -1188,51 +1231,76 @@
     border-width: 2px !important;
     box-shadow: 0 0 8px rgba(0, 255, 200, 0.5);
   }
+
+  ::ng-deep .mat-mdc-tab-body-wrapper {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  ::ng-deep .mat-mdc-tab-body,
+  ::ng-deep .mat-mdc-tab-body-content {
+    height: 100%;
+    min-height: 0;
+  }
+
+  ::ng-deep .mat-mdc-tab-body-content {
+    overflow: hidden;
+  }
 }
 
 .content-layout {
   display: grid;
-  grid-template-columns: 340px auto 260px;
+  grid-template-columns: minmax(17rem, 21.25rem) minmax(0, 1fr) minmax(13.5rem, 16.25rem);
   gap: 12px;
   flex: 1;
-  height: calc(100vh - 64px - 28px);
-  overflow: hidden; // prevent parent scroll, child columns handle
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-section {
   width: 100%;
-  max-width: 340px;
-  overflow: hidden; // Let chat window handle its own scrolling
+  max-width: 21.25rem;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   position: relative;
   z-index: 2;
 
   app-chat-window {
     display: flex;
     flex: 1 1 auto;
-    min-height: 0; // Allow flexbox shrinking
+    min-height: 0;
+    min-width: 0;
   }
 }
 
 .main-section {
   overflow-y: auto;
-  overflow-x: hidden; // prevent horizontal scroll bar
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 0 8px 24px 0;
+  min-height: 0;
+  min-width: 0;
+  scrollbar-gutter: stable;
 }
 
 .side-section {
-  width: 260px;
+  width: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding-left: 4px;
+  min-height: 0;
+  min-width: 0;
+  scrollbar-gutter: stable;
 }
 
 @media (max-width: 1024px) {
@@ -1413,25 +1481,22 @@
 }
 
 @media (max-width: 1440px) {
-  /* Better column sizing on laptop-scale displays */
   .content-layout {
-    /* shrink side columns so the centre column gets extra real-estate */
-    grid-template-columns: 280px auto 220px;
+    grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr) minmax(12rem, 14rem);
   }
 
-  /* Keep hero content within column width on laptops */
   .hero-section {
     .hero-content {
       max-width: 100%;
       padding: 0 0.5rem;
+      gap: 40px;
     }
-    gap: 40px;
   }
 }
 
 @media (max-width: 1280px) and (min-width: 1025px) {
   .content-layout {
-    grid-template-columns: 260px auto 200px;
+    grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr) minmax(11.5rem, 12.5rem);
   }
 }
 

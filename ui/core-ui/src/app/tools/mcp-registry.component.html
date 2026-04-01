@@ -1,177 +1,286 @@
-<div class="mcp-registry">
-  <div class="registry-header">
-    <h1>MCP Tool Registry</h1>
-    <p class="subtitle">
-      Discover and manage Model Context Protocol tools available to agents
-    </p>
-    
-    <div class="header-actions">
-      <button 
-        class="btn btn-secondary" 
-        (click)="refreshRegistry()" 
+<div class="integrations-hub">
+  <header class="hub-header">
+    <div class="hub-copy">
+      <p class="eyebrow">Operator Surfaces</p>
+      <h1>Tools & Integrations</h1>
+      <p class="subtitle">
+        Orient operators, validate gateway state, and inspect the MCP capabilities that CORE agents can invoke.
+      </p>
+    </div>
+
+    <div class="hub-actions">
+      <div class="registry-indicator" [class]="registryTone">
+        <span class="indicator-dot"></span>
+        <div class="indicator-copy">
+          <span class="indicator-label">{{ registryStatusLabel }}</span>
+          <span class="indicator-meta">
+            @if (loading) {
+              Syncing registry...
+            } @else {
+              Last sync {{ lastLoadedTimeLabel }}
+            }
+          </span>
+        </div>
+      </div>
+
+      <button
+        class="btn btn-secondary"
+        (click)="refreshRegistry()"
         [disabled]="loading">
-        <i class="icon-refresh"></i>
-        Refresh
+        Refresh Registry
       </button>
     </div>
-  </div>
+  </header>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading MCP registry...</p>
-  </div>
-
-  <!-- Error State -->
-  <div *ngIf="error" class="error-container">
-    <div class="error-message">
-      <i class="icon-warning"></i>
-      <p>{{ error }}</p>
-      <button class="btn btn-primary" (click)="loadRegistry()">Try Again</button>
+  @if (loading && !registry) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading operator surfaces and MCP registry data...</p>
     </div>
-  </div>
+  }
 
-  <!-- Registry Content -->
-  <div *ngIf="!loading && !error && registry" class="registry-content">
-    
-    <!-- Summary Stats -->
-    <div class="stats-bar">
-      <div class="stat">
-        <span class="stat-number">{{ registry.servers.length }}</span>
-        <span class="stat-label">MCP Servers</span>
+  @if (error) {
+    <div class="error-card">
+      <div>
+        <p class="section-eyebrow">Registry Attention</p>
+        <h2>Unable to load the MCP registry</h2>
+        <p>{{ error }}</p>
       </div>
-      <div class="stat">
-        <span class="stat-number">{{ registry.total_tools }}</span>
-        <span class="stat-label">Total Tools</span>
-      </div>
-      <div class="stat">
-        <span class="stat-number">{{ allTools.length }}</span>
-        <span class="stat-label">Filtered Tools</span>
-      </div>
+      <button class="btn btn-primary" (click)="loadRegistry()">Retry</button>
     </div>
+  }
 
-    <!-- Search and Filters -->
-    <div class="filters">
-      <div class="search-box">
-        <i class="icon-search"></i>
-        <input 
-          type="text" 
-          placeholder="Search tools and servers..."
-          [(ngModel)]="searchQuery"
-          class="search-input">
-      </div>
-      
-      <div class="server-filter">
-        <label>Server:</label>
-        <select [(ngModel)]="selectedServer" class="server-select">
-          <option [value]="null">All Servers</option>
-          <option *ngFor="let serverName of serverNames" [value]="serverName">
-            {{ serverName }}
-          </option>
-        </select>
-      </div>
-    </div>
+  @if (registry) {
+    <section class="operations-grid">
+      @if (discordBridgeIndicator$ | async; as discordBridgeIndicator) {
+        <a class="surface-card surface-card--gateway" [routerLink]="['/tools/discord-bridge']">
+          <div class="surface-card-top">
+            <span class="surface-eyebrow">Primary Gateway</span>
+            <app-discord-bridge-status-badge [indicator]="discordBridgeIndicator"></app-discord-bridge-status-badge>
+          </div>
+          <h2>Discord Gateway</h2>
+          <p>
+            Validate connection state, inspect mapped channels, review deliveries, and diagnose failures before routing operators through CORE.
+          </p>
+          <div class="surface-meta">
+            <span class="surface-meta-label">{{ discordBridgeIndicator.detail }}</span>
+            <span class="surface-link">Open diagnostics</span>
+          </div>
+        </a>
+      }
 
-    <!-- Server List -->
-    <div class="servers-list">
-      <div *ngFor="let server of filteredServers" class="server-card">
-        <div class="server-header">
-          <div class="server-info">
-            <h3 class="server-name">{{ server.name }}</h3>
-            <div class="server-meta">
-              <span class="server-type">{{ server.type }}</span>
-              <span class="server-status" [class]="'status-' + getServerStatus(server)">
-                {{ getServerStatusText(server) }}
+      <section class="surface-card surface-card--snapshot">
+        <span class="surface-eyebrow">Operator Snapshot</span>
+        <h2>Integration Status</h2>
+        <div class="snapshot-grid">
+          <div class="snapshot-item">
+            <span class="snapshot-value">{{ registry.servers.length }}</span>
+            <span class="snapshot-label">Configured Servers</span>
+          </div>
+          <div class="snapshot-item">
+            <span class="snapshot-value">{{ runningServerCount }}</span>
+            <span class="snapshot-label">Running</span>
+          </div>
+          <div class="snapshot-item">
+            <span class="snapshot-value">{{ registry.total_tools }}</span>
+            <span class="snapshot-label">Total Tools</span>
+          </div>
+          <div class="snapshot-item">
+            <span class="snapshot-value">{{ allTools.length }}</span>
+            <span class="snapshot-label">Visible Tools</span>
+          </div>
+        </div>
+        <p class="snapshot-note">{{ registryStatusDetail }}</p>
+      </section>
+
+      <section class="surface-card surface-card--playbook">
+        <span class="surface-eyebrow">Best Operator Path</span>
+        <h2>Gateway Playbook</h2>
+        <ol class="playbook-list">
+          <li>Open Discord Gateway first to confirm connectivity, mappings, and recent failures.</li>
+          <li>Use the registry below to verify tool servers are reachable before routing agent work.</li>
+          <li>Inspect tool schemas when validating execution paths or onboarding new integrations.</li>
+        </ol>
+      </section>
+    </section>
+
+    <section class="registry-shell">
+      <div class="registry-shell-header">
+        <div class="section-heading">
+          <p class="section-eyebrow">MCP Tooling Catalog</p>
+          <h2>MCP Registry</h2>
+          <p>
+            Search servers, inspect command metadata, and open tool schemas when validating how agents can act across the platform.
+          </p>
+        </div>
+
+        <div class="stats-strip">
+          <div class="stat-card">
+            <span class="stat-value">{{ filteredServerCount }}</span>
+            <span class="stat-label">Visible Servers</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{{ allTools.length }}</span>
+            <span class="stat-label">Visible Tools</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{{ runningServerCount }}</span>
+            <span class="stat-label">Healthy MCP Nodes</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="registry-toolbar">
+        <label class="toolbar-field toolbar-field--search">
+          <span class="field-label">Search</span>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            class="search-input"
+            placeholder="Search tools, descriptions, or server names" />
+        </label>
+
+        <label class="toolbar-field toolbar-field--server">
+          <span class="field-label">Server</span>
+          <select [(ngModel)]="selectedServer" class="server-select">
+            <option [ngValue]="null">All Servers</option>
+            @for (serverName of serverNames; track serverName) {
+              <option [ngValue]="serverName">{{ serverName }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (filteredServers.length === 0) {
+        <div class="empty-shell">
+          <p class="section-eyebrow">No matches</p>
+          <h3>No tools match the current filters</h3>
+          <p>Try a broader search or clear the server filter to inspect the full registry.</p>
+          <button class="btn btn-secondary" (click)="searchQuery = ''; selectedServer = null">Clear Filters</button>
+        </div>
+      } @else {
+        <div class="server-list">
+          @for (server of filteredServers; track trackByServer($index, server)) {
+            <article class="server-card">
+              <div class="server-card-header">
+                <div class="server-card-copy">
+                  <div class="server-title-row">
+                    <h3>{{ server.name }}</h3>
+                    <span class="server-status" [class]="'status-' + getServerStatus(server)">
+                      {{ getServerStatusText(server) }}
+                    </span>
+                  </div>
+
+                  <p class="server-command">
+                    @if (server.command) {
+                      {{ server.command }}
+                      @if (server.args && server.args.length > 0) {
+                        {{ ' ' + server.args.join(' ') }}
+                      }
+                    } @else {
+                      Managed through the CORE MCP registry configuration.
+                    }
+                  </p>
+                </div>
+
+                <div class="server-card-meta">
+                  <span class="server-type">{{ server.type }}</span>
+                  <span class="tool-count">{{ getVisibleTools(server).length }} of {{ server.tools.length }} tools</span>
+                </div>
+              </div>
+
+              @if (getVisibleTools(server).length === 0) {
+                <div class="server-empty-state">
+                  No tools in this server match the active search filter.
+                </div>
+              } @else {
+                <div class="tool-list">
+                  @for (tool of getVisibleTools(server); track trackByTool($index, tool)) {
+                    <button
+                      type="button"
+                      class="tool-row"
+                      (click)="selectTool(tool)"
+                      [class.selected]="selectedTool === tool">
+                      <div class="tool-row-copy">
+                        <div class="tool-row-title">{{ tool.name }}</div>
+                        <p>{{ tool.description }}</p>
+                      </div>
+
+                      <div class="tool-row-meta">
+                        @if (tool.parameters_schema) {
+                          <span class="tool-chip">Schema</span>
+                        }
+                        <span class="tool-open">Inspect</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (selectedTool) {
+    <div class="tool-modal" (click)="clearSelection()">
+      <div
+        class="modal-content"
+        (click)="$event.stopPropagation()"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tool-modal-title"
+        tabindex="-1">
+        <div class="modal-header">
+          <div>
+            <p class="section-eyebrow">Tool Inspection</p>
+            <h3 id="tool-modal-title">{{ selectedTool.name }}</h3>
+          </div>
+          <button class="close-btn" (click)="clearSelection()" aria-label="Close tool details">×</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="tool-info-grid">
+            <div class="info-card">
+              <span class="info-label">Server</span>
+              <span class="info-value">{{ selectedTool.server }}</span>
+            </div>
+            <div class="info-card">
+              <span class="info-label">Surface</span>
+              <span class="info-value">
+                @if (selectedTool.parameters_schema) {
+                  Schema available
+                } @else {
+                  Metadata only
+                }
               </span>
             </div>
           </div>
-          
-          <div class="server-stats">
-            <span class="tool-count">{{ server.tools.length }} tools</span>
-          </div>
-        </div>
 
-        <!-- Server Command Info -->
-        <div class="server-details" *ngIf="server.command">
-          <div class="command-info">
-            <strong>Command:</strong> {{ server.command }}
-            <span *ngIf="server.args && server.args.length > 0"> {{ server.args.join(' ') }}</span>
+          <div class="tool-description-shell">
+            <span class="info-label">Description</span>
+            <p>{{ selectedTool.description }}</p>
           </div>
-        </div>
 
-        <!-- Tools Grid -->
-        <div class="tools-grid" *ngIf="server.tools.length > 0">
-          <div 
-            *ngFor="let tool of server.tools" 
-            class="tool-card"
-            (click)="selectTool(tool)"
-            [class.selected]="selectedTool === tool">
-            
-            <div class="tool-header">
-              <h4 class="tool-name">{{ tool.name }}</h4>
-              <span class="tool-server">{{ tool.server }}</span>
+          @if (selectedTool.parameters_schema) {
+            <div class="tool-schema">
+              <div class="schema-header">
+                <span class="info-label">Parameters Schema</span>
+                <span class="schema-note">Read-only inspection surface</span>
+              </div>
+              <pre class="schema-code">{{ selectedTool.parameters_schema | json }}</pre>
             </div>
-            
-            <p class="tool-description">{{ tool.description }}</p>
-            
-            <div class="tool-meta">
-              <span class="has-schema" *ngIf="tool.parameters_schema">
-                <i class="icon-code"></i> Schema
-              </span>
-            </div>
-          </div>
+          } @else {
+            <p class="schema-empty">This tool does not currently expose a JSON parameters schema.</p>
+          }
         </div>
 
-        <!-- No Tools Message -->
-        <div class="no-tools" *ngIf="server.tools.length === 0">
-          <p>No tools available for this server</p>
+        <div class="modal-footer">
+          <span class="modal-note">Inspect metadata here, then validate the live path in the owning integration or gateway surface.</span>
+          <button class="btn btn-secondary" (click)="clearSelection()">Close</button>
         </div>
       </div>
     </div>
-
-    <!-- No Results -->
-    <div class="no-results" *ngIf="filteredServers.length === 0">
-      <div class="no-results-content">
-        <i class="icon-search-empty"></i>
-        <h3>No tools found</h3>
-        <p>Try adjusting your search query or server filter</p>
-        <button class="btn btn-secondary" (click)="searchQuery = ''; selectedServer = null">
-          Clear Filters
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tool Details Modal -->
-  <div class="tool-modal" *ngIf="selectedTool" (click)="clearSelection()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ selectedTool.name }}</h3>
-        <button class="close-btn" (click)="clearSelection()">×</button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="tool-info">
-          <div class="info-row">
-            <strong>Server:</strong> {{ selectedTool.server }}
-          </div>
-          <div class="info-row">
-            <strong>Description:</strong> {{ selectedTool.description }}
-          </div>
-        </div>
-
-        <div class="tool-schema" *ngIf="selectedTool.parameters_schema">
-          <h4>Parameters Schema</h4>
-          <pre class="schema-code">{{ selectedTool.parameters_schema | json }}</pre>
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="clearSelection()">Close</button>
-        <button class="btn btn-primary" disabled>
-          Use Tool (Coming Soon)
-        </button>
-      </div>
-    </div>
-  </div>
+  }
 </div>

@@ -1,10 +1,10 @@
-﻿<nav class="side-nav">
+<nav class="side-nav">
   <!-- Main Navigation -->
   <div class="nav-content">
     <!-- Primary Navigation -->
     <div class="nav-section">
       <div class="nav-items">
-        <button mat-icon-button class="nav-item" [routerLink]="['/dashboard']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Dashboard" matTooltipPosition="right">
+        <button mat-icon-button class="nav-item" [routerLink]="['/']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Dashboard" matTooltipPosition="right">
           <mat-icon>dashboard</mat-icon>
         </button>
         
@@ -46,6 +46,17 @@
           <button mat-menu-item [routerLink]="['/knowledge']"><mat-icon>folder</mat-icon><span>Knowledge Base</span></button>
           <button mat-menu-item [routerLink]="['/knowledge-attribution']"><mat-icon>link</mat-icon><span>Attribution Browser</span></button>
         </mat-menu>
+
+        @if (discordBridgeIndicator$ | async; as discordBridgeIndicator) {
+        <button mat-icon-button class="nav-item" [routerLink]="['/tools']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" [matTooltip]="getToolsTooltip(discordBridgeIndicator)" matTooltipPosition="right">
+          <mat-icon>extension</mat-icon>
+          <app-discord-bridge-status-badge
+            class="nav-status-badge"
+            [indicator]="discordBridgeIndicator"
+            variant="dot"
+            labelPrefix="Discord Gateway status"></app-discord-bridge-status-badge>
+        </button>
+        }
 
         <button mat-icon-button class="nav-item" [routerLink]="['/analytics']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" matTooltip="Analytics" matTooltipPosition="right">
           <mat-icon>analytics</mat-icon>

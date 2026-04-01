@@ -1,0 +1,66 @@
+.status-chip,
+.status-dot {
+  &.ready {
+    --badge-fill: rgba(34, 197, 94, 0.18);
+    --badge-border: rgba(34, 197, 94, 0.35);
+    --badge-ink: #8ef0b0;
+  }
+
+  &.pending {
+    --badge-fill: rgba(251, 191, 36, 0.18);
+    --badge-border: rgba(251, 191, 36, 0.35);
+    --badge-ink: #ffd97a;
+  }
+
+  &.attention {
+    --badge-fill: rgba(248, 113, 113, 0.18);
+    --badge-border: rgba(248, 113, 113, 0.35);
+    --badge-ink: #ffb4b4;
+  }
+
+  &.unknown {
+    --badge-fill: rgba(148, 163, 184, 0.16);
+    --badge-border: rgba(148, 163, 184, 0.35);
+    --badge-ink: #d7e0ea;
+  }
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999rem;
+  border: 1px solid var(--badge-border);
+  background: var(--badge-fill);
+  color: var(--badge-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.status-chip-dot,
+.status-dot {
+  border-radius: 999rem;
+  background: var(--badge-ink);
+  box-shadow: 0 0 0.5rem var(--badge-fill);
+}
+
+.status-chip-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  display: inline-flex;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid var(--badge-border);
+}
+
+.status-chip-label {
+  line-height: 1;
+}

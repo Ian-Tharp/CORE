@@ -132,6 +132,8 @@
     <button mat-icon-button color="primary" type="submit" aria-label="Send message" [disabled]="isStreaming">
       <mat-icon>send</mat-icon>
     </button>
-    <mat-icon *ngIf="isStreaming" class="spinning" style="margin-left:0.5rem">sync</mat-icon>
+    @if (isStreaming) {
+      <mat-icon class="spinning" style="margin-left:0.5rem">sync</mat-icon>
+    }
   </form>
 </div>

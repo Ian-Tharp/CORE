@@ -312,6 +312,13 @@
     color: rgba(255, 255, 255, 0.55) !important;
     transition: all var(--transition-fast) !important;
   }
+
+  .nav-status-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    pointer-events: none;
+  }
 }
 
 // Override Material Design button effects for side nav

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { delay, map, tap } from 'rxjs/operators';
+import { catchError, delay, map, tap } from 'rxjs/operators';
 import { LibraryAgent, LibraryFilter, LibrarySort } from '../models/agent.models';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { AppConfigService } from './config/app-config.service';
@@ -144,7 +144,12 @@ export class AgentLibraryService {
     const params = new HttpParams().set('page', 1).set('page_size', 200);
     return this.http.get<{ agents: any[] }>(`${this.apiUrl}`, { params }).pipe(
       map(res => (res.agents ?? []).map(a => this.mapBackendAgentToLibrary(a))),
-      tap(mapped => this.agentsSubject.next(mapped))
+      tap(mapped => this.agentsSubject.next(mapped)),
+      catchError(error => {
+        console.warn('Failed to refresh agent library:', error);
+        this.agentsSubject.next([]);
+        return of([]);
+      })
     );
   }
 

@@ -61,9 +61,17 @@ export class KnowledgebaseService {
   private initializeService(): void {
     // Only load if we have a valid HTTP client
     if (this.http) {
-      this.loadFiles().subscribe();
+      this.loadFiles().subscribe({
+        error: () => {
+          this.filesSubject.next([]);
+        }
+      });
       this.loadStats().subscribe();
-      this.loadAvailableTags().subscribe();
+      this.loadAvailableTags().subscribe({
+        error: () => {
+          this.availableTagsSubject.next([]);
+        }
+      });
     }
   }
 

@@ -81,10 +81,18 @@
     </mat-menu>
 
     <!-- System Resources -->
-    <button mat-icon-button class="nav-btn" #systemBtn [matMenuTriggerFor]="systemMenu">
+    <button mat-icon-button class="nav-btn" #systemBtn [matMenuTriggerFor]="systemMenu" aria-label="System">
       <mat-icon>monitor_heart</mat-icon>
     </button>
     <mat-menu #systemMenu="matMenu" class="command-menu">
+      <button mat-menu-item (click)="navigateTo('/tools')">
+        <mat-icon>extension</mat-icon>
+        <span>Tools & Integrations</span>
+      </button>
+      <button mat-menu-item (click)="navigateTo('/tools/discord-bridge')">
+        <mat-icon>hub</mat-icon>
+        <span>Discord Gateway</span>
+      </button>
       <button mat-menu-item>
         <mat-icon>memory</mat-icon>
         <span>System Monitor</span>

@@ -97,8 +97,6 @@ export class ChatWindowComponent implements OnChanges {
     this.kbService.files$.subscribe(files => {
       this.kbFiles = files;
     });
-    // Kick off initial load
-    this.kbService.loadFiles().subscribe();
 
     // Load thinking preference from localStorage
     const savedPref = localStorage.getItem('core-thinking-expanded');

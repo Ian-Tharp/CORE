@@ -195,6 +195,22 @@
                     <mat-icon>security</mat-icon>
                     <span>Security Scan</span>
                   </button>
+                  <button mat-raised-button class="quick-action quick-action-tools"
+                          [routerLink]="['/tools']">
+                    <mat-icon>extension</mat-icon>
+                    <span>Tools & Integrations</span>
+                  </button>
+                  @if (discordBridgeIndicator$ | async; as discordBridgeIndicator) {
+                  <button mat-raised-button class="quick-action quick-action-discord"
+                          [routerLink]="['/tools/discord-bridge']"
+                          [matTooltip]="discordBridgeIndicator.tooltip">
+                    <mat-icon>hub</mat-icon>
+                    <span>Discord Gateway</span>
+                    <app-discord-bridge-status-badge
+                      class="quick-action-status"
+                      [indicator]="discordBridgeIndicator"></app-discord-bridge-status-badge>
+                  </button>
+                  }
                   <button mat-raised-button class="quick-action"
                           (click)="viewAnalytics()">
                     <mat-icon>analytics</mat-icon>

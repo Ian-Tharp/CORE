@@ -1,0 +1,342 @@
+<section class="gateway-dashboard">
+  <header class="page-header">
+    <div class="header-copy">
+      <p class="eyebrow">Gateway Operations</p>
+      <h1>Discord Gateway</h1>
+      <p class="subtitle">
+        Run CORE like a messaging gateway: verify live state, confirm mapped channels, and inspect delivery health before routing operators through Discord.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <div class="header-status">
+        <span class="status-badge" [class]="bridgeStatusTone">{{ bridgeStatusLabel }}</span>
+        <span class="header-meta">Updated {{ lastUpdatedLabel }}</span>
+      </div>
+
+      <button mat-flat-button class="refresh-button" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (loading) {
+    <div class="loading-state">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>Loading Discord gateway diagnostics...</p>
+    </div>
+  } @else if (error) {
+    <mat-card class="state-card error-card">
+      <mat-card-content>
+        <div class="state-row">
+          <mat-icon>error</mat-icon>
+          <div>
+            <h2>Unable to load diagnostics</h2>
+            <p>{{ error }}</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (metrics) {
+    @if (operatorAlert) {
+      <mat-card class="signal-card" [class]="bridgeStatusTone">
+        <mat-card-content>
+          <div class="signal-row">
+            <mat-icon>
+              @if (bridgeStatusTone === 'ready') {
+                check_circle
+              } @else if (bridgeStatusTone === 'pending') {
+                sync
+              } @else {
+                warning
+              }
+            </mat-icon>
+            <div>
+              <p class="signal-label">Operator Signal</p>
+              <p class="signal-copy">{{ operatorAlert }}</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <section class="overview-grid">
+      <mat-card class="hero-card">
+        <mat-card-content>
+          <div class="hero-top">
+            <div class="hero-copy">
+              <p class="section-eyebrow">Live State</p>
+              <h2>{{ bridgeHeroTitle }}</h2>
+              <p class="hero-summary">{{ bridgeHeroSummary }}</p>
+            </div>
+
+            <div class="hero-status">
+              <span class="status-badge" [class]="bridgeStatusTone">{{ bridgeStatusLabel }}</span>
+            </div>
+          </div>
+
+          <div class="hero-metrics">
+            <div class="hero-metric">
+              <span class="metric-label">Bot Identity</span>
+              <span class="metric-value">{{ metrics.status.bot_user || 'Unknown bot' }}</span>
+            </div>
+            <div class="hero-metric">
+              <span class="metric-label">Guild Reach</span>
+              <span class="metric-value">{{ metrics.status.guilds }}</span>
+            </div>
+            <div class="hero-metric">
+              <span class="metric-label">Mapped Channels</span>
+              <span class="metric-value">{{ metrics.mappings_count }}</span>
+            </div>
+            <div class="hero-metric">
+              <span class="metric-label">Connected Since</span>
+              <span class="metric-value">{{ connectedAtLabel }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="overview-stack">
+        <mat-card class="overview-card">
+          <mat-card-header>
+            <mat-card-title>Operator Checklist</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="workflow-list">
+              @for (item of validationChecklist; track trackByChecklistItem($index, item)) {
+                <div class="workflow-item">
+                  <div class="workflow-status" [class]="item.status">
+                    @if (item.status === 'ready') {
+                      <mat-icon>check_circle</mat-icon>
+                    } @else if (item.status === 'attention') {
+                      <mat-icon>warning</mat-icon>
+                    } @else {
+                      <mat-icon>schedule</mat-icon>
+                    }
+                  </div>
+                  <div class="workflow-copy">
+                    <h3>{{ item.label }}</h3>
+                    <p>{{ item.detail }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="overview-card">
+          <mat-card-header>
+            <mat-card-title>Failure Surface</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (recentFailurePreview.length === 0) {
+              <p class="empty-state">No recent failures. The bridge is currently operating cleanly.</p>
+            } @else {
+              <div class="failure-preview-list">
+                @for (failure of recentFailurePreview; track trackByDelivery($index, failure)) {
+                  <div class="failure-preview-item">
+                    <div class="failure-preview-header">
+                      <span class="status-pill failed">failed</span>
+                      <span class="failure-direction">{{ failure.direction }}</span>
+                    </div>
+                    <p>{{ failure.error || 'Unknown failure' }}</p>
+                  </div>
+                }
+              </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <mat-card class="summary-card">
+        <mat-card-header>
+          <mat-card-title>Channel Mappings</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="summary-value">{{ metrics.mappings_count }}</p>
+          <p class="summary-detail">Mapped channels ready for ingress and outbound routing</p>
+          <p class="summary-detail">Bridge-visible CORE channels: {{ metrics.status.channel_mappings }}</p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-header>
+          <mat-card-title>Traffic Links</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="summary-value">{{ metrics.message_links_count }}</p>
+          <p class="summary-detail">Inbound: {{ metrics.message_links_by_direction['discord_to_core'] || 0 }}</p>
+          <p class="summary-detail">Outbound: {{ metrics.message_links_by_direction['core_to_discord'] || 0 }}</p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-header>
+          <mat-card-title>Delivery Outcomes</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="summary-value">{{ metrics.delivery_events_count }}</p>
+          <p class="summary-detail">Successful: {{ deliverySuccessCount }}</p>
+          <p class="summary-detail">Failed: {{ deliveryFailedCount }} | Skipped: {{ deliverySkippedCount }}</p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card" [class.summary-card--attention]="deliveryFailedCount > 0 || recentFailurePreview.length > 0">
+        <mat-card-header>
+          <mat-card-title>Recent Failures</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="summary-value">{{ metrics.recent_failures.length }}</p>
+          <p class="summary-detail">
+            @if (recentFailurePreview.length > 0) {
+              {{ recentFailurePreview[0].error || 'Failure requires review' }}
+            } @else {
+              No recent failed bridge events
+            }
+          </p>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <mat-tab-group class="dashboard-tabs">
+      <mat-tab label="Mappings">
+        <div class="tab-panel">
+          <mat-card class="panel-card">
+            <mat-card-header>
+              <mat-card-title>Channel Mappings</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (mappings.length === 0) {
+                <p class="empty-state">No persisted Discord channel mappings found.</p>
+              } @else {
+                <div class="table-shell">
+                  <div class="table-row table-row--mappings table-header">
+                    <span>Discord Channel</span>
+                    <span>Guild</span>
+                    <span>CORE Channel</span>
+                    <span>Mode</span>
+                  </div>
+                  @for (mapping of mappings; track trackByChannelMapping($index, mapping)) {
+                    <div class="table-row table-row--mappings">
+                      <span>{{ mapping.discord_channel_name || mapping.discord_channel_id }}</span>
+                      <span>{{ mapping.discord_guild_name || mapping.discord_guild_id || 'Unknown' }}</span>
+                      <span>{{ mapping.core_channel_id }}</span>
+                      <span>{{ mapping.require_mention ? 'Mention only' : 'Direct bridge' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Deliveries">
+        <div class="tab-panel">
+          <mat-card class="panel-card">
+            <mat-card-header>
+              <mat-card-title>Recent Delivery Events</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (deliveries.length === 0) {
+                <p class="empty-state">No delivery events recorded yet. Generate live traffic to populate this view.</p>
+              } @else {
+                <div class="table-shell">
+                  <div class="table-row table-row--deliveries table-header">
+                    <span>Status</span>
+                    <span>Direction</span>
+                    <span>CORE Channel</span>
+                    <span>Discord Channel</span>
+                    <span>Created</span>
+                  </div>
+                  @for (delivery of deliveries; track trackByDelivery($index, delivery)) {
+                    <div class="table-row table-row--deliveries">
+                      <span>
+                        <span class="status-pill" [class]="delivery.status">{{ delivery.status }}</span>
+                      </span>
+                      <span>{{ delivery.direction }}</span>
+                      <span>{{ delivery.core_channel_id || 'n/a' }}</span>
+                      <span>{{ delivery.discord_channel_id || 'n/a' }}</span>
+                      <span>{{ delivery.created_at || 'n/a' }}</span>
+                    </div>
+                    @if (delivery.error) {
+                      <div class="detail-row error-detail">{{ delivery.error }}</div>
+                    }
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Message Links">
+        <div class="tab-panel">
+          <mat-card class="panel-card">
+            <mat-card-header>
+              <mat-card-title>Recent Message Links</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (messageLinks.length === 0) {
+                <p class="empty-state">No message links recorded yet. Send a Discord message into a mapped channel.</p>
+              } @else {
+                <div class="table-shell">
+                  <div class="table-row table-row--links table-header">
+                    <span>Direction</span>
+                    <span>CORE Message</span>
+                    <span>Discord Message</span>
+                    <span>Discord Channel</span>
+                    <span>Chunks</span>
+                  </div>
+                  @for (link of messageLinks; track trackByMessageLink($index, link)) {
+                    <div class="table-row table-row--links">
+                      <span>{{ link.direction }}</span>
+                      <span>{{ link.core_message_id }}</span>
+                      <span>{{ link.discord_message_id }}</span>
+                      <span>{{ link.discord_channel_id }}</span>
+                      <span>{{ link.chunk_index + 1 }}/{{ link.total_chunks }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Recent Failures">
+        <div class="tab-panel">
+          <mat-card class="panel-card">
+            <mat-card-header>
+              <mat-card-title>Failure Review</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (metrics.recent_failures.length === 0) {
+                <p class="empty-state">No recent failures. The bridge is currently operating cleanly.</p>
+              } @else {
+                <div class="failure-list">
+                  @for (failure of metrics.recent_failures; track trackByDelivery($index, failure)) {
+                    <div class="failure-item">
+                      <div class="failure-title">
+                        <span class="status-pill failed">failed</span>
+                        <strong>{{ failure.direction }}</strong>
+                      </div>
+                      <p>{{ failure.error || 'Unknown failure' }}</p>
+                      <small>
+                        CORE channel: {{ failure.core_channel_id || 'n/a' }} |
+                        Discord channel: {{ failure.discord_channel_id || 'n/a' }}
+                      </small>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  }
+</section>
