@@ -339,16 +339,20 @@ class TestComplete:
 
         self.router._clients[ModelProvider.OLLAMA] = mock_client
 
-        result = await self.router.complete(
-            "gpt-oss:20b",
-            [{"role": "user", "content": "test"}],
-        )
+        # Mock time.time to return deterministic values so duration_ms is non-zero
+        # regardless of Windows timer resolution or mock call speed.
+        time_seq = iter([1000.0, 1000.05])  # 50 ms elapsed
+        with patch("app.services.model_router.time.time", side_effect=lambda: next(time_seq)):
+            result = await self.router.complete(
+                "gpt-oss:20b",
+                [{"role": "user", "content": "test"}],
+            )
 
         assert result["content"] == "Hello!"
         assert result["model"] == "gpt-oss:20b"
         assert result["usage"]["prompt_tokens"] == 10
         assert result["usage"]["completion_tokens"] == 20
-        assert result["duration_ms"] > 0
+        assert result["duration_ms"] == pytest.approx(50.0, abs=0.1)
 
         # Usage should be tracked
         stats = self.router.get_usage_stats()
