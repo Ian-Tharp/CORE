@@ -11,6 +11,7 @@ Determines:
 import json
 import logging
 import os
+import re
 from typing import Optional
 
 import httpx
@@ -222,12 +223,61 @@ Respond in JSON format:
                 ambiguities=[]
             )
 
+    # ------------------------------------------------------------------
+    # Ambiguity detection — pattern table
+    # Each entry: (regex_pattern, message_template)
+    # Patterns are applied case-insensitively to the full input.
+    # ------------------------------------------------------------------
+    _AMBIGUITY_PATTERNS: list[tuple[str, str]] = [
+        # Unresolved pronouns / deictic references
+        (r"\b(it|that|this|those|these|they|them|the thing|the stuff)\b",
+         "Unresolved pronoun or deictic reference: what does '{match}' refer to?"),
+        # Underspecified file / code artifacts
+        (r"\bthe\s+(file|component|function|class|module|service|endpoint|route|method|variable)\b",
+         "Underspecified artifact: which {match}?"),
+        # Underspecified temporal reference
+        (r"\b(recently|before|after|last time|earlier|previously|just now)\b",
+         "Ambiguous temporal reference: when exactly is '{match}'?"),
+        # Vague quantity
+        (r"\b(some|a few|several|many|a couple of|a bunch of)\b",
+         "Vague quantity: how many does '{match}' mean?"),
+        # Underspecified location
+        (r"\b(there|somewhere|in that place|in the other place)\b",
+         "Underspecified location: where is '{match}'?"),
+        # Relative / comparative without referent
+        (r"\b(better|faster|smaller|larger|cleaner|simpler)\s+than\b",
+         "Comparative without referent: better/faster than what?"),
+    ]
+
     def detect_ambiguities(self, user_input: str) -> list[str]:
         """
-        Detect ambiguities in user input that need clarification.
+        Detect ambiguities in user input that may need clarification.
 
-        RSI TODO: Implement ambiguity detection (e.g., "the component" - which one?)
-        RSI TODO: Use entity recognition to identify underspecified references
+        Applies a catalogue of regex patterns to identify:
+        - Unresolved pronouns / deictic references (it, that, those, …)
+        - Underspecified artifacts (the file, the component, …)
+        - Vague temporal references (recently, before, …)
+        - Vague quantities (some, a few, several, …)
+        - Underspecified locations (there, somewhere, …)
+        - Comparatives without a referent (better than, faster than, …)
+
+        Returns a deduplicated list of human-readable ambiguity descriptions.
+        Empty list means no ambiguities were detected.
         """
-        # Placeholder for future ambiguity detection
-        return []
+        if not user_input or not user_input.strip():
+            return []
+
+        found: list[str] = []
+        seen_messages: set[str] = set()
+        lowered = user_input.lower()
+
+        for pattern, message_template in self._AMBIGUITY_PATTERNS:
+            for match in re.finditer(pattern, lowered, re.IGNORECASE):
+                matched_text = match.group(0)
+                # For "the <artifact>" pattern keep the full matched phrase
+                message = message_template.format(match=matched_text)
+                if message not in seen_messages:
+                    found.append(message)
+                    seen_messages.add(message)
+
+        return found
