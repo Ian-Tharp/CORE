@@ -22,6 +22,14 @@ class UserIntent(BaseModel):
     tools_needed: List[str] = Field(default_factory=list)
     context_retrieved: Optional[str] = None
     ambiguities: List[str] = Field(default_factory=list, description="Things that need clarification")
+    task_category: Optional[str] = Field(
+        default=None,
+        description=(
+            "Fine-grained task category for rubric-based evaluation "
+            "(e.g. 'code', 'research', 'file_management', 'data_analysis', 'communication'). "
+            "Optional — used by EvaluationAgent to select task-specific quality rubrics."
+        ),
+    )
 
 
 class PlanStep(BaseModel):

@@ -5,15 +5,11 @@ Responsibilities:
 - Evaluate if the goal was accomplished
 - Assess quality and confidence of outputs
 - Decide next action: finalize, retry, or revise plan
-
-RSI TODO: Implement LLM-based quality assessment
-RSI TODO: Add rubric-based evaluation for different task types
-RSI TODO: Integrate user feedback into evaluation criteria
 """
 
 import json
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from app.dependencies import get_openai_client_sync
 from app.models.core_state import (
@@ -25,6 +21,107 @@ from app.models.core_state import (
 from app.utils.json_repair import safe_json_loads, extract_json_object
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Task-type rubrics
+# ---------------------------------------------------------------------------
+
+# Each rubric is a compact list of evaluation criteria specific to that intent
+# type.  The rubric is injected into the LLM prompt so assessment is grounded
+# in the right quality dimensions for the task at hand.
+_RUBRICS: Dict[str, str] = {
+    "code": (
+        "Code-specific rubric:\n"
+        "- Does the output compile / run without syntax errors?\n"
+        "- Are edge cases and error conditions handled?\n"
+        "- Is the implementation idiomatic and maintainable?\n"
+        "- Are tests or documentation included if requested?"
+    ),
+    "research": (
+        "Research-specific rubric:\n"
+        "- Are claims backed by sources or reasoning?\n"
+        "- Is the scope of the question adequately covered?\n"
+        "- Are conflicting viewpoints acknowledged?\n"
+        "- Is the depth appropriate for the stated goal?"
+    ),
+    "file_management": (
+        "File management rubric:\n"
+        "- Were all target files created / modified / deleted as requested?\n"
+        "- Is the directory structure correct?\n"
+        "- Are file permissions / encodings appropriate?\n"
+        "- Was any existing data preserved where required?"
+    ),
+    "data_analysis": (
+        "Data analysis rubric:\n"
+        "- Is the analysis methodology sound?\n"
+        "- Are statistical or aggregation results clearly presented?\n"
+        "- Are edge cases (nulls, outliers) handled?\n"
+        "- Is the output format appropriate for the audience?"
+    ),
+    "communication": (
+        "Communication rubric:\n"
+        "- Is the message tone appropriate for the context?\n"
+        "- Is all required information included?\n"
+        "- Is the message concise and free of ambiguity?\n"
+        "- Were the correct recipients / channels used?"
+    ),
+    "task": (
+        "General task rubric:\n"
+        "- Was the stated goal fully accomplished?\n"
+        "- Is the output complete and usable as delivered?\n"
+        "- Were any explicit constraints respected?\n"
+        "- Is the result consistent with the user's original request?"
+    ),
+    "conversation": (
+        "Conversation rubric:\n"
+        "- Was the user's question directly addressed?\n"
+        "- Is the response accurate and well-reasoned?\n"
+        "- Is the tone and length appropriate?\n"
+        "- Were follow-up opportunities identified where relevant?"
+    ),
+}
+
+# Fallback rubric for intent types not in the catalogue
+_DEFAULT_RUBRIC = (
+    "General evaluation rubric:\n"
+    "- Was the stated goal accomplished?\n"
+    "- Is the output complete and usable?\n"
+    "- Were any constraints respected?\n"
+    "- Is the result consistent with the user's request?"
+)
+
+
+def get_rubric_for_intent(intent_type: Optional[str]) -> str:
+    """
+    Return the evaluation rubric for the given intent type / category string.
+
+    Normalises the type string (lower-case, strip, hyphen→underscore) and
+    falls back to _DEFAULT_RUBRIC if no specific rubric is registered.
+
+    Pass a ``UserIntent.task_category`` value (e.g. "code", "research") for
+    task-specific rubrics, or a ``UserIntent.type`` string for broader ones.
+    """
+    if not intent_type:
+        return _DEFAULT_RUBRIC
+    normalised = intent_type.lower().strip().replace("-", "_").replace(" ", "_")
+    return _RUBRICS.get(normalised, _DEFAULT_RUBRIC)
+
+
+def get_rubric_for_user_intent(intent: Optional["UserIntent"]) -> str:  # noqa: F821
+    """
+    Return the evaluation rubric for a full UserIntent object.
+
+    Prefers ``intent.task_category`` (fine-grained) over ``intent.type``
+    (routing-level), falling back to _DEFAULT_RUBRIC if neither matches.
+    """
+    if intent is None:
+        return _DEFAULT_RUBRIC
+    # Prefer fine-grained task_category if present
+    if intent.task_category:
+        rubric = get_rubric_for_intent(intent.task_category)
+        if rubric != _DEFAULT_RUBRIC:
+            return rubric
+    return get_rubric_for_intent(intent.type)
 
 
 class EvaluationAgent:
@@ -195,6 +292,9 @@ Respond in JSON format:
 
         steps_block = "\n".join(step_lines) if step_lines else "No steps were executed."
 
+        # Rubric: inject task-type-specific evaluation criteria
+        rubric = get_rubric_for_user_intent(intent)
+
         context = f"""User requested: {user_input}
 
 {intent_line}
@@ -203,6 +303,8 @@ Plan steps: {len(plan.steps)}
 
 Step execution results:
 {steps_block}
+
+{rubric}
 
 Evaluate whether the user's request was satisfied by the execution above."""
 
