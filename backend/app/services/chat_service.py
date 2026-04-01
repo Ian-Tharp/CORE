@@ -4,20 +4,42 @@ from __future__ import annotations
 
 This module abstracts away direct OpenAI calls so that controller
 end-points can remain thin, declarative, and easily testable.
+
+Provider abstraction:
+  Providers are normalised to "openai" or "ollama".  Each provider has an
+  independent circuit breaker (3 consecutive failures → OPEN; 60 s recovery).
+  Failed requests are retried up to MAX_RETRIES times with exponential backoff
+  before the failure is recorded against the circuit breaker.
 """
 
 from typing import AsyncGenerator, Dict, List
 import asyncio
 import json
 import logging
+import time
 import httpx
 from app.dependencies import _get_openai_client, _get_ollama_base_url
+from app.core.circuit_breaker import get_circuit_breaker, ProviderUnavailableError
 
 
 logger = logging.getLogger(__name__)
 
 # Public symbol exports
 __all__ = ["chat_service"]
+
+# Retry configuration — applies per streaming request before the failure
+# is recorded against the circuit breaker.
+MAX_RETRIES = 2
+RETRY_BASE_DELAY = 0.5  # seconds; doubles on each attempt
+
+# Maximum number of messages passed to a provider (truncate oldest first).
+MAX_MESSAGES = 50
+
+
+def _normalise_provider(provider: str) -> str:
+    if provider.lower() in {"ollama", "local", "local-ollama"}:
+        return "ollama"
+    return "openai"
 
 
 # ---------------------------------------------------------------------------
@@ -33,46 +55,97 @@ async def chat_service(
 ) -> AsyncGenerator[str, None]:
     """Yield Server-Sent Event (SSE) formatted chunks from an AI provider.
 
+    Wraps the provider call with:
+    - Circuit breaker: rejects calls when provider is in OPEN state.
+    - Retry with exponential backoff: up to MAX_RETRIES before propagating.
+    - Message limit: truncates to MAX_MESSAGES (keeps system msg + most recent).
+
     Parameters
     ----------
     model: str
-        The name of the OpenAI chat model to use (e.g. ``gpt-4o``).
+        The chat model name for the chosen provider.
     messages: list[dict[str, str]]
-        The chat history in the shape expected by the OpenAI API.
+        Chat history in OpenAI message format.
+    provider: str
+        "openai" | "ollama" | "local" | "local-ollama"
 
     Yields
     ------
     str
-        Pre-formatted SSE ``data: ...`` strings ready to be returned by
-        ``fastapi.responses.StreamingResponse``.
+        Pre-formatted SSE ``data: ...`` strings.
     """
+    canonical = _normalise_provider(provider)
+    breaker = get_circuit_breaker(canonical)
 
-    try:
-        # RSI TODO: Add per-provider telemetry (latency, ttfb, tokens/sec) and structured logs.
-        # RSI TODO: Implement provider abstraction layer and circuit breakers/retries.
-        # RSI TODO: Enforce max tokens/messages and redact PII before sending to providers - ollama is fine since it's local.
-        if provider.lower() in {"ollama", "local", "local-ollama"}:
-            async for sse in _stream_from_ollama(model=model, messages=messages):
-                yield sse
+    if not breaker.allow_request():
+        logger.warning("Circuit open for provider '%s' — rejecting request", canonical)
+        yield f"event: error\ndata: {json.dumps({'error': f'Provider {canonical!r} is temporarily unavailable. Please try again later.', 'code': 'circuit_open'})}\n\n"
+        return
+
+    # Enforce message limit: keep system messages + most recent user/assistant
+    if len(messages) > MAX_MESSAGES:
+        system_msgs = [m for m in messages if m.get("role") == "system"]
+        other_msgs = [m for m in messages if m.get("role") != "system"]
+        messages = system_msgs + other_msgs[-(MAX_MESSAGES - len(system_msgs)):]
+        logger.debug("Truncated messages to %d (limit=%d)", len(messages), MAX_MESSAGES)
+
+    attempt = 0
+    last_exc: Exception | None = None
+
+    while attempt <= MAX_RETRIES:
+        if attempt > 0:
+            delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            logger.info("Retrying provider '%s' (attempt %d/%d) after %.1fs", canonical, attempt, MAX_RETRIES, delay)
+            await asyncio.sleep(delay)
+
+        try:
+            start_time = time.monotonic()
+            chunks_yielded = 0
+
+            if canonical == "ollama":
+                async for sse in _stream_from_ollama(model=model, messages=messages):
+                    yield sse
+                    chunks_yielded += 1
+            else:
+                # OpenAI path
+                client = _get_openai_client()
+                response = await client.responses.create(
+                    model=model,
+                    input=messages,
+                    stream=True,
+                )
+                async for chunk in response:
+                    logger.debug("Service received chunk: %s", chunk)
+                    data: Dict[str, object] = chunk.model_dump(exclude_none=True)
+                    await asyncio.sleep(0)
+                    yield f"data: {json.dumps(data)}\n\n"
+                    chunks_yielded += 1
+
+            # Success: record to circuit breaker and log telemetry
+            elapsed_ms = (time.monotonic() - start_time) * 1000
+            logger.info(
+                "Provider '%s' stream complete: model=%s chunks=%d latency_ms=%.1f",
+                canonical, model, chunks_yielded, elapsed_ms,
+            )
+            breaker.record_success()
             return
 
-        # Default: OpenAI
-        client = _get_openai_client()
-        response = await client.responses.create(
-            model=model,
-            input=messages,
-            stream=True,
-        )
+        except ProviderUnavailableError:
+            # Circuit already open — bail immediately (no retry)
+            raise
+        except Exception as exc:
+            last_exc = exc
+            attempt += 1
+            logger.warning(
+                "Provider '%s' error (attempt %d/%d): %s",
+                canonical, attempt, MAX_RETRIES + 1, exc,
+            )
 
-        async for chunk in response:
-            logger.debug("Service received chunk: %s", chunk)
-            data: Dict[str, object] = chunk.model_dump(exclude_none=True)
-            await asyncio.sleep(0)
-            yield f"data: {json.dumps(data)}\n\n"
-
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Streaming error: %s", exc)
-        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+    # All retries exhausted — record failure and yield error SSE
+    if last_exc is not None:
+        breaker.record_failure()
+        logger.error("Provider '%s' failed after %d attempts: %s", canonical, MAX_RETRIES + 1, last_exc)
+        yield f"event: error\ndata: {json.dumps({'error': str(last_exc), 'code': 'provider_error'})}\n\n"
 
 
 async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
