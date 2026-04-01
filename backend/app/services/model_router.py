@@ -7,8 +7,6 @@ Provides:
 - Fallback chains when primary model fails
 - Cost tracking and optimization
 
-RSI TODO: Add automatic model selection based on task type
-RSI TODO: Add caching layer for common prompts
 """
 
 from __future__ import annotations
@@ -289,6 +287,67 @@ class ModelRouter:
         candidates.sort(key=score_model)
         return candidates[0].id
     
+    # Maps UserIntent.type and UserIntent.task_category values to the
+    # task_type dimension understood by select_model().
+    # Higher-cost/slower task types get more powerful models.
+    _INTENT_TASK_TYPE_MAP: Dict[str, str] = {
+        # Fine-grained task categories (task_category)
+        "code":             "complex",
+        "data_analysis":    "reasoning",
+        "research":         "complex",
+        "file_management":  "simple",
+        "communication":    "simple",
+        # Broad intent types (UserIntent.type)
+        "task":             "complex",
+        "question":         "simple",
+        "conversation":     "simple",
+        "clarification":    "simple",
+    }
+
+    def select_model_for_intent(
+        self,
+        intent_type: Optional[str],
+        task_category: Optional[str] = None,
+        require_tools: bool = False,
+        require_vision: bool = False,
+        prefer_local: bool = True,
+    ) -> str:
+        """
+        Automatically select the best model for a UserIntent.
+
+        Uses ``task_category`` (fine-grained) when present, falling back to
+        ``intent_type`` (routing-level).  Both are normalised before lookup so
+        hyphenated and upper-case variants resolve correctly.
+
+        Args:
+            intent_type: UserIntent.type (e.g. "task", "conversation")
+            task_category: UserIntent.task_category (e.g. "code", "research")
+            require_tools: Forward to select_model()
+            require_vision: Forward to select_model()
+            prefer_local: Forward to select_model()
+
+        Returns:
+            Model ID string.
+        """
+        def _normalise(s: Optional[str]) -> Optional[str]:
+            if not s:
+                return None
+            return s.lower().strip().replace("-", "_").replace(" ", "_")
+
+        category_norm = _normalise(task_category)
+        type_norm = _normalise(intent_type)
+
+        # Prefer fine-grained category; fall back to broad intent type
+        lookup = category_norm if category_norm else type_norm
+        task_type = self._INTENT_TASK_TYPE_MAP.get(lookup or "", "complex")
+
+        return self.select_model(
+            task_type=task_type,
+            require_tools=require_tools,
+            require_vision=require_vision,
+            prefer_local=prefer_local,
+        )
+
     async def complete(
         self,
         model_id: str,
