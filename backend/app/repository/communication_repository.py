@@ -19,8 +19,12 @@ from app.dependencies import get_db_pool
 # CHANNELS
 # =============================================================================
 
-async def list_channels(instance_id: str) -> List[Dict[str, Any]]:
-    """Get all channels that an instance is a member of."""
+async def list_channels(
+    instance_id: str,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[Dict[str, Any]]:
+    """Get channels that an instance is a member of, with limit/offset pagination."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -47,8 +51,9 @@ async def list_channels(instance_id: str) -> List[Dict[str, Any]]:
             GROUP BY c.id, c.channel_id, c.channel_type, c.name, c.description,
                      c.is_persistent, c.is_public, c.created_by, c.created_at
             ORDER BY last_message_at DESC NULLS LAST
+            LIMIT $2 OFFSET $3
             """,
-            instance_id
+            instance_id, limit, offset
         )
         # Convert all datetime fields to ISO format strings
         result = []
@@ -59,6 +64,52 @@ async def list_channels(instance_id: str) -> List[Dict[str, Any]]:
                     channel[key] = value.isoformat()
             result.append(channel)
         return result
+
+
+async def count_channels(instance_id: str) -> int:
+    """Return total number of channels accessible to an instance."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT COUNT(*) AS total
+            FROM communication_channels c
+            WHERE c.channel_id IN (
+                SELECT channel_id FROM channel_members WHERE instance_id = $1
+            )
+            OR c.is_public = true
+            """,
+            instance_id
+        )
+        return int(row["total"]) if row else 0
+
+
+async def count_messages(
+    channel_id: str,
+    thread_id: Optional[str] = None,
+) -> int:
+    """Return total message count for a channel (or thread)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        if thread_id:
+            row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS total
+                FROM communication_messages
+                WHERE thread_id = $1 OR message_id = $1
+                """,
+                thread_id
+            )
+        else:
+            row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS total
+                FROM communication_messages
+                WHERE channel_id = $1 AND thread_id IS NULL
+                """,
+                channel_id
+            )
+        return int(row["total"]) if row else 0
 
 
 async def get_channel(channel_id: str) -> Optional[Dict[str, Any]]:

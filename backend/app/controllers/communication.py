@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+import asyncio
 import uuid
 
 from app.repository import communication_repository as comm_repo
@@ -55,11 +56,21 @@ class UpdatePresenceRequest(BaseModel):
 
 @router.get("/channels", status_code=status.HTTP_200_OK)
 async def get_channels(
-    instance_id: str = Query(..., description="Instance ID to get channels for")
+    instance_id: str = Query(..., description="Instance ID to get channels for"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum channels to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
 ) -> Dict[str, Any]:
-    """Get all channels accessible to an instance."""
-    channels = await comm_repo.list_channels(instance_id)
-    return {"channels": channels}
+    """Get channels accessible to an instance, with limit/offset pagination."""
+    channels, total = await asyncio.gather(
+        comm_repo.list_channels(instance_id, limit=limit, offset=offset),
+        comm_repo.count_channels(instance_id),
+    )
+    return {
+        "channels": channels,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/channels/{channel_id}", status_code=status.HTTP_200_OK)
@@ -127,11 +138,14 @@ async def get_messages(
     thread_id: Optional[str] = Query(None, description="Get messages in a specific thread")
 ) -> Dict[str, Any]:
     """Get messages for a channel with pagination."""
-    messages = await comm_repo.list_messages(
-        channel_id=channel_id,
-        page=page,
-        page_size=page_size,
-        thread_id=thread_id
+    messages, total = await asyncio.gather(
+        comm_repo.list_messages(
+            channel_id=channel_id,
+            page=page,
+            page_size=page_size,
+            thread_id=thread_id,
+        ),
+        comm_repo.count_messages(channel_id=channel_id, thread_id=thread_id),
     )
 
     # Fetch reactions for each message
@@ -141,8 +155,9 @@ async def get_messages(
 
     return {
         "messages": messages,
+        "total": total,
         "page": page,
-        "page_size": page_size
+        "page_size": page_size,
     }
 
 

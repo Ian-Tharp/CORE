@@ -234,6 +234,7 @@ class TestGetChannels:
             _make_channel("ch_1", "General"),
             _make_channel("ch_2", "Random"),
         ])
+        mock_repo_mod.count_channels = AsyncMock(return_value=2)
         result = await get_channels(instance_id="user_1")
         assert len(result["channels"]) == 2
         assert result["channels"][0]["name"] == "General"
@@ -279,6 +280,7 @@ class TestGetMessages:
         msg = _make_message()
         del msg["reactions"]
         mock_repo_mod.list_messages = AsyncMock(return_value=[msg])
+        mock_repo_mod.count_messages = AsyncMock(return_value=1)
         mock_repo_mod.get_message_reactions = AsyncMock(return_value=[
             {"reaction_type": "resonance", "count": 2, "reacted_by": ["u1", "u2"]}
         ])
@@ -290,6 +292,7 @@ class TestGetMessages:
     @patch("app.controllers.communication.comm_repo")
     async def test_pagination_params_forwarded(self, mock_repo_mod):
         mock_repo_mod.list_messages = AsyncMock(return_value=[])
+        mock_repo_mod.count_messages = AsyncMock(return_value=0)
         result = await get_messages("ch_1", page=3, page_size=10)
         mock_repo_mod.list_messages.assert_called_once()
         call_kwargs = mock_repo_mod.list_messages.call_args.kwargs
@@ -303,6 +306,7 @@ class TestGetMessages:
     @patch("app.controllers.communication.comm_repo")
     async def test_thread_filter(self, mock_repo_mod):
         mock_repo_mod.list_messages = AsyncMock(return_value=[])
+        mock_repo_mod.count_messages = AsyncMock(return_value=0)
         await get_messages("ch_1", thread_id="thread_123")
         mock_repo_mod.list_messages.assert_called_once()
         call_kwargs = mock_repo_mod.list_messages.call_args.kwargs
