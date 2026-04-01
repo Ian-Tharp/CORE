@@ -8,16 +8,21 @@ Provides comprehensive health checks for all CORE services:
 - Ollama LLM
 - WebSocket connections
 - Alerting webhooks for degraded/unhealthy states
+- MCP server availability (binary / Docker command reachability)
 
-RSI TODO: Add custom health checks for MCP servers
 DONE: Health history tracking (health_repository + /health/history endpoints)
+DONE: MCP server health checks (check_mcp_servers)
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+import os
+import shutil
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from enum import Enum
 
@@ -239,6 +244,117 @@ async def check_engine_state() -> HealthCheck:
         )
 
 
+def _load_mcp_config() -> Dict[str, Any]:
+    """
+    Load MCP server configuration from .mcp.json.
+
+    Searches:
+    1. Path in CORE_MCP_CONFIG env var
+    2. Project root (four levels above this file's location)
+    3. Current working directory
+
+    Returns an empty ``{"mcpServers": {}}`` dict when no file is found.
+    """
+    candidates = []
+
+    env_path = os.getenv("CORE_MCP_CONFIG")
+    if env_path:
+        candidates.append(Path(env_path))
+
+    # Standard project root (backend/app/core/health.py → ../../../../.mcp.json)
+    candidates.append(Path(__file__).resolve().parents[3] / ".mcp.json")
+    candidates.append(Path.cwd() / ".mcp.json")
+
+    for path in candidates:
+        if path.is_file():
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                logger.debug("Failed to parse MCP config at %s: %s", path, exc)
+
+    return {"mcpServers": {}}
+
+
+async def check_mcp_servers() -> HealthCheck:
+    """
+    Check reachability of all configured MCP servers.
+
+    For each server in .mcp.json / CORE_MCP_CONFIG, this check verifies that
+    the ``command`` binary is discoverable on the system (via absolute path or
+    PATH look-up).  It does **not** start the servers — it only confirms the
+    pre-requisite executables are present.
+
+    Status rules:
+    - No servers configured  → HEALTHY  (trivially OK)
+    - All commands reachable → HEALTHY
+    - Some commands missing  → DEGRADED
+    - Cannot load config     → DEGRADED
+    """
+    try:
+        config = _load_mcp_config()
+        servers = config.get("mcpServers", {})
+
+        if not servers:
+            return HealthCheck(
+                name="mcp_servers",
+                status=HealthStatus.HEALTHY,
+                message="No MCP servers configured",
+                details={"server_count": 0},
+            )
+
+        server_statuses: Dict[str, str] = {}
+        missing: List[str] = []
+
+        for name, cfg in servers.items():
+            command = cfg.get("command", "")
+            if not command:
+                server_statuses[name] = "no_command"
+                missing.append(name)
+                continue
+
+            cmd_path = Path(command)
+            if cmd_path.is_absolute():
+                reachable = cmd_path.is_file()
+            else:
+                reachable = shutil.which(command) is not None
+
+            if reachable:
+                server_statuses[name] = "reachable"
+            else:
+                server_statuses[name] = "command_not_found"
+                missing.append(name)
+
+        if missing:
+            return HealthCheck(
+                name="mcp_servers",
+                status=HealthStatus.DEGRADED,
+                message=f"{len(missing)} MCP server(s) have missing commands: {', '.join(missing)}",
+                details={
+                    "server_count": len(servers),
+                    "missing_count": len(missing),
+                    "servers": server_statuses,
+                },
+            )
+
+        return HealthCheck(
+            name="mcp_servers",
+            status=HealthStatus.HEALTHY,
+            message=f"All {len(servers)} MCP server(s) reachable",
+            details={
+                "server_count": len(servers),
+                "servers": server_statuses,
+            },
+        )
+
+    except Exception as exc:
+        logger.error("MCP server health check failed: %s", exc)
+        return HealthCheck(
+            name="mcp_servers",
+            status=HealthStatus.DEGRADED,
+            message=f"MCP config error: {exc}",
+        )
+
+
 async def fire_health_alert(overall: HealthStatus, health_result: Dict[str, Any]) -> None:
     """
     Fire a webhook alert when the overall health status is degraded or unhealthy.
@@ -295,6 +411,7 @@ async def get_full_health() -> Dict[str, Any]:
         check_redis(),
         check_websocket_manager(),
         check_engine_state(),
+        check_mcp_servers(),
         return_exceptions=True
     )
 

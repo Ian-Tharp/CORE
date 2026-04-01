@@ -186,6 +186,7 @@ class TestGetFullHealthFiresAlert:
              patch("app.core.health.check_redis", self._ok_check("redis")), \
              patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
              patch("app.core.health.check_engine_state", self._ok_check("engine")), \
+             patch("app.core.health.check_mcp_servers", self._ok_check("mcp_servers")), \
              patch("app.core.health.asyncio.create_task") as task_spy:
 
             result = await health_mod.get_full_health()
@@ -206,6 +207,7 @@ class TestGetFullHealthFiresAlert:
              patch("app.core.health.check_redis", self._ok_check("redis")), \
              patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
              patch("app.core.health.check_engine_state", self._ok_check("engine")), \
+             patch("app.core.health.check_mcp_servers", self._ok_check("mcp_servers")), \
              patch("app.core.health.asyncio.create_task") as task_spy:
 
             result = await health_mod.get_full_health()
