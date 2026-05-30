@@ -5,7 +5,10 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+# --legacy-peer-deps: @angular/material@19.2.17 pins @angular/cdk@19.2.17 exactly
+# while the lockfile resolves cdk@19.2.19 (a benign patch-level mismatch the host
+# tree also runs with). Strict `npm ci` rejects it without this flag.
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .

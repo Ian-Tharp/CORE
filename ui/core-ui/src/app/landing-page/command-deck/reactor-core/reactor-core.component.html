@@ -1,0 +1,57 @@
+<div class="reactor" [attr.data-status]="status()">
+  <svg viewBox="0 0 200 200" class="reactor__svg" aria-hidden="true">
+    <defs>
+      <radialGradient id="reactorCoreGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="currentColor" stop-opacity="0.9" />
+        <stop offset="55%" stop-color="currentColor" stop-opacity="0.25" />
+        <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+      </radialGradient>
+      <filter id="reactorSoftGlow" x="-70%" y="-70%" width="240%" height="240%">
+        <feGaussianBlur stdDeviation="3.5" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+
+    <!-- Outer dashed ring (slow spin) -->
+    <circle class="reactor__ring reactor__ring--outer" cx="100" cy="100" r="92" />
+    <!-- Tick ring -->
+    <circle class="reactor__ring reactor__ring--ticks" cx="100" cy="100" r="86" />
+    <!-- Mid counter-rotating ring -->
+    <circle class="reactor__ring reactor__ring--mid" cx="100" cy="100" r="68" />
+    <circle class="reactor__ring reactor__ring--inner-ticks" cx="100" cy="100" r="49" />
+
+    <!-- Energy arc, length tied to system load -->
+    <circle
+      class="reactor__energy"
+      cx="100"
+      cy="100"
+      r="78"
+      [attr.stroke-dasharray]="circumference"
+      [attr.stroke-dashoffset]="energyDashOffset()"
+      transform="rotate(-90 100 100)" />
+    <circle class="reactor__wave reactor__wave--one" cx="100" cy="100" r="42" />
+    <circle class="reactor__wave reactor__wave--two" cx="100" cy="100" r="42" />
+
+    <g class="reactor__particles" filter="url(#reactorSoftGlow)">
+      <circle class="reactor__particle reactor__particle--one" cx="100" cy="12" r="2.4" />
+      <circle class="reactor__particle reactor__particle--two" cx="188" cy="100" r="1.8" />
+      <circle class="reactor__particle reactor__particle--three" cx="100" cy="188" r="2" />
+      <circle class="reactor__particle reactor__particle--four" cx="12" cy="100" r="1.6" />
+    </g>
+
+    <!-- Pulsing core glow -->
+    <circle class="reactor__glow" cx="100" cy="100" r="60" fill="url(#reactorCoreGlow)" />
+    <circle class="reactor__nucleus" cx="100" cy="100" r="34" />
+  </svg>
+
+  <div class="reactor__readout">
+    <span class="reactor__label">{{ label() }}</span>
+    <span class="reactor__sublabel">C.O.R.E.</span>
+    <span class="reactor__feed" [class.reactor__feed--live]="online()">
+      {{ online() ? 'LIVE FEED' : 'STANDBY' }}
+    </span>
+  </div>
+</div>

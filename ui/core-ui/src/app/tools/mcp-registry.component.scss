@@ -77,31 +77,32 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 
   &.ready {
-    --indicator-fill: rgba(34, 197, 94, 0.18);
-    --indicator-border: rgba(34, 197, 94, 0.3);
-    --indicator-ink: #8ef0b0;
+    --indicator-fill: color-mix(in srgb, var(--core-success) 18%, transparent);
+    --indicator-border: color-mix(in srgb, var(--core-success) 32%, transparent);
+    --indicator-ink: var(--core-success);
   }
 
   &.pending {
-    --indicator-fill: rgba(251, 191, 36, 0.18);
-    --indicator-border: rgba(251, 191, 36, 0.3);
-    --indicator-ink: #ffd97a;
+    --indicator-fill: color-mix(in srgb, var(--core-amber) 18%, transparent);
+    --indicator-border: color-mix(in srgb, var(--core-amber) 32%, transparent);
+    --indicator-ink: var(--core-amber);
   }
 
   &.attention {
-    --indicator-fill: rgba(248, 113, 113, 0.18);
-    --indicator-border: rgba(248, 113, 113, 0.3);
-    --indicator-ink: #ffb4b4;
+    --indicator-fill: color-mix(in srgb, var(--core-danger) 18%, transparent);
+    --indicator-border: color-mix(in srgb, var(--core-danger) 32%, transparent);
+    --indicator-ink: var(--core-danger);
   }
 }
 
 .indicator-dot {
   width: 0.6rem;
   height: 0.6rem;
-  border-radius: 999rem;
+  border-radius: var(--radius-pill);
   background: var(--indicator-ink);
-  box-shadow: 0 0 0.7rem var(--indicator-fill);
+  box-shadow: 0 0 0.7rem var(--indicator-ink);
   flex-shrink: 0;
+  animation: mcp-status-pulse 2s ease-in-out infinite;
 }
 
 .indicator-copy {
@@ -233,6 +234,7 @@
   border: 1px solid rgba(0, 255, 200, 0.12);
   background: linear-gradient(180deg, rgba(7, 14, 24, 0.96), rgba(10, 19, 31, 0.98));
   box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.22);
+  animation: mcp-reveal 0.5s ease-out both;
 
   h2,
   p {
@@ -287,7 +289,7 @@
 }
 
 .surface-link {
-  color: #8fc4ff;
+  color: var(--core-teal);
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -400,7 +402,7 @@
 }
 
 .stat-value {
-  color: #8fc4ff;
+  color: var(--core-teal);
   font-size: 1.3rem;
   font-weight: 700;
 }
@@ -494,6 +496,13 @@
   border-radius: 1.15rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.025);
+  animation: mcp-reveal 0.5s ease-out both;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+
+  &:hover {
+    border-color: var(--core-border-normal);
+    box-shadow: var(--core-glow-energy-sm);
+  }
 }
 
 .server-card-header {
@@ -539,18 +548,18 @@
 }
 
 .server-status.status-success {
-  background: rgba(34, 197, 94, 0.16);
-  color: #8ef0b0;
+  background: color-mix(in srgb, var(--core-success) 16%, transparent);
+  color: var(--core-success);
 }
 
 .server-status.status-warning {
-  background: rgba(251, 191, 36, 0.16);
-  color: #ffd97a;
+  background: color-mix(in srgb, var(--core-amber) 16%, transparent);
+  color: var(--core-amber);
 }
 
 .server-status.status-error {
-  background: rgba(248, 113, 113, 0.16);
-  color: #ffb4b4;
+  background: color-mix(in srgb, var(--core-danger) 16%, transparent);
+  color: var(--core-danger);
 }
 
 .server-command {
@@ -576,8 +585,8 @@
 }
 
 .tool-count {
-  background: rgba(59, 130, 246, 0.14);
-  color: #9cc8ff;
+  background: color-mix(in srgb, var(--core-teal) 14%, transparent);
+  color: var(--core-teal);
 }
 
 .server-empty-state {
@@ -649,7 +658,7 @@
 }
 
 .tool-open {
-  color: #9cc8ff;
+  color: var(--core-teal);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -806,6 +815,23 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes mcp-reveal {
+  from { opacity: 0; transform: translateY(0.6rem); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes mcp-status-pulse {
+  0%, 100% { box-shadow: 0 0 0.5rem var(--indicator-ink); }
+  50% { box-shadow: 0 0 1rem var(--indicator-ink); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .surface-card,
+  .server-card,
+  .indicator-dot { animation: none; }
 }
 
 @media (max-width: 72rem) {

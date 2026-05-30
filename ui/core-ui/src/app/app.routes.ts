@@ -18,6 +18,7 @@ import { McpRegistryComponent } from './tools/mcp-registry.component';
 import { DiscordBridgeDashboardComponent } from './tools/discord-bridge-dashboard/discord-bridge-dashboard.component';
 import { AttributionBrowserComponent } from './knowledge-attribution/attribution-browser.component';
 import { KanbanComponent } from './kanban/kanban.component';
+import { BoardsComponent } from './landing-page/boards/boards.component';
 
 export const routes: Routes = [
   {
@@ -85,6 +86,10 @@ export const routes: Routes = [
   {
     path: 'kanban',
     component: KanbanComponent
+  },
+  {
+    path: 'boards',
+    component: BoardsComponent
   },
   {
     path: '**',

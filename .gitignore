@@ -16,5 +16,11 @@ __pycache__/
 
 docker-compose.override.yml
 
+# Local dev runtime (bind-mounted vault, ng serve log)
+/vault/
+
 # Claude Code worktrees
 .claude/worktrees/
+
+# Claude Code durable scheduled tasks (local loop state)
+.claude/scheduled_tasks.json

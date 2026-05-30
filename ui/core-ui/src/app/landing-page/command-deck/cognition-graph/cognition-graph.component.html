@@ -1,0 +1,107 @@
+<div class="cognition" role="group" aria-label="Cognitive pipeline graph">
+  <svg
+    [attr.viewBox]="'0 0 ' + viewBoxWidth + ' ' + viewBoxHeight"
+    class="cognition__svg"
+    preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <radialGradient id="cognitionNodeGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="currentColor" stop-opacity="0.55" />
+        <stop offset="60%" stop-color="currentColor" stop-opacity="0.15" />
+        <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="cognitionEdgeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+        <stop offset="0%" stop-color="var(--core-energy)" stop-opacity="0" />
+        <stop offset="45%" stop-color="var(--core-energy)" stop-opacity="0.95" />
+        <stop offset="100%" stop-color="var(--core-amber)" stop-opacity="0" />
+      </linearGradient>
+      <filter id="cognitionSoftGlow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+
+    <!-- Edges first so nodes paint over their endpoints -->
+    <g class="cognition__edges" aria-hidden="true">
+      @for (edge of edges(); track trackEdge($index, edge)) {
+        <g class="cognition__edge" [class.cognition__edge--active]="edge.active">
+          <line
+            class="cognition__edge-base"
+            [attr.x1]="edge.x1"
+            [attr.y1]="edge.y1"
+            [attr.x2]="edge.x2"
+            [attr.y2]="edge.y2" />
+          <line
+            class="cognition__edge-flow"
+            [attr.x1]="edge.x1"
+            [attr.y1]="edge.y1"
+            [attr.x2]="edge.x2"
+            [attr.y2]="edge.y2" />
+          <line
+            class="cognition__edge-pulse cognition__edge-pulse--one"
+            [attr.x1]="edge.x1"
+            [attr.y1]="edge.y1"
+            [attr.x2]="edge.x2"
+            [attr.y2]="edge.y2" />
+          <line
+            class="cognition__edge-pulse cognition__edge-pulse--two"
+            [attr.x1]="edge.x1"
+            [attr.y1]="edge.y1"
+            [attr.x2]="edge.x2"
+            [attr.y2]="edge.y2" />
+        </g>
+      }
+    </g>
+
+    <!-- Stage nodes laid out left-to-right -->
+    <g class="cognition__nodes">
+      @for (node of nodes(); track trackNode($index, node)) {
+        <g
+          class="cognition__node"
+          [ngClass]="node.stateClass"
+          [class.cognition__node--selected]="node.isActive"
+          [attr.transform]="'translate(' + node.cx + ' ' + node.cy + ')'"
+          [attr.tabindex]="0"
+          role="button"
+          [attr.aria-pressed]="node.isActive"
+          [attr.aria-label]="node.stage.label + ' stage, state ' + node.stage.state"
+          (click)="select(node.stage)"
+          (keydown)="onKeydown($event, node.stage)">
+          <!-- Soft glow halo -->
+          <circle class="cognition__node-glow" r="56" fill="url(#cognitionNodeGlow)" />
+          <circle class="cognition__node-orbit cognition__node-orbit--outer" [attr.r]="nodeRadius + 16" />
+          <circle class="cognition__node-orbit cognition__node-orbit--inner" [attr.r]="nodeRadius + 9" />
+          <!-- Animated activity ring -->
+          <circle
+            class="cognition__node-ring"
+            [attr.r]="nodeRadius"
+            [attr.stroke-dasharray]="nodeCircumference" />
+          <!-- Solid node body -->
+          <circle class="cognition__node-body" [attr.r]="nodeRadius - 6" />
+          <!-- Selection ring -->
+          <circle class="cognition__node-select" [attr.r]="nodeRadius + 6" />
+
+          <text class="cognition__node-index" x="0" y="-18">{{ $index + 1 }}</text>
+          <text class="cognition__node-label" x="0" y="-2">{{ node.stage.label }}</text>
+          <text class="cognition__node-state" x="0" y="14">{{ node.stage.state | uppercase }}</text>
+
+          <!-- Attached agents orbiting the active node -->
+          @if (node.stage.agents && node.stage.agents.length) {
+            <g class="cognition__agents" aria-hidden="true">
+              @for (agent of node.stage.agents; track trackAgent($index, agent)) {
+                <g
+                  class="cognition__agent"
+                  [attr.transform]="'translate(0 ' + (nodeRadius + 18 + $index * 16) + ')'">
+                  <circle class="cognition__agent-dot" r="3" cx="-30" cy="0" />
+                  <text class="cognition__agent-label" x="-22" y="3">{{ agent.label }}</text>
+                </g>
+              }
+            </g>
+          }
+        </g>
+      }
+    </g>
+  </svg>
+</div>

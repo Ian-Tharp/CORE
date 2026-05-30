@@ -39,7 +39,10 @@
       "Bash(python -m json.tool:*)",
       "Bash(timeout 10 curl:*)",
       "Bash(docker volume inspect:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:opensource.microsoft.com)",
+      "mcp__ide__getDiagnostics"
     ],
     "defaultMode": "acceptEdits"
   },

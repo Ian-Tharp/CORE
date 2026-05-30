@@ -8,10 +8,14 @@
           <mat-icon>dashboard</mat-icon>
         </button>
         
-        <button mat-icon-button class="nav-item" [routerLink]="['/kanban']" routerLinkActive="active" matTooltip="Project Board" matTooltipPosition="right">
+        <button mat-icon-button class="nav-item" [routerLink]="['/kanban']" routerLinkActive="active" matTooltip="Tasks · Project Board" matTooltipPosition="right">
           <mat-icon>view_kanban</mat-icon>
         </button>
-        
+
+        <button mat-icon-button class="nav-item" [routerLink]="['/boards']" routerLinkActive="active" matTooltip="Boards" matTooltipPosition="right">
+          <mat-icon>view_quilt</mat-icon>
+        </button>
+
         <button mat-icon-button class="nav-item" [routerLink]="['/communication']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" matTooltip="Communication Commons" matTooltipPosition="right">
           <mat-icon>forum</mat-icon>
         </button>

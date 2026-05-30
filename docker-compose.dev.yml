@@ -12,6 +12,8 @@ services:
     environment:
       - PYTHONPATH=/app
       - CORE_ENV=development
+      # Dev API key — matches the UI's default (AppConfigService) so the frontend authenticates locally.
+      - CORE_API_KEY=core_dev_key
       - DATABASE_URL=postgresql://core_user:core_password@postgres:5432/core_db
       - REDIS_URL=redis://redis:6379
       - OLLAMA_BASE_URL=http://ollama:11434
@@ -23,7 +25,9 @@ services:
     volumes:
       - ./backend:/app
       - backend-data:/app/data
-      - "C:/Users/Owner/Desktop/Ian's Personal Digital Brain/Digital-Brain:/vault"
+      # Local dev vault (original hardcoded host path was for a different machine).
+      # Point this at your real Obsidian vault if/when you want live notes.
+      - "./vault:/vault"
     networks:
       - core-network
     depends_on:

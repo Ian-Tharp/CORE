@@ -1,13 +1,16 @@
-<div class="landing-container">
-  <!-- Loading Overlay -->
+<div class="deck-shell">
+  <!-- Loading / boot overlay -->
   @if (dashboardState.loading) {
-    <div class="loading-overlay">
-      <mat-spinner diameter="48"></mat-spinner>
-      <span>Initializing Dashboard...</span>
+    <div class="boot-overlay">
+      <div class="boot-overlay__core">
+        <mat-spinner diameter="56"></mat-spinner>
+        <span class="boot-overlay__text">INITIALIZING C.O.R.E.</span>
+        <span class="boot-overlay__sub">Establishing cognitive uplink…</span>
+      </div>
     </div>
   }
 
-  <!-- Error Banner -->
+  <!-- Error banner -->
   @if (dashboardState.error) {
     <div class="error-banner">
       <mat-icon>error_outline</mat-icon>
@@ -16,332 +19,255 @@
     </div>
   }
 
-  <!-- In-page Main Navigation Tabs -->
-  <mat-tab-group class="main-tabs" selectedIndex="0">
-      <mat-tab label="Dashboard">
-      <!-- Three-column responsive layout -->
-      <div class="content-layout">
-        <!-- Chat / Assistant column -->
-        <aside class="chat-section">
-          <app-chat-window></app-chat-window>
-        </aside>
+  <div class="deck">
+        <!-- Ambient layers -->
+        <div class="deck__bg" aria-hidden="true">
+          <span class="deck__nebula deck__nebula--1"></span>
+          <span class="deck__nebula deck__nebula--2"></span>
+          <span class="deck__grid-lines"></span>
+        </div>
+        <div class="deck__scanlines" aria-hidden="true"></div>
 
-        <!-- Central main content column -->
-        <main class="main-section">
-          <!-- Hero Section -->
-          <section class="hero-section">
-            <div class="hero-content">
-              <div class="welcome-message">
-                <h1 class="hero-title">
-                  Welcome to <span class="core-highlight">C.O.R.E.</span>
-                </h1>
-                <p class="hero-subtitle">
-                  Your Digital Brain Platform is operational and ready to revolutionize your AI interaction experience.
-                </p>
-                <div class="hero-actions">
-                  <button mat-raised-button class="primary-action" (click)="scrollToDeployPanel()">
-                    <mat-icon>rocket_launch</mat-icon>
-                    Deploy New Agent
-                  </button>
-                  <button mat-stroked-button class="secondary-action" [routerLink]="['/command-center']">
-                    <mat-icon>dashboard</mat-icon>
-                    View Command Center
-                  </button>
-                  <button mat-stroked-button class="secondary-action" (click)="viewAnalytics()">
-                    <mat-icon>analytics</mat-icon>
-                    Analytics
-                  </button>
-                </div>
-              </div>
-              
-              <!-- System Status Hologram -->
-              <div class="status-hologram">
-                <div class="hologram-ring outer-ring"></div>
-                <div class="hologram-ring middle-ring"></div>
-                <div class="hologram-ring inner-ring"></div>
-                <div class="hologram-core">
-                  <mat-icon class="core-icon">memory</mat-icon>
-                  <div class="status-text" [style.color]="getSystemHealthColor()">
-                    {{ systemHealth?.status?.toUpperCase() || 'INITIALIZING' }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+        <!-- HUD frame corners -->
+        <span class="deck__corner deck__corner--tl" aria-hidden="true"></span>
+        <span class="deck__corner deck__corner--tr" aria-hidden="true"></span>
+        <span class="deck__corner deck__corner--bl" aria-hidden="true"></span>
+        <span class="deck__corner deck__corner--br" aria-hidden="true"></span>
 
-          <!-- Dashboard Grid -->
-          <section class="dashboard-grid">
-            <!-- Active Agents Card -->
-            <mat-card class="dashboard-card agents-card">
-              <mat-card-header>
-                <mat-card-title>
-                  <mat-icon>smart_toy</mat-icon>
-                  Active Agents ({{ activeAgents.length }})
-                </mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="agent-grid">
-                  @for (agent of activeAgents; track agent.id) {
-                    <div class="agent-unit-card" [class]="agent.status">
-                      <div class="agent-header">
-                        <div class="agent-name">{{ agent.agent_id }}</div>
-                        <mat-chip class="agent-status" [class]="agent.status">
-                          {{ getAgentStatusText(agent.status) }}
-                        </mat-chip>
-                      </div>
-                      <div class="agent-role">{{ agent.agent_role }}</div>
-                      <div class="agent-stats">
-                        <div class="stat-item">
-                          <mat-icon>access_time</mat-icon>
-                          <span>{{ agent.uptimeFormatted || 'Starting...' }}</span>
-                        </div>
-                        @if (agent.current_task) {
-                          <div class="stat-item">
-                            <mat-icon>task</mat-icon>
-                            <span>{{ agent.current_task }}</span>
-                          </div>
-                        }
-                      </div>
-                      <div class="agent-actions">
-                        <button mat-icon-button class="agent-btn" matTooltip="Restart"
-                                (click)="restartAgent(agent)">
-                          <mat-icon>refresh</mat-icon>
-                        </button>
-                        <button mat-icon-button class="agent-btn" matTooltip="Stop"
-                                (click)="stopAgent(agent)">
-                          <mat-icon>stop</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                  }
-                  @empty {
-                    <div class="empty-state">
-                      <mat-icon>smart_toy</mat-icon>
-                      <p>No agents running. Deploy one to get started.</p>
-                    </div>
-                  }
-                </div>
-                <div class="agents-footer deploy-panel">
-                  <div class="deploy-form">
-                    <mat-select [(value)]="selectedAgentRole" placeholder="Select Role">
-                      @for (role of availableRoles; track role) {
-                        <mat-option [value]="role">{{ role | titlecase }}</mat-option>
-                      }
-                    </mat-select>
-                    <button mat-raised-button class="add-agent-btn" 
-                            (click)="deployAgent()"
-                            [disabled]="deploymentLoading">
-                      @if (deploymentLoading) {
-                        <mat-spinner diameter="18"></mat-spinner>
-                      } @else {
-                        <mat-icon>add</mat-icon>
-                      }
-                      Deploy Agent
-                    </button>
-                  </div>
-                </div>
-              </mat-card-content>
-            </mat-card>
+        <!-- Top ticker / status bar -->
+        <header class="deck__ticker">
+          <div class="ticker__brand">
+            <mat-icon>blur_on</mat-icon>
+            <span class="ticker__title">C.O.R.E.</span>
+            <span class="ticker__divider">//</span>
+            <span class="ticker__subtitle">COMMAND DECK</span>
+          </div>
 
-            <!-- Task Summary Card -->
+          <div class="ticker__metrics">
+            <span class="ticker__chip" [class.ticker__chip--live]="isFeedLive">
+              <span class="ticker__dot"></span>
+              {{ feedStatusLabel }}
+            </span>
+            <span class="ticker__chip">
+              <mat-icon>smart_toy</mat-icon>
+              {{ activeAgents.length }} AGENTS
+            </span>
             @if (taskSummary) {
-              <mat-card class="dashboard-card tasks-card">
-                <mat-card-header>
-                  <mat-card-title>
-                    <mat-icon>assignment</mat-icon>
-                    Task Overview
-                  </mat-card-title>
-                </mat-card-header>
-                <mat-card-content>
-                  <div class="task-stats-grid">
-                    <div class="task-stat">
-                      <span class="task-count queued">{{ taskSummary.queued }}</span>
-                      <span class="task-label">Queued</span>
-                    </div>
-                    <div class="task-stat">
-                      <span class="task-count running">{{ taskSummary.running }}</span>
-                      <span class="task-label">Running</span>
-                    </div>
-                    <div class="task-stat">
-                      <span class="task-count completed">{{ taskSummary.completed }}</span>
-                      <span class="task-label">Completed</span>
-                    </div>
-                    <div class="task-stat">
-                      <span class="task-count failed">{{ taskSummary.failed }}</span>
-                      <span class="task-label">Failed</span>
-                    </div>
-                  </div>
-                </mat-card-content>
-              </mat-card>
+              <span class="ticker__chip">
+                <mat-icon>assignment</mat-icon>
+                {{ taskSummary.running }} RUNNING
+              </span>
             }
+          </div>
 
-            <!-- Quick Actions Card -->
-            <mat-card class="dashboard-card actions-card">
-              <mat-card-header>
-                <mat-card-title>
-                  <mat-icon>flash_on</mat-icon>
-                  Quick Actions
-                </mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="quick-actions-grid">
-                  <button mat-raised-button class="quick-action action-primary"
-                          (click)="scrollToDeployPanel()">
-                    <mat-icon>add_box</mat-icon>
-                    <span>Deploy Agent</span>
-                  </button>
-                  <button mat-raised-button class="quick-action action-accent"
-                          (click)="runSecurityScan()">
-                    <mat-icon>security</mat-icon>
-                    <span>Security Scan</span>
-                  </button>
-                  <button mat-raised-button class="quick-action quick-action-tools"
-                          [routerLink]="['/tools']">
-                    <mat-icon>extension</mat-icon>
-                    <span>Tools & Integrations</span>
-                  </button>
-                  @if (discordBridgeIndicator$ | async; as discordBridgeIndicator) {
-                  <button mat-raised-button class="quick-action quick-action-discord"
-                          [routerLink]="['/tools/discord-bridge']"
-                          [matTooltip]="discordBridgeIndicator.tooltip">
-                    <mat-icon>hub</mat-icon>
-                    <span>Discord Gateway</span>
-                    <app-discord-bridge-status-badge
-                      class="quick-action-status"
-                      [indicator]="discordBridgeIndicator"></app-discord-bridge-status-badge>
-                  </button>
-                  }
-                  <button mat-raised-button class="quick-action"
-                          (click)="viewAnalytics()">
-                    <mat-icon>analytics</mat-icon>
-                    <span>View Analytics</span>
-                  </button>
-                  <button mat-raised-button class="quick-action">
-                    <mat-icon>terminal</mat-icon>
-                    <span>Open Terminal</span>
-                  </button>
-                </div>
-              </mat-card-content>
-            </mat-card>
-          </section>
-        </main>
+          <div class="ticker__clock">
+            @if (systemHealth) {
+              <span class="ticker__uptime">UPTIME {{ systemHealth.uptime.formatted }}</span>
+            }
+            <span class="ticker__time">{{ deckClock() }}</span>
+          </div>
+        </header>
 
-        <!-- Right-side resources/notifications column -->
-        <aside class="side-section">
-          <!-- System Health Status -->
-          @if (systemHealth) {
-            <section class="system-health">
-              <h3 class="resources-title">
-                <mat-icon [style.color]="getSystemHealthColor()">health_and_safety</mat-icon>
-                System Health
-              </h3>
-              <div class="health-status" [style.color]="getSystemHealthColor()">
-                {{ systemHealth.status | titlecase }}
+        <div class="deck__grid">
+          <!-- ─────────── LEFT: conversational dock + roster ─────────── -->
+          <section class="deck__col deck__col--left">
+            <div class="deck-panel chat-dock" [class.chat-dock--collapsed]="!chatExpanded()">
+              <div class="deck-panel__head">
+                <h3 class="deck-panel__title">
+                  <mat-icon>forum</mat-icon> Comms Link
+                </h3>
+                <button mat-icon-button class="deck-panel__toggle"
+                        (click)="toggleChat()"
+                        [matTooltip]="chatExpanded() ? 'Collapse comms' : 'Expand comms'">
+                  <mat-icon>{{ chatExpanded() ? 'unfold_less' : 'unfold_more' }}</mat-icon>
+                </button>
               </div>
-              <div class="health-uptime">Uptime: {{ systemHealth.uptime.formatted }}</div>
-              @for (entry of systemHealth.services | keyvalue; track entry.key) {
-                <div class="service-item">
-                  <span class="service-name">{{ entry.key }}</span>
-                  <mat-chip [class]="entry.value.status" size="small">
-                    {{ entry.value.status }}
-                  </mat-chip>
+              @if (chatExpanded()) {
+                <div class="chat-dock__body">
+                  <app-chat-window></app-chat-window>
                 </div>
               }
-            </section>
-          }
+            </div>
 
-          <!-- System Resources -->
-          <section class="system-resources">
-            <h3 class="resources-title">
-              <mat-icon>monitor_heart</mat-icon>
-              System Resources
-            </h3>
-            <div class="resource-item">
-              <span class="resource-label">CPU Usage</span>
-              <mat-progress-bar 
-                mode="determinate" 
-                [value]="systemStats.cpuUsage" 
-                class="cpu-bar"
-                [matTooltip]="'CPU: ' + systemStats.cpuUsage + '% | Processes: ' + detailedStats.processesCount"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.cpuUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Memory</span>
-              <mat-progress-bar 
-                mode="determinate" 
-                [value]="systemStats.memoryUsage" 
-                class="memory-bar"
-                [matTooltip]="'Using ' + (detailedStats.memoryTotalGb - detailedStats.memoryAvailableGb).toFixed(1) + ' GB of ' + detailedStats.memoryTotalGb.toFixed(1) + ' GB'"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.memoryUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Storage</span>
-              <mat-progress-bar 
-                mode="determinate" 
-                [value]="systemStats.storageUsage" 
-                class="storage-bar"
-                [matTooltip]="'Using ' + (detailedStats.storageTotalGb - detailedStats.storageAvailableGb).toFixed(1) + ' GB of ' + detailedStats.storageTotalGb.toFixed(1) + ' GB'"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.storageUsage}}%</span>
-            </div>
-            <div class="resource-item">
-              <span class="resource-label">Network</span>
-              <mat-progress-bar 
-                mode="determinate" 
-                [value]="systemStats.networkActivity" 
-                class="network-bar"
-                [matTooltip]="'Sent: ' + detailedStats.networkSentGb.toFixed(2) + ' GB | Received: ' + detailedStats.networkRecvGb.toFixed(2) + ' GB'"></mat-progress-bar>
-              <span class="resource-value">{{systemStats.networkActivity}}%</span>
-            </div>
-          </section>
+            <div class="deck-panel agent-roster deploy-panel">
+              <div class="deck-panel__head">
+                <h3 class="deck-panel__title">
+                  <mat-icon>hub</mat-icon> Agent Roster ({{ activeAgents.length }})
+                </h3>
+              </div>
 
-          <!-- Recent Activity Card -->
-          <mat-card class="dashboard-card activity-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>timeline</mat-icon>
-                Recent Activity
-              </mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="activity-feed">
-                @for (activity of recentActivities; track activity.id) {
-                  <div class="activity-item" [class]="activity.severity">
-                    <div class="activity-timestamp">
-                      {{ formatActivityTime(activity.timestamp) }}
+              <div class="agent-roster__list">
+                @for (agent of activeAgents; track agent.id) {
+                  <div class="agent-chip" [class]="agent.status">
+                    <div class="agent-chip__main">
+                      <span class="agent-chip__name">{{ agent.agent_id }}</span>
+                      <span class="agent-chip__role">{{ agent.agent_role }}</span>
                     </div>
-                    <div class="activity-message">
-                      {{ activity.message }}
+                    <div class="agent-chip__meta">
+                      <span class="agent-chip__status">{{ getAgentStatusText(agent.status) }}</span>
+                      <span class="agent-chip__uptime">{{ agent.uptimeFormatted || '—' }}</span>
                     </div>
-                    <div class="activity-indicator" [class]="activity.severity"></div>
+                    <div class="agent-chip__actions">
+                      <button mat-icon-button matTooltip="Restart" (click)="restartAgent(agent)">
+                        <mat-icon>refresh</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Stop" (click)="stopAgent(agent)">
+                        <mat-icon>power_settings_new</mat-icon>
+                      </button>
+                    </div>
                   </div>
-                }
-                @empty {
-                  <div class="empty-state">
-                    <mat-icon>inbox</mat-icon>
-                    <p>No recent activity</p>
+                } @empty {
+                  <div class="deck-empty">
+                    <mat-icon>smart_toy</mat-icon>
+                    <p>No agents online. Deploy one to begin.</p>
                   </div>
                 }
               </div>
-            </mat-card-content>
-          </mat-card>
 
-          <!-- Last Updated -->
-          @if (dashboardState.lastUpdate) {
-            <div class="last-update">
-              Last updated: {{ dashboardState.lastUpdate }}
+              <div class="deploy-form">
+                <mat-select [(value)]="selectedAgentRole" placeholder="Select Role">
+                  @for (role of availableRoles; track role) {
+                    <mat-option [value]="role">{{ role | titlecase }}</mat-option>
+                  }
+                </mat-select>
+                <button mat-flat-button class="deploy-btn sp-btn-gradient-primary"
+                        (click)="deployAgent()"
+                        [disabled]="deploymentLoading">
+                  @if (deploymentLoading) {
+                    <mat-spinner diameter="18"></mat-spinner>
+                  } @else {
+                    <mat-icon>rocket_launch</mat-icon>
+                  }
+                  Deploy
+                </button>
+              </div>
             </div>
-          }
-        </aside>
+          </section>
+
+          <!-- ─────────── CENTER: reactor + vitals + command rail ─────────── -->
+          <section class="deck__col deck__col--center">
+            <div class="reactor-stage">
+              <app-reactor-core
+                [status]="reactorStatus"
+                [online]="isFeedLive"
+                [load]="cognitionLoad"></app-reactor-core>
+            </div>
+
+            <div class="cognition-stage">
+              <span class="cognition-stage__label">Cognitive Pipeline</span>
+              <app-cognition-graph
+                [stages]="pipelineStages()"
+                [selectedStageId]="selectedStage()"
+                (stageSelected)="onStageSelected($event)"></app-cognition-graph>
+            </div>
+
+            <div class="vitals-cluster">
+              @for (vital of dashboardStore.vitals(); track vital.id) {
+                <app-vitals-ring
+                  [label]="vital.label"
+                  [value]="vital.value"
+                  [detail]="vital.detail"></app-vitals-ring>
+              }
+            </div>
+
+            <div class="command-rail">
+              <button mat-button class="command-rail__btn command-rail__btn--primary"
+                      (click)="scrollToDeployPanel()">
+                <mat-icon>add_box</mat-icon>
+                <span>Deploy Agent</span>
+              </button>
+              <button mat-button class="command-rail__btn command-rail__btn--accent"
+                      (click)="runSecurityScan()">
+                <mat-icon>security</mat-icon>
+                <span>Security Scan</span>
+              </button>
+              <button mat-button class="command-rail__btn"
+                      [routerLink]="['/tools']">
+                <mat-icon>extension</mat-icon>
+                <span>Tools &amp; Integrations</span>
+              </button>
+              @if (discordBridgeIndicator$ | async; as discordBridgeIndicator) {
+                <button mat-button class="command-rail__btn command-rail__btn--discord"
+                        [routerLink]="['/tools/discord-bridge']"
+                        [matTooltip]="discordBridgeIndicator.tooltip">
+                  <mat-icon>hub</mat-icon>
+                  <span>Discord Gateway</span>
+                  <app-discord-bridge-status-badge
+                    class="command-rail__badge"
+                    [indicator]="discordBridgeIndicator"></app-discord-bridge-status-badge>
+                </button>
+              }
+              <button mat-button class="command-rail__btn"
+                      [routerLink]="['/command-center']">
+                <mat-icon>dashboard</mat-icon>
+                <span>Command Center</span>
+              </button>
+              <button mat-button class="command-rail__btn"
+                      (click)="viewAnalytics()">
+                <mat-icon>analytics</mat-icon>
+                <span>Analytics</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- ─────────── RIGHT: health + activity ─────────── -->
+          <section class="deck__col deck__col--right">
+            @if (systemHealth) {
+              <div class="deck-panel health-panel">
+                <div class="deck-panel__head">
+                  <h3 class="deck-panel__title">
+                    <mat-icon [style.color]="getSystemHealthColor()">health_and_safety</mat-icon>
+                    System Health
+                  </h3>
+                  <span class="health-panel__status" [style.color]="getSystemHealthColor()">
+                    {{ systemHealth.status | titlecase }}
+                  </span>
+                </div>
+                <div class="health-panel__services">
+                  @for (entry of systemHealth.services | keyvalue; track entry.key) {
+                    <div class="service-row" [class]="entry.value.status">
+                      <span class="service-row__name">{{ entry.key }}</span>
+                      <span class="service-row__state">{{ entry.value.status }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (taskSummary) {
+              <div class="deck-panel task-panel">
+                <div class="deck-panel__head">
+                  <h3 class="deck-panel__title"><mat-icon>assignment</mat-icon> Task Overview</h3>
+                </div>
+                <div class="task-panel__grid">
+                  <div class="task-stat"><span class="task-stat__n queued" [appCountUp]="taskSummary.queued">0</span><span class="task-stat__l">Queued</span></div>
+                  <div class="task-stat"><span class="task-stat__n running" [appCountUp]="taskSummary.running">0</span><span class="task-stat__l">Running</span></div>
+                  <div class="task-stat"><span class="task-stat__n completed" [appCountUp]="taskSummary.completed">0</span><span class="task-stat__l">Done</span></div>
+                  <div class="task-stat"><span class="task-stat__n failed" [appCountUp]="taskSummary.failed">0</span><span class="task-stat__l">Failed</span></div>
+                </div>
+              </div>
+            }
+
+            <div class="deck-panel activity-panel">
+              <div class="deck-panel__head">
+                <h3 class="deck-panel__title"><mat-icon>timeline</mat-icon> Activity Stream</h3>
+              </div>
+              <div class="activity-panel__feed">
+                @for (item of cognitionStore.activityFeed(); track item.id) {
+                  <div class="activity-row" [class]="item.kind" [matTooltip]="item.detail">
+                    <span class="activity-row__dot"></span>
+                    <span class="activity-row__msg">{{ item.label }}</span>
+                    <span class="activity-row__time">{{ formatActivityTime(item.ts) }}</span>
+                  </div>
+                } @empty {
+                  <div class="deck-empty">
+                    <mat-icon>inbox</mat-icon>
+                    <p>Awaiting cognition telemetry…</p>
+                  </div>
+                }
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
-    </mat-tab>
-    <mat-tab label="Tasks">
-      <!-- Tasks content will go here -->
-    </mat-tab>
-    <mat-tab label="Agents">
-      <app-my-agents-page></app-my-agents-page>
-    </mat-tab>
-    <mat-tab label="Boards">
-      <app-boards></app-boards>
-    </mat-tab>
-  </mat-tab-group>
 </div>

@@ -1,10 +1,9 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
@@ -12,11 +11,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { ChatWindowComponent } from '../shared/chat-window/chat-window.component';
 import { HttpClientModule } from '@angular/common/http';
-import { SystemMonitorService } from '../services/system-monitor/system-monitor.service';
 import { InstanceService } from '../services/instance.service';
 import { Subject, takeUntil, combineLatest } from 'rxjs';
-import { BoardsComponent } from './boards/boards.component';
-import { MyAgentsPageComponent } from '../agents-page/my-agents-page/my-agents-page.component';
 import { RouterLink } from '@angular/router';
 import { 
   AgentInstanceUI, 
@@ -27,6 +23,21 @@ import {
 } from '../models/instance.models';
 import { DiscordBridgeService } from '../services/discord-bridge/discord-bridge.service';
 import { DiscordBridgeStatusBadgeComponent } from '../shared/discord-bridge-status-badge/discord-bridge-status-badge.component';
+import { CountUpDirective } from '../shared/directives/count-up.directive';
+import { DashboardStore } from './command-deck/dashboard.store';
+import { ReactorCoreComponent, ReactorStatus } from './command-deck/reactor-core/reactor-core.component';
+import { VitalsRingComponent } from './command-deck/vitals-ring/vitals-ring.component';
+import {
+  AgentActivityEvent,
+  CognitionStore,
+  TaskProgressEvent
+} from './command-deck/cognition.store';
+import {
+  CognitionGraphComponent,
+  CognitionStage,
+  StageId,
+  StageState
+} from './command-deck/cognition-graph/cognition-graph.component';
 
 @Component({
   selector: 'app-landing-page',
@@ -37,7 +48,6 @@ import { DiscordBridgeStatusBadgeComponent } from '../shared/discord-bridge-stat
     MatIconModule,
     MatProgressBarModule,
     MatChipsModule,
-    MatTabsModule,
     MatTooltipModule,
     MatSelectModule,
     MatSnackBarModule,
@@ -45,41 +55,34 @@ import { DiscordBridgeStatusBadgeComponent } from '../shared/discord-bridge-stat
     ChatWindowComponent,
     CommonModule,
     HttpClientModule,
-    BoardsComponent,
-    MyAgentsPageComponent,
     RouterLink,
-    DiscordBridgeStatusBadgeComponent
+    DiscordBridgeStatusBadgeComponent,
+    ReactorCoreComponent,
+    VitalsRingComponent,
+    CognitionGraphComponent,
+    CountUpDirective
   ],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.scss'
 })
 export class LandingPageComponent implements OnInit, OnDestroy {
   private readonly _discordBridgeService = inject(DiscordBridgeService);
+  public readonly dashboardStore = inject(DashboardStore);
+  public readonly cognitionStore = inject(CognitionStore);
   private readonly destroy$ = new Subject<void>();
+
+  /** Whether the conversational dock (chat) is expanded. */
+  public readonly chatExpanded = signal<boolean>(true);
+
+  /** Local deck clock, refreshed once per second for the HUD ticker. */
+  public readonly deckClock = signal<string>('--:--:--');
+  private _clockTimer: ReturnType<typeof setInterval> | null = null;
 
   // Dashboard state
   dashboardState: DashboardState = {
     loading: true,
     error: null,
     lastUpdate: ''
-  };
-
-  // System stats (existing)
-  systemStats = {
-    cpuUsage: 0,
-    memoryUsage: 0,
-    storageUsage: 0,
-    networkActivity: 0
-  };
-
-  detailedStats = {
-    memoryTotalGb: 0,
-    memoryAvailableGb: 0,
-    storageTotalGb: 0,
-    storageAvailableGb: 0,
-    networkSentGb: 0,
-    networkRecvGb: 0,
-    processesCount: 0
   };
 
   // New real-time data
@@ -94,8 +97,15 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   availableRoles = ['researcher', 'monitor', 'specialist', 'manager'];
   deploymentLoading = false;
 
+  /** Currently-selected pipeline stage for the cognition graph (UI only). */
+  public readonly selectedStage = signal<StageId | null>(null);
+
+  /** Pipeline stages for <app-cognition-graph>, projected from live cognition frames. */
+  public readonly pipelineStages = computed<CognitionStage[]>(() => {
+    return this._buildPipelineStages(this.cognitionStore.agents(), this.cognitionStore.tasks());
+  });
+
   constructor(
-    private readonly systemMonitor: SystemMonitorService,
     private readonly instanceService: InstanceService,
     private readonly snackBar: MatSnackBar
   ) {}
@@ -103,11 +113,198 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initializeDashboard();
     this.startPolling();
+    this.dashboardStore.start();
+    this.cognitionStore.start();
+    this._startClock();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.dashboardStore.stop();
+    this.cognitionStore.stop();
+    if (this._clockTimer) {
+      clearInterval(this._clockTimer);
+      this._clockTimer = null;
+    }
+  }
+
+  /** Maps backend health into a reactor status for the centerpiece. */
+  public get reactorStatus(): ReactorStatus {
+    switch (this.systemHealth?.status) {
+      case 'healthy':
+        return 'healthy';
+      case 'degraded':
+        return 'degraded';
+      case 'unhealthy':
+        return 'unhealthy';
+      default:
+        return 'initializing';
+    }
+  }
+
+  /** True while the live resource feed is delivering data. */
+  public get isFeedLive(): boolean {
+    const status = this.dashboardStore.feedStatus();
+    return status === 'live' || status === 'polling';
+  }
+
+  /** Short label describing the feed transport for the HUD ticker. */
+  public get feedStatusLabel(): string {
+    switch (this.dashboardStore.feedStatus()) {
+      case 'live':
+        return 'SSE LINK';
+      case 'polling':
+        return 'POLL LINK';
+      case 'offline':
+        return 'LINK LOST';
+      default:
+        return 'LINKING…';
+    }
+  }
+
+  /** Aggregate CPU+memory load (retained for HUD/vitals context). */
+  public get aggregateLoad(): number {
+    const vitals = this.dashboardStore.vitals();
+    const cpu = vitals.find((v) => v.id === 'cpu')?.value ?? 0;
+    const memory = vitals.find((v) => v.id === 'memory')?.value ?? 0;
+    return Math.round((cpu + memory) / 2);
+  }
+
+  /**
+   * Cognition load (0-100) driving the reactor energy core, derived from live
+   * agent/task cognition events. Reads 0 until the backend emits cognition
+   * frames; the reactor floors energy at 0.12 so it never reads as dead.
+   */
+  public get cognitionLoad(): number {
+    return this.cognitionStore.cognitionLoad();
+  }
+
+  /** Open the (future) stage detail panel for the selected cognition stage. */
+  public onStageSelected(stage: CognitionStage): void {
+    this.selectedStage.set(stage.id);
+  }
+
+  /** Toggle the conversational dock open/closed. */
+  public toggleChat(): void {
+    this.chatExpanded.update((open) => !open);
+  }
+
+  private _startClock(): void {
+    const tick = () => this.deckClock.set(new Date().toLocaleTimeString());
+    tick();
+    this._clockTimer = setInterval(tick, 1000);
+  }
+
+  private _buildPipelineStages(
+    agents: readonly AgentActivityEvent[],
+    tasks: readonly TaskProgressEvent[]
+  ): CognitionStage[] {
+    const states: Record<StageId, StageState> = {
+      comprehension: 'idle',
+      orchestration: 'idle',
+      reasoning: 'idle',
+      evaluation: 'idle'
+    };
+    const attachedAgents: Record<StageId, { id: string; label: string }[]> = {
+      comprehension: [],
+      orchestration: [],
+      reasoning: [],
+      evaluation: []
+    };
+
+    for (const task of tasks) {
+      this._applyTaskToPipeline(states, task);
+    }
+
+    for (const agent of agents) {
+      const stage = this._stageForAgent(agent);
+      if (stage) {
+        attachedAgents[stage].push({
+          id: agent.agent_id,
+          label: agent.agent_id.replace(/^agent_/, '')
+        });
+        states[stage] = this._mergeStageState(states[stage], this._stateForAgent(agent));
+      }
+    }
+
+    return [
+      { id: 'comprehension', label: 'Comprehension', state: states.comprehension, agents: attachedAgents.comprehension },
+      { id: 'orchestration', label: 'Orchestration', state: states.orchestration, agents: attachedAgents.orchestration },
+      { id: 'reasoning', label: 'Reasoning', state: states.reasoning, agents: attachedAgents.reasoning },
+      { id: 'evaluation', label: 'Evaluation', state: states.evaluation, agents: attachedAgents.evaluation }
+    ];
+  }
+
+  private _applyTaskToPipeline(states: Record<StageId, StageState>, task: TaskProgressEvent): void {
+    switch (task.stage) {
+      case 'queued':
+        states.comprehension = this._mergeStageState(states.comprehension, 'thinking');
+        break;
+      case 'starting':
+        states.comprehension = this._mergeStageState(states.comprehension, 'complete');
+        states.orchestration = this._mergeStageState(states.orchestration, 'thinking');
+        break;
+      case 'processing':
+        states.comprehension = this._mergeStageState(states.comprehension, 'complete');
+        states.orchestration = this._mergeStageState(states.orchestration, 'complete');
+        states.reasoning = this._mergeStageState(states.reasoning, 'executing');
+        break;
+      case 'finalizing':
+        states.comprehension = this._mergeStageState(states.comprehension, 'complete');
+        states.orchestration = this._mergeStageState(states.orchestration, 'complete');
+        states.reasoning = this._mergeStageState(states.reasoning, 'complete');
+        states.evaluation = this._mergeStageState(states.evaluation, 'executing');
+        break;
+      case 'complete':
+        states.comprehension = this._mergeStageState(states.comprehension, 'complete');
+        states.orchestration = this._mergeStageState(states.orchestration, 'complete');
+        states.reasoning = this._mergeStageState(states.reasoning, 'complete');
+        states.evaluation = this._mergeStageState(states.evaluation, 'complete');
+        break;
+      case 'failed':
+      case 'cancelled':
+        states.evaluation = this._mergeStageState(states.evaluation, 'error');
+        break;
+      default:
+        break;
+    }
+  }
+
+  private _stageForAgent(agent: AgentActivityEvent): StageId | null {
+    const raw = `${agent.agent_id} ${agent.action} ${agent.message ?? ''}`.toLowerCase();
+    if (raw.includes('comprehension')) return 'comprehension';
+    if (raw.includes('orchestration')) return 'orchestration';
+    if (raw.includes('reasoning')) return 'reasoning';
+    if (raw.includes('evaluation')) return 'evaluation';
+    return null;
+  }
+
+  private _stateForAgent(agent: AgentActivityEvent): StageState {
+    switch (agent.status) {
+      case 'thinking':
+        return 'thinking';
+      case 'active':
+      case 'executing':
+        return 'executing';
+      case 'complete':
+        return 'complete';
+      case 'error':
+        return 'error';
+      default:
+        return 'idle';
+    }
+  }
+
+  private _mergeStageState(current: StageState, next: StageState): StageState {
+    const rank: Record<StageState, number> = {
+      idle: 0,
+      complete: 1,
+      thinking: 2,
+      executing: 3,
+      error: 4
+    };
+    return rank[next] > rank[current] ? next : current;
   }
 
   /**
@@ -145,27 +342,8 @@ export class LandingPageComponent implements OnInit, OnDestroy {
    * Start polling for real-time updates
    */
   private startPolling(): void {
-    // Start system resources polling (every 15 seconds)
-    this.systemMonitor.getSystemResourcesPolling(15)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(resources => {
-        this.systemStats = {
-          cpuUsage: Math.round(resources.cpu_usage),
-          memoryUsage: Math.round(resources.memory_usage),
-          storageUsage: Math.round(resources.storage_usage),
-          networkActivity: Math.round(this.systemMonitor.getNetworkActivityPercentage(resources.network_io_rate_mbps))
-        };
-
-        this.detailedStats = {
-          memoryTotalGb: resources.memory_total_gb,
-          memoryAvailableGb: resources.memory_available_gb,
-          storageTotalGb: resources.storage_total_gb,
-          storageAvailableGb: resources.storage_available_gb,
-          networkSentGb: resources.network_sent_gb,
-          networkRecvGb: resources.network_recv_gb,
-          processesCount: resources.processes_count
-        };
-      });
+    // Live system resources are streamed via DashboardStore (SSE).
+    // Instances/health still poll until their SSE endpoints exist.
 
     // Start instance polling (every 10 seconds)
     this.instanceService.startInstancePolling()
@@ -301,13 +479,13 @@ export class LandingPageComponent implements OnInit, OnDestroy {
    * Get system health status color
    */
   getSystemHealthColor(): string {
-    if (!this.systemHealth) return '#666666';
-    
+    if (!this.systemHealth) return 'var(--core-text-dim)';
+
     switch (this.systemHealth.status) {
-      case 'healthy': return '#00ff88';
-      case 'degraded': return '#ffaa00';
-      case 'unhealthy': return '#ff5757';
-      default: return '#666666';
+      case 'healthy': return 'var(--core-success)';
+      case 'degraded': return 'var(--core-amber)';
+      case 'unhealthy': return 'var(--core-danger)';
+      default: return 'var(--core-text-dim)';
     }
   }
 

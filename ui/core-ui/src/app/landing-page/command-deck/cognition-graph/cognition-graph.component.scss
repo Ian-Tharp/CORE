@@ -1,0 +1,297 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.cognition {
+  position: relative;
+  width: 100%;
+  // Default theme colour; per-state overrides set on each node group below.
+  color: var(--core-energy);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 14% 5%;
+    pointer-events: none;
+    border-radius: 999px;
+  }
+
+  &::before {
+    border-top: 1px solid rgba(0, 255, 200, 0.12);
+    border-bottom: 1px solid rgba(255, 179, 71, 0.08);
+    filter: blur(0.5px);
+  }
+
+  &::after {
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.08), transparent);
+    transform: translateX(-120%);
+    animation: cognition-stage-scan 9s ease-in-out infinite;
+  }
+}
+
+.cognition__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 1.2rem rgba(0, 255, 200, 0.12));
+}
+
+// ── Edges ────────────────────────────────────────────────────────────────────
+.cognition__edge-base {
+  fill: none;
+  stroke: var(--core-border-normal);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 2 10;
+  opacity: 0.65;
+}
+
+.cognition__edge-flow {
+  fill: none;
+  stroke: url(#cognitionEdgeGradient);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 10 14;
+  stroke-opacity: 0;
+  filter: drop-shadow(0 0 0.4rem var(--core-energy));
+  transition: stroke-opacity var(--transition-normal);
+}
+
+.cognition__edge-pulse {
+  fill: none;
+  stroke: var(--core-energy);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 1 120;
+  stroke-opacity: 0;
+  filter: url(#cognitionSoftGlow);
+}
+
+.cognition__edge--active {
+  .cognition__edge-base {
+    stroke: var(--core-border-bright);
+    stroke-dasharray: none;
+    opacity: 1;
+  }
+
+  .cognition__edge-flow {
+    stroke-opacity: 0.9;
+    animation: cognition-flow 1.1s linear infinite;
+  }
+
+  .cognition__edge-pulse {
+    stroke-opacity: 0.9;
+    animation: cognition-packet 2.3s ease-in-out infinite;
+  }
+
+  .cognition__edge-pulse--two {
+    animation-delay: 1.15s;
+    stroke: var(--core-amber);
+  }
+}
+
+// ── Nodes ────────────────────────────────────────────────────────────────────
+.cognition__node {
+  cursor: pointer;
+  outline: none;
+  transform-box: fill-box;
+  transform-origin: center;
+
+  // Per-state theming — node group inherits a colour that all currentColor
+  // strokes / fills resolve against.
+  &.is-idle { color: var(--core-text-dim); }
+  &.is-thinking { color: var(--core-energy); }
+  &.is-executing { color: var(--core-amber); }
+  &.is-error { color: var(--core-danger); }
+  &.is-complete { color: var(--core-success); }
+
+  &:hover .cognition__node-ring,
+  &:focus-visible .cognition__node-ring {
+    stroke-opacity: 1;
+  }
+
+  &:hover {
+    .cognition__node-body {
+      filter: drop-shadow(0 0 0.7rem currentColor);
+    }
+  }
+
+  &:focus-visible .cognition__node-select {
+    stroke: var(--core-energy-bright);
+    stroke-opacity: 0.9;
+  }
+}
+
+.cognition__node-glow {
+  color: currentColor;
+  opacity: 0.6;
+}
+
+.cognition__node-orbit {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  transform-origin: center;
+  opacity: 0.28;
+
+  &--outer {
+    stroke-width: 1.2;
+    stroke-dasharray: 3 9 16 9;
+    animation: cognition-spin 28s linear infinite;
+  }
+
+  &--inner {
+    stroke-width: 1;
+    stroke-dasharray: 2 7;
+    animation: cognition-spin 18s linear infinite reverse;
+  }
+}
+
+.cognition__node-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-opacity: 0.7;
+  stroke-linecap: round;
+  transform-origin: center;
+  transition: stroke-opacity var(--transition-normal);
+}
+
+.cognition__node-body {
+  fill: var(--core-bg-surface-2);
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-opacity: 0.5;
+  transition: filter var(--transition-normal), stroke-opacity var(--transition-normal);
+}
+
+.cognition__node-select {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  transition: stroke var(--transition-normal);
+}
+
+.cognition__node--selected .cognition__node-select {
+  stroke: currentColor;
+  stroke-opacity: 0.9;
+  animation: cognition-spin 18s linear infinite;
+}
+
+// Animated states — the ring pulses / spins to read as "alive".
+.cognition__node.is-thinking .cognition__node-ring {
+  stroke-dashoffset: 0;
+  animation: cognition-pulse 2.4s ease-in-out infinite;
+}
+
+.cognition__node.is-thinking .cognition__node-orbit--outer,
+.cognition__node.is-executing .cognition__node-orbit--outer {
+  opacity: 0.6;
+  animation-duration: 10s;
+}
+
+.cognition__node.is-executing .cognition__node-ring {
+  animation: cognition-spin 6s linear infinite;
+}
+
+.cognition__node.is-executing .cognition__node-body {
+  stroke-opacity: 0.9;
+  filter: drop-shadow(0 0 0.8rem currentColor);
+}
+
+.cognition__node.is-error .cognition__node-ring {
+  animation: cognition-pulse 1.1s ease-in-out infinite;
+}
+
+.cognition__node.is-complete .cognition__node-ring {
+  stroke-opacity: 0.9;
+  stroke-dasharray: 18 8;
+}
+
+.cognition__node-index {
+  fill: currentColor;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.cognition__node-label {
+  fill: var(--core-text-primary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.cognition__node-state {
+  fill: currentColor;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+// ── Agents ───────────────────────────────────────────────────────────────────
+.cognition__agent-dot {
+  fill: currentColor;
+  filter: drop-shadow(0 0 0.25rem currentColor);
+}
+
+.cognition__agent-label {
+  fill: var(--core-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  dominant-baseline: middle;
+}
+
+// ── Animations ─────────────────────────────────────────────────────────────
+@keyframes cognition-flow {
+  to { stroke-dashoffset: -18; }
+}
+
+@keyframes cognition-packet {
+  0% { stroke-dashoffset: 125; opacity: 0; }
+  18% { opacity: 0.95; }
+  82% { opacity: 0.95; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes cognition-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cognition-pulse {
+  0%, 100% { stroke-opacity: 0.45; }
+  50% { stroke-opacity: 1; }
+}
+
+@keyframes cognition-stage-scan {
+  0%, 18% { transform: translateX(-120%); opacity: 0; }
+  40% { opacity: 0.9; }
+  65%, 100% { transform: translateX(120%); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cognition__edge--active .cognition__edge-flow,
+  .cognition__edge--active .cognition__edge-pulse,
+  .cognition::after,
+  .cognition__node-orbit,
+  .cognition__node-ring,
+  .cognition__node--selected .cognition__node-select {
+    animation: none;
+  }
+}

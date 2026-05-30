@@ -55,9 +55,11 @@ Council of Perspectives deliberation framework.
 Project planning and feature backlogs.
 
 - [Backlog](roadmap/backlog.md) — General UI and backend task backlog
+- [Command Deck & Cognition — Next Steps](roadmap/command-deck-cognition-next-steps.md) — Prioritized backlog after the command-deck rebuild + UI polish pass
 - [Communications Commons](roadmap/communications-commons.md) — Communication Commons feature roadmap
 - [Solarpunk Vision](roadmap/solarpunk-vision.md) — Long-term vision and UI/backend evolution plan
 - [Vigil Integration](roadmap/vigil-integration.md) — Integration plan for Vigil (OpenClaw) ↔ CORE
+- [UI Polish Log](ui-polish-log.md) — Iteration log of the autonomous section-by-section UI polish
 
 ## RSI (Recursive Self-Improvement)
 - [2026-01-11 Session](RSI/2026-01-11-session-superintelligence-collaboration.md) — Superintelligence collaboration session

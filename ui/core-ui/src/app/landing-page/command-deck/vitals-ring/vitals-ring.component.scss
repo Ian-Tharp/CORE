@@ -1,0 +1,79 @@
+:host {
+  display: block;
+}
+
+.vital {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--core-energy);
+
+  &[data-severity='elevated'] { color: var(--core-amber); }
+  &[data-severity='critical'] { color: var(--core-danger); }
+}
+
+.vital__svg {
+  width: clamp(4.5rem, 8vw, 6rem);
+  height: clamp(4.5rem, 8vw, 6rem);
+}
+
+.vital__track {
+  fill: none;
+  stroke: rgba(0, 255, 200, 0.08);
+  stroke-width: 6;
+}
+
+.vital__arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 0.35rem currentColor);
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+              stroke 0.3s ease;
+}
+
+.vital__readout {
+  position: absolute;
+  top: clamp(2.25rem, 4vw, 3rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.vital__value {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 800;
+  color: var(--core-text-primary);
+}
+
+.vital__unit {
+  font-size: 0.6em;
+  color: var(--core-text-secondary);
+  margin-left: 0.05em;
+}
+
+.vital__label {
+  margin-top: 0.15rem;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: currentColor;
+}
+
+.vital__detail {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--core-text-secondary);
+  text-align: center;
+}

@@ -1,0 +1,22 @@
+<div class="vital" [attr.data-severity]="severity()">
+  <svg viewBox="0 0 100 100" class="vital__svg" aria-hidden="true">
+    <circle class="vital__track" cx="50" cy="50" [attr.r]="radius" />
+    <circle
+      class="vital__arc"
+      cx="50"
+      cy="50"
+      [attr.r]="radius"
+      [attr.stroke-dasharray]="circumference"
+      [attr.stroke-dashoffset]="dashOffset()"
+      transform="rotate(-90 50 50)" />
+  </svg>
+
+  <div class="vital__readout">
+    <span class="vital__value"><span [appCountUp]="clamped()" [countUpDuration]="900">0</span><span class="vital__unit">%</span></span>
+    <span class="vital__label">{{ label() }}</span>
+  </div>
+
+  @if (detail()) {
+    <span class="vital__detail">{{ detail() }}</span>
+  }
+</div>
