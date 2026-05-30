@@ -43,13 +43,15 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Make the backend root importable so `import app` resolves regardless of the
+# caller's PYTHONPATH. CI sets no PYTHONPATH (tests/ is not a package, so pytest
+# would otherwise only put tests/ on sys.path); the Docker image sets PYTHONPATH=/app.
+pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
 ]
 addopts = "-m 'not integration'"
 testpaths = ["tests", "app"]
-# Exclude standalone scripts that aren't real test modules
-collect_ignore = ["test_sync.py"]
 filterwarnings = [
     "ignore:.*datetime\\.datetime\\.utcnow.*:DeprecationWarning",
     "ignore:.*class-based `config` is deprecated.*:DeprecationWarning",
