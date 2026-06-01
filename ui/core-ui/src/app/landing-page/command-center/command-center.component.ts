@@ -108,6 +108,20 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     // Initial render of existing connections
     this.tileGrid.updateConnections(this.tileMetadata.getConnections());
 
+    // Emphasise authored worlds (name / wiki / tags) in the galaxy and scope the
+    // Next/Back stepper to them.
+    this.tileMetadata.onAllMetadataChanged().subscribe((map) => {
+      const documented: number[] = [];
+      map.forEach((meta, idx) => {
+        if ((meta.name && meta.name.trim()) ||
+            (meta.wikiPageIds && meta.wikiPageIds.length > 0) ||
+            (meta.tags && meta.tags.length > 0)) {
+          documented.push(idx);
+        }
+      });
+      this.tileGrid.setDocumentedWorlds(documented);
+    });
+
     this.destroyRef.onDestroy(() => this.ngOnDestroy());
 
     // Load snapshot if provided via query param (local or remote)
@@ -348,12 +362,17 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.tileGrid.stepSelection(delta);
   }
 
-  /** Label for the world stepper, e.g. "World 7 / 441" or "441 worlds". */
+  /**
+   * Label for the world stepper, e.g. "World 7 / 441" — a ✦ marks when stepping
+   * is scoped to authored worlds rather than every orb.
+   */
   public get worldStepLabel(): string {
-    const total = this.tileGrid.getWorldCount();
+    const { position, total, scoped } = this.tileGrid.getNavInfo();
     if (!total) { return ''; }
-    const idx = this.tileGrid.getSelectedIndex();
-    return idx >= 0 ? `World ${idx + 1} / ${total}` : `${total} worlds`;
+    const mark = scoped ? ' ✦' : '';
+    return position >= 0
+      ? `World ${position + 1} / ${total}${mark}`
+      : `${total} world${total === 1 ? '' : 's'}${mark}`;
   }
 
   public onOpenWorlds(): void {

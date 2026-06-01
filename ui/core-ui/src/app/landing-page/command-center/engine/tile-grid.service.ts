@@ -134,6 +134,10 @@ export class TileGridService {
   private readonly connectionPackets: ConnectionPacket[] = [];
   private connectionsVisible = true;
 
+  // Worlds that carry authored content (name / wiki / knowledge). These are
+  // visually emphasised and become the scope the Next/Back stepper walks.
+  private documentedWorlds = new Set<number>();
+
   constructor() {}
 
   initialize(engine: EngineService): void {
@@ -782,7 +786,8 @@ export class TileGridService {
     this.animationObject.updateMatrix();
     this.worldDomeMesh?.setMatrixAt(index, this.animationObject.matrix);
 
-    const atmosphereScale = (index === this.hoveredIndex || index === this.selectedIndex ? 1.12 : 1) * scale;
+    const documentedHalo = this.documentedWorlds.has(index) ? 1.32 : 1;
+    const atmosphereScale = (index === this.hoveredIndex || index === this.selectedIndex ? 1.12 : 1) * documentedHalo * scale;
     this.animationObject.position.set(tile.worldX, y + 0.16 + domeScale.y * 0.28, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
     this.animationObject.scale.set(atmosphereScale, atmosphereScale, atmosphereScale);
@@ -892,6 +897,7 @@ export class TileGridService {
     if (terrain === 'mountain') {scale += 0.16;}
     if (terrain === 'water') {scale -= 0.06;}
     if (resource === 'node') {scale += 0.12;}
+    if (this.documentedWorlds.has(index)) {scale += 0.22;} // authored worlds loom larger
     return scale;
   }
 
@@ -919,11 +925,14 @@ export class TileGridService {
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
-    if (resource === 'node') {return 1.25;}
-    if (terrain === 'mountain') {return 1.05;}
-    if (terrain === 'water') {return 0.52;}
-    if (biome !== 'none') {return 0.78;}
-    return 0.42;
+    let h = 0.42;
+    if (resource === 'node') {h = 1.25;}
+    else if (terrain === 'mountain') {h = 1.05;}
+    else if (terrain === 'water') {h = 0.52;}
+    else if (biome !== 'none') {h = 0.78;}
+    // Authored worlds raise a tall light pillar to stand out across the galaxy.
+    if (this.documentedWorlds.has(index)) {h = Math.max(h, 1.0) * 1.6;}
+    return h;
   }
 
   private tileNoise(index: number): number {
@@ -992,6 +1001,9 @@ export class TileGridService {
     if (index === this.selectedIndex) {
       c = c.clone().lerp(new THREE.Color(0x00ffd5), 0.34);
     }
+    if (this.documentedWorlds.has(index)) {
+      c = c.clone().lerp(new THREE.Color(0xd8fff4), 0.16); // authored worlds glow
+    }
 
     if (!this.motionReduced) {
       const seconds = this.animationTimeMs / 1000;
@@ -1050,6 +1062,7 @@ export class TileGridService {
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
+    if (this.documentedWorlds.has(index)) {return new THREE.Color(0xb9fff2);} // bright halo
     if (resource === 'node') {return new THREE.Color(0xff4fd8);}
     if (terrain === 'water') {return new THREE.Color(0x66f1ff);}
     if (terrain === 'mountain') {return new THREE.Color(0xffd580);}
@@ -1064,6 +1077,7 @@ export class TileGridService {
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
+    if (this.documentedWorlds.has(index)) {return new THREE.Color(0xeafffb);}
     if (resource === 'node') {return new THREE.Color(0xff8aea);}
     if (terrain === 'water') {return new THREE.Color(0x73eaff);}
     if (terrain === 'mountain') {return new THREE.Color(0xffd580);}
@@ -1669,8 +1683,34 @@ export class TileGridService {
     this.applySelection(index);
   }
 
+  /** Mark which worlds carry authored content; emphasises them and scopes stepping. */
+  setDocumentedWorlds(indices: number[]): void {
+    this.documentedWorlds = new Set(indices.filter((i) => i >= 0 && i < this.tiles.length));
+    for (let i = 0; i < this.tiles.length; i++) {
+      this.updateDisplayColor(i);
+      this.setTileTransform(i);
+    }
+    this.markTileTransformsDirty();
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
+  }
+
+  /** Ordered list of worlds the stepper walks: authored worlds if any, else all. */
+  private navScope(): number[] | null {
+    return this.documentedWorlds.size > 0
+      ? Array.from(this.documentedWorlds).sort((a, b) => a - b)
+      : null;
+  }
+
   /** Step the highlighted world forward (+1) or back (-1), wrapping around. */
   stepSelection(delta: number): void {
+    const scope = this.navScope();
+    if (scope) {
+      const n = scope.length;
+      const cur = this.selectedIndex >= 0 ? scope.indexOf(this.selectedIndex) : -1;
+      const pos = cur < 0 ? (delta >= 0 ? 0 : n - 1) : (((cur + delta) % n) + n) % n;
+      this.applySelection(scope[pos]);
+      return;
+    }
     const n = this.tiles.length;
     if (n === 0) {return;}
     const next = this.selectedIndex < 0
@@ -1681,6 +1721,19 @@ export class TileGridService {
 
   getSelectedIndex(): number { return this.selectedIndex; }
   getWorldCount(): number { return this.tiles.length; }
+
+  /** Stepper readout: position within the walked scope + whether scoped to authored worlds. */
+  getNavInfo(): { position: number; total: number; scoped: boolean } {
+    const scope = this.navScope();
+    if (scope) {
+      return {
+        position: this.selectedIndex >= 0 ? scope.indexOf(this.selectedIndex) : -1,
+        total: scope.length,
+        scoped: true
+      };
+    }
+    return { position: this.selectedIndex, total: this.tiles.length, scoped: false };
+  }
 
   private clearSelection(): void {
     const previousIndex = this.selectedIndex;
