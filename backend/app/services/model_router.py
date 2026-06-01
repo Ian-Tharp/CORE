@@ -28,6 +28,7 @@ class ModelProvider(str, Enum):
     """Supported model providers."""
 
     OLLAMA = "ollama"
+    LMSTUDIO = "lmstudio"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
 
@@ -162,6 +163,40 @@ MODELS: Dict[str, ModelConfig] = {
 }
 
 
+# Providers that run locally (free, no network egress / no API key required).
+LOCAL_PROVIDERS = {ModelProvider.OLLAMA, ModelProvider.LMSTUDIO}
+
+
+def _register_env_lmstudio_models() -> None:
+    """Register LM Studio models named in the ``LMSTUDIO_MODELS`` env var.
+
+    LM Studio serves whatever model the user has loaded over an OpenAI-compatible
+    API, so the exact model ids are user-specific and supplied via local config
+    rather than hard-coded. Comma-separated, e.g.::
+
+        LMSTUDIO_MODELS=qwen2.5-7b-instruct,llama-3.2-3b-instruct
+    """
+    raw = os.getenv("LMSTUDIO_MODELS", "")
+    context_window = int(os.getenv("LMSTUDIO_CONTEXT_WINDOW", "8192"))
+    for model_id in (m.strip() for m in raw.split(",")):
+        if model_id:
+            MODELS.setdefault(
+                model_id,
+                ModelConfig(
+                    id=model_id,
+                    provider=ModelProvider.LMSTUDIO,
+                    tier=ModelTier.BALANCED,
+                    display_name=f"{model_id} (LM Studio)",
+                    context_window=context_window,
+                    cost_per_1k_input=0.0,
+                    cost_per_1k_output=0.0,
+                ),
+            )
+
+
+_register_env_lmstudio_models()
+
+
 class ModelRouter:
     """
     Routes requests to appropriate models based on task requirements.
@@ -184,6 +219,15 @@ class ModelRouter:
         if provider == ModelProvider.OLLAMA:
             base_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
             client = AsyncOpenAI(base_url=f"{base_url}/v1", api_key="ollama")
+
+        elif provider == ModelProvider.LMSTUDIO:
+            # LM Studio exposes an OpenAI-compatible server (default :1234/v1).
+            # It ignores the API key on localhost — any non-empty string works.
+            # When the backend runs in Docker, point LMSTUDIO_BASE_URL at the host,
+            # e.g. http://host.docker.internal:1234/v1
+            base_url = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+            api_key = os.getenv("LMSTUDIO_API_KEY", "lm-studio")
+            client = AsyncOpenAI(base_url=base_url, api_key=api_key)
 
         elif provider == ModelProvider.OPENAI:
             api_key = os.getenv("OPENAI_API_KEY")
@@ -272,12 +316,16 @@ class ModelRouter:
         if not candidates:
             return self.default_model
 
+        # Among local providers, prefer the one configured as primary.
+        preferred_local = os.getenv("CORE_LOCAL_PROVIDER", "ollama").strip().lower()
+
         # Sort by preference
         def score_model(m: ModelConfig) -> tuple:
             tier_match = 0 if m.tier == target_tier else 1
-            is_local = 0 if (prefer_local and m.provider == ModelProvider.OLLAMA) else 1
+            is_local = 0 if (prefer_local and m.provider in LOCAL_PROVIDERS) else 1
+            local_pref = 0 if m.provider.value == preferred_local else 1
             cost = m.cost_per_1k_output
-            return (tier_match, is_local, cost)
+            return (tier_match, is_local, local_pref, cost)
 
         candidates.sort(key=score_model)
         return candidates[0].id

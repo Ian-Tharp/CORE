@@ -17,6 +17,14 @@ services:
       - DATABASE_URL=postgresql://core_user:core_password@postgres:5432/core_db
       - REDIS_URL=redis://redis:6379
       - OLLAMA_BASE_URL=http://ollama:11434
+      # LM Studio (optional local provider). Start LM Studio's server on the host
+      # (Developer tab -> Start Server, :1234) and set LMSTUDIO_MODELS to the model
+      # id(s) you have loaded. host.docker.internal reaches the host from the container.
+      # See docs/deployment/local-llm-providers.md.
+      - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
+      - LMSTUDIO_MODELS=${LMSTUDIO_MODELS:-}
+      # - CORE_LOCAL_PROVIDER=lmstudio       # prefer LM Studio for local inference
+      # - CORE_DEFAULT_MODEL=<your-loaded-model-id>
       - OBSIDIAN_VAULT_PATH=/vault
       - OBSIDIAN_API_KEY=${OBSIDIAN_API_KEY}
     command: >
@@ -28,6 +36,9 @@ services:
       # Local dev vault (original hardcoded host path was for a different machine).
       # Point this at your real Obsidian vault if/when you want live notes.
       - "./vault:/vault"
+    extra_hosts:
+      # Lets the container reach host services like LM Studio at host.docker.internal.
+      - "host.docker.internal:host-gateway"
     networks:
       - core-network
     depends_on:

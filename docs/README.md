@@ -39,6 +39,7 @@ Council of Perspectives deliberation framework.
 
 ## Deployment
 - [CI/CD Pipeline](deployment/ci-cd.md) — GitHub Actions jobs, gates, and local reproduction
+- [Local LLM Providers](deployment/local-llm-providers.md) — Configure Ollama and LM Studio
 - [Docker](deployment/docker.md) — Docker Compose setup and configuration
 - [Agent Containerization](deployment/agent-containerization.md) — Containerized agent deployment
 - [Sandbox Integration](deployment/sandbox-integration.md) — Sandbox environment setup
