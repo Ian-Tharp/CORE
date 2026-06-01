@@ -298,6 +298,11 @@ export class EngineService {
     return { x, y };
   }
 
+  /** Project a world-space point (x,y,z) to client/screen coordinates (for HTML overlays). */
+  projectPoint(x: number, y: number, z: number): { x: number; y: number } | null {
+    return this.worldToCanvas(new THREE.Vector3(x, y, z));
+  }
+
   private handleKeyDown = (e: KeyboardEvent): void => {
     if (!this.isActive || this.isTypingInInput()) {return;}
     this.pressed.add(e.code);

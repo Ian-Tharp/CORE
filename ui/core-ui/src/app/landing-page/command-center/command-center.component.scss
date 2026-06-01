@@ -1303,3 +1303,29 @@
   from { opacity: 0; transform: translate(-50%, 0.5rem); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+// ── Floating world labels (positions set per-frame from the 3D projection) ────
+.world-labels {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.world-label {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  color: var(--core-text-primary);
+  background: color-mix(in srgb, var(--core-bg-base) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 32%, transparent);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--core-energy) 18%, transparent);
+  backdrop-filter: blur(4px);
+  opacity: 0; // shown/positioned by the render loop
+  transition: opacity var(--transition-fast);
+}

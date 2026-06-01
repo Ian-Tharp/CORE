@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, ElementRef, HostListener, OnDestroy, ViewChild, inject } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, HostListener, OnDestroy, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -24,6 +24,11 @@ import { ConnectionType } from './engine/tile-metadata.model';
 export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: true }) private readonly canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('searchPalette') searchPalette?: SearchPaletteComponent;
+  @ViewChildren('worldLabelEl') private worldLabelEls?: QueryList<ElementRef<HTMLElement>>;
+
+  /** Named worlds to float labels over (positioned each frame from the 3D projection). */
+  worldLabels: Array<{ index: number; name: string }> = [];
+  private removeLabelUpdater?: () => void;
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly engine = inject(EngineService);
@@ -112,15 +117,21 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     // Next/Back stepper to them.
     this.tileMetadata.onAllMetadataChanged().subscribe((map) => {
       const documented: number[] = [];
+      const labels: Array<{ index: number; name: string }> = [];
       map.forEach((meta, idx) => {
-        if ((meta.name && meta.name.trim()) ||
-            (meta.wikiPageIds && meta.wikiPageIds.length > 0) ||
-            (meta.tags && meta.tags.length > 0)) {
+        const name = meta.name?.trim();
+        if (name || (meta.wikiPageIds && meta.wikiPageIds.length > 0) || (meta.tags && meta.tags.length > 0)) {
           documented.push(idx);
         }
+        if (name) { labels.push({ index: idx, name }); }
       });
       this.tileGrid.setDocumentedWorlds(documented);
+      this.worldLabels = labels;
     });
+
+    // Float named-world labels above their orbs, following the camera each frame.
+    this.removeLabelUpdater?.();
+    this.removeLabelUpdater = this.engine.onBeforeRender(() => this.positionWorldLabels());
 
     this.destroyRef.onDestroy(() => this.ngOnDestroy());
 
@@ -159,7 +170,33 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     if (this.viewportScanTimeout) {
       clearTimeout(this.viewportScanTimeout);
     }
+    this.removeLabelUpdater?.();
     this.engine.dispose();
+  }
+
+  /**
+   * Position the floating world labels each frame by projecting each world's 3D
+   * anchor to screen. Runs outside Angular (engine render loop), so it mutates
+   * the DOM directly to avoid per-frame change detection.
+   */
+  private positionWorldLabels(): void {
+    const els = this.worldLabelEls?.toArray();
+    if (!els || els.length === 0) { return; }
+    const rect = this.canvasRef?.nativeElement?.getBoundingClientRect();
+    for (let i = 0; i < els.length && i < this.worldLabels.length; i++) {
+      const el = els[i].nativeElement;
+      if (this.isEditMode) { el.style.opacity = '0'; continue; }
+      const anchor = this.tileGrid.getWorldLabelAnchor(this.worldLabels[i].index);
+      const screen = anchor ? this.engine.projectPoint(anchor.x, anchor.y, anchor.z) : null;
+      const offscreen = !screen || (rect && (
+        screen.x < rect.left - 40 || screen.x > rect.right + 40 ||
+        screen.y < rect.top - 20 || screen.y > rect.bottom + 20
+      ));
+      if (offscreen) { el.style.opacity = '0'; continue; }
+      el.style.left = `${screen!.x}px`;
+      el.style.top = `${screen!.y}px`;
+      el.style.opacity = '1';
+    }
   }
 
   // Convert legacy hex world config to tile grid config

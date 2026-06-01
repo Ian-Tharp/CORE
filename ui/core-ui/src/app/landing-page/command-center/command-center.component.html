@@ -271,6 +271,13 @@
     </aside>
   }
 
+  <!-- Floating world labels, positioned each frame from the 3D projection -->
+  <div class="world-labels" aria-hidden="true">
+    @for (label of worldLabels; track label.index) {
+      <div class="world-label" #worldLabelEl>{{ label.name }}</div>
+    }
+  </div>
+
   <!-- World stepper: Next/Back through the universe of worlds -->
   @if (!isEditMode) {
     <div class="world-stepper" role="group" aria-label="Step through worlds">

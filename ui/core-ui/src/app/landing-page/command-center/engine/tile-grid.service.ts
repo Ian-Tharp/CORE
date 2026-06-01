@@ -1976,4 +1976,14 @@ export class TileGridService {
     if (!tile) {return null;}
     return { x: tile.worldX, z: tile.worldZ };
   }
+
+  /** World-space anchor for a floating label, lifted above the orb + its beacon. */
+  getWorldLabelAnchor(index: number): { x: number; y: number; z: number } | null {
+    const tile = this.tiles[index];
+    if (!tile) {return null;}
+    const cellRadius = this.currentConfig?.cellRadius ?? 1;
+    const y = tile.worldY + this.getTileElevation(index)
+      + cellRadius * (1.1 + this.getBeaconHeight(index) * 0.55);
+    return { x: tile.worldX, y, z: tile.worldZ };
+  }
 }
