@@ -255,6 +255,33 @@
         }
       </section>
 
+      <!-- AI inhabitants (persisted in the DB, reload with the world) -->
+      <section class="info-section">
+        <label class="section-label">Inhabitants</label>
+        <button class="btn-small" (click)="generateInhabitant()" [disabled]="isGeneratingInhabitant || !worldId">
+          {{ isGeneratingInhabitant ? 'Summoning…' : '✦ Generate Inhabitant' }}
+        </button>
+        @if (inhabitants.length) {
+          <div class="inhabitant-grid">
+            @for (c of inhabitants; track c.id) {
+              <div class="inhabitant" [title]="c.name">
+                @if (inhabitantImageUrl(c); as url) {
+                  <img class="inhabitant__img" [src]="url" [alt]="c.name" />
+                } @else {
+                  <div class="inhabitant__placeholder" aria-hidden="true">◍</div>
+                }
+                <span class="inhabitant__name">{{ c.name }}</span>
+              </div>
+            }
+          </div>
+        }
+        @if (inhabitantError) {
+          <span class="knowledge-hint">{{ inhabitantError }}</span>
+        } @else if (!worldId) {
+          <span class="knowledge-hint">Save this world first to summon inhabitants.</span>
+        }
+      </section>
+
       <!-- World Knowledge (ingested wiki lore + world-scoped RAG search) -->
       <section class="info-section">
         <label class="section-label">Knowledge</label>

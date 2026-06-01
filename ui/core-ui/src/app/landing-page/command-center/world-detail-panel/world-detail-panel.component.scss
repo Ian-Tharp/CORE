@@ -739,6 +739,49 @@
   .world-art-preview { animation: none; }
 }
 
+// ── AI inhabitants gallery ───────────────────────────────────────────────────
+.inhabitant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.inhabitant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+
+  &__img,
+  &__placeholder {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 25%, transparent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--core-energy) 12%, transparent);
+  }
+
+  &__placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--core-text-dim);
+    background: color-mix(in srgb, var(--core-bg-base) 55%, transparent);
+  }
+
+  &__name {
+    width: 100%;
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--core-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 .btn-icon {
   background: transparent;
   border: none;

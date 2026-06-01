@@ -1,11 +1,11 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap, map } from 'rxjs';
 import { TileMetadataService } from '../engine/tile-metadata.service';
 import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
 import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
-import { CreativeService, WikiPageDto } from '../../../services/creative/creative.service';
+import { CreativeService, WikiPageDto, CharacterDto } from '../../../services/creative/creative.service';
 import { WorldsService } from '../../../services/worlds/worlds.service';
 
 export interface SelectedTileInfo {
@@ -43,6 +43,11 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   isGeneratingArt = false;
   artError = '';
   lastArtUrl?: string;
+
+  // AI-generated inhabitants (persisted in the characters table, world-scoped).
+  inhabitants: CharacterDto[] = [];
+  isGeneratingInhabitant = false;
+  inhabitantError = '';
 
   // World-scoped knowledge (ingested wiki lore).
   knowledgeDocs: Array<{ id: string; title: string; source: string }> = [];
@@ -110,6 +115,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
       this.knowledgeResults = [];
       this.knowledgeQuery = '';
       this.loadKnowledge();
+      this.loadInhabitants();
     }
   }
 
@@ -196,6 +202,65 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     const desc = m?.description ? ` ${m.description}` : '';
     return `Cinematic concept art of a world named "${name}": a ${biome}${t.terrain} world${resource}.${desc} `
       + `Painterly science-fantasy, luminous solarpunk aesthetic, vast scale, dramatic lighting.`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // AI inhabitants — generate characters + portraits, persisted in the DB
+  // ─────────────────────────────────────────────────────────────
+
+  private loadInhabitants(): void {
+    if (!this.worldId) { this.inhabitants = []; return; }
+    this.creativeService.listCharacters(this.worldId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (chars) => { this.inhabitants = chars ?? []; },
+        error: () => { this.inhabitants = []; }
+      });
+  }
+
+  /** Invent an inhabitant (name + portrait), persist it to the world, reload. */
+  generateInhabitant(): void {
+    if (!this.worldId || this.isGeneratingInhabitant) { return; }
+    this.isGeneratingInhabitant = true;
+    this.inhabitantError = '';
+    const name = this.inventInhabitantName();
+    this.creativeService.createCharacter({ world_id: this.worldId, name, traits: { origin: 'ai' } })
+      .pipe(
+        switchMap(({ id }) =>
+          this.creativeService.generateCharacterImage(id, this.buildInhabitantPrompt(name)).pipe(map(() => id))
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: () => { this.isGeneratingInhabitant = false; this.loadInhabitants(); },
+        error: (err) => {
+          this.isGeneratingInhabitant = false;
+          this.inhabitantError = 'Inhabitant generation failed — needs an OpenAI key.';
+          console.error('Inhabitant generation failed:', err);
+          this.loadInhabitants(); // the character row may still have been created
+        }
+      });
+  }
+
+  /** Data URL for an inhabitant portrait (base64 PNG from the DB). */
+  inhabitantImageUrl(c: CharacterDto): string | null {
+    return c.image_b64 ? `data:image/png;base64,${c.image_b64}` : null;
+  }
+
+  private inventInhabitantName(): string {
+    const roots = ['Kael', 'Vyra', 'Orin', 'Sela', 'Thane', 'Nyx', 'Aeris', 'Dax', 'Lumi', 'Cassia', 'Veld', 'Iro', 'Sora', 'Bram'];
+    const epithets = ['the Wandering', 'Tideborn', 'of the Ember Reach', 'Skywright', 'the Verdant', 'Starbound', 'of Hollow Vale', 'the Unbroken', 'Dawnseer', 'of the Drift'];
+    const r = roots[Math.floor(Math.random() * roots.length)];
+    const e = epithets[Math.floor(Math.random() * epithets.length)];
+    return `${r} ${e}`;
+  }
+
+  private buildInhabitantPrompt(name: string): string {
+    const t = this.selectedTile;
+    const biome = t && t.biome !== 'none' ? `${t.biome} ` : '';
+    const terrain = t ? `${t.terrain} ` : '';
+    return `Character portrait of "${name}", an inhabitant of a ${biome}${terrain}world. `
+      + `Head-and-shoulders, painterly science-fantasy, solarpunk aesthetic, dramatic rim lighting.`;
   }
 
   private loadLinkedContent(): void {

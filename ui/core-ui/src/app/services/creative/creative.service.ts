@@ -12,6 +12,16 @@ export interface WikiPageDto {
   updated_at: string;
 }
 
+export interface CharacterDto {
+  id: string;
+  world_id?: string;
+  name: string;
+  traits?: any;
+  image_b64?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CreativeService {
   private readonly apiUrl = 'http://localhost:8001';
@@ -41,8 +51,13 @@ export class CreativeService {
   createCharacter(payload: { world_id?: string; name: string; traits?: any }): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(`${this.apiUrl}/creative/characters`, payload);
   }
-  generateCharacterImage(characterId: string, prompt: string, size: string = '512x512'): Observable<{ status: string }> {
+  generateCharacterImage(characterId: string, prompt: string, size: string = '1024x1024'): Observable<{ status: string }> {
     return this.http.post<{ status: string }>(`${this.apiUrl}/creative/characters/${characterId}/image`, { prompt, size });
+  }
+  /** A world's inhabitants (with portraits), reloaded from the DB. */
+  listCharacters(worldId?: string): Observable<CharacterDto[]> {
+    const params: any = worldId ? { world_id: worldId } : {};
+    return this.http.get<CharacterDto[]>(`${this.apiUrl}/creative/characters`, { params });
   }
 }
 

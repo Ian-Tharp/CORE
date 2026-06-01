@@ -66,6 +66,16 @@ class CharacterCreateRequest(BaseModel):
     traits: Dict[str, Any] = Field(default_factory=dict)
 
 
+class CharacterModel(BaseModel):
+    id: str
+    world_id: Optional[str] = None
+    name: str
+    traits: Dict[str, Any] = Field(default_factory=dict)
+    image_b64: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
 @router.post("/characters", response_model=Dict[str, str])
 async def create_character(
     payload: CharacterCreateRequest, _auth: str = Depends(require_api_key)
@@ -74,6 +84,15 @@ async def create_character(
         payload.world_id, payload.name, payload.traits
     )
     return {"id": character_id}
+
+
+@router.get("/characters", response_model=List[CharacterModel])
+async def list_characters(
+    world_id: Optional[str] = None, _auth: str = Depends(require_api_key)
+) -> List[CharacterModel]:
+    """List a world's inhabitants (with portraits) so they reload from the DB."""
+    chars = await repo.list_characters(world_id)
+    return [CharacterModel(**c) for c in chars]
 
 
 class ImageGenRequest(BaseModel):
