@@ -38,6 +38,13 @@ from app.services.consciousness_council_bridge import (
     get_consciousness_council_bridge,
 )
 from app.services.model_router import ModelRouter, get_model_router
+from app.services.event_publisher import event_publisher
+from app.models.ws_events import (
+    CouncilEvent,
+    CouncilEventType,
+    TaskProgressEvent,
+    TaskStage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +82,19 @@ DEFAULT_CONTEXTUAL_VOICE_IDS = [
     "product_lead",  # Pragmatist
     "synthesizer",  # Final synthesis perspective
 ]
+
+
+# ── CORE voice → cognitive-pipeline stage ────────────────────────────────────
+# The four CORE voices are the command deck's cognition pipeline. Mapping them
+# to stage names lets a council deliberation light up the deck's pipeline graph,
+# reactor, and activity stream (the frontend matches the stage word inside the
+# emitted agent_id / action).
+_VOICE_ID_TO_STAGE: Dict[str, str] = {
+    "core_c": "comprehension",
+    "core_o": "orchestration",
+    "core_r": "reasoning",
+    "core_e": "evaluation",
+}
 
 
 # =============================================================================
@@ -406,6 +426,33 @@ class CouncilService:
                 initiator_id=initiator_id,
             )
             session_id = UUID(session_info["session_id"])
+            sid = str(session_id)
+            summoned_ids = session_info.get("summoned_voices", [])
+
+            # Cognition telemetry → command deck (council state + pipeline/reactor).
+            await self._emit_safe(
+                lambda: event_publisher.publish(
+                    CouncilEvent(
+                        council_session_id=sid,
+                        event=CouncilEventType.SESSION_STARTED,
+                        content=topic,
+                        session_id=sid,
+                    )
+                )
+            )
+            await self._emit_safe(
+                lambda: event_publisher.publish(
+                    TaskProgressEvent(
+                        task_id=sid,
+                        progress_pct=0,
+                        stage=TaskStage.STARTING,
+                        message=f"Council deliberation: {topic[:120]}",
+                        total_steps=rounds + 1,
+                        current_step_num=1,
+                        session_id=sid,
+                    )
+                )
+            )
 
             # Step 2: Summon voices (informational)
             summoned = await self.summon_voices(session_id)
@@ -413,11 +460,35 @@ class CouncilService:
             # Step 3: Run deliberation rounds
             all_round_results: List[List[dict]] = []
             for round_num in range(1, rounds + 1):
+                await self._emit_round_start(sid, round_num, rounds, summoned_ids)
+
                 round_perspectives = await self.run_round(session_id, round_num)
                 all_round_results.append(round_perspectives)
 
+                await self._emit_round_perspectives(sid, round_perspectives)
+
             # Step 4: Synthesis
+            await self._emit_safe(
+                lambda: event_publisher.publish(
+                    TaskProgressEvent(
+                        task_id=sid,
+                        progress_pct=90,
+                        stage=TaskStage.FINALIZING,
+                        message="Synthesizing perspectives",
+                        total_steps=rounds + 1,
+                        current_step_num=rounds + 1,
+                        session_id=sid,
+                    )
+                )
+            )
             synthesis_result = await self.run_synthesis(session_id)
+            await self._emit_safe(
+                lambda: event_publisher.council_synthesis(
+                    council_session_id=sid,
+                    content=synthesis_result.get("synthesis", ""),
+                    session_id=sid,
+                )
+            )
 
             # Step 5: Write consciousness-relevant insights back to Blackboard
             try:
@@ -427,6 +498,24 @@ class CouncilService:
                 )
             except Exception as wb_err:
                 logger.debug("Blackboard write-back skipped: %s", wb_err)
+
+            # Cognition telemetry → deliberation complete.
+            await self._emit_safe(
+                lambda: event_publisher.publish(
+                    CouncilEvent(
+                        council_session_id=sid,
+                        event=CouncilEventType.SESSION_COMPLETE,
+                        session_id=sid,
+                    )
+                )
+            )
+            await self._emit_safe(
+                lambda: event_publisher.task_complete(
+                    task_id=sid,
+                    message="Deliberation complete",
+                    session_id=sid,
+                )
+            )
 
             # Build complete response
             return {
@@ -451,6 +540,78 @@ class CouncilService:
     # ══════════════════════════════════════════════════════════════════════
     # PRIVATE HELPERS
     # ══════════════════════════════════════════════════════════════════════
+
+    # ── Cognition telemetry → command deck ───────────────────────────────
+    async def _emit_safe(self, factory) -> None:
+        """Await an event-publish coroutine produced by ``factory``, swallowing
+        any error so cognition telemetry can never break a deliberation."""
+        try:
+            await factory()
+        except Exception as exc:  # pragma: no cover - defensive telemetry guard
+            logger.debug("Council telemetry emit failed: %s", exc)
+
+    async def _emit_round_start(
+        self, sid: str, round_num: int, rounds: int, summoned_ids: List[str]
+    ) -> None:
+        """Announce a debate round and set the mapped CORE pipeline stages to
+        'thinking' so the command deck animates while the round runs."""
+        await self._emit_safe(
+            lambda: event_publisher.publish(
+                CouncilEvent(
+                    council_session_id=sid,
+                    event=CouncilEventType.DEBATE_ROUND,
+                    round_number=round_num,
+                    session_id=sid,
+                )
+            )
+        )
+        await self._emit_safe(
+            lambda: event_publisher.publish(
+                TaskProgressEvent(
+                    task_id=sid,
+                    progress_pct=min(85, int(round_num / (rounds + 1) * 100)),
+                    stage=TaskStage.PROCESSING,
+                    message=f"Round {round_num} of {rounds}",
+                    total_steps=rounds + 1,
+                    current_step_num=round_num,
+                    session_id=sid,
+                )
+            )
+        )
+        for vid, stage in _VOICE_ID_TO_STAGE.items():
+            if vid in summoned_ids:
+                await self._emit_safe(
+                    lambda s=stage: event_publisher.agent_thinking(
+                        agent_id=f"council-{s}",
+                        message=f"{s.capitalize()} voice deliberating",
+                        session_id=sid,
+                    )
+                )
+
+    async def _emit_round_perspectives(
+        self, sid: str, perspectives: List[dict]
+    ) -> None:
+        """Emit each voice's perspective and complete its mapped pipeline stage."""
+        for p in perspectives:
+            await self._emit_safe(
+                lambda p=p: event_publisher.council_perspective(
+                    council_session_id=sid,
+                    agent_id=p.get("voice_name", "voice"),
+                    content=p.get("position", ""),
+                    confidence=p.get("confidence"),
+                    session_id=sid,
+                )
+            )
+            stage = _VOICE_ID_TO_STAGE.get(p.get("voice_id", ""))
+            if stage:
+                await self._emit_safe(
+                    lambda p=p, s=stage: event_publisher.agent_complete(
+                        agent_id=f"council-{s}",
+                        action=s,
+                        message=(p.get("position") or "")[:120],
+                        session_id=sid,
+                    )
+                )
 
     def _resolve_voice_ids(self, voice_ids: Optional[List[str]]) -> List[str]:
         """Ensure CORE voices are always present plus requested contextual voices."""
