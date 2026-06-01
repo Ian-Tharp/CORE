@@ -37,6 +37,11 @@ Council of Perspectives deliberation framework.
   - [TODO Backlog](council/outputs/todo_backlog.md) — Comprehensive TODO backlog from council session
   - [Vision Session](council/outputs/vision_session.md) — Oracle and Ethicist findings on human-AI interaction
 
+## Design
+UX philosophy and the design system.
+
+- [UX & Design Principles](design/ux-design-principles.md) — The mindset for building CORE's interface: solarpunk × LCARS ethos, accessibility as a floor (not a ceiling), tokens as source of truth, taming Material, and a ship checklist
+
 ## Deployment
 - [CI/CD Pipeline](deployment/ci-cd.md) — GitHub Actions jobs, gates, and local reproduction
 - [Local LLM Providers](deployment/local-llm-providers.md) — Configure Ollama and LM Studio
