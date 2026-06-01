@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { AppConfigService } from '../config/app-config.service';
 
 export interface StepResponse {
   step: string;
@@ -122,7 +123,10 @@ export type COREStreamEvent =
 export class EngineService {
   private readonly api = 'http://localhost:8001/core';
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly cfg: AppConfigService
+  ) {}
 
   entry(payload: { message_id: string; user_input: string; model?: string }): Observable<unknown> {
     return this.http.post(`${this.api}`, payload);
@@ -169,7 +173,11 @@ export class EngineService {
     return new Observable<T>((observer) => {
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Raw fetch (SSE) bypasses the HttpClient API-key interceptor — attach manually.
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': this.cfg.apiKey
+        },
         body: JSON.stringify(payload)
       })
         .then((response) => {
@@ -252,7 +260,8 @@ export class EngineService {
   streamCoreExecution(runId: string, userInput: string): Observable<COREStreamEvent> {
     return new Observable<COREStreamEvent>((observer) => {
       const url = `http://localhost:8001/engine/runs/${runId}/stream?user_input=${encodeURIComponent(userInput)}`;
-      fetch(url, { method: 'GET' })
+      // Raw fetch (SSE) bypasses the HttpClient API-key interceptor — attach manually.
+      fetch(url, { method: 'GET', headers: { 'X-API-Key': this.cfg.apiKey } })
         .then((response) => {
           if (!response.ok || !response.body) {
             observer.error(`HTTP ${response.status}: ${response.statusText}`);

@@ -103,7 +103,13 @@ export class ChatService {
       const controller = new AbortController();
       fetch(this._cfg.chatStreamUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // This raw fetch (used for SSE streaming) bypasses Angular's HttpClient,
+        // so the coreApiKeyInterceptor never runs — attach the API key manually,
+        // otherwise the authenticated /chat/stream endpoint returns 401.
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': this._cfg.apiKey
+        },
         body: JSON.stringify(payload),
         signal: controller.signal
       })
