@@ -239,18 +239,27 @@
         }
       </section>
 
-      <!-- AI-generated world art -->
+      <!-- AI-generated world art (persisted in the DB, reloads with the world) -->
       <section class="info-section">
         <label class="section-label">World Art</label>
-        <button class="btn-small" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !selectedTile">
-          {{ isGeneratingArt ? 'Generating…' : '✦ Generate World Art' }}
+        <button class="btn-small" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !worldId || !selectedTile">
+          {{ isGeneratingArt ? 'Painting…' : '✦ Generate World Art' }}
         </button>
-        @if (lastArtUrl) {
-          <img class="world-art-preview" [src]="lastArtUrl" alt="Generated world art" />
+        @if (worldArt.length) {
+          <div class="art-gallery">
+            @for (a of worldArt; track a.id) {
+              <div class="art-item">
+                <img class="art-item__img" [src]="artImageUrl(a)" [alt]="a.title || 'World art'" />
+                <button class="art-item__remove" (click)="removeArt(a)" title="Delete art" aria-label="Delete art">&#10005;</button>
+              </div>
+            }
+          </div>
         }
         @if (artError) {
           <span class="knowledge-hint">{{ artError }}</span>
-        } @else if (!lastArtUrl) {
+        } @else if (!worldId) {
+          <span class="knowledge-hint">Save this world first to generate art.</span>
+        } @else if (!worldArt.length) {
           <span class="knowledge-hint">Generate a portrait of this world from its character + lore.</span>
         }
       </section>

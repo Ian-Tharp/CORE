@@ -23,6 +23,15 @@ export interface WorldRecord {
   updated_at?: string;
 }
 
+export interface WorldAsset {
+  id: string;
+  tile_index?: number | null;
+  kind: string;
+  title?: string | null;
+  image_b64: string;
+  created_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorldsService {
   private readonly apiUrl = 'http://localhost:8001';
@@ -57,6 +66,21 @@ export class WorldsService {
   /** Fetch a world's tile-metadata snapshot (for restore). */
   getMetadata(worldId: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/worlds/${worldId}/metadata`);
+  }
+
+  /** Persist a generated image (world art) immediately to the DB. */
+  saveAsset(worldId: string, payload: { image_b64: string; kind?: string; title?: string; tile_index?: number }): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.apiUrl}/worlds/${worldId}/assets`, payload);
+  }
+
+  /** List a world's assets (optionally one tile's) — reloads art from the DB. */
+  listAssets(worldId: string, tileIndex?: number): Observable<WorldAsset[]> {
+    const params: any = tileIndex != null ? { tile_index: tileIndex } : {};
+    return this.http.get<WorldAsset[]>(`${this.apiUrl}/worlds/${worldId}/assets`, { params });
+  }
+
+  deleteAsset(worldId: string, assetId: string): Observable<{ status: string }> {
+    return this.http.delete<{ status: string }>(`${this.apiUrl}/worlds/${worldId}/assets/${assetId}`);
   }
 
   /** Ingest this world's wiki pages into the knowledgebase (world-scoped, RAG). */

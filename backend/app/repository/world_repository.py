@@ -240,6 +240,71 @@ async def get_world_metadata(world_id: str) -> Optional[Dict[str, Any]]:
     return _parse_jsonb_field(row["snapshot"]) if row else None
 
 
+async def create_world_asset(
+    world_id: str,
+    *,
+    image_b64: str,
+    kind: str = "art",
+    title: Optional[str] = None,
+    tile_index: Optional[int] = None,
+) -> str:
+    """Persist a generated image (world art, etc.) for a world; returns its id."""
+    asset_id = str(uuid.uuid4())
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO world_assets (id, world_id, tile_index, kind, title, image_b64)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            """,
+            asset_id,
+            world_id,
+            tile_index,
+            kind,
+            title,
+            image_b64,
+        )
+    return asset_id
+
+
+async def list_world_assets(
+    world_id: str, tile_index: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """List a world's assets (optionally a single tile's), newest first, with images."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        if tile_index is None:
+            rows = await conn.fetch(
+                "SELECT id, tile_index, kind, title, image_b64, created_at "
+                "FROM world_assets WHERE world_id = $1 ORDER BY created_at DESC",
+                world_id,
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT id, tile_index, kind, title, image_b64, created_at "
+                "FROM world_assets WHERE world_id = $1 AND tile_index = $2 ORDER BY created_at DESC",
+                world_id,
+                tile_index,
+            )
+    return [
+        {
+            "id": str(r["id"]),
+            "tile_index": r["tile_index"],
+            "kind": r["kind"],
+            "title": r["title"],
+            "image_b64": r["image_b64"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else "",
+        }
+        for r in rows
+    ]
+
+
+async def delete_world_asset(asset_id: str) -> None:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM world_assets WHERE id = $1", asset_id)
+
+
 async def get_world_by_name(name: str) -> Optional[WorldRecord]:
     """Find a world by its exact name (case-insensitive). Returns None if not found."""
     pool = await get_db_pool()

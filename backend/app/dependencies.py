@@ -458,6 +458,29 @@ async def setup_db_schema() -> None:
             )
 
             # -----------------------------------------------------------------
+            # World assets: AI-generated images (world art, etc.) persisted
+            # immediately to the DB (not the metadata blob) so they reload
+            # independently of a world save, optionally scoped to a tile.
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS world_assets (
+                    id UUID PRIMARY KEY,
+                    world_id UUID NOT NULL,
+                    tile_index INTEGER,
+                    kind VARCHAR(32) NOT NULL DEFAULT 'art',
+                    title VARCHAR(255),
+                    image_b64 TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE
+                )
+                """
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_world_assets_world_id ON world_assets(world_id)"
+            )
+
+            # -----------------------------------------------------------------
             # Knowledgebase: documents and chunk embeddings (RAG)
             # -----------------------------------------------------------------
             await conn.execute(

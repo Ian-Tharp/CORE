@@ -6,7 +6,7 @@ import { TileMetadataService } from '../engine/tile-metadata.service';
 import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
 import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
 import { CreativeService, WikiPageDto, CharacterDto } from '../../../services/creative/creative.service';
-import { WorldsService } from '../../../services/worlds/worlds.service';
+import { WorldsService, WorldAsset } from '../../../services/worlds/worlds.service';
 
 export interface SelectedTileInfo {
   index: number;
@@ -39,10 +39,10 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   linkedWikiPages: WikiPageDto[] = [];
   linkedBoards: Board[] = [];
 
-  // AI-generated world art.
+  // AI-generated world art (persisted in the world_assets table, per tile).
   isGeneratingArt = false;
   artError = '';
-  lastArtUrl?: string;
+  worldArt: WorldAsset[] = [];
 
   // AI-generated inhabitants (persisted in the characters table, world-scoped).
   inhabitants: CharacterDto[] = [];
@@ -103,19 +103,20 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedTile']) {
-      this.lastArtUrl = undefined;
       this.artError = '';
       if (this.selectedTile) {
         this.metadataService.setSelectedTile(this.selectedTile.index);
       } else {
         this.metadataService.setSelectedTile(null);
       }
+      this.loadWorldArt();
     }
     if (changes['worldId']) {
       this.knowledgeResults = [];
       this.knowledgeQuery = '';
       this.loadKnowledge();
       this.loadInhabitants();
+      this.loadWorldArt();
     }
   }
 
@@ -167,29 +168,49 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   // AI world art — generate a portrait of this world to populate it
   // ─────────────────────────────────────────────────────────────
 
-  generateWorldArt(): void {
-    if (!this.selectedTile || this.isGeneratingArt) { return; }
-    const tileIndex = this.selectedTile.index;
-    this.isGeneratingArt = true;
-    this.artError = '';
-    this.creativeService.generateImage(this.buildArtPrompt())
+  private loadWorldArt(): void {
+    if (!this.worldId || !this.selectedTile) { this.worldArt = []; return; }
+    this.worldsService.listAssets(this.worldId, this.selectedTile.index)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ b64 }) => {
-          this.isGeneratingArt = false;
-          const dataUrl = `data:image/png;base64,${b64}`;
-          this.lastArtUrl = dataUrl;
-          const name = this.metadata?.name || `World ${tileIndex}`;
-          // Persist as a pinned image on the tile (round-trips via world metadata).
-          this.metadataService.addPinnedImage(tileIndex, dataUrl, `${name} — portrait`);
-          this.metadataService.setSelectedTile(tileIndex); // refresh panel view
-        },
+        next: (assets) => { this.worldArt = (assets ?? []).filter(a => a.kind === 'art'); },
+        error: () => { this.worldArt = []; }
+      });
+  }
+
+  generateWorldArt(): void {
+    if (!this.selectedTile || !this.worldId || this.isGeneratingArt) { return; }
+    const tileIndex = this.selectedTile.index;
+    const name = this.metadata?.name || `World ${tileIndex}`;
+    this.isGeneratingArt = true;
+    this.artError = '';
+    // Generate the image, then persist it immediately to the world_assets table.
+    this.creativeService.generateImage(this.buildArtPrompt())
+      .pipe(
+        switchMap(({ b64 }) => this.worldsService.saveAsset(this.worldId!, {
+          image_b64: b64, kind: 'art', title: `${name} — portrait`, tile_index: tileIndex
+        })),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: () => { this.isGeneratingArt = false; this.loadWorldArt(); },
         error: (err) => {
           this.isGeneratingArt = false;
           this.artError = 'Art generation failed — needs an OpenAI key configured.';
           console.error('World art generation failed:', err);
         }
       });
+  }
+
+  artImageUrl(a: WorldAsset): string {
+    return `data:image/png;base64,${a.image_b64}`;
+  }
+
+  removeArt(a: WorldAsset): void {
+    if (!this.worldId) { return; }
+    this.worldsService.deleteAsset(this.worldId, a.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: () => this.loadWorldArt(), error: () => this.loadWorldArt() });
   }
 
   /** Build an evocative image prompt from the world's known character + lore. */

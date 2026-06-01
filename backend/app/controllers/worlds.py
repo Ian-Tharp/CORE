@@ -182,6 +182,42 @@ async def search_world_knowledge(
     )
 
 
+class WorldAssetRequest(BaseModel):
+    image_b64: str
+    kind: str = "art"
+    title: Optional[str] = None
+    tile_index: Optional[int] = None
+
+
+@router.post("/{world_id}/assets", response_model=Dict[str, str])
+async def create_world_asset(
+    world_id: str, payload: WorldAssetRequest
+) -> Dict[str, str]:
+    """Persist a generated image (world art, etc.) immediately to the DB."""
+    asset_id = await repo.create_world_asset(
+        world_id,
+        image_b64=payload.image_b64,
+        kind=payload.kind,
+        title=payload.title,
+        tile_index=payload.tile_index,
+    )
+    return {"id": asset_id}
+
+
+@router.get("/{world_id}/assets", response_model=List[Dict[str, Any]])
+async def list_world_assets(
+    world_id: str, tile_index: Optional[int] = Query(None)
+) -> List[Dict[str, Any]]:
+    """List a world's assets (optionally a single tile's) so they reload from the DB."""
+    return await repo.list_world_assets(world_id, tile_index)
+
+
+@router.delete("/{world_id}/assets/{asset_id}")
+async def delete_world_asset(world_id: str, asset_id: str) -> Dict[str, str]:
+    await repo.delete_world_asset(asset_id)
+    return {"status": "deleted"}
+
+
 @router.get("/by-name/{name}")
 async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""

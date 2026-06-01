@@ -719,15 +719,50 @@
   .knowledge-result { animation: none; }
 }
 
-// ── AI world art preview ─────────────────────────────────────────────────────
-.world-art-preview {
-  display: block;
-  width: 100%;
+// ── AI world art gallery ─────────────────────────────────────────────────────
+.art-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--core-energy) 25%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--core-energy) 14%, transparent);
+}
+
+.art-item {
+  position: relative;
   animation: world-art-in 0.35s ease-out both;
+
+  &__img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 25%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--core-energy) 14%, transparent);
+  }
+
+  &__remove {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--core-bg-base) 70%, transparent);
+    color: var(--core-text-secondary);
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+
+    &:hover { color: var(--core-danger); }
+  }
+
+  &:hover .art-item__remove { opacity: 1; }
 }
 
 @keyframes world-art-in {
@@ -736,7 +771,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .world-art-preview { animation: none; }
+  .art-item { animation: none; }
 }
 
 // ── AI inhabitants gallery ───────────────────────────────────────────────────
