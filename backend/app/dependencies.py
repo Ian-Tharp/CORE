@@ -530,6 +530,14 @@ async def setup_db_schema() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_kb_documents_world_id ON kb_documents(world_id)"
             )
 
+            # The legacy JSONB `embedding` column is superseded by the pgvector
+            # `embedding_vec` column; chunk inserts only fill embedding_vec, so drop
+            # the stale NOT NULL on databases that predate the pgvector migration
+            # (otherwise every chunk insert fails the not-null constraint).
+            await conn.execute(
+                "ALTER TABLE kb_chunks ALTER COLUMN embedding DROP NOT NULL"
+            )
+
             # Activity log for knowledgebase operations (uploads, deletes, processing, etc.)
             await conn.execute(
                 """

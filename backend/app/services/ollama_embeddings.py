@@ -5,19 +5,40 @@ import time
 
 import httpx
 
-from app.dependencies import _get_ollama_base_url
+from app.dependencies import _get_ollama_base_url, get_local_provider, get_ollama_client
 import os
+
+
+async def _embed_via_openai_compatible(
+    *, model: str, texts: List[str]
+) -> Tuple[List[List[float]], int]:
+    """Embed via the active local provider's OpenAI-compatible /v1/embeddings.
+
+    Used when CORE_LOCAL_PROVIDER=lmstudio (LM Studio has no Ollama-native
+    /api/embed). The shared client is provider-aware, so this keeps the
+    knowledgebase embeddings agnostic alongside the rest of the local layer.
+    """
+    if not texts:
+        return [], 0
+    client = get_ollama_client()
+    resp = await client.embeddings.create(model=model, input=texts)
+    vectors = [list(item.embedding) for item in resp.data]
+    dims = len(vectors[0]) if vectors else 0
+    return vectors, dims
 
 
 async def embed_texts_via_ollama(
     *, model: str, texts: List[str]
 ) -> Tuple[List[List[float]], int]:
-    """Embed a batch of texts using Ollama's embeddings API.
+    """Embed a batch of texts using the active local provider's embeddings API.
 
     Returns (vectors, original_dimensions).
     """
     if not texts:
         return [], 0
+
+    if get_local_provider() == "lmstudio":
+        return await _embed_via_openai_compatible(model=model, texts=texts)
 
     start_time = time.time()
     base = _get_ollama_base_url().rstrip("/")
@@ -93,6 +114,9 @@ async def embed_texts_batch(
     """
     if not texts:
         return [], 0
+
+    if get_local_provider() == "lmstudio":
+        return await _embed_via_openai_compatible(model=model, texts=texts)
 
     start_time = time.time()
     base = _get_ollama_base_url().rstrip("/")

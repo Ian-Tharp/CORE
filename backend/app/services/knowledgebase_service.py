@@ -653,6 +653,41 @@ async def retrieve_context_by_instance(
     }
 
 
+async def retrieve_context_by_world(
+    *,
+    query: str,
+    world_id: str,
+    max_chunks: int = 8,
+    local_model: Optional[str] = None,
+) -> Dict[str, any]:
+    """Retrieve RAG context limited to a single world's ingested knowledge.
+
+    Scopes the vector search to the world's documents so an agent reasoning about
+    a world only pulls that world's lore.
+    """
+    docs = await repo.list_documents_by_world(world_id)
+    doc_ids = [d["id"] for d in docs]
+    if not doc_ids:
+        return {"results": [], "doc_ids": [], "world_id": world_id}
+
+    model = (local_model or os.getenv("EMBEDDING_MODEL") or "nomic-embed-text").strip()
+    qvecs, _orig = await _embed_texts_local(model=model, texts=[query])
+    if not qvecs:
+        return {"results": [], "doc_ids": [], "world_id": world_id}
+
+    rows = await repo.search_chunks_by_vector(
+        query_vec=qvecs[0],
+        limit=max_chunks,
+        document_filter=doc_ids,
+        model=local_model,
+    )
+    return {
+        "results": rows,
+        "doc_ids": list({r.get("document_id") for r in rows}),
+        "world_id": world_id,
+    }
+
+
 async def batch_upload_and_process(
     *,
     file_paths: List[str],

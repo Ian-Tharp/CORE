@@ -165,6 +165,23 @@ async def list_world_knowledge(world_id: str) -> List[Dict[str, Any]]:
     return await kb_repo.list_documents_by_world(world_id)
 
 
+class KnowledgeSearchRequest(BaseModel):
+    query: str
+    max_chunks: int = 8
+
+
+@router.post("/{world_id}/knowledge/search")
+async def search_world_knowledge(
+    world_id: str, payload: KnowledgeSearchRequest
+) -> Dict[str, Any]:
+    """Semantic search scoped to this world's knowledge (world-filtered RAG)."""
+    from app.services import knowledgebase_service as kb
+
+    return await kb.retrieve_context_by_world(
+        query=payload.query, world_id=world_id, max_chunks=payload.max_chunks
+    )
+
+
 @router.get("/by-name/{name}")
 async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""
