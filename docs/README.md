@@ -38,6 +38,7 @@ Council of Perspectives deliberation framework.
   - [Vision Session](council/outputs/vision_session.md) — Oracle and Ethicist findings on human-AI interaction
 
 ## Deployment
+- [CI/CD Pipeline](deployment/ci-cd.md) — GitHub Actions jobs, gates, and local reproduction
 - [Docker](deployment/docker.md) — Docker Compose setup and configuration
 - [Agent Containerization](deployment/agent-containerization.md) — Containerized agent deployment
 - [Sandbox Integration](deployment/sandbox-integration.md) — Sandbox environment setup
