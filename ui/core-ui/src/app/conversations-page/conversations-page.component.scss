@@ -174,7 +174,10 @@
 
   .two-col {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    // minmax(0, …) (not the default minmax(auto, …)) lets each column shrink
+    // below its content width, so the engine panel's long run-ids / <pre> output
+    // wrap instead of forcing horizontal overflow.
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     gap: var(--spacing-md);
     width: 100%;
   }

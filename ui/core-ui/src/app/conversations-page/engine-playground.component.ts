@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { AppConfigService } from '../services/config/app-config.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -49,9 +51,13 @@ export class EnginePlaygroundComponent {
   { tokens: number; ttfb_ms: number; duration_ms: number; tps: number } | undefined
   > = {};
 
-  public readonly models = [
-    'gpt-5', 'gpt-4.1', 'gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3-5'
+  // Model options are resolved at runtime to match the machine: the active local
+  // provider's models (LM Studio / Ollama) are loaded from the backend. The static
+  // list is only a fallback for when the local provider can't be reached.
+  public models: string[] = [
+    'gpt-5', 'gpt-4.1', 'gpt-4o', 'gpt-4o-mini', 'o3-mini'
   ];
+  public localProviderLabel = '';
   public modelByStep: Record<'Comprehension' | 'Orchestration' | 'Reasoning' | 'Evaluation', string> = {
     Comprehension: 'gpt-5',
     Orchestration: 'gpt-5',
@@ -76,7 +82,11 @@ export class EnginePlaygroundComponent {
   public coreElapsedMs = 0;
   private _coreSub?: import('rxjs').Subscription;
 
-  constructor(private readonly engine: EngineService) {
+  constructor(
+    private readonly engine: EngineService,
+    private readonly http: HttpClient,
+    private readonly cfg: AppConfigService
+  ) {
     try {
       const saved = window.localStorage.getItem('engine.models');
       if (saved) {
@@ -84,6 +94,36 @@ export class EnginePlaygroundComponent {
         this.modelByStep = { ...this.modelByStep, ...parsed };
       }
     } catch { /* ignore */ }
+
+    this._loadModels();
+  }
+
+  /**
+   * Load the active local provider's models so the per-stage pickers match the
+   * machine (e.g. LM Studio's loaded models) instead of a hardcoded OpenAI list.
+   * Any per-stage selection that is no longer available is reset to a valid one.
+   */
+  private _loadModels(): void {
+    const base = this.cfg.apiBaseUrl;
+    this.http
+      .get<{ provider?: string; models: Array<{ name: string }> }>(`${base}/local-llm/models`)
+      .subscribe({
+        next: (res) => {
+          const names = (res.models || []).map((m) => m.name).filter(Boolean);
+          if (!names.length) { return; }
+          this.models = names;
+          this.localProviderLabel = res.provider === 'lmstudio' ? 'LM Studio'
+            : res.provider === 'ollama' ? 'Ollama' : '';
+          const fallback = names[0];
+          (Object.keys(this.modelByStep) as Array<keyof typeof this.modelByStep>).forEach((step) => {
+            if (!names.includes(this.modelByStep[step])) {
+              this.modelByStep[step] = fallback;
+            }
+          });
+          this._persistModels();
+        },
+        error: () => { /* keep the static fallback list */ }
+      });
   }
 
   private _persistModels() {

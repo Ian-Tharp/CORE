@@ -25,47 +25,80 @@ class StepResponse(BaseModel):
     evaluation: Optional[str] = None
 
 
+def _is_openai_model(model: str) -> bool:
+    """Heuristic: is this an OpenAI chat/reasoning model id?
+
+    Everything else (e.g. ``google/gemma-4-e4b``, ``llama3.2``) is treated as a
+    local model and routed to the active local provider, so the playground matches
+    whatever the machine is configured to run.
+    """
+    m = model.lower()
+    return m.startswith(("gpt", "o1", "o3", "o4", "chatgpt", "text-", "davinci"))
+
+
+def _local_endpoint() -> tuple[str, str]:
+    """``(base_url, api_key)`` for the active local provider's OpenAI-compatible API."""
+    from app.dependencies import get_local_provider, _get_ollama_base_url
+
+    if get_local_provider() == "lmstudio":
+        return (
+            os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
+            os.getenv("LMSTUDIO_API_KEY", "lm-studio"),
+        )
+    return f"{_get_ollama_base_url()}/v1", "ollama"
+
+
 def _llm_or_stub(
     system_prompt: str, user_input: str, model_override: Optional[str] = None
 ) -> str:
     """Call an LLM if configured; otherwise return a stubbed response.
 
-    This keeps the playground usable without credentials while enabling
-    real model calls in properly configured environments.
+    Provider-agnostic: OpenAI model ids hit the OpenAI API (needs OPENAI_API_KEY);
+    any other id is routed to the active local provider (Ollama / LM Studio) over
+    its OpenAI-compatible endpoint, so a local-only machine works with no OpenAI key.
     """
-    if ChatOpenAI and os.getenv("OPENAI_API_KEY"):
-        chosen_model = (
-            model_override or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        ).strip()
-        prompts = [("system", system_prompt), ("user", user_input)]
+    if not ChatOpenAI:
+        return f"[stubbed] System: {system_prompt}\nUser: {user_input}"
 
-        def _supports_temperature(model_name: str) -> bool:
-            # Extensible: add models known to reject custom temperatures
-            no_temp = {"gpt-5"}
-            return model_name not in no_temp
+    chosen_model = (
+        model_override
+        or os.getenv("CORE_DEFAULT_MODEL")
+        or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    ).strip()
+    is_openai = _is_openai_model(chosen_model)
 
-        try:
-            kwargs = {"model": chosen_model}
-            if _supports_temperature(chosen_model):
-                kwargs["temperature"] = 0.2  # default conservative
-            llm = ChatOpenAI(**kwargs)
-            msg = llm.invoke(prompts)
-            return msg.content  # type: ignore[attr-defined]
-        except Exception as exc:  # noqa: BLE001
-            # If temperature was the cause and the model was misclassified, fallback once
-            msg_text = str(exc).lower()
-            if "temperature" in msg_text and (
-                "unsupported" in msg_text or "does not support" in msg_text
-            ):
-                try:
-                    llm = ChatOpenAI(model=chosen_model)
-                    msg = llm.invoke(prompts)
-                    return msg.content  # type: ignore[attr-defined]
-                except Exception as exc2:  # noqa: BLE001
-                    return f"[LLM error: {exc2}]\nSystem: {system_prompt}\nUser: {user_input}"
-            return f"[LLM error: {exc}]\nSystem: {system_prompt}\nUser: {user_input}"
-    # Fallback stub
-    return f"[stubbed] System: {system_prompt}\nUser: {user_input}"
+    # OpenAI models require a key; local models run keyless against the local server.
+    if is_openai and not os.getenv("OPENAI_API_KEY"):
+        return f"[stubbed] System: {system_prompt}\nUser: {user_input}"
+
+    prompts = [("system", system_prompt), ("user", user_input)]
+
+    def _make(include_temp: bool):
+        kwargs = {"model": chosen_model}
+        # gpt-5 (and some reasoning models) reject a custom temperature.
+        if include_temp and chosen_model not in {"gpt-5"}:
+            kwargs["temperature"] = 0.2
+        if not is_openai:
+            base_url, api_key = _local_endpoint()
+            kwargs["base_url"] = base_url
+            kwargs["api_key"] = api_key
+        return ChatOpenAI(**kwargs)
+
+    try:
+        return _make(True).invoke(prompts).content  # type: ignore[attr-defined]
+    except Exception as exc:  # noqa: BLE001
+        # If a custom temperature was the cause, retry once without it.
+        msg_text = str(exc).lower()
+        if "temperature" in msg_text and (
+            "unsupported" in msg_text or "does not support" in msg_text
+        ):
+            try:
+                return _make(False).invoke(prompts).content  # type: ignore[attr-defined]
+            except Exception as exc2:  # noqa: BLE001
+                return (
+                    f"[LLM error: {exc2}]\nSystem: {system_prompt}\nUser: {user_input}"
+                )
+        return f"[LLM error: {exc}]\nSystem: {system_prompt}\nUser: {user_input}"
 
 
 def _sse(data: dict) -> str:

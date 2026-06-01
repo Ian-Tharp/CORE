@@ -182,9 +182,8 @@
               }
             </div>
           }
-          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
-            <mat-label>Model</mat-label>
-            <mat-select [(ngModel)]="modelByStep.Comprehension">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="model-select" matTooltip="Model for this step">
+<mat-select [(ngModel)]="modelByStep.Comprehension">
               @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
             </mat-select>
           </mat-form-field>
@@ -228,9 +227,8 @@
               }
             </div>
           }
-          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
-            <mat-label>Model</mat-label>
-            <mat-select [(ngModel)]="modelByStep.Orchestration">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="model-select" matTooltip="Model for this step">
+<mat-select [(ngModel)]="modelByStep.Orchestration">
               @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
             </mat-select>
           </mat-form-field>
@@ -278,9 +276,8 @@
               }
             </div>
           }
-          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
-            <mat-label>Model</mat-label>
-            <mat-select [(ngModel)]="modelByStep.Reasoning">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="model-select" matTooltip="Model for this step">
+<mat-select [(ngModel)]="modelByStep.Reasoning">
               @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
             </mat-select>
           </mat-form-field>
@@ -321,9 +318,8 @@
               }
             </div>
           }
-          <mat-form-field appearance="fill" class="model-select" matTooltip="Model for this step">
-            <mat-label>Model</mat-label>
-            <mat-select [(ngModel)]="modelByStep.Evaluation">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="model-select" matTooltip="Model for this step">
+<mat-select [(ngModel)]="modelByStep.Evaluation">
               @for (m of models; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
             </mat-select>
           </mat-form-field>
