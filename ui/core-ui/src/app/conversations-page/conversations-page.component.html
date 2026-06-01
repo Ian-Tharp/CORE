@@ -30,50 +30,57 @@
 
     <!-- Conversations List -->
     @if (isConnected && !isLoading) {
-      <mat-list>
-        @if (conversations.length === 0) {
-          <div class="empty-state">
-            <mat-icon class="empty-icon">chat</mat-icon>
-            <p>No conversations yet</p>
-            <small>Start a new conversation to get started</small>
-          </div>
-        } @else {
+      @if (conversations.length === 0) {
+        <div class="empty-state">
+          <mat-icon class="empty-icon">chat</mat-icon>
+          <p>No conversations yet</p>
+          <small>Start a new conversation to get started</small>
+        </div>
+      } @else {
+        <div class="conv-list" role="list">
           @for (conv of conversations; track conv.id) {
-            <mat-list-item
+            <div
+              class="conv-item"
+              role="listitem"
+              tabindex="0"
+              [class.selected]="conv.id === selectedConversationId"
               (click)="selectConversation(conv.id)"
-              [ngClass]="{ selected: conv.id === selectedConversationId }"
+              (keydown.enter)="selectConversation(conv.id)"
             >
+              <span class="conv-item__rail" aria-hidden="true"></span>
+              <div class="conv-item__body">
+                @if (editingConversationId !== conv.id) {
+                  <span class="conv-item__title">{{ conv.title || (conv.id | slice:0:8) }}</span>
+                } @else {
+                  <input
+                    class="conv-item__edit-input"
+                    type="text"
+                    [(ngModel)]="editingTitle"
+                    (keydown.enter)="saveTitle(conv)"
+                    (blur)="saveTitle(conv)"
+                    (click)="$event.stopPropagation()"
+                    autofocus
+                  />
+                }
+                <span class="conv-item__meta">
+                  <mat-icon class="conv-item__meta-icon">forum</mat-icon>
+                  {{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}
+                </span>
+              </div>
               @if (editingConversationId !== conv.id) {
-                <div matLine class="title-line">
-                  {{ conv.title || (conv.id | slice:0:8) }}
-                </div>
-              } @else {
-                <input
-                  type="text"
-                  class="title-edit-input"
-                  [(ngModel)]="editingTitle"
-                  (keydown.enter)="saveTitle(conv)"
-                  (blur)="saveTitle(conv)"
-                  (click)="$event.stopPropagation()"
-                  autofocus
-                />
+                <button
+                  class="conv-item__edit"
+                  mat-icon-button
+                  (click)="beginEdit(conv, $event)"
+                  aria-label="Rename conversation"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
               }
-
-              <div matLine class="secondary">{{ conv.messages }} message{{ conv.messages === 1 ? '' : 's' }}</div>
-
-              <button
-                mat-icon-button
-                (click)="beginEdit(conv, $event)"
-                matListItemMeta
-                *ngIf="editingConversationId !== conv.id"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-            </mat-list-item>
-            <mat-divider></mat-divider>
+            </div>
           }
-        }
-      </mat-list>
+        </div>
+      }
     }
   </aside>
 

@@ -2,16 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChatWindowComponent } from '../shared/chat-window/chat-window.component';
 import { MatButtonModule } from '@angular/material/button';
-import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { ConversationsService } from '../services/conversations/conversations.service';
 import { EnginePlaygroundComponent } from './engine-playground.component';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -31,13 +26,8 @@ interface ConversationSummary {
     FormsModule,
     ChatWindowComponent,
     MatButtonModule,
-    MatListModule,
     MatIconModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatTooltipModule,
-    MatDividerModule,
     MatProgressSpinnerModule,
     EnginePlaygroundComponent
   ]
