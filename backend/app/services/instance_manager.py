@@ -29,8 +29,18 @@ from app.repository.instance_repository import (
     AgentInstance,
     InstanceStatus,
 )
+from app.services.event_publisher import event_publisher
 
 logger = logging.getLogger(__name__)
+
+
+async def _safe_emit(factory) -> None:
+    """Await a cognition-event coroutine from ``factory``, swallowing any error
+    so WebSocket telemetry can never break an instance lifecycle operation."""
+    try:
+        await factory()
+    except Exception as exc:  # pragma: no cover - defensive telemetry guard
+        logger.debug("Instance telemetry emit failed: %s", exc)
 
 
 class InstanceConfig(BaseModel):
@@ -192,6 +202,15 @@ class InstanceManager:
             # Update status to ready
             await update_instance_status(container.id, InstanceStatus.READY)
 
+            # Cognition telemetry → command deck (activity stream + reactor load).
+            await _safe_emit(
+                lambda: event_publisher.agent_started(
+                    agent_id=config.agent_id,
+                    action="deployed",
+                    message=f"{config.agent_role} agent online",
+                )
+            )
+
             logger.info(
                 f"Successfully spawned instance: {container_name} ({container.id[:12]})"
             )
@@ -269,6 +288,14 @@ class InstanceManager:
             # Update database status
             await update_instance_status(container_id, InstanceStatus.STOPPED)
 
+            await _safe_emit(
+                lambda: event_publisher.agent_complete(
+                    agent_id=container.labels.get("core.agent_id", container_id[:12]),
+                    action="stopped",
+                    message="Agent stopped",
+                )
+            )
+
             logger.info(f"Successfully stopped container {container_id[:12]}")
             return True
 
@@ -311,6 +338,14 @@ class InstanceManager:
             # Update status
             await update_instance_status(container_id, InstanceStatus.READY)
 
+            await _safe_emit(
+                lambda: event_publisher.agent_started(
+                    agent_id=container.labels.get("core.agent_id", container_id[:12]),
+                    action="restarted",
+                    message="Agent restarted",
+                )
+            )
+
             logger.info(f"Successfully restarted container {container_id[:12]}")
             return True
 
@@ -320,6 +355,13 @@ class InstanceManager:
         except Exception as e:
             logger.error(f"Failed to restart container {container_id}: {e}")
             await update_instance_status(container_id, InstanceStatus.FAILED)
+            await _safe_emit(
+                lambda: event_publisher.agent_error(
+                    agent_id=container_id[:12],
+                    action="restart",
+                    error_message="Agent restart failed",
+                )
+            )
             return False
 
     async def list_instances(self) -> List[InstanceInfo]:
