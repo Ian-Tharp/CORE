@@ -61,6 +61,11 @@ class RenameWorldRequest(BaseModel):
     name: str
 
 
+class WorldMetadataRequest(BaseModel):
+    # The full TileMetadataSnapshot (per-tile metadata map + connection graph).
+    snapshot: Dict[str, Any] = Field(default_factory=dict)
+
+
 @router.post("", response_model=CreateWorldResponse)
 async def create_world(payload: CreateWorldRequest) -> CreateWorldResponse:
     try:
@@ -126,6 +131,22 @@ async def delete_world_snapshot(world_id: str, snapshot_id: str) -> Dict[str, st
 async def rename_world(world_id: str, payload: RenameWorldRequest) -> Dict[str, str]:
     await repo.update_world_name(world_id, payload.name)
     return {"status": "ok"}
+
+
+@router.put("/{world_id}/metadata")
+async def save_world_metadata(
+    world_id: str, payload: WorldMetadataRequest
+) -> Dict[str, str]:
+    """Persist a world's tile-metadata snapshot (names, tags, notes, links, connections)."""
+    await repo.save_world_metadata(world_id, payload.snapshot)
+    return {"status": "ok"}
+
+
+@router.get("/{world_id}/metadata", response_model=Dict[str, Any])
+async def get_world_metadata(world_id: str) -> Dict[str, Any]:
+    """Return a world's tile-metadata snapshot (empty object if none saved)."""
+    snapshot = await repo.get_world_metadata(world_id)
+    return snapshot or {}
 
 
 @router.get("/by-name/{name}")

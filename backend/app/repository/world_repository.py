@@ -214,6 +214,32 @@ async def update_world_name(world_id: str, name: str) -> None:
         )
 
 
+async def save_world_metadata(world_id: str, snapshot: Dict[str, Any]) -> None:
+    """Upsert a world's full tile-metadata snapshot (metadata map + connections)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO world_metadata (world_id, snapshot, updated_at)
+            VALUES ($1, $2::jsonb, CURRENT_TIMESTAMP)
+            ON CONFLICT (world_id)
+            DO UPDATE SET snapshot = EXCLUDED.snapshot, updated_at = CURRENT_TIMESTAMP
+            """,
+            world_id,
+            json.dumps(snapshot),
+        )
+
+
+async def get_world_metadata(world_id: str) -> Optional[Dict[str, Any]]:
+    """Return a world's tile-metadata snapshot, or None if never saved."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT snapshot FROM world_metadata WHERE world_id = $1", world_id
+        )
+    return _parse_jsonb_field(row["snapshot"]) if row else None
+
+
 async def get_world_by_name(name: str) -> Optional[WorldRecord]:
     """Find a world by its exact name (case-insensitive). Returns None if not found."""
     pool = await get_db_pool()

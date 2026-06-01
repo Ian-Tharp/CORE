@@ -73,6 +73,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   isSaving = false;
   saveMessage: { text: string; type: 'success' | 'error' } | null = null;
   private saveMessageTimeout?: ReturnType<typeof setTimeout>;
+  public viewportScanActive = false;
+  private viewportScanTimeout?: ReturnType<typeof setTimeout>;
 
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
@@ -127,6 +129,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
             this.projectName = 'World';
             this.gridConfig = this.convertToGridConfig(snap.config);
             this.tileGrid.restore('World', { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+            this._hydrateMetadata(worldId);
           }
         });
       } else {
@@ -139,6 +142,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.viewportScanTimeout) {
+      clearTimeout(this.viewportScanTimeout);
+    }
     this.engine.dispose();
   }
 
@@ -173,6 +179,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         next: (result) => {
           this.isSaving = false;
           this.currentWorldId = result.worldId; // Track the world ID for future saves
+          this._flushMetadata(result.worldId);
           const message = result.isNew ? 'World created successfully' : 'World updated successfully';
           this.showSaveMessage(message, 'success');
         },
@@ -212,6 +219,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
               this.projectName = world.name;
               this.gridConfig = this.convertToGridConfig(snap.config);
               this.tileGrid.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+              this._hydrateMetadata(world.id);
             },
             error: () => this._loadLatestLocal()
           });
@@ -264,6 +272,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
               next: (result) => {
                 this.isSaving = false;
                 this.currentWorldId = result.worldId; // Track the new world ID
+                this._flushMetadata(result.worldId);
                 this.showSaveMessage('World created successfully', 'success');
               },
               error: (err) => {
@@ -287,6 +296,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
               next: (result) => {
                 this.isSaving = false;
                 this.currentWorldId = result.worldId;
+                this._flushMetadata(result.worldId);
                 this.showSaveMessage('World created successfully', 'success');
               },
               error: (err) => {
@@ -312,6 +322,27 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Persist the world's tile-metadata snapshot (annotations + connections). */
+  private _flushMetadata(worldId: string): void {
+    const snapshot = this.tileMetadata.createSnapshot(worldId);
+    this.worlds.saveMetadata(worldId, snapshot).subscribe({
+      error: (err) => console.error('Failed to save world metadata:', err)
+    });
+  }
+
+  /** Restore a world's tile-metadata snapshot and re-render its connections. */
+  private _hydrateMetadata(worldId: string): void {
+    this.worlds.getMetadata(worldId).subscribe({
+      next: (snapshot) => {
+        if (snapshot && (snapshot.metadata || snapshot.connections)) {
+          this.tileMetadata.restoreSnapshot(snapshot);
+          this.tileGrid.updateConnections(this.tileMetadata.getConnections());
+        }
+      },
+      error: () => { /* world has no saved metadata yet */ }
+    });
+  }
+
   public onOpenWorlds(): void {
     const ref = this.dialog.open(WorldsDialogComponent, { data: { limit: 50 }, panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((world?: { id: string; name: string }) => {
@@ -322,6 +353,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
           this.currentWorldId = world.id; // Track the loaded world's ID
           this.gridConfig = this.convertToGridConfig(snap.config);
           this.tileGrid.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+          this._hydrateMetadata(world.id);
           this.showSaveMessage(`Loaded "${world.name}"`, 'success');
         },
         error: () => {
@@ -334,19 +366,24 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   public onApplyGridConfig(): void {
     this.tileGrid.createTileGrid(this.gridConfig);
     this._syncGridStateToService();
+    this._triggerViewportScan();
   }
 
   public onApplySeed(): void {
     const trimmed = (this.seed ?? '').toString().trim();
     this.tileGrid.setRandomSeed(trimmed.length > 0 ? trimmed : null);
+    this.tileGrid.triggerSeedBloom();
+    this._triggerViewportScan();
   }
 
   onRandomize(): void {
     this.tileGrid.randomize();
+    this._triggerViewportScan();
   }
 
   onClear(): void {
     this.tileGrid.clear();
+    this._triggerViewportScan();
   }
 
   onCloseContextMenu(): void {
@@ -364,6 +401,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   onActiveLayerChange(next: 'terrain' | 'biome' | 'resources'): void {
     this.activeLayer = next;
     this.tileGrid.setActiveLayer(next);
+    this._triggerViewportScan();
   }
 
   onTerrainToolChange(next: TerrainState): void {
@@ -381,6 +419,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   onToggleLayerVisibility(layer: 'terrain' | 'biome' | 'resources', value: boolean): void {
     this.layerVisibility[layer] = value;
     this.tileGrid.setLayerVisibility(layer, value);
+    this._triggerViewportScan();
   }
 
   onToggleEditMode(): void {
@@ -388,6 +427,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.tileGrid.setEditMode(this.isEditMode);
     // Hide context menu when entering edit mode
     if (this.isEditMode) {this.contextMenu.visible = false;}
+    this._triggerViewportScan();
   }
 
   private _syncGridStateToService(): void {
@@ -409,8 +449,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     if (this.isTypingInInput()) {return;}
 
     if (e.key === 'h' || e.key === 'H') {
-      this.tileGrid.setOutlinesVisible(!(this as any)._outlinesVisibleInternal);
-      (this as any)._outlinesVisibleInternal = !(this as any)._outlinesVisibleInternal;
+      this.onToggleOutlines(!this.outlinesVisible);
     } else if (e.key === '+' || e.key === '=') {
       this.brush = Math.min(6, this.brush + 1);
       this.onBrushChange(this.brush);
@@ -437,16 +476,19 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   onBrushChange(next: number): void {
     this.tileGrid.setBrushRadius(next);
+    this._triggerViewportScan();
   }
 
   onToggleOutlines(value: boolean): void {
     this.outlinesVisible = value;
     this.tileGrid.setOutlinesVisible(value);
+    this._triggerViewportScan();
   }
 
   onToggleConnections(value: boolean): void {
     this.connectionsVisible = value;
     this.tileGrid.setConnectionsVisible(value);
+    this._triggerViewportScan();
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -550,5 +592,18 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   openSearchPalette(): void {
     this.searchPalette?.open();
+  }
+
+  private _triggerViewportScan(): void {
+    if (this.viewportScanTimeout) {
+      clearTimeout(this.viewportScanTimeout);
+    }
+    this.viewportScanActive = false;
+    requestAnimationFrame(() => {
+      this.viewportScanActive = true;
+      this.viewportScanTimeout = setTimeout(() => {
+        this.viewportScanActive = false;
+      }, 900);
+    });
   }
 }

@@ -49,6 +49,16 @@ export class WorldsService {
     return this.http.get<any>(`${this.apiUrl}/worlds/${worldId}/snapshots/latest`);
   }
 
+  /** Save a world's tile-metadata snapshot (names, tags, notes, connections, links). */
+  saveMetadata(worldId: string, snapshot: any): Observable<{ status: string }> {
+    return this.http.put<{ status: string }>(`${this.apiUrl}/worlds/${worldId}/metadata`, { snapshot });
+  }
+
+  /** Fetch a world's tile-metadata snapshot (for restore). */
+  getMetadata(worldId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/worlds/${worldId}/metadata`);
+  }
+
   listWorlds(limit = 10, offset = 0): Observable<Array<{ id: string; name: string; updated_at: string }>> {
     return this.http.get<Array<{ id: string; name: string; updated_at: string }>>(`${this.apiUrl}/worlds`, { params: { limit, offset } as any });
   }

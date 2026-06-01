@@ -441,6 +441,23 @@ async def setup_db_schema() -> None:
             )
 
             # -----------------------------------------------------------------
+            # World tile metadata: the server-side home for what the UI keeps in
+            # localStorage (per-tile names/tags/notes/links/AI observations + the
+            # world's connection graph). Stored as one TileMetadataSnapshot blob
+            # per world so the full annotated grid round-trips intact.
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS world_metadata (
+                    world_id UUID PRIMARY KEY,
+                    snapshot JSONB NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE
+                )
+                """
+            )
+
+            # -----------------------------------------------------------------
             # Knowledgebase: documents and chunk embeddings (RAG)
             # -----------------------------------------------------------------
             await conn.execute(
