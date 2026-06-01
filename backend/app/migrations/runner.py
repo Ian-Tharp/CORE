@@ -52,7 +52,9 @@ async def run_pending_migrations(pool):
 
     for migration_file in pending:
         version = migration_file.stem
-        sql = migration_file.read_text()
+        # utf-8-sig strips a leading BOM if present — some .sql files were saved
+        # with one (e.g. on Windows), and Postgres rejects a BOM as a syntax error.
+        sql = migration_file.read_text(encoding="utf-8-sig")
         logger.info("Applying migration: %s", version)
 
         async with pool.acquire() as conn:

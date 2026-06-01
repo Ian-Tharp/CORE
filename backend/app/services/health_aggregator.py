@@ -401,7 +401,7 @@ async def check_task_queue() -> ServiceHealth:
             # Queue depth (queued tasks)
             queued = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM core_tasks WHERE status = 'queued'"
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'queued'"
                 )
                 or 0
             )
@@ -409,7 +409,7 @@ async def check_task_queue() -> ServiceHealth:
             # Running tasks
             running = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM core_tasks WHERE status = 'running'"
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'running'"
                 )
                 or 0
             )
@@ -417,19 +417,19 @@ async def check_task_queue() -> ServiceHealth:
             # Completed / failed / refused counts
             completed = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM core_tasks WHERE status = 'completed'"
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'completed'"
                 )
                 or 0
             )
             failed = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM core_tasks WHERE status = 'failed'"
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'failed'"
                 )
                 or 0
             )
             refused = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM core_tasks WHERE status = 'refused'"
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'refused'"
                 )
                 or 0
             )
