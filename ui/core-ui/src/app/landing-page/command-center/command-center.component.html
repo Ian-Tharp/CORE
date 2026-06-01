@@ -1,4 +1,37 @@
 <section class="command-center" [class.detail-panel-open]="showDetailPanel && selectedInfo && !isEditMode">
+  <div class="command-center__bg" aria-hidden="true">
+    <span class="command-center__nebula command-center__nebula--primary"></span>
+    <span class="command-center__nebula command-center__nebula--secondary"></span>
+    <span class="command-center__grid-lines"></span>
+  </div>
+  <div class="command-center__scanlines" aria-hidden="true"></div>
+  <span class="command-center__corner command-center__corner--tl" aria-hidden="true"></span>
+  <span class="command-center__corner command-center__corner--tr" aria-hidden="true"></span>
+  <span class="command-center__corner command-center__corner--bl" aria-hidden="true"></span>
+  <span class="command-center__corner command-center__corner--br" aria-hidden="true"></span>
+
+  <header class="command-center__ticker" aria-label="Command Center status">
+    <div class="ticker-brand">
+      <span class="ticker-brand__glyph">C.O.R.E.</span>
+      <span class="ticker-brand__divider">//</span>
+      <span class="ticker-brand__label">Universe Grid Editor</span>
+    </div>
+    <div class="ticker-chips">
+      <span class="ticker-chip ticker-chip--live">
+        <span class="ticker-chip__dot"></span>
+        {{ isEditMode ? 'EDIT MODE' : 'VIEW MODE' }}
+      </span>
+      <span class="ticker-chip">WORLD {{ projectName || 'Untitled' }}</span>
+      <span class="ticker-chip">LAYER {{ activeLayer | uppercase }}</span>
+      <span class="ticker-chip">BRUSH {{ brush }}</span>
+      <span class="ticker-chip">SEED {{ seed || 'RANDOM' }}</span>
+      <span class="ticker-chip">SELECTED {{ selectedInfo ? '(' + selectedInfo.x + ', ' + selectedInfo.y + ')' : 'NONE' }}</span>
+    </div>
+    <div class="ticker-save-state" [class.ticker-save-state--saving]="isSaving" [class.ticker-save-state--saved]="currentWorldId">
+      {{ isSaving ? 'SYNCING' : currentWorldId ? 'SAVED' : 'DRAFT' }}
+    </div>
+  </header>
+
   <aside class="toolbox">
     <div class="panel-title">Universe Grid Editor</div>
     <div class="controls">
@@ -205,8 +238,13 @@
     </div>
   </aside>
 
-  <div class="stage">
+  <div class="stage" [class.stage--scan]="viewportScanActive">
+    <div class="stage__ambient" aria-hidden="true">
+      <span class="stage__grid"></span>
+      <span class="stage__reticle"></span>
+    </div>
     <canvas #canvas class="viewport" aria-label="Command Center viewport" tabindex="0"></canvas>
+    <span class="stage__scan" aria-hidden="true"></span>
     @if (contextMenu.visible) {
       <div class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" (click)="$event.stopPropagation()">
         <button class="menu-item" (click)="onEnterWorld()">Enter Tile</button>
@@ -225,6 +263,7 @@
     <aside class="detail-panel">
       <app-world-detail-panel
         [selectedTile]="selectedInfo"
+        [worldId]="currentWorldId"
         (requestAIPrompt)="onRequestAIPrompt($event)"
         (createConnection)="onStartConnectionCreation($event)"
         (closePanel)="onCloseDetailPanel()"

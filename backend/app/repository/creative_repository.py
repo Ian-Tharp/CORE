@@ -25,7 +25,7 @@ async def create_wiki_page(
             world_id,
             title,
             content,
-            metadata,
+            json.dumps(metadata) if metadata is not None else None,
         )
     return page_id
 
@@ -73,7 +73,12 @@ async def list_wiki_pages(world_id: Optional[str] = None) -> List[Dict[str, Any]
             "world_id": str(r["world_id"]) if r["world_id"] else None,
             "title": r["title"],
             "content": r["content"],
-            "metadata": r["metadata"],
+            # asyncpg returns JSONB as a string (no codec registered) — parse back.
+            "metadata": (
+                json.loads(r["metadata"])
+                if isinstance(r["metadata"], str)
+                else r["metadata"]
+            ),
             "created_at": r["created_at"].isoformat() if r["created_at"] else "",
             "updated_at": r["updated_at"].isoformat() if r["updated_at"] else "",
         }
@@ -127,7 +132,9 @@ async def list_characters(world_id: Optional[str] = None) -> List[Dict[str, Any]
             "id": str(r["id"]),
             "world_id": str(r["world_id"]) if r["world_id"] else None,
             "name": r["name"],
-            "traits": r["traits"],
+            "traits": (
+                json.loads(r["traits"]) if isinstance(r["traits"], str) else r["traits"]
+            ),
             "image_b64": r["image_b64"],
             "created_at": r["created_at"].isoformat() if r["created_at"] else "",
             "updated_at": r["updated_at"].isoformat() if r["updated_at"] else "",

@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { TileMetadataService } from '../engine/tile-metadata.service';
 import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
-import { CreativeDataService, WikiPage, Board } from '../../../creative-design-product/services/creative-data.service';
+import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
+import { CreativeService, WikiPageDto } from '../../../services/creative/creative.service';
 
 export interface SelectedTileInfo {
   index: number;
@@ -27,12 +28,14 @@ export interface SelectedTileInfo {
 })
 export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   @Input() selectedTile: SelectedTileInfo | null = null;
+  /** The backend world this panel belongs to; wiki pages are scoped to it. */
+  @Input() worldId: string | null = null;
   @Output() requestAIPrompt = new EventEmitter<{ tileIndex: number; prompt: string }>();
   @Output() createConnection = new EventEmitter<{ fromIndex: number }>();
   @Output() closePanel = new EventEmitter<void>();
 
   metadata: TileWorldMetadata | null = null;
-  linkedWikiPages: WikiPage[] = [];
+  linkedWikiPages: WikiPageDto[] = [];
   linkedBoards: Board[] = [];
   tileConnections: WorldConnection[] = [];
 
@@ -60,7 +63,8 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
 
   constructor(
     private metadataService: TileMetadataService,
-    private creativeData: CreativeDataService
+    private creativeData: CreativeDataService,
+    private creativeService: CreativeService
   ) {}
 
   ngOnInit(): void {
@@ -93,11 +97,21 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Load linked wiki pages
-    const allWiki = this.creativeData.listWiki();
-    this.linkedWikiPages = allWiki.filter(p => this.metadata?.wikiPageIds?.includes(p.id));
+    // Wiki pages live in the backend (world-scoped); load and filter to the ones
+    // this tile links to.
+    const wikiIds = this.metadata.wikiPageIds ?? [];
+    if (wikiIds.length) {
+      this.creativeService.listWiki(this.worldId ?? undefined)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (pages) => { this.linkedWikiPages = pages.filter(p => wikiIds.includes(p.id)); },
+          error: () => { this.linkedWikiPages = []; }
+        });
+    } else {
+      this.linkedWikiPages = [];
+    }
 
-    // Load linked boards
+    // Boards remain local for now (no backend board API yet).
     const allBoards = this.creativeData.listBoards();
     this.linkedBoards = allBoards.filter(b => this.metadata?.boardIds?.includes(b.id));
   }
@@ -331,10 +345,41 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
 
   createWikiPage(): void {
     if (!this.selectedTile) {return;}
-    const title = this.metadata?.name || `World ${this.selectedTile.index}`;
-    const page = this.creativeData.createWiki(undefined, `${title} - Lore`);
-    this.metadataService.linkWikiPage(this.selectedTile.index, page.id);
-    this.loadLinkedContent();
+    const tileIndex = this.selectedTile.index;
+    const title = `${this.metadata?.name || `World ${tileIndex}`} — Lore`;
+    // Persist to the backend wiki, scoped to this world, seeded with what we know
+    // about the tile so the page isn't empty.
+    this.creativeService.createWiki({
+      world_id: this.worldId ?? undefined,
+      title,
+      content: this.seedWikiContent(),
+      metadata: { source: 'command-center', tileIndex }
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ id }) => {
+          this.metadataService.linkWikiPage(tileIndex, id);
+          this.loadLinkedContent();
+        },
+        error: (err) => console.error('Failed to create wiki page:', err)
+      });
+  }
+
+  /** Build an initial Markdown stub for a tile's wiki page from its known state. */
+  private seedWikiContent(): string {
+    const t = this.selectedTile;
+    const m = this.metadata;
+    const lines: string[] = [`# ${m?.name || `World ${t?.index ?? ''}`.trim()}`, ''];
+    if (m?.description) { lines.push(m.description, ''); }
+    if (t) {
+      lines.push(
+        `- **Terrain:** ${t.terrain}`,
+        `- **Biome:** ${t.biome}`,
+        `- **Resource:** ${t.resource}`
+      );
+    }
+    if (m?.tags?.length) { lines.push('', `**Tags:** ${m.tags.join(', ')}`); }
+    return lines.join('\n');
   }
 
   unlinkWikiPage(pageId: string): void {
