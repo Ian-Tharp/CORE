@@ -273,6 +273,9 @@
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
+  // Clip horizontal bleed from animated transforms (reactor waves, the pipeline
+  // stage-scan sweep) so they never expand the scrollable area.
+  overflow-x: clip;
   scrollbar-gutter: stable;
 
   &--center {
@@ -492,6 +495,11 @@
   justify-content: center;
   padding: 0.5rem 0 0.25rem;
   animation: deck-reveal-scale 0.78s 0.28s ease-out both;
+  // Contain the reactor's outward wave/glow pulses to their stage so the
+  // expanding transforms don't grow the column's scroll. The clip margin keeps
+  // the glow visible without contributing to scrollable overflow.
+  overflow: clip;
+  overflow-clip-margin: 3rem;
 }
 
 // Cognition pipeline graph mount.
@@ -503,6 +511,10 @@
   gap: var(--spacing-xs);
   padding: 0 var(--spacing-md);
   animation: deck-reveal-up 0.72s 0.36s ease-out both;
+  // Contain the graph's node glow + stage-scan sweep so the animation never
+  // expands the scrollable area.
+  overflow: clip;
+  overflow-clip-margin: 2rem;
 
   &__label {
     font-family: var(--font-mono);
