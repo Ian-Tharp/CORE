@@ -39,6 +39,11 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   linkedWikiPages: WikiPageDto[] = [];
   linkedBoards: Board[] = [];
 
+  // AI-generated world art.
+  isGeneratingArt = false;
+  artError = '';
+  lastArtUrl?: string;
+
   // World-scoped knowledge (ingested wiki lore).
   knowledgeDocs: Array<{ id: string; title: string; source: string }> = [];
   isIngesting = false;
@@ -93,6 +98,8 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedTile']) {
+      this.lastArtUrl = undefined;
+      this.artError = '';
       if (this.selectedTile) {
         this.metadataService.setSelectedTile(this.selectedTile.index);
       } else {
@@ -148,6 +155,47 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   /** Resolve a chunk's source document title for display. */
   knowledgeDocTitle(documentId: string): string {
     return this.knowledgeDocs.find(d => d.id === documentId)?.title || 'Knowledge';
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // AI world art — generate a portrait of this world to populate it
+  // ─────────────────────────────────────────────────────────────
+
+  generateWorldArt(): void {
+    if (!this.selectedTile || this.isGeneratingArt) { return; }
+    const tileIndex = this.selectedTile.index;
+    this.isGeneratingArt = true;
+    this.artError = '';
+    this.creativeService.generateImage(this.buildArtPrompt())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ b64 }) => {
+          this.isGeneratingArt = false;
+          const dataUrl = `data:image/png;base64,${b64}`;
+          this.lastArtUrl = dataUrl;
+          const name = this.metadata?.name || `World ${tileIndex}`;
+          // Persist as a pinned image on the tile (round-trips via world metadata).
+          this.metadataService.addPinnedImage(tileIndex, dataUrl, `${name} — portrait`);
+          this.metadataService.setSelectedTile(tileIndex); // refresh panel view
+        },
+        error: (err) => {
+          this.isGeneratingArt = false;
+          this.artError = 'Art generation failed — needs an OpenAI key configured.';
+          console.error('World art generation failed:', err);
+        }
+      });
+  }
+
+  /** Build an evocative image prompt from the world's known character + lore. */
+  private buildArtPrompt(): string {
+    const t = this.selectedTile!;
+    const m = this.metadata;
+    const name = m?.name || `World ${t.index}`;
+    const biome = t.biome !== 'none' ? `${t.biome} ` : '';
+    const resource = t.resource === 'node' ? ', rich in rare resources' : '';
+    const desc = m?.description ? ` ${m.description}` : '';
+    return `Cinematic concept art of a world named "${name}": a ${biome}${t.terrain} world${resource}.${desc} `
+      + `Painterly science-fantasy, luminous solarpunk aesthetic, vast scale, dramatic lighting.`;
   }
 
   private loadLinkedContent(): void {

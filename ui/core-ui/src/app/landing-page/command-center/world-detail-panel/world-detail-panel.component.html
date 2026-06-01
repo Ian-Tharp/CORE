@@ -239,6 +239,22 @@
         }
       </section>
 
+      <!-- AI-generated world art -->
+      <section class="info-section">
+        <label class="section-label">World Art</label>
+        <button class="btn-small" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !selectedTile">
+          {{ isGeneratingArt ? 'Generating…' : '✦ Generate World Art' }}
+        </button>
+        @if (lastArtUrl) {
+          <img class="world-art-preview" [src]="lastArtUrl" alt="Generated world art" />
+        }
+        @if (artError) {
+          <span class="knowledge-hint">{{ artError }}</span>
+        } @else if (!lastArtUrl) {
+          <span class="knowledge-hint">Generate a portrait of this world from its character + lore.</span>
+        }
+      </section>
+
       <!-- World Knowledge (ingested wiki lore + world-scoped RAG search) -->
       <section class="info-section">
         <label class="section-label">Knowledge</label>

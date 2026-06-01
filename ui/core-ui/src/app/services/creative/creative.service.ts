@@ -33,6 +33,11 @@ export class CreativeService {
     return this.http.put<{ status: string }>(`${this.apiUrl}/creative/wiki/${id}`, payload);
   }
 
+  /** Generate an image from a prompt; returns base64 PNG (world art, etc.). */
+  generateImage(prompt: string, size = '1024x1024'): Observable<{ b64: string }> {
+    return this.http.post<{ b64: string }>(`${this.apiUrl}/creative/image`, { prompt, size });
+  }
+
   createCharacter(payload: { world_id?: string; name: string; traits?: any }): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(`${this.apiUrl}/creative/characters`, payload);
   }

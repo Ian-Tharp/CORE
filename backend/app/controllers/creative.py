@@ -76,6 +76,32 @@ async def create_character(
     return {"id": character_id}
 
 
+class ImageGenRequest(BaseModel):
+    prompt: str
+    size: str = "1024x1024"
+
+
+@router.post("/image", response_model=Dict[str, str])
+async def generate_image(
+    payload: ImageGenRequest, _auth: str = Depends(require_api_key)
+) -> Dict[str, str]:
+    """Generate an image from a prompt and return it as base64 (for world art, etc.)."""
+    try:
+        client = _get_openai_client()
+        result = await client.images.generate(
+            model="gpt-image-1",
+            prompt=payload.prompt,
+            size=payload.size,
+            response_format="b64_json",
+        )
+        b64 = result.data[0].b64_json  # type: ignore[attr-defined]
+        if not b64:
+            raise RuntimeError("Image generation returned empty response")
+        return {"b64": b64}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Failed to generate image: {exc}")
+
+
 class CharacterImageRequest(BaseModel):
     prompt: str
     size: str = "512x512"
