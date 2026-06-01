@@ -40,8 +40,11 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   linkedBoards: Board[] = [];
 
   // World-scoped knowledge (ingested wiki lore).
-  knowledgeCount = 0;
+  knowledgeDocs: Array<{ id: string; title: string; source: string }> = [];
   isIngesting = false;
+  knowledgeQuery = '';
+  knowledgeResults: Array<{ text: string; document_id: string; distance: number }> = [];
+  isSearchingKnowledge = false;
   tileConnections: WorldConnection[] = [];
 
   // Edit states
@@ -96,22 +99,24 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
         this.metadataService.setSelectedTile(null);
       }
     }
-    if (changes['worldId'] && this.worldId) {
-      this.loadKnowledgeCount();
+    if (changes['worldId']) {
+      this.knowledgeResults = [];
+      this.knowledgeQuery = '';
+      this.loadKnowledge();
     }
   }
 
   // ─────────────────────────────────────────────────────────────
-  // World Knowledge (ingested wiki lore)
+  // World Knowledge (ingested wiki lore + world-scoped RAG search)
   // ─────────────────────────────────────────────────────────────
 
-  private loadKnowledgeCount(): void {
-    if (!this.worldId) { this.knowledgeCount = 0; return; }
+  private loadKnowledge(): void {
+    if (!this.worldId) { this.knowledgeDocs = []; return; }
     this.worldsService.listKnowledge(this.worldId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (docs) => { this.knowledgeCount = docs?.length ?? 0; },
-        error: () => { this.knowledgeCount = 0; }
+        next: (docs) => { this.knowledgeDocs = docs ?? []; },
+        error: () => { this.knowledgeDocs = []; }
       });
   }
 
@@ -122,9 +127,27 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     this.worldsService.ingestWiki(this.worldId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => { this.isIngesting = false; this.loadKnowledgeCount(); },
+        next: () => { this.isIngesting = false; this.loadKnowledge(); },
         error: (err) => { this.isIngesting = false; console.error('Wiki ingest failed:', err); }
       });
+  }
+
+  /** Semantic search scoped to this world's knowledge. */
+  searchKnowledge(): void {
+    const q = this.knowledgeQuery.trim();
+    if (!this.worldId || !q) { this.knowledgeResults = []; return; }
+    this.isSearchingKnowledge = true;
+    this.worldsService.searchKnowledge(this.worldId, q)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => { this.knowledgeResults = res?.results ?? []; this.isSearchingKnowledge = false; },
+        error: () => { this.knowledgeResults = []; this.isSearchingKnowledge = false; }
+      });
+  }
+
+  /** Resolve a chunk's source document title for display. */
+  knowledgeDocTitle(documentId: string): string {
+    return this.knowledgeDocs.find(d => d.id === documentId)?.title || 'Knowledge';
   }
 
   private loadLinkedContent(): void {

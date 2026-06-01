@@ -239,16 +239,53 @@
         }
       </section>
 
-      <!-- World Knowledge (ingested wiki lore for RAG) -->
+      <!-- World Knowledge (ingested wiki lore + world-scoped RAG search) -->
       <section class="info-section">
         <label class="section-label">Knowledge</label>
         <button class="btn-small" (click)="ingestKnowledge()" [disabled]="isIngesting || !worldId">
           {{ isIngesting ? 'Ingesting…' : '+ Ingest Wiki → Knowledge' }}
         </button>
-        @if (knowledgeCount) {
-          <span class="knowledge-count">{{ knowledgeCount }} document{{ knowledgeCount === 1 ? '' : 's' }} in knowledge</span>
-        } @else if (!worldId) {
+
+        @if (!worldId) {
           <span class="knowledge-hint">Save this world first to enable knowledge.</span>
+        } @else if (knowledgeDocs.length) {
+          <div class="knowledge-meta">{{ knowledgeDocs.length }} document{{ knowledgeDocs.length === 1 ? '' : 's' }} in this world's knowledge</div>
+          <div class="linked-list">
+            @for (doc of knowledgeDocs; track doc.id) {
+              <div class="linked-item knowledge-doc">
+                <span class="knowledge-doc__icon" aria-hidden="true">◆</span>
+                <span class="linked-title">{{ doc.title }}</span>
+                <span class="knowledge-doc__source">{{ doc.source }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="knowledge-search">
+            <input
+              class="knowledge-search__input"
+              type="text"
+              placeholder="Ask this world's knowledge…"
+              [(ngModel)]="knowledgeQuery"
+              (keydown.enter)="searchKnowledge()"
+              aria-label="Search this world's knowledge"
+            />
+            <button class="btn-small" (click)="searchKnowledge()" [disabled]="isSearchingKnowledge || !knowledgeQuery.trim()">
+              {{ isSearchingKnowledge ? '…' : 'Search' }}
+            </button>
+          </div>
+
+          @if (knowledgeResults.length) {
+            <div class="knowledge-results">
+              @for (r of knowledgeResults; track r.document_id + '-' + $index) {
+                <div class="knowledge-result">
+                  <div class="knowledge-result__src">{{ knowledgeDocTitle(r.document_id) }}</div>
+                  <div class="knowledge-result__text">{{ r.text }}</div>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <span class="knowledge-hint">No knowledge yet — ingest the wiki to make this world's lore searchable.</span>
         }
       </section>
 

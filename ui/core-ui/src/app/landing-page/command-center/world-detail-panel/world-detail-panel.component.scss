@@ -621,6 +621,104 @@
   }
 }
 
+// ── World Knowledge (token-driven, per docs/design/ux-design-principles.md) ───
+.knowledge-meta {
+  margin-top: var(--spacing-xs);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--core-text-secondary);
+}
+
+.knowledge-hint {
+  display: block;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--core-text-secondary);
+}
+
+.knowledge-doc {
+  gap: var(--spacing-xs);
+
+  &__icon {
+    color: var(--core-energy);
+    font-size: 0.7rem;
+  }
+
+  &__source {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--core-text-secondary);
+  }
+}
+
+.knowledge-search {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+
+  &__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.3rem 0.5rem;
+    background: color-mix(in srgb, var(--core-bg-base) 55%, transparent);
+    border: 1px solid var(--core-border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--core-text-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+    &::placeholder { color: var(--core-text-dim); }
+
+    &:focus {
+      border-color: var(--core-energy);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--core-energy) 18%, transparent);
+    }
+  }
+}
+
+.knowledge-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.knowledge-result {
+  padding: var(--spacing-sm);
+  background: color-mix(in srgb, var(--core-energy) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 20%, transparent);
+  border-left: 2px solid var(--core-energy);
+  border-radius: var(--radius-sm);
+  animation: kn-result-in 0.25s ease-out both;
+
+  &__src {
+    margin-bottom: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--core-energy);
+  }
+
+  &__text {
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    color: var(--core-text-primary);
+  }
+}
+
+@keyframes kn-result-in {
+  from { opacity: 0; transform: translateY(0.25rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-result { animation: none; }
+}
+
 .btn-icon {
   background: transparent;
   border: none;

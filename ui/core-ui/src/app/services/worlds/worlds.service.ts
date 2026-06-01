@@ -71,6 +71,15 @@ export class WorldsService {
     return this.http.get<any[]>(`${this.apiUrl}/worlds/${worldId}/knowledge`);
   }
 
+  /** Semantic search scoped to this world's knowledge (world-filtered RAG). */
+  searchKnowledge(
+    worldId: string, query: string, maxChunks = 5
+  ): Observable<{ results: Array<{ text: string; document_id: string; distance: number }>; doc_ids: string[]; world_id: string }> {
+    return this.http.post<{ results: Array<{ text: string; document_id: string; distance: number }>; doc_ids: string[]; world_id: string }>(
+      `${this.apiUrl}/worlds/${worldId}/knowledge/search`, { query, max_chunks: maxChunks }
+    );
+  }
+
   listWorlds(limit = 10, offset = 0): Observable<Array<{ id: string; name: string; updated_at: string }>> {
     return this.http.get<Array<{ id: string; name: string; updated_at: string }>>(`${this.apiUrl}/worlds`, { params: { limit, offset } as any });
   }
