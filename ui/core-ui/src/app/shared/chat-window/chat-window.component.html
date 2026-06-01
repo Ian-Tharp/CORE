@@ -40,7 +40,7 @@
     <mat-form-field appearance="outline" class="model-select">
       <mat-select [(ngModel)]="selectedProvider" name="provider" (selectionChange)="onProviderChange()" panelClass="model-dropdown-panel">
         <mat-option value="openai">OpenAI</mat-option>
-        <mat-option value="ollama">Local (Ollama)</mat-option>
+        <mat-option value="ollama">Local ({{ localProviderLabel }})</mat-option>
       </mat-select>
     </mat-form-field>
 
@@ -52,7 +52,8 @@
       </mat-select>
     </mat-form-field>
 
-    @if (selectedProvider === 'ollama') {
+    <!-- Model-pull controls are Ollama-only; LM Studio loads models in its app. -->
+    @if (selectedProvider === 'ollama' && localSupportsPull) {
       <button mat-icon-button aria-label="Pull model" [disabled]="isPullingModel" (click)="pullLocalModel()">
         <mat-icon>download</mat-icon>
       </button>

@@ -267,11 +267,19 @@ async def setup_db_schema() -> None:
                     conversation_id VARCHAR(255) NOT NULL,
                     role VARCHAR(50) NOT NULL,
                     content TEXT NOT NULL,
+                    thinking TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     metadata JSONB,
                     FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
                 )
                 """
+            )
+
+            # `thinking` was added after the initial schema; backfill the column on
+            # databases whose messages table predates it (CREATE IF NOT EXISTS above
+            # is a no-op when the table already exists, so it can't add the column).
+            await conn.execute(
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS thinking TEXT"
             )
 
             # Indexes

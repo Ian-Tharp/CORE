@@ -18,7 +18,12 @@ import json
 import logging
 import time
 import httpx
-from app.dependencies import _get_openai_client, _get_ollama_base_url
+from app.dependencies import (
+    _get_openai_client,
+    _get_ollama_base_url,
+    get_local_provider,
+    get_ollama_client,
+)
 from app.core.circuit_breaker import get_circuit_breaker, ProviderUnavailableError
 
 
@@ -109,7 +114,14 @@ async def chat_service(
             chunks_yielded = 0
 
             if canonical == "ollama":
-                async for sse in _stream_from_ollama(model=model, messages=messages):
+                # The local provider is agnostic: Ollama (native API) or LM Studio
+                # (OpenAI-compatible), selected by CORE_LOCAL_PROVIDER. Route to the
+                # active one so a LM-Studio-only machine never reaches for Ollama.
+                if get_local_provider() == "lmstudio":
+                    streamer = _stream_from_lmstudio(model=model, messages=messages)
+                else:
+                    streamer = _stream_from_ollama(model=model, messages=messages)
+                async for sse in streamer:
                     yield sse
                     chunks_yielded += 1
             else:
@@ -248,3 +260,61 @@ async def _stream_from_ollama(
         except httpx.HTTPError as http_err:
             logger.error("Ollama HTTP error: %s", http_err)
             yield f"event: error\ndata: {json.dumps({'error': str(http_err), 'code': 'http_error'})}\n\n"
+
+
+async def _stream_from_lmstudio(
+    *, model: str, messages: List[Dict[str, str]]
+) -> AsyncGenerator[str, None]:
+    """Stream chat completions from LM Studio and emit SSE-formatted chunks.
+
+    LM Studio exposes an OpenAI-compatible server, so this uses the shared
+    provider-aware client (`get_ollama_client`, which points at LM Studio when
+    ``CORE_LOCAL_PROVIDER=lmstudio``) and its ``/v1/chat/completions`` streaming
+    endpoint. Content deltas are rewrapped as ``{ "delta": "..." }`` events, and
+    reasoning deltas (emitted by reasoning models as ``reasoning_content``) are
+    surfaced as ``thinking`` events for progressive disclosure — mirroring the
+    Ollama path. Periodic heartbeats keep the connection alive during cold loads.
+    """
+    client = get_ollama_client()
+
+    yield f"event: status\ndata: {json.dumps({'message': 'Connecting to model...'})}\n\n"
+
+    # Let connection/setup failures raise so the caller's retry + circuit breaker
+    # can act on them (consistent with the OpenAI path).
+    stream = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        stream=True,
+    )
+
+    yield f"event: status\ndata: {json.dumps({'message': 'Waiting for model response...'})}\n\n"
+
+    iterator = stream.__aiter__()
+    heartbeat_seconds = 0
+
+    while True:
+        try:
+            chunk = await asyncio.wait_for(iterator.__anext__(), timeout=5.0)
+        except asyncio.TimeoutError:
+            heartbeat_seconds += 5
+            yield f"event: heartbeat\ndata: {json.dumps({'elapsed': heartbeat_seconds, 'message': f'Generating response... ({heartbeat_seconds}s)'})}\n\n"
+            continue
+        except StopAsyncIteration:
+            break
+
+        choices = getattr(chunk, "choices", None)
+        if not choices:
+            continue
+        delta = choices[0].delta
+
+        # Reasoning models (also exposed by LM Studio) stream their chain of
+        # thought separately; surface it as a thinking event when present.
+        thinking = getattr(delta, "reasoning_content", None) or getattr(
+            delta, "reasoning", None
+        )
+        if thinking:
+            yield f"event: thinking\ndata: {json.dumps({'delta': thinking})}\n\n"
+
+        content = getattr(delta, "content", None)
+        if content:
+            yield f"data: {json.dumps({'delta': content})}\n\n"

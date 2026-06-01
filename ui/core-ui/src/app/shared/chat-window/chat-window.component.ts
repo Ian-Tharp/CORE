@@ -64,13 +64,22 @@ export class ChatWindowComponent implements OnChanges {
   statusMessage = ''; // For displaying loading/heartbeat status
   defaultThinkingExpanded = false; // Global preference for showing thinking
 
-  // Provider + model selection
+  // Provider + model selection.
+  // The 'ollama' option value means "the active local provider" — the backend
+  // routes it to whichever local provider CORE_LOCAL_PROVIDER selects (Ollama or
+  // LM Studio), so only the label and model list change per machine.
   readonly providers: Array<'openai' | 'ollama'> = ['openai', 'ollama'];
   selectedProvider: 'openai' | 'ollama' = 'openai';
   models: string[] = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o', 'o3', 'o4-mini'];
   selectedModel = this.models[0];
   isPullingModel = false;
   newLocalModelName = '';
+
+  // Active local provider, resolved dynamically from the backend so the panel is
+  // agnostic (Ollama on one machine, LM Studio on another).
+  localProvider: 'ollama' | 'lmstudio' = 'ollama';
+  localProviderLabel = 'Ollama';
+  localSupportsPull = true;
 
   // Knowledgebase RAG options
   kbMode: 'none' | 'all' | 'file' = 'none';
@@ -103,6 +112,27 @@ export class ChatWindowComponent implements OnChanges {
     if (savedPref !== null) {
       this.defaultThinkingExpanded = savedPref === 'true';
     }
+
+    // Resolve which local provider this machine runs (Ollama vs LM Studio) so the
+    // "Local" option is labelled and behaves correctly without a code change.
+    this.loadLocalProviderInfo();
+  }
+
+  private loadLocalProviderInfo(): void {
+    this.http
+      .get<{ provider: 'ollama' | 'lmstudio'; label: string; supports_pull: boolean }>(
+        `${this._apiUrl}/local-llm/provider`
+      )
+      .subscribe({
+        next: (info) => {
+          this.localProvider = info.provider;
+          this.localProviderLabel = info.label;
+          this.localSupportsPull = info.supports_pull;
+        },
+        error: () => {
+          // Keep the Ollama defaults if the probe fails.
+        }
+      });
   }
 
   onProviderChange(): void {
@@ -116,17 +146,24 @@ export class ChatWindowComponent implements OnChanges {
   }
 
   private loadLocalModels(): void {
-    this.http.get<{ models: Array<{ name: string }> }>(`${this._apiUrl}/local-llm/models`).subscribe({
+    // Provider-aware fallback: LM Studio models are loaded in-app (no fixed
+    // default), so fall back to a neutral placeholder rather than an Ollama tag.
+    const fallback = this.localProvider === 'lmstudio' ? ['local-model'] : ['gpt-oss:20b'];
+    this.http.get<{ provider?: string; models: Array<{ name: string }> }>(`${this._apiUrl}/local-llm/models`).subscribe({
       next: (res) => {
+        if (res.provider === 'ollama' || res.provider === 'lmstudio') {
+          this.localProvider = res.provider;
+          this.localProviderLabel = res.provider === 'lmstudio' ? 'LM Studio' : 'Ollama';
+        }
         this.models = (res.models || []).map((m) => m.name);
         if (this.models.length === 0) {
-          this.models = ['gpt-oss:20b'];
+          this.models = fallback;
         }
         this.selectedModel = this.models[0];
       },
       error: () => {
         // Fallback sensible default; user can still type
-        this.models = ['gpt-oss:20b'];
+        this.models = fallback;
         this.selectedModel = this.models[0];
       }
     });
