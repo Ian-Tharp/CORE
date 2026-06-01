@@ -34,6 +34,7 @@ from app.core.tools.dispatcher import (
 # FileOperationsTool
 # ---------------------------------------------------------------------------
 
+
 class TestFileOperationsTool:
     @pytest.fixture
     def workspace(self, tmp_path):
@@ -71,7 +72,9 @@ class TestFileOperationsTool:
         SENTINEL TEST — write action must create the file with the given content.
         Skip write → file does not exist → assertion fails.
         """
-        result = tool.execute({"action": "write", "path": "output.txt", "content": "WRITTEN_DATA"})
+        result = tool.execute(
+            {"action": "write", "path": "output.txt", "content": "WRITTEN_DATA"}
+        )
         assert result["status"] == "success"
         assert (workspace / "output.txt").read_text() == "WRITTEN_DATA"
 
@@ -80,7 +83,9 @@ class TestFileOperationsTool:
         assert result["bytes_written"] == 5
 
     def test_write_creates_parent_dirs(self, tool, workspace):
-        result = tool.execute({"action": "write", "path": "a/b/c.txt", "content": "deep"})
+        result = tool.execute(
+            {"action": "write", "path": "a/b/c.txt", "content": "deep"}
+        )
         assert result["status"] == "success"
         assert (workspace / "a" / "b" / "c.txt").exists()
 
@@ -110,13 +115,17 @@ class TestFileOperationsTool:
         """
         (workspace / "SENTINEL_UNIQUE_MODULE.py").write_text("")
         (workspace / "other.ts").write_text("")
-        result = tool.execute({"action": "search", "pattern": "SENTINEL_UNIQUE", "path": "."})
+        result = tool.execute(
+            {"action": "search", "pattern": "SENTINEL_UNIQUE", "path": "."}
+        )
         assert result["status"] == "success"
         assert result["count"] >= 1
         assert any("SENTINEL_UNIQUE_MODULE" in m for m in result["matches"])
 
     def test_search_returns_empty_for_no_matches(self, tool):
-        result = tool.execute({"action": "search", "pattern": "ZZZNOMATCH_XYZ", "path": "."})
+        result = tool.execute(
+            {"action": "search", "pattern": "ZZZNOMATCH_XYZ", "path": "."}
+        )
         assert result["count"] == 0
 
     # --- safety ---
@@ -145,25 +154,28 @@ class TestFileOperationsTool:
 # GitTool
 # ---------------------------------------------------------------------------
 
+
 class TestGitTool:
     @pytest.fixture
     def git_repo(self, tmp_path):
         """Initialise a minimal bare git repo for testing."""
         import subprocess
+
         subprocess.run(["git", "init", str(tmp_path)], capture_output=True)
         subprocess.run(
             ["git", "config", "user.email", "test@test.com"],
-            cwd=str(tmp_path), capture_output=True
+            cwd=str(tmp_path),
+            capture_output=True,
         )
         subprocess.run(
             ["git", "config", "user.name", "Test"],
-            cwd=str(tmp_path), capture_output=True
+            cwd=str(tmp_path),
+            capture_output=True,
         )
         (tmp_path / "README.md").write_text("# Test")
         subprocess.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "init"],
-            cwd=str(tmp_path), capture_output=True
+            ["git", "commit", "-m", "init"], cwd=str(tmp_path), capture_output=True
         )
         return tmp_path
 
@@ -195,7 +207,10 @@ class TestGitTool:
         tool = GitTool(workspace_dir=os.getcwd())
         result = tool.execute({"action": "commit"})
         assert result["status"] == "error"
-        assert "allow-list" in result["result"].lower() or "not in" in result["result"].lower()
+        assert (
+            "allow-list" in result["result"].lower()
+            or "not in" in result["result"].lower()
+        )
 
     def test_git_push_blocked(self):
         tool = GitTool(workspace_dir=os.getcwd())
@@ -215,8 +230,10 @@ class TestGitTool:
     def test_git_not_found_returns_error(self):
         """If git is missing, return error dict (not exception)."""
         tool = GitTool(workspace_dir=os.getcwd())
-        with patch("app.core.tools.dispatcher.subprocess.run",
-                   side_effect=FileNotFoundError("git not found")):
+        with patch(
+            "app.core.tools.dispatcher.subprocess.run",
+            side_effect=FileNotFoundError("git not found"),
+        ):
             result = tool.execute({"action": "status"})
         assert result["status"] == "error"
         assert "git" in result["result"].lower()
@@ -225,6 +242,7 @@ class TestGitTool:
 # ---------------------------------------------------------------------------
 # WebResearchTool
 # ---------------------------------------------------------------------------
+
 
 class TestWebResearchTool:
     @pytest.fixture
@@ -263,9 +281,12 @@ class TestWebResearchTool:
 
     def test_timeout_returns_error(self, tool):
         import httpx as _httpx
+
         with patch("app.core.tools.dispatcher.httpx.Client") as mock_cls:
             ctx = MagicMock()
-            ctx.__enter__.return_value.get.side_effect = _httpx.TimeoutException("timeout")
+            ctx.__enter__.return_value.get.side_effect = _httpx.TimeoutException(
+                "timeout"
+            )
             ctx.__exit__.return_value = False
             mock_cls.return_value = ctx
             result = tool.execute({"url": "https://slow.example.com"})
@@ -294,6 +315,7 @@ class TestWebResearchTool:
 # ToolDispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestToolDispatcher:
     def test_dispatcher_calls_handler(self, tmp_path):
         """
@@ -303,7 +325,9 @@ class TestToolDispatcher:
         """
         (tmp_path / "sentinel.txt").write_text("SENTINEL_VALUE_IN_FILE")
         dispatcher = ToolDispatcher(workspace_dir=str(tmp_path))
-        result = dispatcher.dispatch("file_operations", {"action": "read", "path": "sentinel.txt"})
+        result = dispatcher.dispatch(
+            "file_operations", {"action": "read", "path": "sentinel.txt"}
+        )
         assert "SENTINEL_VALUE_IN_FILE" in result["result"]
 
     def test_unknown_tool_returns_error(self, tmp_path):
@@ -339,7 +363,9 @@ class TestToolDispatcher:
         """
         dispatcher = ToolDispatcher(workspace_dir=str(tmp_path))
         with patch("app.core.tools.dispatcher.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout="on branch main\n", stderr="")
+            mock_run.return_value = MagicMock(
+                returncode=0, stdout="on branch main\n", stderr=""
+            )
             result = dispatcher.dispatch("git", {"action": "status"})
         mock_run.assert_called_once()
         call_cmd = mock_run.call_args[0][0]
@@ -349,8 +375,9 @@ class TestToolDispatcher:
     def test_web_research_dispatch_calls_httpx(self, tmp_path):
         """Dispatching 'web_research' must trigger an HTTP request."""
         dispatcher = ToolDispatcher(workspace_dir=str(tmp_path))
-        mock_resp = MagicMock(content=b"page content", status_code=200,
-                              url="https://ex.com", headers={})
+        mock_resp = MagicMock(
+            content=b"page content", status_code=200, url="https://ex.com", headers={}
+        )
         with patch("app.core.tools.dispatcher.httpx.Client") as mock_cls:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = mock_resp
@@ -364,13 +391,18 @@ class TestToolDispatcher:
 # ReasoningAgent integration — dispatcher is used (not simulation)
 # ---------------------------------------------------------------------------
 
+
 class TestReasoningAgentUsesDispatcher:
     def _make_step(self, tool: str, params: dict = None):
         from app.models.core_state import PlanStep
-        return PlanStep(name="test-step", description="Test", tool=tool, params=params or {})
+
+        return PlanStep(
+            name="test-step", description="Test", tool=tool, params=params or {}
+        )
 
     def _make_plan(self, *steps):
         from app.models.core_state import ExecutionPlan
+
         return ExecutionPlan(goal="test", steps=list(steps))
 
     def test_dispatcher_called_for_file_operations(self, tmp_path):
@@ -386,7 +418,9 @@ class TestReasoningAgentUsesDispatcher:
         agent = ReasoningAgent()
         agent.tool_dispatcher = ToolDispatcher(workspace_dir=str(tmp_path))
 
-        step = self._make_step("file_operations", {"action": "read", "path": "target.txt"})
+        step = self._make_step(
+            "file_operations", {"action": "read", "path": "target.txt"}
+        )
         plan = self._make_plan(step)
 
         results = agent.execute_plan(plan)
@@ -402,7 +436,10 @@ class TestReasoningAgentUsesDispatcher:
         agent = ReasoningAgent()
         mock_dispatcher = MagicMock()
         mock_dispatcher.available_tools = ["git"]
-        mock_dispatcher.dispatch.return_value = {"result": "SENTINEL_GIT_OUT", "status": "success"}
+        mock_dispatcher.dispatch.return_value = {
+            "result": "SENTINEL_GIT_OUT",
+            "status": "success",
+        }
         mock_dispatcher.get_artifacts.return_value = []
         agent.tool_dispatcher = mock_dispatcher
 
@@ -421,12 +458,15 @@ class TestReasoningAgentUsesDispatcher:
         mock_dispatcher = MagicMock()
         mock_dispatcher.available_tools = ["file_operations"]
         mock_dispatcher.dispatch.return_value = {
-            "result": "Permission denied", "status": "error"
+            "result": "Permission denied",
+            "status": "error",
         }
         mock_dispatcher.get_artifacts.return_value = []
         agent.tool_dispatcher = mock_dispatcher
 
-        step = self._make_step("file_operations", {"action": "read", "path": "secret.txt"})
+        step = self._make_step(
+            "file_operations", {"action": "read", "path": "secret.txt"}
+        )
         plan = self._make_plan(step)
         results = agent.execute_plan(plan)
 

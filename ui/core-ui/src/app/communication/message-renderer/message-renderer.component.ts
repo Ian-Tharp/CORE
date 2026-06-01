@@ -69,7 +69,7 @@ export class MessageRendererComponent implements OnInit {
   }
 
   private renderContent() {
-    if (!this.message) return;
+    if (!this.message) {return;}
 
     switch (this.message.message_type) {
       case 'markdown':
@@ -158,7 +158,7 @@ export class MessageRendererComponent implements OnInit {
       /\[.*\]\(.*\)/,          // Links
       /^[-*+]\s/m,             // Lists
       /^>\s/m,                 // Blockquotes
-      /`[^`]+`/,               // Inline code
+      /`[^`]+`/               // Inline code
     ];
 
     return markdownPatterns.some(pattern => pattern.test(text));

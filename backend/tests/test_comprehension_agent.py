@@ -14,6 +14,7 @@ from app.core.agents.comprehension_agent import ComprehensionAgent
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_llm_response(content: str) -> MagicMock:
     """Build a minimal mock that looks like an openai ChatCompletion response."""
     msg = MagicMock()
@@ -32,27 +33,36 @@ _VALID_INTENT_JSON = '{"type":"task","description":"do a thing","confidence":0.9
 # check_knowledge_base — unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestCheckKnowledgeBase:
     def setup_method(self):
         self.agent = ComprehensionAgent()
 
     def test_returns_none_when_no_api_key(self):
         """If no API key is resolvable, returns None gracefully (never raises)."""
-        with patch.dict("os.environ", {}, clear=True), \
-             patch("app.core.agents.comprehension_agent.VALID_API_KEYS", set(), create=True):
+        with patch.dict("os.environ", {}, clear=True), patch(
+            "app.core.agents.comprehension_agent.VALID_API_KEYS", set(), create=True
+        ):
             # Patch auth import to return empty set
-            with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_client_cls:
+            with patch(
+                "app.core.agents.comprehension_agent.httpx.Client"
+            ) as mock_client_cls:
                 # Even if httpx is called (it shouldn't be), make it safe
-                mock_client_cls.return_value.__enter__.return_value.post.return_value.status_code = 200
-                mock_client_cls.return_value.__enter__.return_value.post.return_value.json.return_value = []
+                mock_client_cls.return_value.__enter__.return_value.post.return_value.status_code = (
+                    200
+                )
+                mock_client_cls.return_value.__enter__.return_value.post.return_value.json.return_value = (
+                    []
+                )
                 result = self.agent.check_knowledge_base("anything")
         # Should not raise; None is acceptable when no key
         assert result is None or isinstance(result, str)
 
     def test_returns_none_on_http_error(self):
         """Non-200 KB response → None, no exception propagation."""
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 503
@@ -61,8 +71,9 @@ class TestCheckKnowledgeBase:
 
     def test_returns_none_when_no_results(self):
         """Empty results list → None."""
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -72,13 +83,18 @@ class TestCheckKnowledgeBase:
 
     def test_returns_none_when_all_results_below_similarity_threshold(self):
         """Results with similarity < 0.30 are filtered out → None."""
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
             mock_http.post.return_value.json.return_value = [
-                {"title": "Low Score Doc", "similarity": 0.10, "description": "irrelevant"},
+                {
+                    "title": "Low Score Doc",
+                    "similarity": 0.10,
+                    "description": "irrelevant",
+                },
                 {"title": "Another Low", "similarity": 0.05, "description": "nope"},
             ]
             result = self.agent.check_knowledge_base("query")
@@ -89,8 +105,9 @@ class TestCheckKnowledgeBase:
         SENTINEL TEST — proves format is correct.
         If similarity threshold or formatting logic changes, this fails.
         """
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -117,16 +134,20 @@ class TestCheckKnowledgeBase:
 
     def test_returns_none_on_network_exception(self):
         """Network failure → None, never raises."""
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
-            mock_cls.return_value.__enter__.side_effect = Exception("connection refused")
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+            mock_cls.return_value.__enter__.side_effect = Exception(
+                "connection refused"
+            )
             result = self.agent.check_knowledge_base("query")
         assert result is None
 
     def test_sends_correct_payload_and_headers(self):
         """Verifies the outbound HTTP call uses the right endpoint, key, and limit."""
-        with patch("app.core.agents.comprehension_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "my-secret-key"}):
+        with patch(
+            "app.core.agents.comprehension_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "my-secret-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -146,6 +167,7 @@ class TestCheckKnowledgeBase:
 # analyze_intent + RAG injection — sentinel-value tests
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeIntentRAG:
     def setup_method(self):
         self.agent = ComprehensionAgent()
@@ -158,10 +180,16 @@ class TestAnalyzeIntentRAG:
         sentinel_context = "Relevant knowledge base context:\n- [SENTINEL_DOC] (relevance: 0.91): SENTINEL_FACT_XYZ"
 
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response(_VALID_INTENT_JSON)
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            _VALID_INTENT_JSON
+        )
 
-        with patch.object(self.agent, "check_knowledge_base", return_value=sentinel_context), \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "check_knowledge_base", return_value=sentinel_context
+        ), patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.analyze_intent("what is the auth system?")
 
         mock_client.chat.completions.create.assert_called_once()
@@ -176,10 +204,14 @@ class TestAnalyzeIntentRAG:
     def test_no_rag_context_uses_base_system_prompt_only(self):
         """When KB returns None, prompt equals base system prompt — no extra content."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response(_VALID_INTENT_JSON)
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            _VALID_INTENT_JSON
+        )
 
-        with patch.object(self.agent, "check_knowledge_base", return_value=None), \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(self.agent, "check_knowledge_base", return_value=None), patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.analyze_intent("hello")
 
         call_kwargs = mock_client.chat.completions.create.call_args[1]
@@ -196,14 +228,22 @@ class TestAnalyzeIntentRAG:
         sentinel = "Relevant knowledge base context:\n- [KB_APPEND] (relevance: 0.75): appended_content"
 
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response(_VALID_INTENT_JSON)
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            _VALID_INTENT_JSON
+        )
 
-        with patch.object(self.agent, "check_knowledge_base", return_value=sentinel), \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "check_knowledge_base", return_value=sentinel
+        ), patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.analyze_intent("query")
 
         call_kwargs = mock_client.chat.completions.create.call_args[1]
-        system_content = next(m for m in call_kwargs["messages"] if m["role"] == "system")["content"]
+        system_content = next(
+            m for m in call_kwargs["messages"] if m["role"] == "system"
+        )["content"]
 
         # Base prompt still present
         assert "Comprehension layer of the CORE cognitive system" in system_content
@@ -218,10 +258,16 @@ class TestAnalyzeIntentRAG:
         Fails if check_knowledge_base is called with a different string.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response(_VALID_INTENT_JSON)
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            _VALID_INTENT_JSON
+        )
 
-        with patch.object(self.agent, "check_knowledge_base", return_value=None) as mock_kb, \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "check_knowledge_base", return_value=None
+        ) as mock_kb, patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.analyze_intent("UNIQUE_QUERY_STRING_42")
 
         mock_kb.assert_called_once_with("UNIQUE_QUERY_STRING_42")
@@ -229,16 +275,28 @@ class TestAnalyzeIntentRAG:
     def test_kb_failure_does_not_break_intent_classification(self):
         """RAG is best-effort: KB exception must not cause analyze_intent to raise."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response(_VALID_INTENT_JSON)
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            _VALID_INTENT_JSON
+        )
 
-        with patch.object(self.agent, "check_knowledge_base", side_effect=Exception("KB down")), \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "check_knowledge_base", side_effect=Exception("KB down")
+        ), patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             # Should not raise — falls back gracefully
             result = self.agent.analyze_intent("will this crash?")
 
         # Returns a valid UserIntent regardless of KB failure
         assert result is not None
-        assert result.type in ("task", "conversation", "question", "clarification", "conversation")
+        assert result.type in (
+            "task",
+            "conversation",
+            "question",
+            "clarification",
+            "conversation",
+        )
 
     def test_intent_parsed_correctly_from_llm_response_with_rag(self):
         """End-to-end: RAG context + valid LLM JSON → correct UserIntent fields."""
@@ -248,8 +306,12 @@ class TestAnalyzeIntentRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response(llm_json)
 
-        with patch.object(self.agent, "check_knowledge_base", return_value=sentinel_ctx), \
-             patch("app.core.agents.comprehension_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "check_knowledge_base", return_value=sentinel_ctx
+        ), patch(
+            "app.core.agents.comprehension_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             intent = self.agent.analyze_intent("how does JWT work here?")
 
         assert intent.type == "question"
@@ -260,6 +322,7 @@ class TestAnalyzeIntentRAG:
 # ---------------------------------------------------------------------------
 # detect_ambiguities — pure regex pattern matching (UNTESTED before this block)
 # ---------------------------------------------------------------------------
+
 
 class TestDetectAmbiguities:
     def setup_method(self):
@@ -278,7 +341,9 @@ class TestDetectAmbiguities:
 
     def test_clear_input_returns_empty_list(self):
         """Input with no ambiguities must return []."""
-        result = self.agent.detect_ambiguities("Please add a login button to the navbar.")
+        result = self.agent.detect_ambiguities(
+            "Please add a login button to the navbar."
+        )
         assert result == []
 
     def test_pronoun_it_detected(self):
@@ -316,7 +381,10 @@ class TestDetectAmbiguities:
         Remove comparative pattern → 'make it faster than' unanswered → test fails.
         """
         result = self.agent.detect_ambiguities("Make it faster than before")
-        assert any("comparative" in r.lower() or "better" in r.lower() or "faster" in r.lower() for r in result)
+        assert any(
+            "comparative" in r.lower() or "better" in r.lower() or "faster" in r.lower()
+            for r in result
+        )
 
     def test_deduplication_applied(self):
         """
@@ -339,6 +407,7 @@ class TestDetectAmbiguities:
 # ---------------------------------------------------------------------------
 # _build_system_prompt — sanity check on required content
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSystemPrompt:
     def setup_method(self):

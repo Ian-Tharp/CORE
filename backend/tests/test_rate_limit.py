@@ -32,6 +32,7 @@ from app.middleware.rate_limit import (
 
 # ───────── RateLimiter core ─────────
 
+
 class TestRateLimiterInit:
     def test_defaults(self):
         rl = RateLimiter()
@@ -138,6 +139,7 @@ class TestRateLimiterReset:
 
 # ───────── RedisRateLimiter ─────────
 
+
 class TestRedisRateLimiterInit:
     def test_defaults(self):
         rl = RedisRateLimiter()
@@ -201,7 +203,9 @@ class TestRedisRateLimiterAllowAsync:
         # Return: [allowed=1, tokens_remaining="4.0", retry_after_ms=0]
         mock_redis.evalsha = AsyncMock(return_value=[1, "4.0", 0])
 
-        rl = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        rl = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         rl._script_sha = "testsha"
         rl._redis_healthy = True
 
@@ -214,7 +218,9 @@ class TestRedisRateLimiterAllowAsync:
         mock_redis = AsyncMock()
         mock_redis.evalsha = AsyncMock(return_value=[0, "0.0", 500])
 
-        rl = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        rl = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         rl._script_sha = "testsha"
         rl._redis_healthy = True
 
@@ -243,7 +249,9 @@ class TestRedisRateLimiterAllowAsync:
         mock_redis = AsyncMock()
         mock_redis.evalsha = AsyncMock(side_effect=ConnectionError("Redis gone"))
 
-        rl = RedisRateLimiter(requests_per_minute=60, burst_size=2, redis_client=mock_redis)
+        rl = RedisRateLimiter(
+            requests_per_minute=60, burst_size=2, redis_client=mock_redis
+        )
         rl._script_sha = "testsha"
         rl._redis_healthy = True
 
@@ -257,7 +265,9 @@ class TestRedisRateLimiterAllowAsync:
         mock_redis = AsyncMock()
         mock_redis.evalsha = AsyncMock(return_value=[1, "0.0", 0])
 
-        rl = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        rl = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         rl._script_sha = "testsha"
         rl._redis_healthy = True
 
@@ -294,7 +304,9 @@ class TestRedisRateLimiterRetryAfterAsync:
         mock_redis = AsyncMock()
         mock_redis.evalsha = AsyncMock(return_value=[0, "0.0", 1500])
 
-        rl = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        rl = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         rl._script_sha = "testsha"
         rl._redis_healthy = True
 
@@ -315,8 +327,10 @@ class TestRedisRateLimiterResetAsync:
     async def test_reset_deletes_redis_key(self):
         mock_redis = AsyncMock()
         rl = RedisRateLimiter(
-            requests_per_minute=60, burst_size=5,
-            redis_client=mock_redis, key_prefix="rl",
+            requests_per_minute=60,
+            burst_size=5,
+            redis_client=mock_redis,
+            key_prefix="rl",
         )
         rl._redis_healthy = True
 
@@ -381,6 +395,7 @@ class TestRedisRateLimiterProperties:
 
 # ───────── Key extraction ─────────
 
+
 class TestGetClientIP:
     def test_direct_client(self):
         req = MagicMock(spec=["headers", "client"])
@@ -416,6 +431,7 @@ class TestGetApiKey:
 
 # ───────── check_rate_limit ─────────
 
+
 class TestCheckRateLimitSync:
     @pytest.mark.asyncio
     async def test_allowed_passes(self):
@@ -442,7 +458,9 @@ class TestCheckRateLimitAsync:
     async def test_allowed_with_redis_limiter(self):
         mock_redis = AsyncMock()
         mock_redis.evalsha = AsyncMock(return_value=[1, "4.0", 0])
-        limiter = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        limiter = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         limiter._script_sha = "sha"
         limiter._redis_healthy = True
 
@@ -456,7 +474,9 @@ class TestCheckRateLimitAsync:
         mock_redis = AsyncMock()
         # First call: denied
         mock_redis.evalsha = AsyncMock(return_value=[0, "0.0", 2000])
-        limiter = RedisRateLimiter(requests_per_minute=60, burst_size=5, redis_client=mock_redis)
+        limiter = RedisRateLimiter(
+            requests_per_minute=60, burst_size=5, redis_client=mock_redis
+        )
         limiter._script_sha = "sha"
         limiter._redis_healthy = True
 
@@ -473,6 +493,7 @@ class TestCheckRateLimitAsync:
 
 
 # ───────── rate_limit decorator ─────────
+
 
 class TestRateLimitDecorator:
     @pytest.mark.asyncio
@@ -519,6 +540,7 @@ class TestRateLimitDecorator:
 
 # ───────── upgrade_limiters_to_redis ─────────
 
+
 class TestUpgradeLimitersToRedis:
     @pytest.mark.asyncio
     async def test_upgrade_success(self):
@@ -533,11 +555,14 @@ class TestUpgradeLimitersToRedis:
     @pytest.mark.asyncio
     async def test_upgrade_failure_keeps_in_memory(self):
         """upgrade_limiters_to_redis should not raise even if Redis is unavailable."""
-        with patch.object(RedisRateLimiter, "create", AsyncMock(side_effect=Exception("no redis"))):
+        with patch.object(
+            RedisRateLimiter, "create", AsyncMock(side_effect=Exception("no redis"))
+        ):
             await upgrade_limiters_to_redis()  # should not raise
 
 
 # ───────── Lua script ─────────
+
 
 class TestTokenBucketLua:
     def test_lua_script_is_string(self):
@@ -552,6 +577,7 @@ class TestTokenBucketLua:
 
 
 # ───────── Module-level limiters ─────────
+
 
 class TestModuleLimiters:
     def test_engine_limiter_exists(self):

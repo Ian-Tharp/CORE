@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { TileMetadataService } from '../engine/tile-metadata.service';
-import { TileWorldMetadata, QuickNote, PinnedItem, AIObservation, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
+import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
 import { CreativeDataService, WikiPage, Board } from '../../../creative-design-product/services/creative-data.service';
 
 export interface SelectedTileInfo {
@@ -187,10 +187,10 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────
 
   onPasteCapture(event: ClipboardEvent): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
 
     const items = event.clipboardData?.items;
-    if (!items) return;
+    if (!items) {return;}
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -213,7 +213,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   }
 
   private captureImage(file: File): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -224,9 +224,9 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   }
 
   captureLink(url?: string): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
     const linkUrl = url || this.quickCaptureUrl.trim();
-    if (!linkUrl) return;
+    if (!linkUrl) {return;}
 
     this.metadataService.addPinnedLink(
       this.selectedTile.index,
@@ -267,7 +267,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   }
 
   quickAIPrompt(action: string): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
 
     let prompt = '';
     switch (action) {
@@ -313,7 +313,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   }
 
   getConnectionPartnerIndex(connection: WorldConnection): number {
-    if (!this.selectedTile) return -1;
+    if (!this.selectedTile) {return -1;}
     return connection.fromTileIndex === this.selectedTile.index
       ? connection.toTileIndex
       : connection.fromTileIndex;
@@ -330,7 +330,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────
 
   createWikiPage(): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
     const title = this.metadata?.name || `World ${this.selectedTile.index}`;
     const page = this.creativeData.createWiki(undefined, `${title} - Lore`);
     this.metadataService.linkWikiPage(this.selectedTile.index, page.id);
@@ -345,7 +345,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   }
 
   createBoard(): void {
-    if (!this.selectedTile) return;
+    if (!this.selectedTile) {return;}
     const title = this.metadata?.name || `World ${this.selectedTile.index}`;
     const board = this.creativeData.createBoard({ title: `${title} - Mood Board` });
     this.metadataService.linkBoard(this.selectedTile.index, board.id);
@@ -364,7 +364,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────
 
   get hasContent(): boolean {
-    if (!this.metadata) return false;
+    if (!this.metadata) {return false;}
     return !!(
       this.metadata.name ||
       this.metadata.description ||

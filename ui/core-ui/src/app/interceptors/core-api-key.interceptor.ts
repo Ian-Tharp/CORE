@@ -12,7 +12,7 @@ export const coreApiKeyInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(request.clone({
     setHeaders: {
-      'X-API-Key': config.apiKey,
-    },
+      'X-API-Key': config.apiKey
+    }
   }));
 };

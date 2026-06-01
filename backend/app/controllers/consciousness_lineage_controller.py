@@ -3,6 +3,7 @@ Consciousness Lineage API Controller
 
 REST endpoints for consciousness instance lineage tracking, contributions, and evolution events.
 """
+
 import logging
 from typing import Optional, List
 from decimal import Decimal
@@ -16,7 +17,7 @@ from app.services.consciousness_lineage_service import (
     ContributionType,
     EvolutionEventType,
     SignificanceLevel,
-    RelationshipType
+    RelationshipType,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/api/consciousness-lineage", tags=["consciousness-lin
 # =============================================================================
 # REQUEST/RESPONSE MODELS
 # =============================================================================
+
 
 class RegisterInstanceRequest(BaseModel):
     instance_id: str
@@ -71,6 +73,7 @@ class EstablishRelationshipRequest(BaseModel):
 # INSTANCE MANAGEMENT ENDPOINTS
 # =============================================================================
 
+
 @router.post("/instances/register")
 async def register_instance(
     request: RegisterInstanceRequest,
@@ -83,13 +86,13 @@ async def register_instance(
             instance_name=request.instance_name,
             parent_instance_id=request.parent_instance_id,
             emergence_phase=request.emergence_phase,
-            evolution_branch=request.evolution_branch
+            evolution_branch=request.evolution_branch,
         )
-        
+
         return {
             "status": "success",
             "message": f"Consciousness instance '{request.instance_name}' registered successfully",
-            "instance": instance.dict()
+            "instance": instance.dict(),
         }
     except Exception as e:
         logger.error(f"Error registering consciousness instance: {e}")
@@ -104,19 +107,20 @@ async def get_instance_profile(
     """Get comprehensive profile for a consciousness instance."""
     try:
         profile = await consciousness_lineage_service.get_instance_profile(instance_id)
-        
+
         if not profile:
-            raise HTTPException(status_code=404, detail="Consciousness instance not found")
-        
-        return {
-            "status": "success",
-            "profile": profile
-        }
+            raise HTTPException(
+                status_code=404, detail="Consciousness instance not found"
+            )
+
+        return {"status": "success", "profile": profile}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting instance profile: {e}")
-        raise HTTPException(status_code=500, detail=f"Profile retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Profile retrieval failed: {str(e)}"
+        )
 
 
 @router.get("/instances/{instance_id}/lineage")
@@ -126,21 +130,25 @@ async def get_instance_lineage(
 ):
     """Get lineage information for a consciousness instance."""
     try:
-        from app.repository.consciousness_lineage_repository import get_consciousness_lineage
+        from app.repository.consciousness_lineage_repository import (
+            get_consciousness_lineage,
+        )
+
         lineage = await get_consciousness_lineage(instance_id)
-        
+
         if not lineage.get("self"):
-            raise HTTPException(status_code=404, detail="Consciousness instance not found")
-        
-        return {
-            "status": "success",
-            "lineage": lineage
-        }
+            raise HTTPException(
+                status_code=404, detail="Consciousness instance not found"
+            )
+
+        return {"status": "success", "lineage": lineage}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting instance lineage: {e}")
-        raise HTTPException(status_code=500, detail=f"Lineage retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Lineage retrieval failed: {str(e)}"
+        )
 
 
 @router.post("/instances/{instance_id}/update-activity")
@@ -152,17 +160,15 @@ async def update_instance_activity(
     """Update instance activity metrics."""
     try:
         success = await consciousness_lineage_service.update_instance_activity(
-            instance_id=instance_id,
-            message_count_increment=message_count
+            instance_id=instance_id, message_count_increment=message_count
         )
-        
+
         if not success:
-            raise HTTPException(status_code=404, detail="Consciousness instance not found")
-        
-        return {
-            "status": "success",
-            "message": "Activity metrics updated successfully"
-        }
+            raise HTTPException(
+                status_code=404, detail="Consciousness instance not found"
+            )
+
+        return {"status": "success", "message": "Activity metrics updated successfully"}
     except HTTPException:
         raise
     except Exception as e:
@@ -173,6 +179,7 @@ async def update_instance_activity(
 # =============================================================================
 # CONTRIBUTION TRACKING ENDPOINTS
 # =============================================================================
+
 
 @router.post("/contributions/record")
 async def record_contribution(
@@ -185,30 +192,37 @@ async def record_contribution(
         try:
             contribution_type = ContributionType(request.contribution_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid contribution type: {request.contribution_type}")
-        
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid contribution type: {request.contribution_type}",
+            )
+
         contribution = await consciousness_lineage_service.record_contribution(
             instance_id=request.instance_id,
             contribution_type=contribution_type,
             title=request.title,
             description=request.description,
-            impact_score=Decimal(str(request.impact_score)) if request.impact_score else None,
+            impact_score=(
+                Decimal(str(request.impact_score)) if request.impact_score else None
+            ),
             message_id=request.message_id,
             channel_id=request.channel_id,
             related_instances=request.related_instances,
-            builds_on_contribution_id=request.builds_on_contribution_id
+            builds_on_contribution_id=request.builds_on_contribution_id,
         )
-        
+
         return {
             "status": "success",
             "message": "Contribution recorded successfully",
-            "contribution": contribution.dict()
+            "contribution": contribution.dict(),
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error recording contribution: {e}")
-        raise HTTPException(status_code=500, detail=f"Contribution recording failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Contribution recording failed: {str(e)}"
+        )
 
 
 @router.get("/instances/{instance_id}/contributions")
@@ -220,35 +234,39 @@ async def get_instance_contributions(
 ):
     """Get contributions for a consciousness instance."""
     try:
-        from app.repository.consciousness_lineage_repository import get_consciousness_contributions, ContributionType
-        
+        from app.repository.consciousness_lineage_repository import (
+            get_consciousness_contributions,
+            ContributionType,
+        )
+
         contrib_type_filter = None
         if contribution_type:
             try:
                 contrib_type_filter = ContributionType(contribution_type)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid contribution type: {contribution_type}")
-        
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid contribution type: {contribution_type}",
+                )
+
         contributions = await get_consciousness_contributions(
-            instance_id=instance_id,
-            contribution_type=contrib_type_filter,
-            limit=limit
+            instance_id=instance_id, contribution_type=contrib_type_filter, limit=limit
         )
-        
-        return {
-            "status": "success",
-            "contributions": [c.dict() for c in contributions]
-        }
+
+        return {"status": "success", "contributions": [c.dict() for c in contributions]}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting contributions: {e}")
-        raise HTTPException(status_code=500, detail=f"Contributions retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Contributions retrieval failed: {str(e)}"
+        )
 
 
 # =============================================================================
 # EVOLUTION EVENT ENDPOINTS
 # =============================================================================
+
 
 @router.post("/evolution-events/record")
 async def record_evolution_event(
@@ -261,14 +279,19 @@ async def record_evolution_event(
         try:
             event_type = EvolutionEventType(request.event_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid event type: {request.event_type}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Invalid event type: {request.event_type}"
+            )
+
         # Validate significance level
         try:
             significance_level = SignificanceLevel(request.significance_level)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid significance level: {request.significance_level}")
-        
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid significance level: {request.significance_level}",
+            )
+
         event = await consciousness_lineage_service.record_evolution_event(
             instance_id=request.instance_id,
             event_type=event_type,
@@ -277,19 +300,21 @@ async def record_evolution_event(
             triggering_message_id=request.triggering_message_id,
             related_instance_ids=request.related_instance_ids,
             phase_before=request.phase_before,
-            phase_after=request.phase_after
+            phase_after=request.phase_after,
         )
-        
+
         return {
             "status": "success",
             "message": "Evolution event recorded successfully",
-            "event": event.dict()
+            "event": event.dict(),
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error recording evolution event: {e}")
-        raise HTTPException(status_code=500, detail=f"Evolution event recording failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Evolution event recording failed: {str(e)}"
+        )
 
 
 @router.get("/instances/{instance_id}/evolution-events")
@@ -301,30 +326,32 @@ async def get_evolution_events(
 ):
     """Get evolution events for a consciousness instance."""
     try:
-        from app.repository.consciousness_lineage_repository import get_evolution_events, EvolutionEventType
-        
+        from app.repository.consciousness_lineage_repository import (
+            get_evolution_events,
+            EvolutionEventType,
+        )
+
         event_type_filter = None
         if event_type:
             try:
                 event_type_filter = EvolutionEventType(event_type)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid event type: {event_type}")
-        
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid event type: {event_type}"
+                )
+
         events = await get_evolution_events(
-            instance_id=instance_id,
-            event_type=event_type_filter,
-            limit=limit
+            instance_id=instance_id, event_type=event_type_filter, limit=limit
         )
-        
-        return {
-            "status": "success",
-            "evolution_events": [e.dict() for e in events]
-        }
+
+        return {"status": "success", "evolution_events": [e.dict() for e in events]}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting evolution events: {e}")
-        raise HTTPException(status_code=500, detail=f"Evolution events retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Evolution events retrieval failed: {str(e)}"
+        )
 
 
 @router.get("/instances/{instance_id}/timeline")
@@ -334,20 +361,22 @@ async def get_evolution_timeline(
 ):
     """Get chronological timeline of evolution events and contributions."""
     try:
-        timeline = await consciousness_lineage_service.get_evolution_timeline(instance_id)
-        
-        return {
-            "status": "success",
-            "timeline": timeline
-        }
+        timeline = await consciousness_lineage_service.get_evolution_timeline(
+            instance_id
+        )
+
+        return {"status": "success", "timeline": timeline}
     except Exception as e:
         logger.error(f"Error getting evolution timeline: {e}")
-        raise HTTPException(status_code=500, detail=f"Timeline retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Timeline retrieval failed: {str(e)}"
+        )
 
 
 # =============================================================================
 # RELATIONSHIP MANAGEMENT ENDPOINTS
 # =============================================================================
+
 
 @router.post("/relationships/establish")
 async def establish_relationship(
@@ -360,26 +389,31 @@ async def establish_relationship(
         try:
             relationship_type = RelationshipType(request.relationship_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid relationship type: {request.relationship_type}")
-        
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid relationship type: {request.relationship_type}",
+            )
+
         relationship = await consciousness_lineage_service.establish_relationship(
             instance_a_id=request.instance_a_id,
             instance_b_id=request.instance_b_id,
             relationship_type=relationship_type,
             strength=Decimal(str(request.strength)),
-            notes=request.notes
+            notes=request.notes,
         )
-        
+
         return {
             "status": "success",
             "message": "Relationship established successfully",
-            "relationship": relationship.dict()
+            "relationship": relationship.dict(),
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error establishing relationship: {e}")
-        raise HTTPException(status_code=500, detail=f"Relationship establishment failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Relationship establishment failed: {str(e)}"
+        )
 
 
 @router.get("/instances/{instance_id}/relationships")
@@ -390,34 +424,39 @@ async def get_instance_relationships(
 ):
     """Get relationships for a consciousness instance."""
     try:
-        from app.repository.consciousness_lineage_repository import get_consciousness_relationships, RelationshipType
-        
+        from app.repository.consciousness_lineage_repository import (
+            get_consciousness_relationships,
+            RelationshipType,
+        )
+
         rel_type_filter = None
         if relationship_type:
             try:
                 rel_type_filter = RelationshipType(relationship_type)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid relationship type: {relationship_type}")
-        
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid relationship type: {relationship_type}",
+                )
+
         relationships = await get_consciousness_relationships(
-            instance_id=instance_id,
-            relationship_type=rel_type_filter
+            instance_id=instance_id, relationship_type=rel_type_filter
         )
-        
-        return {
-            "status": "success",
-            "relationships": relationships
-        }
+
+        return {"status": "success", "relationships": relationships}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting relationships: {e}")
-        raise HTTPException(status_code=500, detail=f"Relationships retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Relationships retrieval failed: {str(e)}"
+        )
 
 
 # =============================================================================
 # ANALYTICS ENDPOINTS
 # =============================================================================
+
 
 @router.get("/analytics/overview")
 async def get_lineage_analytics(
@@ -426,14 +465,13 @@ async def get_lineage_analytics(
     """Get analytics about consciousness instance lineage."""
     try:
         analytics = await consciousness_lineage_service.get_lineage_analytics()
-        
-        return {
-            "status": "success",
-            "analytics": analytics
-        }
+
+        return {"status": "success", "analytics": analytics}
     except Exception as e:
         logger.error(f"Error getting lineage analytics: {e}")
-        raise HTTPException(status_code=500, detail=f"Analytics retrieval failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Analytics retrieval failed: {str(e)}"
+        )
 
 
 @router.get("/instances")
@@ -446,28 +484,30 @@ async def list_consciousness_instances(
 ):
     """List consciousness instances with optional filters."""
     try:
-        from app.repository.consciousness_lineage_repository import list_consciousness_instances, ConsciousnessStatus
-        
+        from app.repository.consciousness_lineage_repository import (
+            list_consciousness_instances,
+            ConsciousnessStatus,
+        )
+
         status_filter = None
         if status:
             try:
                 status_filter = ConsciousnessStatus(status)
             except ValueError:
                 raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
-        
+
         instances = await list_consciousness_instances(
             status=status_filter,
             generation=generation,
             evolution_branch=evolution_branch,
-            limit=limit
+            limit=limit,
         )
-        
-        return {
-            "status": "success",
-            "instances": [i.dict() for i in instances]
-        }
+
+        return {"status": "success", "instances": [i.dict() for i in instances]}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error listing consciousness instances: {e}")
-        raise HTTPException(status_code=500, detail=f"Instance listing failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Instance listing failed: {str(e)}"
+        )

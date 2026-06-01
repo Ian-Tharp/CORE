@@ -19,6 +19,7 @@ from tests.test_communication_pagination import _make_db_pool_mock
 # count_conversations — unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestCountConversations:
     @pytest.mark.asyncio
     async def test_count_returns_integer(self):
@@ -29,7 +30,10 @@ class TestCountConversations:
         mock_conn.fetchval.return_value = 42
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             result = await count_conversations()
 
         assert result == 42
@@ -46,7 +50,10 @@ class TestCountConversations:
         mock_conn.fetchval.return_value = 3
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             result = await count_conversations(search="SENTINEL_SEARCH")
 
         assert result == 3
@@ -63,7 +70,10 @@ class TestCountConversations:
         mock_conn.fetchval.return_value = 10
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await count_conversations()
 
         sql = mock_conn.fetchval.call_args[0][0]
@@ -73,6 +83,7 @@ class TestCountConversations:
 # ---------------------------------------------------------------------------
 # list_conversations — search param
 # ---------------------------------------------------------------------------
+
 
 class TestListConversationsSearch:
     @pytest.mark.asyncio
@@ -87,7 +98,10 @@ class TestListConversationsSearch:
         mock_conn.fetch.return_value = []
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await list_conversations(search="SENTINEL_TITLE")
 
         call_args = mock_conn.fetch.call_args[0]
@@ -102,7 +116,10 @@ class TestListConversationsSearch:
         mock_conn.fetch.return_value = []
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await list_conversations()
 
         sql = mock_conn.fetch.call_args[0][0]
@@ -120,7 +137,10 @@ class TestListConversationsSearch:
         mock_conn.fetch.return_value = []
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.conversation_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await list_conversations(page=2, page_size=10)
 
         call_args = mock_conn.fetch.call_args[0]
@@ -135,6 +155,7 @@ class TestListConversationsSearch:
 # ---------------------------------------------------------------------------
 # GET /conversations/ endpoint — pagination metadata in response
 # ---------------------------------------------------------------------------
+
 
 class TestConversationsEndpointPagination:
     def _make_app(self):
@@ -154,9 +175,10 @@ class TestConversationsEndpointPagination:
         client = self._make_app()
 
         with (
-            patch("app.repository.conversation_repository.get_db_pool", new=AsyncMock(
-                return_value=_make_db_pool_mock(_conn_returning([], 0))
-            )),
+            patch(
+                "app.repository.conversation_repository.get_db_pool",
+                new=AsyncMock(return_value=_make_db_pool_mock(_conn_returning([], 0))),
+            ),
         ):
             resp = client.get("/conversations/")
 
@@ -177,8 +199,12 @@ class TestConversationsEndpointPagination:
         client = self._make_app()
 
         with (
-            patch.object(conv_ctrl, "list_conversations", new=AsyncMock(return_value=[])),
-            patch.object(conv_ctrl, "count_conversations", new=AsyncMock(return_value=99)),
+            patch.object(
+                conv_ctrl, "list_conversations", new=AsyncMock(return_value=[])
+            ),
+            patch.object(
+                conv_ctrl, "count_conversations", new=AsyncMock(return_value=99)
+            ),
         ):
             resp = client.get("/conversations/")
 
@@ -254,6 +280,7 @@ class TestConversationsEndpointPagination:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _conn_returning(rows, count):
     """Return a mock connection that returns `rows` from fetch and `count` from fetchval."""

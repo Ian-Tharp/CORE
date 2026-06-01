@@ -36,6 +36,7 @@ from app.models.core_state import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_step(name: str = "Step", desc: str = "Do something") -> PlanStep:
     return PlanStep(name=name, description=desc)
 
@@ -44,7 +45,9 @@ def _make_plan(*steps: PlanStep, goal: str = "Test goal") -> ExecutionPlan:
     return ExecutionPlan(goal=goal, steps=list(steps))
 
 
-def _make_result(status: str = "success", step_id: str = None, outputs: dict = None) -> StepResult:
+def _make_result(
+    status: str = "success", step_id: str = None, outputs: dict = None
+) -> StepResult:
     r = StepResult(
         step_id=step_id or "step-1",
         status=status,
@@ -87,6 +90,7 @@ def _valid_eval_json(**overrides) -> dict:
 # evaluate_execution calls LLM (primary path)
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateExecutionCallsLLM:
     def setup_method(self):
         self.agent = EvaluationAgent()
@@ -97,13 +101,20 @@ class TestEvaluateExecutionCallsLLM:
         Replace _llm_evaluate with rule-based → LLM not called → test fails.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
         results = [_make_result()]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            self.agent.evaluate_execution("Build a login page", _make_intent(), plan, results)
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            self.agent.evaluate_execution(
+                "Build a login page", _make_intent(), plan, results
+            )
 
         mock_client.chat.completions.create.assert_called_once()
 
@@ -113,13 +124,20 @@ class TestEvaluateExecutionCallsLLM:
         Remove the user_input line from context → this fails.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
         results = [_make_result()]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            self.agent.evaluate_execution("SENTINEL_USER_REQUEST", _make_intent(), plan, results)
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            self.agent.evaluate_execution(
+                "SENTINEL_USER_REQUEST", _make_intent(), plan, results
+            )
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
         user_msg = next(m for m in messages if m["role"] == "user")
@@ -131,13 +149,18 @@ class TestEvaluateExecutionCallsLLM:
         Remove intent_line from context → intent absent → test fails.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
         results = [_make_result()]
         intent = _make_intent(type_="task", desc="SENTINEL_INTENT_DESC")
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.evaluate_execution("query", intent, plan, results)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -148,12 +171,17 @@ class TestEvaluateExecutionCallsLLM:
     def test_plan_goal_in_llm_prompt(self):
         """Plan goal must appear in the prompt."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step(), goal="SENTINEL_PLAN_GOAL")
         results = [_make_result()]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.evaluate_execution("query", _make_intent(), plan, results)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -166,12 +194,17 @@ class TestEvaluateExecutionCallsLLM:
         Remove step_lines from context → output absent → test fails.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
         results = [_make_result(outputs={"result": "SENTINEL_STEP_OUTPUT"})]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.evaluate_execution("query", _make_intent(), plan, results)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -181,12 +214,19 @@ class TestEvaluateExecutionCallsLLM:
     def test_system_prompt_sent_to_llm(self):
         """The system prompt with evaluation instructions must be in the messages."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            self.agent.evaluate_execution("query", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            self.agent.evaluate_execution(
+                "query", _make_intent(), plan, [_make_result()]
+            )
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
         sys_msg = next(m for m in messages if m["role"] == "system")
@@ -197,12 +237,19 @@ class TestEvaluateExecutionCallsLLM:
     def test_low_temperature_used(self):
         """Temperature must be low (<=0.3) for consistent evaluation."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            self.agent.evaluate_execution("query", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            self.agent.evaluate_execution(
+                "query", _make_intent(), plan, [_make_result()]
+            )
 
         kwargs = mock_client.chat.completions.create.call_args[1]
         assert kwargs.get("temperature", 1.0) <= 0.3
@@ -211,6 +258,7 @@ class TestEvaluateExecutionCallsLLM:
 # ---------------------------------------------------------------------------
 # LLM response flows into EvaluationResult
 # ---------------------------------------------------------------------------
+
 
 class TestLLMResponseFlowsIntoResult:
     def setup_method(self):
@@ -228,8 +276,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("query", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "query", _make_intent(), plan, [_make_result()]
+            )
 
         assert abs(result.confidence - 0.77) < 0.001
 
@@ -244,8 +297,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("query", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "query", _make_intent(), plan, [_make_result()]
+            )
 
         assert "SENTINEL_LLM_FEEDBACK" in result.feedback
 
@@ -263,8 +321,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("query", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "query", _make_intent(), plan, [_make_result()]
+            )
 
         assert result.next_action == "revise_plan"
 
@@ -276,8 +339,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("q", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "q", _make_intent(), plan, [_make_result()]
+            )
 
         assert abs(result.quality_score - 0.42) < 0.001
 
@@ -294,8 +362,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("q", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "q", _make_intent(), plan, [_make_result()]
+            )
 
         assert result.retry_step_id == "SENTINEL_STEP_ID"
 
@@ -307,8 +380,13 @@ class TestLLMResponseFlowsIntoResult:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("q", _make_intent(), plan, [_make_result()])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "q", _make_intent(), plan, [_make_result()]
+            )
 
         assert result.meets_requirements is False
 
@@ -316,6 +394,7 @@ class TestLLMResponseFlowsIntoResult:
 # ---------------------------------------------------------------------------
 # Invalid LLM fields — validation / sanitisation
 # ---------------------------------------------------------------------------
+
 
 class TestLLMFieldValidation:
     def setup_method(self):
@@ -333,7 +412,10 @@ class TestLLMFieldValidation:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             result = self.agent.evaluate_execution("q", None, plan, [_make_result()])
 
         assert result.next_action == "finalize"
@@ -346,15 +428,24 @@ class TestLLMFieldValidation:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             result = self.agent.evaluate_execution("q", None, plan, [_make_result()])
 
-        assert result.overall_status in {"success", "failure", "needs_revision", "needs_retry"}
+        assert result.overall_status in {
+            "success",
+            "failure",
+            "needs_revision",
+            "needs_retry",
+        }
 
 
 # ---------------------------------------------------------------------------
 # Fallback to rule-based when LLM fails
 # ---------------------------------------------------------------------------
+
 
 class TestRuleBasedFallback:
     def setup_method(self):
@@ -371,9 +462,11 @@ class TestRuleBasedFallback:
 
         with patch(
             "app.core.agents.evaluation_agent.get_openai_client_sync",
-            side_effect=RuntimeError("LLM unavailable")
+            side_effect=RuntimeError("LLM unavailable"),
         ):
-            result = self.agent.evaluate_execution("query", _make_intent(), plan, results)
+            result = self.agent.evaluate_execution(
+                "query", _make_intent(), plan, results
+            )
 
         # Fallback for all-success → finalize
         assert result.next_action == "finalize"
@@ -389,7 +482,10 @@ class TestRuleBasedFallback:
         plan = _make_plan(_make_step())
         results = [_make_result("failure")]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             result = self.agent.evaluate_execution("query", None, plan, results)
 
         # All steps failed → rule-based → revise_plan
@@ -401,8 +497,13 @@ class TestRuleBasedFallback:
 
         plan = _make_plan(_make_step())
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
-            result = self.agent.evaluate_execution("query", None, plan, [_make_result("success")])
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
+            result = self.agent.evaluate_execution(
+                "query", None, plan, [_make_result("success")]
+            )
 
         assert isinstance(result, EvaluationResult)
 
@@ -449,6 +550,7 @@ class TestRuleBasedFallback:
 # Multiple steps — all outputs in prompt
 # ---------------------------------------------------------------------------
 
+
 class TestMultipleStepsInPrompt:
     def setup_method(self):
         self.agent = EvaluationAgent()
@@ -459,7 +561,9 @@ class TestMultipleStepsInPrompt:
         Truncating to 1 step would hide step 2's sentinel → test fails.
         """
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step("A"), _make_step("B"))
         results = [
@@ -467,7 +571,10 @@ class TestMultipleStepsInPrompt:
             _make_result(outputs={"result": "SENTINEL_OUTPUT_BETA"}),
         ]
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.evaluate_execution("query", _make_intent(), plan, results)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -478,7 +585,9 @@ class TestMultipleStepsInPrompt:
     def test_failed_step_error_appears_in_prompt(self):
         """Step errors must be included so the LLM can reason about them."""
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _llm_response(_valid_eval_json())
+        mock_client.chat.completions.create.return_value = _llm_response(
+            _valid_eval_json()
+        )
 
         plan = _make_plan(_make_step())
         fail_result = StepResult(
@@ -488,7 +597,10 @@ class TestMultipleStepsInPrompt:
             error="SENTINEL_ERROR_MESSAGE",
         )
 
-        with patch("app.core.agents.evaluation_agent.get_openai_client_sync", return_value=mock_client):
+        with patch(
+            "app.core.agents.evaluation_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.evaluate_execution("query", None, plan, [fail_result])
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -499,6 +611,7 @@ class TestMultipleStepsInPrompt:
 # ---------------------------------------------------------------------------
 # Helper for empty LLM response
 # ---------------------------------------------------------------------------
+
 
 def _llm_response_empty() -> MagicMock:
     msg = MagicMock()

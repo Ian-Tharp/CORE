@@ -49,25 +49,41 @@ from app.services.evaluation_service import (
 # Helpers
 # ===========================================================================
 
-def _make_step(index: int = 0, required: bool = True, description: str = "do something") -> PlanStep:
+
+def _make_step(
+    index: int = 0, required: bool = True, description: str = "do something"
+) -> PlanStep:
     return PlanStep(step_index=index, description=description, required=required)
 
 
-def _make_result(index: int = 0, status: StepStatus = StepStatus.COMPLETED, output: str | None = None,
-                 error: str | None = None) -> StepResult:
+def _make_result(
+    index: int = 0,
+    status: StepStatus = StepStatus.COMPLETED,
+    output: str | None = None,
+    error: str | None = None,
+) -> StepResult:
     return StepResult(step_index=index, status=status, output=output, error=error)
 
 
-def _make_quality(accuracy: float = 0.8, completeness: float = 0.8,
-                  relevance: float = 0.8, coherence: float = 0.8) -> QualityScore:
-    q = QualityScore(accuracy=accuracy, completeness=completeness,
-                     relevance=relevance, coherence=coherence)
+def _make_quality(
+    accuracy: float = 0.8,
+    completeness: float = 0.8,
+    relevance: float = 0.8,
+    coherence: float = 0.8,
+) -> QualityScore:
+    q = QualityScore(
+        accuracy=accuracy,
+        completeness=completeness,
+        relevance=relevance,
+        coherence=coherence,
+    )
     q.compute_overall()
     return q
 
 
-def _make_completion(required_met: bool = True, rate: float = 1.0,
-                     total: int = 1, completed: int = 1) -> PlanCompletionStatus:
+def _make_completion(
+    required_met: bool = True, rate: float = 1.0, total: int = 1, completed: int = 1
+) -> PlanCompletionStatus:
     return PlanCompletionStatus(
         total_steps=total,
         completed_steps=completed,
@@ -76,7 +92,9 @@ def _make_completion(required_met: bool = True, rate: float = 1.0,
     )
 
 
-def _make_verdict(v: Verdict = Verdict.APPROVE, improvements: list | None = None) -> EvaluationVerdict:
+def _make_verdict(
+    v: Verdict = Verdict.APPROVE, improvements: list | None = None
+) -> EvaluationVerdict:
     return EvaluationVerdict(
         verdict=v,
         reasoning="test",
@@ -88,6 +106,7 @@ def _make_verdict(v: Verdict = Verdict.APPROVE, improvements: list | None = None
 # ===========================================================================
 # QualityScore.compute_overall
 # ===========================================================================
+
 
 class TestQualityScoreComputeOverall:
     def test_weighted_average_correct(self):
@@ -122,14 +141,21 @@ class TestQualityScoreComputeOverall:
         """Custom weights must override defaults."""
         q = QualityScore(accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0)
         # With equal weights 0.25 each, all-accuracy-1 result = 0.25
-        overall = q.compute_overall(weights={"accuracy": 0.25, "completeness": 0.25,
-                                             "relevance": 0.25, "coherence": 0.25})
+        overall = q.compute_overall(
+            weights={
+                "accuracy": 0.25,
+                "completeness": 0.25,
+                "relevance": 0.25,
+                "coherence": 0.25,
+            }
+        )
         assert overall == pytest.approx(0.25, abs=0.001)
 
 
 # ===========================================================================
 # _heuristic_accuracy
 # ===========================================================================
+
 
 class TestHeuristicAccuracy:
     def test_empty_output_returns_zero(self):
@@ -188,6 +214,7 @@ class TestHeuristicAccuracy:
 # _heuristic_completeness
 # ===========================================================================
 
+
 class TestHeuristicCompleteness:
     def test_no_plan_returns_half(self):
         """
@@ -211,7 +238,10 @@ class TestHeuristicCompleteness:
         Count partial as 0 → partial work ignored → test fails.
         """
         steps = [_make_step(0), _make_step(1)]
-        results = [_make_result(0, StepStatus.PARTIAL), _make_result(1, StepStatus.PARTIAL)]
+        results = [
+            _make_result(0, StepStatus.PARTIAL),
+            _make_result(1, StepStatus.PARTIAL),
+        ]
         # (0 + 0.5*2) / 2 = 0.5
         assert _heuristic_completeness(steps, results) == pytest.approx(0.5)
 
@@ -232,6 +262,7 @@ class TestHeuristicCompleteness:
 # ===========================================================================
 # _heuristic_relevance
 # ===========================================================================
+
 
 class TestHeuristicRelevance:
     def test_empty_intent_returns_zero(self):
@@ -255,7 +286,9 @@ class TestHeuristicRelevance:
         SENTINEL — no shared keywords returns 0.0.
         Return 0.5 default → irrelevant output approved → test fails.
         """
-        assert _heuristic_relevance("machine learning", "cooking recipes") == pytest.approx(0.0)
+        assert _heuristic_relevance(
+            "machine learning", "cooking recipes"
+        ) == pytest.approx(0.0)
 
     def test_stop_words_excluded_from_overlap(self):
         """
@@ -282,6 +315,7 @@ class TestHeuristicRelevance:
 # ===========================================================================
 # _heuristic_coherence
 # ===========================================================================
+
 
 class TestHeuristicCoherence:
     def test_empty_output_returns_zero(self):
@@ -331,6 +365,7 @@ class TestHeuristicCoherence:
 # ===========================================================================
 # _evaluate_step_quality
 # ===========================================================================
+
 
 class TestEvaluateStepQuality:
     def test_no_result_returns_zero(self):
@@ -395,6 +430,7 @@ class TestEvaluateStepQuality:
 # _step_meets_criteria
 # ===========================================================================
 
+
 class TestStepMeetsCriteria:
     def test_no_result_returns_false(self):
         """No result → criteria not met."""
@@ -441,6 +477,7 @@ class TestStepMeetsCriteria:
 # _step_feedback
 # ===========================================================================
 
+
 class TestStepFeedback:
     def test_no_result_mentions_not_started(self):
         """
@@ -485,6 +522,7 @@ class TestStepFeedback:
 # _check_plan_completion
 # ===========================================================================
 
+
 class TestCheckPlanCompletion:
     def test_no_steps_returns_complete(self):
         """
@@ -526,7 +564,10 @@ class TestCheckPlanCompletion:
         Count partial as 1 → inflated completion → test fails.
         """
         steps = [_make_step(0), _make_step(1)]
-        results = [_make_result(0, StepStatus.PARTIAL), _make_result(1, StepStatus.PARTIAL)]
+        results = [
+            _make_result(0, StepStatus.PARTIAL),
+            _make_result(1, StepStatus.PARTIAL),
+        ]
         status = _check_plan_completion(steps, results)
         assert status.completion_rate == pytest.approx(0.5)
 
@@ -547,6 +588,7 @@ class TestCheckPlanCompletion:
 # ===========================================================================
 # _determine_verdict
 # ===========================================================================
+
 
 class TestDetermineVerdict:
     def test_high_quality_all_steps_met_approves(self):
@@ -611,7 +653,9 @@ class TestDetermineVerdict:
         SENTINEL — accuracy < 0.6 must add 'accuracy' improvement suggestion.
         Skip per-dimension suggestions → users don't know what to fix → test fails.
         """
-        quality = _make_quality(accuracy=0.3, completeness=0.8, relevance=0.8, coherence=0.8)
+        quality = _make_quality(
+            accuracy=0.3, completeness=0.8, relevance=0.8, coherence=0.8
+        )
         completion = _make_completion(required_met=True)
         verdict = _determine_verdict(quality, completion, 0, 3)
         assert any("accuracy" in s.lower() for s in verdict.suggested_improvements)
@@ -620,6 +664,7 @@ class TestDetermineVerdict:
 # ===========================================================================
 # _build_retry_decision
 # ===========================================================================
+
 
 class TestBuildRetryDecision:
     def test_approve_verdict_no_retry(self):
@@ -699,6 +744,7 @@ class TestBuildRetryDecision:
 # _generate_feedback
 # ===========================================================================
 
+
 class TestGenerateFeedback:
     def test_verdict_included_in_feedback(self):
         """
@@ -729,7 +775,7 @@ class TestGenerateFeedback:
         Skip plan section → completion stats hidden → test fails.
         """
         quality = _make_quality()
-        completion = _make_completion(total=3, completed=2, rate=2/3)
+        completion = _make_completion(total=3, completed=2, rate=2 / 3)
         verdict = _make_verdict()
         fb = _generate_feedback(quality, completion, verdict)
         assert "3" in fb  # total_steps=3 appears somewhere

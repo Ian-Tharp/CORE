@@ -27,6 +27,7 @@ from app.repository.model_metrics_repository import (
 # _percentile — unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestPercentile:
     def test_p95_of_five_values_equals_last(self):
         """
@@ -75,8 +76,11 @@ class TestPercentile:
 # aggregate_metrics — unit tests with known data
 # ---------------------------------------------------------------------------
 
+
 class TestAggregateMetrics:
-    def _records(self, model_id: str, latencies: list, error_indices: set = None) -> list:
+    def _records(
+        self, model_id: str, latencies: list, error_indices: set = None
+    ) -> list:
         """Build records list — error_indices are 0-based indices that are failures."""
         error_indices = error_indices or set()
         return [
@@ -126,9 +130,8 @@ class TestAggregateMetrics:
         """
         SENTINEL TEST — records from model A must not bleed into model B's stats.
         """
-        records = (
-            self._records("model-A", [100.0, 200.0, 300.0])
-            + self._records("model-B", [10.0, 20.0, 30.0])
+        records = self._records("model-A", [100.0, 200.0, 300.0]) + self._records(
+            "model-B", [10.0, 20.0, 30.0]
         )
         result = aggregate_metrics(records)
         assert "model-A" in result["models"]
@@ -138,9 +141,8 @@ class TestAggregateMetrics:
         assert result["models"]["model-B"]["p50_latency_ms"] == 20.0
 
     def test_total_requests_is_sum_across_all_models(self):
-        records = (
-            self._records("model-A", [10.0, 20.0])
-            + self._records("model-B", [30.0, 40.0, 50.0])
+        records = self._records("model-A", [10.0, 20.0]) + self._records(
+            "model-B", [30.0, 40.0, 50.0]
         )
         result = aggregate_metrics(records)
         assert result["total_requests"] == 5
@@ -168,6 +170,7 @@ class TestAggregateMetrics:
 # record_metric — DB write unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestRecordMetric:
     @pytest.mark.asyncio
     async def test_record_metric_inserts_correct_values(self):
@@ -181,7 +184,10 @@ class TestRecordMetric:
         mock_conn = AsyncMock()
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.model_metrics_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.model_metrics_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await record_metric(
                 model_id="SENTINEL_MODEL",
                 latency_ms=123.45,
@@ -205,7 +211,10 @@ class TestRecordMetric:
         mock_conn = AsyncMock()
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.model_metrics_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.model_metrics_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await record_metric(
                 model_id="m1",
                 latency_ms=999.0,
@@ -222,7 +231,7 @@ class TestRecordMetric:
 
         with patch(
             "app.repository.model_metrics_repository.get_db_pool",
-            new=AsyncMock(side_effect=RuntimeError("db down"))
+            new=AsyncMock(side_effect=RuntimeError("db down")),
         ):
             # Should not raise
             await record_metric("m1", 100.0, success=True)
@@ -231,6 +240,7 @@ class TestRecordMetric:
 # ---------------------------------------------------------------------------
 # get_model_stats — integration of fetch + aggregate
 # ---------------------------------------------------------------------------
+
 
 class TestGetModelStats:
     @pytest.mark.asyncio
@@ -248,7 +258,7 @@ class TestGetModelStats:
 
         with patch(
             "app.repository.model_metrics_repository.get_raw_metrics",
-            new=AsyncMock(return_value=fake_records)
+            new=AsyncMock(return_value=fake_records),
         ):
             result = await get_model_stats()
 
@@ -262,7 +272,7 @@ class TestGetModelStats:
 
         with patch(
             "app.repository.model_metrics_repository.get_raw_metrics",
-            new=AsyncMock(return_value=[])
+            new=AsyncMock(return_value=[]),
         ) as mock_fetch:
             await get_model_stats(model_id="SENTINEL_FILTER")
 
@@ -273,6 +283,7 @@ class TestGetModelStats:
 # Admin endpoint — GET /admin/metrics/models
 # ---------------------------------------------------------------------------
 
+
 class TestModelMetricsEndpoint:
     def test_get_model_stats_route_exists(self):
         """
@@ -282,9 +293,10 @@ class TestModelMetricsEndpoint:
         from app.controllers.admin import router as admin_router
 
         routes = {(r.path, m) for r in admin_router.routes for m in r.methods}
-        assert ("/admin/metrics/models", "GET") in routes, (
-            "GET /admin/metrics/models route not found in admin router"
-        )
+        assert (
+            "/admin/metrics/models",
+            "GET",
+        ) in routes, "GET /admin/metrics/models route not found in admin router"
 
     @pytest.mark.asyncio
     async def test_endpoint_calls_get_model_stats(self):

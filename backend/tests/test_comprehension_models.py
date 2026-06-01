@@ -36,6 +36,7 @@ from app.models.comprehension_models import (
 # Helpers
 # ===========================================================================
 
+
 def _make_memory(tier: str = "semantic", similarity: float = 0.8) -> MemoryMatch:
     return MemoryMatch(
         memory_id=uuid4(),
@@ -45,7 +46,9 @@ def _make_memory(tier: str = "semantic", similarity: float = 0.8) -> MemoryMatch
     )
 
 
-def _make_intent(summary: str = "do something", action: ActionType = ActionType.COMMAND) -> IntentAnalysis:
+def _make_intent(
+    summary: str = "do something", action: ActionType = ActionType.COMMAND
+) -> IntentAnalysis:
     return IntentAnalysis(action_type=action, summary=summary, confidence=0.9)
 
 
@@ -57,7 +60,9 @@ def _make_complexity(overall: float = 0.5) -> ComplexityScore:
 
 def _make_comprehension_result(**kwargs) -> ComprehensionResult:
     defaults = dict(
-        input=ComprehensionInput(content="SENTINEL_CONTENT", source_type=SourceType.USER),
+        input=ComprehensionInput(
+            content="SENTINEL_CONTENT", source_type=SourceType.USER
+        ),
         intent=_make_intent(),
         confidence=0.9,
     )
@@ -68,6 +73,7 @@ def _make_comprehension_result(**kwargs) -> ComprehensionResult:
 # ===========================================================================
 # ComprehensionInput validator
 # ===========================================================================
+
 
 class TestComprehensionInputValidator:
     def test_valid_content_accepted_and_stripped(self):
@@ -95,6 +101,7 @@ class TestComprehensionInputValidator:
 # ===========================================================================
 # ContextMatch.total_matches / all_matches
 # ===========================================================================
+
 
 class TestContextMatchProperties:
     def test_total_matches_sums_all_tiers(self):
@@ -150,6 +157,7 @@ class TestContextMatchProperties:
 # ComprehensionResult.to_task_kwargs
 # ===========================================================================
 
+
 class TestToTaskKwargs:
     def test_original_input_included(self):
         """
@@ -183,9 +191,7 @@ class TestToTaskKwargs:
         SENTINEL — complexity_score must appear in payload.
         Omit it → task router can't gauge resource allocation → test fails.
         """
-        result = _make_comprehension_result(
-            complexity=_make_complexity(overall=0.77)
-        )
+        result = _make_comprehension_result(complexity=_make_complexity(overall=0.77))
         kwargs = result.to_task_kwargs()
         assert kwargs["payload"]["complexity_score"] == pytest.approx(0.77)
 
@@ -248,6 +254,7 @@ class TestToTaskKwargs:
 # ===========================================================================
 # ComprehensionResult bounds
 # ===========================================================================
+
 
 class TestComprehensionResultBounds:
     def test_priority_below_1_rejected(self):

@@ -28,15 +28,15 @@ describe('McpRegistryComponent', () => {
         tone: 'ready',
         detail: '1 mapped channel ready',
         tooltip: 'Discord Gateway connected.',
-        status: null,
-      }),
+        status: null
+      })
     };
 
     await TestBed.configureTestingModule({
       imports: [McpRegistryComponent],
       providers: [
         provideRouter([]),
-        { provide: DiscordBridgeService, useValue: discordBridgeService },
+        { provide: DiscordBridgeService, useValue: discordBridgeService }
       ]
     }).compileComponents();
 

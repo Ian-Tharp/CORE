@@ -38,25 +38,37 @@ router = APIRouter(prefix="/discord", tags=["discord"])
 # REQUEST/RESPONSE MODELS
 # =============================================================================
 
+
 class ChannelMappingRequest(BaseModel):
     """Request to create or update a channel mapping."""
+
     discord_channel_id: str = Field(..., description="Discord channel ID")
-    core_channel_id: str = Field(..., description="CORE Communication Commons channel ID")
-    discord_channel_name: Optional[str] = Field(None, description="Discord channel name (informational)")
-    core_channel_name: Optional[str] = Field(None, description="CORE channel name (for auto-creation)")
+    core_channel_id: str = Field(
+        ..., description="CORE Communication Commons channel ID"
+    )
+    discord_channel_name: Optional[str] = Field(
+        None, description="Discord channel name (informational)"
+    )
+    core_channel_name: Optional[str] = Field(
+        None, description="CORE channel name (for auto-creation)"
+    )
     require_mention: bool = Field(False, description="Require @mention to trigger")
     enabled: bool = Field(True, description="Whether the mapping is active")
 
 
 class SendMessageRequest(BaseModel):
     """Request to send a message to Discord."""
+
     discord_channel_id: str = Field(..., description="Discord channel ID to send to")
     content: str = Field(..., min_length=1, description="Message content")
-    reply_to_message_id: Optional[str] = Field(None, description="Message ID to reply to")
+    reply_to_message_id: Optional[str] = Field(
+        None, description="Message ID to reply to"
+    )
 
 
 class ConfigUpdateRequest(BaseModel):
     """Request to update Discord bridge configuration."""
+
     enabled: Optional[bool] = None
     allowed_users: Optional[List[str]] = None
     default_core_channel: Optional[str] = None
@@ -67,6 +79,7 @@ class ConfigUpdateRequest(BaseModel):
 
 class StatusResponse(BaseModel):
     """Response containing bridge status."""
+
     status: str
     connected: bool
     connected_at: Optional[str]
@@ -80,6 +93,7 @@ class StatusResponse(BaseModel):
 
 class ChannelMappingResponse(BaseModel):
     """Response containing a channel mapping."""
+
     discord_channel_id: str
     discord_channel_name: Optional[str]
     discord_guild_id: Optional[str]
@@ -92,6 +106,7 @@ class ChannelMappingResponse(BaseModel):
 
 class DiscordMetricsResponse(BaseModel):
     """High-level Discord gateway metrics."""
+
     status: Dict[str, Any]
     mappings_count: int
     message_links_count: int
@@ -105,6 +120,7 @@ class DiscordMetricsResponse(BaseModel):
 # =============================================================================
 # STATUS ENDPOINTS
 # =============================================================================
+
 
 @router.get("/status", status_code=status.HTTP_200_OK, response_model=StatusResponse)
 async def get_status(_auth: str = Depends(require_api_key)) -> StatusResponse:
@@ -125,16 +141,16 @@ async def start_bridge(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
         if not config.enabled:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Discord bridge is disabled in configuration"
+                detail="Discord bridge is disabled in configuration",
             )
         if not config.bot_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Discord bot token not configured"
+                detail="Discord bot token not configured",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start Discord bridge"
+            detail="Failed to start Discord bridge",
         )
 
 
@@ -153,12 +169,16 @@ async def restart_bridge(_auth: str = Depends(require_api_key)) -> Dict[str, str
     if success:
         return {"message": "Discord bridge restarting", "status": "connecting"}
     else:
-        return {"message": "Discord bridge stopped, failed to restart", "status": "error"}
+        return {
+            "message": "Discord bridge stopped, failed to restart",
+            "status": "error",
+        }
 
 
 # =============================================================================
 # CHANNEL MAPPING ENDPOINTS
 # =============================================================================
+
 
 @router.get("/channels", status_code=status.HTTP_200_OK)
 async def get_channel_mappings(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
@@ -179,15 +199,17 @@ async def get_channel_mappings(_auth: str = Depends(require_api_key)) -> Dict[st
             )
             for m in mappings.values()
         ],
-        "count": len(mappings)
+        "count": len(mappings),
     }
 
 
 @router.post("/channels", status_code=status.HTTP_201_CREATED)
-async def add_channel_mapping(request: ChannelMappingRequest, _auth: str = Depends(require_api_key)) -> ChannelMappingResponse:
+async def add_channel_mapping(
+    request: ChannelMappingRequest, _auth: str = Depends(require_api_key)
+) -> ChannelMappingResponse:
     """Add or update a channel mapping."""
     bridge = get_discord_bridge()
-    
+
     mapping = DiscordChannelMapping(
         discord_channel_id=request.discord_channel_id,
         discord_channel_name=request.discord_channel_name,
@@ -196,10 +218,10 @@ async def add_channel_mapping(request: ChannelMappingRequest, _auth: str = Depen
         require_mention=request.require_mention,
         enabled=request.enabled,
     )
-    
+
     persisted_mapping = await persist_channel_mapping(mapping)
     bridge.add_channel_mapping(persisted_mapping)
-    
+
     return ChannelMappingResponse(
         discord_channel_id=persisted_mapping.discord_channel_id,
         discord_channel_name=persisted_mapping.discord_channel_name,
@@ -213,7 +235,9 @@ async def add_channel_mapping(request: ChannelMappingRequest, _auth: str = Depen
 
 
 @router.delete("/channels/{discord_channel_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_channel_mapping(discord_channel_id: str, _auth: str = Depends(require_api_key)):
+async def remove_channel_mapping(
+    discord_channel_id: str, _auth: str = Depends(require_api_key)
+):
     """Remove a channel mapping."""
     bridge = get_discord_bridge()
 
@@ -223,9 +247,9 @@ async def remove_channel_mapping(discord_channel_id: str, _auth: str = Depends(r
     if not removed_from_bridge and not deleted_from_store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No mapping found for Discord channel {discord_channel_id}"
+            detail=f"No mapping found for Discord channel {discord_channel_id}",
         )
-    
+
     return None
 
 
@@ -233,17 +257,20 @@ async def remove_channel_mapping(discord_channel_id: str, _auth: str = Depends(r
 # MESSAGE ENDPOINTS
 # =============================================================================
 
+
 @router.post("/send", status_code=status.HTTP_200_OK)
-async def send_message(request: SendMessageRequest, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def send_message(
+    request: SendMessageRequest, _auth: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Send a message to a Discord channel."""
     bridge = get_discord_bridge()
-    
+
     if not bridge.is_connected:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Discord bridge is not connected"
+            detail="Discord bridge is not connected",
         )
-    
+
     message_ids = await bridge.send_to_discord(
         discord_channel_id=request.discord_channel_id,
         content=request.content,
@@ -272,7 +299,7 @@ async def send_message(request: SendMessageRequest, _auth: str = Depends(require
     if not message_ids:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send message to Discord"
+            detail="Failed to send message to Discord",
         )
 
     return {
@@ -289,7 +316,9 @@ async def get_message_links(
     core_message_id: Optional[str] = None,
     core_channel_id: Optional[str] = None,
     discord_channel_id: Optional[str] = None,
-    direction: Optional[str] = Query(None, pattern="^(discord_to_core|core_to_discord)$"),
+    direction: Optional[str] = Query(
+        None, pattern="^(discord_to_core|core_to_discord)$"
+    ),
     _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Inspect persisted Discord↔CORE message link records."""
@@ -316,8 +345,12 @@ async def get_message_links(
 @router.get("/deliveries", status_code=status.HTTP_200_OK)
 async def get_delivery_events(
     limit: int = Query(50, ge=1, le=200),
-    status_filter: Optional[str] = Query(None, alias="status", pattern="^(success|failed|skipped)$"),
-    direction: Optional[str] = Query(None, pattern="^(discord_to_core|core_to_discord)$"),
+    status_filter: Optional[str] = Query(
+        None, alias="status", pattern="^(success|failed|skipped)$"
+    ),
+    direction: Optional[str] = Query(
+        None, pattern="^(discord_to_core|core_to_discord)$"
+    ),
     core_channel_id: Optional[str] = None,
     discord_channel_id: Optional[str] = None,
     core_message_id: Optional[str] = None,
@@ -346,7 +379,9 @@ async def get_delivery_events(
     }
 
 
-@router.get("/metrics", status_code=status.HTTP_200_OK, response_model=DiscordMetricsResponse)
+@router.get(
+    "/metrics", status_code=status.HTTP_200_OK, response_model=DiscordMetricsResponse
+)
 async def get_metrics(
     recent_failures_limit: int = Query(10, ge=1, le=100),
     _auth: str = Depends(require_api_key),
@@ -356,10 +391,16 @@ async def get_metrics(
 
     mappings_count = await discord_repository.count_channel_mappings()
     message_links_count = await discord_repository.count_message_links()
-    message_links_by_direction = await discord_repository.count_message_links_by_direction()
+    message_links_by_direction = (
+        await discord_repository.count_message_links_by_direction()
+    )
     delivery_events_count = await discord_repository.count_delivery_events()
-    delivery_events_by_status = await discord_repository.count_delivery_events_by_status()
-    delivery_events_by_direction = await discord_repository.count_delivery_events_by_direction()
+    delivery_events_by_status = (
+        await discord_repository.count_delivery_events_by_status()
+    )
+    delivery_events_by_direction = (
+        await discord_repository.count_delivery_events_by_direction()
+    )
     recent_failures = await discord_repository.list_delivery_events(
         limit=recent_failures_limit,
         status="failed",
@@ -381,6 +422,7 @@ async def get_metrics(
 # CONFIGURATION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/config", status_code=status.HTTP_200_OK)
 async def get_configuration(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get Discord bridge configuration (excluding sensitive data)."""
@@ -400,10 +442,12 @@ async def get_configuration(_auth: str = Depends(require_api_key)) -> Dict[str, 
 
 
 @router.patch("/config", status_code=status.HTTP_200_OK)
-async def update_configuration(request: ConfigUpdateRequest, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def update_configuration(
+    request: ConfigUpdateRequest, _auth: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Update Discord bridge configuration."""
     config = get_config()
-    
+
     if request.enabled is not None:
         config.enabled = request.enabled
     if request.allowed_users is not None:
@@ -416,10 +460,10 @@ async def update_configuration(request: ConfigUpdateRequest, _auth: str = Depend
         config.message_prefix = request.message_prefix
     if request.response_prefix is not None:
         config.response_prefix = request.response_prefix
-    
+
     await persist_config(config)
-    
+
     return {
         "message": "Configuration updated",
-        "note": "Restart bridge for changes to take effect"
+        "note": "Restart bridge for changes to take effect",
     }

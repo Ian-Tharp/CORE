@@ -27,6 +27,7 @@ from app.core.circuit_breaker import (
 # CircuitBreaker state machine
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def reset_breakers():
     """Ensure every test starts with a clean circuit breaker registry."""
@@ -142,6 +143,7 @@ class TestCircuitBreakerStateMachine:
 # chat_service integration
 # ---------------------------------------------------------------------------
 
+
 async def _collect(gen) -> list:
     """Drain an async generator and return all yielded strings."""
     return [chunk async for chunk in gen]
@@ -163,7 +165,9 @@ class TestChatServiceCircuitBreaker:
         breaker._state = CircuitState.OPEN
         breaker._opened_at = time.monotonic()
 
-        chunks = await _collect(svc_mod.chat_service(model="gpt-x", messages=[], provider="openai"))
+        chunks = await _collect(
+            svc_mod.chat_service(model="gpt-x", messages=[], provider="openai")
+        )
 
         assert len(chunks) == 1
         assert "circuit_open" in chunks[0]
@@ -194,9 +198,15 @@ class TestChatServiceCircuitBreaker:
         mock_client = AsyncMock()
         mock_client.responses.create = AsyncMock(return_value=mock_response)
 
-        with patch("app.services.chat_service._get_openai_client", return_value=mock_client):
-            with patch.object(breaker, "record_success", wraps=breaker.record_success) as spy:
-                await _collect(svc_mod.chat_service(model="gpt-x", messages=[], provider="openai"))
+        with patch(
+            "app.services.chat_service._get_openai_client", return_value=mock_client
+        ):
+            with patch.object(
+                breaker, "record_success", wraps=breaker.record_success
+            ) as spy:
+                await _collect(
+                    svc_mod.chat_service(model="gpt-x", messages=[], provider="openai")
+                )
 
         spy.assert_called_once()
 
@@ -217,9 +227,13 @@ class TestChatServiceCircuitBreaker:
             side_effect=RuntimeError("provider down"),
         ):
             with patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
-                with patch.object(breaker, "record_failure", wraps=breaker.record_failure) as spy:
+                with patch.object(
+                    breaker, "record_failure", wraps=breaker.record_failure
+                ) as spy:
                     chunks = await _collect(
-                        svc_mod.chat_service(model="gpt-x", messages=[], provider="openai")
+                        svc_mod.chat_service(
+                            model="gpt-x", messages=[], provider="openai"
+                        )
                     )
 
         spy.assert_called_once()
@@ -233,6 +247,7 @@ class TestChatServiceCircuitBreaker:
         Remove retry loop → only 1 attempt → call_count == 1 → test fails.
         """
         import app.services.chat_service as svc_mod
+
         original_max = svc_mod.MAX_RETRIES
         try:
             svc_mod.MAX_RETRIES = 2
@@ -243,9 +258,14 @@ class TestChatServiceCircuitBreaker:
                 call_count += 1
                 raise RuntimeError("transient error")
 
-            with patch("app.services.chat_service._get_openai_client", side_effect=_failing_client):
+            with patch(
+                "app.services.chat_service._get_openai_client",
+                side_effect=_failing_client,
+            ):
                 with patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
-                    await _collect(svc_mod.chat_service(model="g", messages=[], provider="openai"))
+                    await _collect(
+                        svc_mod.chat_service(model="g", messages=[], provider="openai")
+                    )
 
             # Should have been called MAX_RETRIES + 1 times (initial + retries)
             assert call_count == svc_mod.MAX_RETRIES + 1
@@ -259,6 +279,7 @@ class TestChatServiceCircuitBreaker:
         Remove truncation → all 100 messages sent → call receives 100 → test fails.
         """
         import app.services.chat_service as svc_mod
+
         original_max = svc_mod.MAX_MESSAGES
         try:
             svc_mod.MAX_MESSAGES = 5
@@ -285,9 +306,15 @@ class TestChatServiceCircuitBreaker:
 
             mock_client.responses.create = _fake_create2
 
-            with patch("app.services.chat_service._get_openai_client", return_value=mock_client):
+            with patch(
+                "app.services.chat_service._get_openai_client", return_value=mock_client
+            ):
                 with patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
-                    await _collect(svc_mod.chat_service(model="g", messages=messages, provider="openai"))
+                    await _collect(
+                        svc_mod.chat_service(
+                            model="g", messages=messages, provider="openai"
+                        )
+                    )
 
             assert len(captured_messages) <= svc_mod.MAX_MESSAGES
         finally:
@@ -303,5 +330,6 @@ class TestChatServiceCircuitBreaker:
 
     def test_normalise_openai(self):
         from app.services import chat_service as svc_mod
+
         assert svc_mod._normalise_provider("openai") == "openai"
         assert svc_mod._normalise_provider("OPENAI") == "openai"

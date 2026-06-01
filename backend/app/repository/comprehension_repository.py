@@ -38,13 +38,15 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_comprehension_tables() -> None:
     """Create comprehension tables if they don't exist."""
     pool = await get_db_pool()
 
     async with pool.acquire() as conn:
         # Comprehension results table — stores every analysis result
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS comprehension_results (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 input_id UUID NOT NULL,
@@ -98,7 +100,8 @@ async def ensure_comprehension_tables() -> None:
                 feedback_submitted_at TIMESTAMP WITH TIME ZONE,
                 feedback_submitted_by VARCHAR(255)
             )
-        """)
+        """
+        )
 
         # Indexes for common query patterns
         await conn.execute(
@@ -137,6 +140,7 @@ async def ensure_comprehension_tables() -> None:
 # =============================================================================
 # STORE COMPREHENSION RESULT
 # =============================================================================
+
 
 async def store_comprehension_result(result: ComprehensionResult) -> UUID:
     """
@@ -200,17 +204,29 @@ async def store_comprehension_result(result: ComprehensionResult) -> UUID:
             json.dumps(result.intent.keywords),
             result.intent.requires_clarification,
             json.dumps(result.intent.clarification_questions),
-            json.dumps({
-                "semantic_matches": [m.model_dump() for m in result.context.semantic_matches],
-                "episodic_matches": [m.model_dump() for m in result.context.episodic_matches],
-                "procedural_matches": [m.model_dump() for m in result.context.procedural_matches],
-            }),
+            json.dumps(
+                {
+                    "semantic_matches": [
+                        m.model_dump() for m in result.context.semantic_matches
+                    ],
+                    "episodic_matches": [
+                        m.model_dump() for m in result.context.episodic_matches
+                    ],
+                    "procedural_matches": [
+                        m.model_dump() for m in result.context.procedural_matches
+                    ],
+                }
+            ),
             result.context.has_relevant_context,
             result.context.best_match_score,
-            json.dumps({
-                "matched_capabilities": [c.model_dump() for c in result.capabilities.matched_capabilities],
-                "matched_tools": result.capabilities.matched_tools,
-            }),
+            json.dumps(
+                {
+                    "matched_capabilities": [
+                        c.model_dump() for c in result.capabilities.matched_capabilities
+                    ],
+                    "matched_tools": result.capabilities.matched_tools,
+                }
+            ),
             json.dumps(result.capabilities.matched_agent_ids),
             result.capabilities.has_capable_agents,
             result.capabilities.best_agent_id,
@@ -233,6 +249,7 @@ async def store_comprehension_result(result: ComprehensionResult) -> UUID:
 # =============================================================================
 # RETRIEVE COMPREHENSION RESULTS
 # =============================================================================
+
 
 async def get_comprehension_result(result_id: UUID) -> Optional[ComprehensionResult]:
     """Get a comprehension result by ID."""
@@ -371,6 +388,7 @@ async def find_similar_comprehension(
 # FEEDBACK
 # =============================================================================
 
+
 async def store_feedback(feedback: ComprehensionFeedback) -> bool:
     """
     Store feedback on a comprehension result.
@@ -399,7 +417,9 @@ async def store_feedback(feedback: ComprehensionFeedback) -> bool:
             feedback.submitted_by,
         )
         if result:
-            logger.info(f"Stored feedback for comprehension {feedback.comprehension_id}: {feedback.score}")
+            logger.info(
+                f"Stored feedback for comprehension {feedback.comprehension_id}: {feedback.score}"
+            )
             return True
         return False
 
@@ -407,6 +427,7 @@ async def store_feedback(feedback: ComprehensionFeedback) -> bool:
 # =============================================================================
 # ANALYTICS
 # =============================================================================
+
 
 async def get_comprehension_analytics(
     days: int = 30,
@@ -472,16 +493,34 @@ async def get_comprehension_analytics(
                 "completed": overview["completed"] or 0,
                 "failed": overview["failed"] or 0,
                 "partial": overview["partial"] or 0,
-                "avg_confidence": float(overview["avg_confidence"]) if overview["avg_confidence"] else 0.0,
-                "avg_processing_time_ms": float(overview["avg_processing_time_ms"]) if overview["avg_processing_time_ms"] else None,
-                "avg_feedback_score": float(overview["avg_feedback_score"]) if overview["avg_feedback_score"] else None,
+                "avg_confidence": (
+                    float(overview["avg_confidence"])
+                    if overview["avg_confidence"]
+                    else 0.0
+                ),
+                "avg_processing_time_ms": (
+                    float(overview["avg_processing_time_ms"])
+                    if overview["avg_processing_time_ms"]
+                    else None
+                ),
+                "avg_feedback_score": (
+                    float(overview["avg_feedback_score"])
+                    if overview["avg_feedback_score"]
+                    else None
+                ),
                 "feedback_count": overview["feedback_count"] or 0,
                 "unique_conversations": overview["unique_conversations"] or 0,
                 "unique_sources": overview["unique_sources"] or 0,
             },
-            "action_type_distribution": {row["action_type"]: row["count"] for row in action_rows},
-            "source_type_distribution": {row["source_type"]: row["count"] for row in source_rows},
-            "handling_mode_distribution": {row["handling_mode"]: row["count"] for row in handling_rows},
+            "action_type_distribution": {
+                row["action_type"]: row["count"] for row in action_rows
+            },
+            "source_type_distribution": {
+                row["source_type"]: row["count"] for row in source_rows
+            },
+            "handling_mode_distribution": {
+                row["handling_mode"]: row["count"] for row in handling_rows
+            },
         }
 
 
@@ -491,7 +530,7 @@ async def get_accuracy_over_time(
 ) -> List[Dict[str, Any]]:
     """
     Get comprehension accuracy over time for trend analysis.
-    
+
     Groups results into time buckets and returns average confidence
     and feedback scores per bucket.
     """
@@ -517,8 +556,12 @@ async def get_accuracy_over_time(
             {
                 "date": row["bucket"].isoformat() if row["bucket"] else None,
                 "total": row["total"],
-                "avg_confidence": float(row["avg_confidence"]) if row["avg_confidence"] else 0.0,
-                "avg_feedback": float(row["avg_feedback"]) if row["avg_feedback"] else None,
+                "avg_confidence": (
+                    float(row["avg_confidence"]) if row["avg_confidence"] else 0.0
+                ),
+                "avg_feedback": (
+                    float(row["avg_feedback"]) if row["avg_feedback"] else None
+                ),
                 "feedback_count": row["feedback_count"] or 0,
             }
             for row in rows
@@ -528,6 +571,7 @@ async def get_accuracy_over_time(
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def _row_to_comprehension_result(row) -> ComprehensionResult:
     """Convert a database row to a ComprehensionResult model."""
@@ -650,4 +694,5 @@ def _parse_json(value: Any, default: Any = None) -> Any:
 def uuid4_safe():
     """Generate a UUID4, import-safe."""
     from uuid import uuid4
+
     return uuid4()

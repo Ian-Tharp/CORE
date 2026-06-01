@@ -33,6 +33,7 @@ from datetime import datetime
 # Helpers
 # ===========================================================================
 
+
 def _min_perspective(**overrides) -> dict:
     base = {
         "session_id": uuid4(),
@@ -60,6 +61,7 @@ def _min_vote(**overrides) -> dict:
 # ===========================================================================
 # SessionStatus enum
 # ===========================================================================
+
 
 class TestSessionStatus:
     def test_gathering_value(self):
@@ -94,6 +96,7 @@ class TestSessionStatus:
 # VoteType enum
 # ===========================================================================
 
+
 class TestVoteType:
     def test_agree_value(self):
         """
@@ -118,6 +121,7 @@ class TestVoteType:
 # ===========================================================================
 # CouncilSession — bounds and defaults
 # ===========================================================================
+
 
 class TestCouncilSession:
     def test_valid_session_created(self):
@@ -192,6 +196,7 @@ class TestCouncilSession:
 # CouncilPerspective — confidence bounds
 # ===========================================================================
 
+
 class TestCouncilPerspective:
     def test_valid_perspective_created(self):
         """Minimal valid perspective must be accepted."""
@@ -243,6 +248,7 @@ class TestCouncilPerspective:
 # CouncilVote — weight bounds
 # ===========================================================================
 
+
 class TestCouncilVote:
     def test_valid_vote_created(self):
         """Minimal valid vote must be accepted."""
@@ -290,6 +296,7 @@ class TestCouncilVote:
 # ===========================================================================
 # CouncilSessionFull — composite
 # ===========================================================================
+
 
 class TestCouncilSessionFull:
     def test_contains_session_perspectives_votes(self):

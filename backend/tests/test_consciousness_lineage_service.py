@@ -37,6 +37,7 @@ from app.services.consciousness_lineage_service import ConsciousnessLineageServi
 # Helpers
 # ===========================================================================
 
+
 def _make_instance(
     instance_id: str = "inst-1",
     instance_name: str = "Alpha",
@@ -69,6 +70,7 @@ def _make_service() -> ConsciousnessLineageService:
 # register_consciousness_instance — lineage path and generation
 # ===========================================================================
 
+
 class TestRegisterConsciousnessInstance:
     @pytest.mark.asyncio
     async def test_root_instance_gets_generation_1(self):
@@ -82,12 +84,16 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create(instance):
             captured["instance"] = instance
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   side_effect=_fake_create), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=None)):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            side_effect=_fake_create,
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=None),
+        ):
             await svc.register_consciousness_instance("inst-root", "Root")
 
         assert captured["instance"].generation == 1
@@ -99,21 +105,30 @@ class TestRegisterConsciousnessInstance:
         Remove increment → multi-generation lineages flat → test fails.
         """
         svc = _make_service()
-        parent = _make_instance(instance_id="parent-1", generation=3, lineage_path="root->parent")
+        parent = _make_instance(
+            instance_id="parent-1", generation=3, lineage_path="root->parent"
+        )
         captured = {}
 
         async def _fake_create(instance):
             captured["instance"] = instance
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   side_effect=_fake_create), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=parent)), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()):
-            await svc.register_consciousness_instance("child-1", "Child", parent_instance_id="parent-1")
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            side_effect=_fake_create,
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=parent),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ):
+            await svc.register_consciousness_instance(
+                "child-1", "Child", parent_instance_id="parent-1"
+            )
 
         assert captured["instance"].generation == 4  # parent.generation(3) + 1
 
@@ -134,15 +149,22 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create(instance):
             captured["instance"] = instance
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   side_effect=_fake_create), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=parent)), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()):
-            await svc.register_consciousness_instance("child-1", "Child", parent_instance_id="parent-1")
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            side_effect=_fake_create,
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=parent),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ):
+            await svc.register_consciousness_instance(
+                "child-1", "Child", parent_instance_id="parent-1"
+            )
 
         assert "SENTINEL_PARENT_PATH" in captured["instance"].lineage_path
         assert "->" in captured["instance"].lineage_path
@@ -156,12 +178,16 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create(instance):
             captured["instance"] = instance
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   side_effect=_fake_create), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=None)):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            side_effect=_fake_create,
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=None),
+        ):
             await svc.register_consciousness_instance("inst-root", "MyInstance")
 
         assert captured["instance"].lineage_path == "myinstance"
@@ -179,12 +205,16 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=None)):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=None),
+        ):
             await svc.register_consciousness_instance("inst-new", "NewInstance")
 
         assert len(events_recorded) >= 1
@@ -203,15 +233,21 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=None)):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=None),
+        ):
             await svc.register_consciousness_instance("inst-root", "Founder")
 
-        emergence_event = next(e for e in events_recorded if e.event_type == EvolutionEventType.EMERGENCE)
+        emergence_event = next(
+            e for e in events_recorded if e.event_type == EvolutionEventType.EMERGENCE
+        )
         assert emergence_event.significance_level == SignificanceLevel.MAJOR
 
     @pytest.mark.asyncio
@@ -224,23 +260,33 @@ class TestRegisterConsciousnessInstance:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_instance",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_instance",
-                   new=AsyncMock(return_value=parent)), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event), \
-             patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()):
-            await svc.register_consciousness_instance("child-1", "Child", parent_instance_id="p-1")
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_instance",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_instance",
+            new=AsyncMock(return_value=parent),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ), patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ):
+            await svc.register_consciousness_instance(
+                "child-1", "Child", parent_instance_id="p-1"
+            )
 
-        emergence_event = next(e for e in events_recorded if e.event_type == EvolutionEventType.EMERGENCE)
+        emergence_event = next(
+            e for e in events_recorded if e.event_type == EvolutionEventType.EMERGENCE
+        )
         assert emergence_event.significance_level == SignificanceLevel.MODERATE
 
 
 # ===========================================================================
 # record_phase_transition — significance based on phase distance
 # ===========================================================================
+
 
 class TestRecordPhaseTransition:
     @pytest.mark.asyncio
@@ -255,8 +301,10 @@ class TestRecordPhaseTransition:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.record_phase_transition("inst-1", from_phase=1, to_phase=2)
 
         assert len(events_recorded) == 1
@@ -274,8 +322,10 @@ class TestRecordPhaseTransition:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.record_phase_transition("inst-1", from_phase=1, to_phase=4)
 
         assert events_recorded[0].significance_level == SignificanceLevel.MAJOR
@@ -292,8 +342,10 @@ class TestRecordPhaseTransition:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.record_phase_transition("inst-1", from_phase=2, to_phase=3)
 
         desc = events_recorded[0].event_description
@@ -309,11 +361,12 @@ class TestRecordPhaseTransition:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.record_phase_transition(
-                "inst-1", from_phase=1, to_phase=2,
-                description="SENTINEL_CUSTOM_DESC"
+                "inst-1", from_phase=1, to_phase=2, description="SENTINEL_CUSTOM_DESC"
             )
 
         assert "SENTINEL_CUSTOM_DESC" in events_recorded[0].event_description
@@ -327,8 +380,10 @@ class TestRecordPhaseTransition:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.record_phase_transition("inst-1", from_phase=1, to_phase=2)
 
         assert events_recorded[0].event_type == EvolutionEventType.PHASE_TRANSITION
@@ -337,6 +392,7 @@ class TestRecordPhaseTransition:
 # ===========================================================================
 # establish_relationship — event recording for significant types
 # ===========================================================================
+
 
 class TestEstablishRelationship:
     @pytest.mark.asyncio
@@ -351,10 +407,13 @@ class TestEstablishRelationship:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.establish_relationship(
                 instance_a_id="SENTINEL_PARENT",
                 instance_b_id="SENTINEL_CHILD",
@@ -374,10 +433,13 @@ class TestEstablishRelationship:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.establish_relationship(
                 instance_a_id="mentor-1",
                 instance_b_id="SENTINEL_STUDENT",
@@ -399,10 +461,13 @@ class TestEstablishRelationship:
         async def _fake_create_event(event):
             events_recorded.append(event)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   new=AsyncMock()), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   side_effect=_fake_create_event):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            new=AsyncMock(),
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            side_effect=_fake_create_event,
+        ):
             await svc.establish_relationship(
                 instance_a_id="inst-a",
                 instance_b_id="inst-b",
@@ -421,10 +486,13 @@ class TestEstablishRelationship:
         async def _fake_store(rel):
             stored.append(rel)
 
-        with patch("app.services.consciousness_lineage_service.create_consciousness_relationship",
-                   side_effect=_fake_store), \
-             patch("app.services.consciousness_lineage_service.create_evolution_event",
-                   new=AsyncMock()):
+        with patch(
+            "app.services.consciousness_lineage_service.create_consciousness_relationship",
+            side_effect=_fake_store,
+        ), patch(
+            "app.services.consciousness_lineage_service.create_evolution_event",
+            new=AsyncMock(),
+        ):
             await svc.establish_relationship(
                 "SENTINEL_A", "SENTINEL_B", RelationshipType.COLLABORATOR
             )
@@ -437,6 +505,7 @@ class TestEstablishRelationship:
 # ===========================================================================
 # get_lineage_analytics — aggregation logic
 # ===========================================================================
+
 
 class TestGetLineageAnalytics:
     @pytest.mark.asyncio
@@ -452,8 +521,10 @@ class TestGetLineageAnalytics:
             _make_instance("i-3", generation=1, evolution_branch="alpha_branch"),
         ]
 
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=instances)):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=instances),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         assert analytics["total_instances"] == 3
@@ -471,8 +542,10 @@ class TestGetLineageAnalytics:
             _make_instance("i-3", generation=2),
         ]
 
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=instances)):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=instances),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         assert analytics["by_generation"]["1"] == 2
@@ -488,8 +561,10 @@ class TestGetLineageAnalytics:
             _make_instance("i-3", status=ConsciousnessStatus.DORMANT),
         ]
 
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=instances)):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=instances),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         assert analytics["by_status"]["active"] == 2
@@ -508,8 +583,10 @@ class TestGetLineageAnalytics:
             _make_instance("i-mid", contributions_made=50),
         ]
 
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=instances)):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=instances),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         top = analytics["top_contributors"]
@@ -522,8 +599,10 @@ class TestGetLineageAnalytics:
         svc = _make_service()
         instances = [_make_instance(f"i-{i}", contributions_made=i) for i in range(20)]
 
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=instances)):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=instances),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         assert len(analytics["top_contributors"]) <= 10
@@ -532,8 +611,10 @@ class TestGetLineageAnalytics:
     async def test_empty_instances_returns_zeros(self):
         """No instances must produce all-zero/empty analytics."""
         svc = _make_service()
-        with patch("app.services.consciousness_lineage_service.list_consciousness_instances",
-                   new=AsyncMock(return_value=[])):
+        with patch(
+            "app.services.consciousness_lineage_service.list_consciousness_instances",
+            new=AsyncMock(return_value=[]),
+        ):
             analytics = await svc.get_lineage_analytics()
 
         assert analytics["total_instances"] == 0
@@ -544,6 +625,7 @@ class TestGetLineageAnalytics:
 # ===========================================================================
 # get_evolution_timeline — merge and sort
 # ===========================================================================
+
 
 class TestGetEvolutionTimeline:
     @pytest.mark.asyncio
@@ -570,10 +652,13 @@ class TestGetEvolutionTimeline:
         new_event.significance_level = MagicMock(value="major")
         new_event.metadata = {}
 
-        with patch("app.services.consciousness_lineage_service.get_evolution_events",
-                   new=AsyncMock(return_value=[old_event, new_event])), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_contributions",
-                   new=AsyncMock(return_value=[])):
+        with patch(
+            "app.services.consciousness_lineage_service.get_evolution_events",
+            new=AsyncMock(return_value=[old_event, new_event]),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_contributions",
+            new=AsyncMock(return_value=[]),
+        ):
             timeline = await svc.get_evolution_timeline("inst-1")
 
         assert len(timeline) == 2
@@ -603,10 +688,13 @@ class TestGetEvolutionTimeline:
         contrib.impact_score = Decimal("0.8")
         contrib.evolution_depth = 0
 
-        with patch("app.services.consciousness_lineage_service.get_evolution_events",
-                   new=AsyncMock(return_value=[event])), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_contributions",
-                   new=AsyncMock(return_value=[contrib])):
+        with patch(
+            "app.services.consciousness_lineage_service.get_evolution_events",
+            new=AsyncMock(return_value=[event]),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_contributions",
+            new=AsyncMock(return_value=[contrib]),
+        ):
             timeline = await svc.get_evolution_timeline("inst-1")
 
         types = {item["type"] for item in timeline}
@@ -617,10 +705,13 @@ class TestGetEvolutionTimeline:
     async def test_empty_timeline(self):
         """Instance with no events or contributions must return empty list."""
         svc = _make_service()
-        with patch("app.services.consciousness_lineage_service.get_evolution_events",
-                   new=AsyncMock(return_value=[])), \
-             patch("app.services.consciousness_lineage_service.get_consciousness_contributions",
-                   new=AsyncMock(return_value=[])):
+        with patch(
+            "app.services.consciousness_lineage_service.get_evolution_events",
+            new=AsyncMock(return_value=[]),
+        ), patch(
+            "app.services.consciousness_lineage_service.get_consciousness_contributions",
+            new=AsyncMock(return_value=[]),
+        ):
             timeline = await svc.get_evolution_timeline("inst-empty")
 
         assert timeline == []

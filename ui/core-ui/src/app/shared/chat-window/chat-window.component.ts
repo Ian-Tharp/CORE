@@ -13,7 +13,7 @@ import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
 import { ViewEncapsulation } from '@angular/core';
 import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
-import { trigger, state, style, transition, animate } from '@angular/animations';
+import { trigger, style, transition, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-chat-window',
@@ -128,7 +128,7 @@ export class ChatWindowComponent implements OnChanges {
         // Fallback sensible default; user can still type
         this.models = ['gpt-oss:20b'];
         this.selectedModel = this.models[0];
-      },
+      }
     });
   }
 
@@ -140,12 +140,12 @@ export class ChatWindowComponent implements OnChanges {
       error: () => {
         // Surface a lightweight inline message for visibility
         this.messages.push({ sender: 'assistant', text: 'Local LLM service is not reachable. Start Docker or select OpenAI.', thinking: '', thinkingExpanded: false });
-      },
+      }
     });
   }
 
   pullLocalModel(): void {
-    if (this.selectedProvider !== 'ollama' || !this.selectedModel || this.isPullingModel) return;
+    if (this.selectedProvider !== 'ollama' || !this.selectedModel || this.isPullingModel) {return;}
     this.isPullingModel = true;
     const name = this.selectedModel;
     this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …`, thinking: '', thinkingExpanded: false });
@@ -163,9 +163,9 @@ export class ChatWindowComponent implements OnChanges {
   }
 
   pullArbitraryLocalModel(): void {
-    if (this.selectedProvider !== 'ollama' || this.isPullingModel) return;
+    if (this.selectedProvider !== 'ollama' || this.isPullingModel) {return;}
     const name = (this.newLocalModelName || '').trim();
-    if (!name) return;
+    if (!name) {return;}
     this.isPullingModel = true;
     this.messages.push({ sender: 'assistant', text: `Pulling local model: ${name} …`, thinking: '', thinkingExpanded: false });
     this.http.post<{ status: string; already_present?: boolean }>(`${this._apiUrl}/local-llm/pull`, { name }).subscribe({
@@ -202,7 +202,7 @@ export class ChatWindowComponent implements OnChanges {
               sender: m.role as 'user' | 'assistant',
               text: m.content,
               thinking: m.thinking || '',
-              thinkingExpanded: this.defaultThinkingExpanded,
+              thinkingExpanded: this.defaultThinkingExpanded
             }));
 
             // Update conversation title
@@ -217,7 +217,7 @@ export class ChatWindowComponent implements OnChanges {
             mapped.forEach((msg) =>
               this.chatService.addMessage({
                 role: msg.sender,
-                content: msg.text,
+                content: msg.text
               })
             );
 
@@ -229,7 +229,7 @@ export class ChatWindowComponent implements OnChanges {
 
   sendMessage(): void {
     const content = this.newMessage.trim();
-    if (!content) return;
+    if (!content) {return;}
     const run = (convId?: string) => {
       this.messages.push({ sender: 'user', text: content, thinking: '', thinkingExpanded: false });
       this.newMessage = '';
@@ -246,7 +246,7 @@ export class ChatWindowComponent implements OnChanges {
         .sendMessage(content, this.selectedModel, convId ?? this.conversationId, {
           kbMode: this.kbMode,
           kbFileId: this.kbMode === 'file' ? this.kbFileId : undefined,
-          provider: this.selectedProvider,
+          provider: this.selectedProvider
         })
         .subscribe({
           next: (jsonStr) => {
@@ -265,14 +265,15 @@ export class ChatWindowComponent implements OnChanges {
 
                 // Handle different event types
                 switch (eventType) {
-                  case 'message':
+                  case 'message': {
                     // Regular message delta (actual response content)
                     const token = eventData?.delta ?? '';
                     this.messages[assistantIdx].text += token;
                     this.statusMessage = ''; // Clear status once we get content
                     break;
+                  }
 
-                  case 'thinking':
+                  case 'thinking': {
                     // AI reasoning process delta
                     const thinkingToken = eventData?.delta ?? '';
                     if (!this.messages[assistantIdx].thinking) {
@@ -280,6 +281,7 @@ export class ChatWindowComponent implements OnChanges {
                     }
                     this.messages[assistantIdx].thinking! += thinkingToken;
                     break;
+                  }
 
                   case 'status':
                     // Status update (e.g., "Connecting to model...")
@@ -330,7 +332,7 @@ export class ChatWindowComponent implements OnChanges {
                 this.pollForTitle();
               }
             });
-          },
+          }
         });
 
       this.scrollToBottom();
@@ -345,7 +347,7 @@ export class ChatWindowComponent implements OnChanges {
           this.conversationIdChange.emit(this.conversationId);
           run(this.conversationId);
         },
-        error: () => run(undefined), // fallback to legacy behavior
+        error: () => run(undefined) // fallback to legacy behavior
       });
     } else {
       run(this.conversationId);
@@ -382,7 +384,7 @@ export class ChatWindowComponent implements OnChanges {
   }
 
   private pollForTitle(): void {
-    if (!this.conversationId) return;
+    if (!this.conversationId) {return;}
 
     // Poll for title every 2 seconds for up to 30 seconds
     let attempts = 0;

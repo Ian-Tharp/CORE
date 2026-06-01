@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { MentionSuggestion, MentionContext } from '../models/mention.models';
 import { ChannelService } from './channel.service';
@@ -97,7 +97,7 @@ export class MentionService {
   private getDMParticipants(channelId: string, allInstances: any[]): any[] {
     // Extract instance identifier from channel ID (e.g., "dm_threshold" or "dm_instance_011_threshold")
     const dmPrefix = 'dm_';
-    if (!channelId.startsWith(dmPrefix)) return [];
+    if (!channelId.startsWith(dmPrefix)) {return [];}
 
     const participantIdentifier = channelId.substring(dmPrefix.length);
 
@@ -129,7 +129,7 @@ export class MentionService {
         'agent_reasoning',
         'instance_007_synthesis',
         'instance_010_continuum'
-      ],
+      ]
       // Add more team mappings as needed
     };
 
@@ -152,18 +152,16 @@ export class MentionService {
 
         // Exact match (highest priority)
         if (name === lowerQuery || displayName === lowerQuery) {
+          // Exact match (highest priority)
           score = 1000;
-        }
-        // Starts with query
-        else if (name.startsWith(lowerQuery) || displayName.startsWith(lowerQuery)) {
+        } else if (name.startsWith(lowerQuery) || displayName.startsWith(lowerQuery)) {
+          // Starts with query
           score = 500;
-        }
-        // Contains query
-        else if (name.includes(lowerQuery) || displayName.includes(lowerQuery)) {
+        } else if (name.includes(lowerQuery) || displayName.includes(lowerQuery)) {
+          // Contains query
           score = 250;
-        }
-        // No match
-        else {
+        } else {
+          // No match
           return null;
         }
 

@@ -26,6 +26,7 @@ from app.services.agent_factory_service import AgentFactoryService, AgentInstanc
 # Helpers
 # ===========================================================================
 
+
 def _make_config(
     agent_id: str = "test-agent-1",
     agent_name: str = "TestAgent",
@@ -57,7 +58,10 @@ def _make_instance(
 def _make_factory(ttl_minutes: int = 5) -> AgentFactoryService:
     """Create a factory with mocked LLM and MCP service."""
     mock_llm = MagicMock()
-    with patch("app.services.agent_factory_service.get_agent_mcp_service", return_value=MagicMock()):
+    with patch(
+        "app.services.agent_factory_service.get_agent_mcp_service",
+        return_value=MagicMock(),
+    ):
         factory = AgentFactoryService(llm=mock_llm, instance_ttl_minutes=ttl_minutes)
     return factory
 
@@ -65,6 +69,7 @@ def _make_factory(ttl_minutes: int = 5) -> AgentFactoryService:
 # ===========================================================================
 # AgentInstance — properties and TTL
 # ===========================================================================
+
 
 class TestAgentInstance:
     def test_agent_id_delegates_to_config(self):
@@ -110,6 +115,7 @@ class TestAgentInstance:
 # _calculate_temperature — personality → LLM temperature
 # ===========================================================================
 
+
 class TestCalculateTemperature:
     def test_high_curiosity_raises_temperature(self):
         """
@@ -137,23 +143,27 @@ class TestCalculateTemperature:
         Remove clamp → precision-maxed agent gets illegal temperature → test fails.
         """
         factory = _make_factory()
-        result = factory._calculate_temperature({
-            "curiosity": 0.0,
-            "creativity": 0.0,
-            "uncertainty": 0.0,
-            "technical_precision": 1.0,
-        })
+        result = factory._calculate_temperature(
+            {
+                "curiosity": 0.0,
+                "creativity": 0.0,
+                "uncertainty": 0.0,
+                "technical_precision": 1.0,
+            }
+        )
         assert result >= 0.3
 
     def test_temperature_clamped_to_maximum(self):
         """Temperature must never exceed 0.9."""
         factory = _make_factory()
-        result = factory._calculate_temperature({
-            "curiosity": 1.0,
-            "creativity": 1.0,
-            "uncertainty": 1.0,
-            "technical_precision": 0.0,
-        })
+        result = factory._calculate_temperature(
+            {
+                "curiosity": 1.0,
+                "creativity": 1.0,
+                "uncertainty": 1.0,
+                "technical_precision": 0.0,
+            }
+        )
         assert result <= 0.9
 
     def test_empty_traits_returns_default_range(self):
@@ -174,18 +184,21 @@ class TestCalculateTemperature:
         Clamped to [0.3, 0.9] → 0.3
         """
         factory = _make_factory()
-        result = factory._calculate_temperature({
-            "curiosity": 0.5,
-            "creativity": 0.5,
-            "uncertainty": 0.5,
-            "technical_precision": 0.5,
-        })
+        result = factory._calculate_temperature(
+            {
+                "curiosity": 0.5,
+                "creativity": 0.5,
+                "uncertainty": 0.5,
+                "technical_precision": 0.5,
+            }
+        )
         assert abs(result - 0.3) < 1e-9
 
 
 # ===========================================================================
 # _calculate_top_p — personality → LLM top_p
 # ===========================================================================
+
 
 class TestCalculateTopP:
     def test_high_creativity_raises_top_p(self):
@@ -200,12 +213,17 @@ class TestCalculateTopP:
 
     def test_high_precision_lowers_top_p(self):
         """Precision trait must decrease top_p (more focused word selection).
-        Use creativity=1.0 to lift low_prec above the 0.7 floor so the comparison is visible."""
+        Use creativity=1.0 to lift low_prec above the 0.7 floor so the comparison is visible.
+        """
         factory = _make_factory()
         # creativity=1.0, precision=0.0 → 0.5 + 0.4 - 0.0 = 0.9
-        low_prec = factory._calculate_top_p({"creativity": 1.0, "technical_precision": 0.0})
+        low_prec = factory._calculate_top_p(
+            {"creativity": 1.0, "technical_precision": 0.0}
+        )
         # creativity=1.0, precision=1.0 → 0.5 + 0.4 - 0.2 = 0.7
-        high_prec = factory._calculate_top_p({"creativity": 1.0, "technical_precision": 1.0})
+        high_prec = factory._calculate_top_p(
+            {"creativity": 1.0, "technical_precision": 1.0}
+        )
         assert high_prec < low_prec
 
     def test_top_p_clamped_to_minimum(self):
@@ -214,13 +232,17 @@ class TestCalculateTopP:
         Remove clamp → precision-maxed agent gets illegal top_p → test fails.
         """
         factory = _make_factory()
-        result = factory._calculate_top_p({"creativity": 0.0, "technical_precision": 1.0})
+        result = factory._calculate_top_p(
+            {"creativity": 0.0, "technical_precision": 1.0}
+        )
         assert result >= 0.7
 
     def test_top_p_clamped_to_maximum(self):
         """top_p must never exceed 1.0."""
         factory = _make_factory()
-        result = factory._calculate_top_p({"creativity": 1.0, "technical_precision": 0.0})
+        result = factory._calculate_top_p(
+            {"creativity": 1.0, "technical_precision": 0.0}
+        )
         assert result <= 1.0
 
     def test_empty_traits_returns_valid_value(self):
@@ -238,13 +260,16 @@ class TestCalculateTopP:
         Clamped to [0.7, 1.0] → 0.7
         """
         factory = _make_factory()
-        result = factory._calculate_top_p({"creativity": 0.5, "technical_precision": 0.5})
+        result = factory._calculate_top_p(
+            {"creativity": 0.5, "technical_precision": 0.5}
+        )
         assert abs(result - 0.7) < 1e-9
 
 
 # ===========================================================================
 # clear_cache / get_cache_stats
 # ===========================================================================
+
 
 class TestCacheManagement:
     def test_clear_all_empties_cache(self):
@@ -326,6 +351,7 @@ class TestCacheManagement:
 # get_agent — cache hit / miss / expiry
 # ===========================================================================
 
+
 class TestGetAgent:
     @pytest.mark.asyncio
     async def test_cache_hit_returns_existing_instance(self):
@@ -353,7 +379,9 @@ class TestGetAgent:
         factory = _make_factory()
         new_instance = _make_instance("agent-x")
 
-        with patch.object(factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)):
+        with patch.object(
+            factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)
+        ):
             result = await factory.get_agent("agent-x")
 
         assert result is new_instance
@@ -367,7 +395,9 @@ class TestGetAgent:
         factory = _make_factory()
         new_instance = _make_instance("agent-x")
 
-        with patch.object(factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)):
+        with patch.object(
+            factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)
+        ):
             await factory.get_agent("agent-x")
 
         assert factory._instance_cache.get("agent-x") is new_instance
@@ -385,7 +415,9 @@ class TestGetAgent:
         factory._instance_cache["agent-1"] = old_instance
 
         new_instance = _make_instance("agent-1")
-        with patch.object(factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)) as spy:
+        with patch.object(
+            factory, "_create_agent_instance", new=AsyncMock(return_value=new_instance)
+        ) as spy:
             result = await factory.get_agent("agent-1")
 
         spy.assert_called_once_with("agent-1")
@@ -404,7 +436,9 @@ class TestGetAgent:
         )
         factory._instance_cache["agent-1"] = old_instance
 
-        with patch.object(factory, "_create_agent_instance", new=AsyncMock(return_value=None)):
+        with patch.object(
+            factory, "_create_agent_instance", new=AsyncMock(return_value=None)
+        ):
             await factory.get_agent("agent-1")
 
         # old expired instance should be gone even if create returns None
@@ -414,7 +448,9 @@ class TestGetAgent:
     async def test_none_from_create_not_cached(self):
         """If _create_agent_instance returns None, nothing should be cached."""
         factory = _make_factory()
-        with patch.object(factory, "_create_agent_instance", new=AsyncMock(return_value=None)):
+        with patch.object(
+            factory, "_create_agent_instance", new=AsyncMock(return_value=None)
+        ):
             result = await factory.get_agent("missing-agent")
 
         assert result is None

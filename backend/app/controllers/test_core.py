@@ -2,10 +2,19 @@
 
 WARNING: This endpoint is public (no auth). Remove or protect in production.
 """
+
 from fastapi import APIRouter
-from app.models.core_state import COREState, UserIntent, ExecutionPlan, PlanStep, StepResult, EvaluationResult
+from app.models.core_state import (
+    COREState,
+    UserIntent,
+    ExecutionPlan,
+    PlanStep,
+    StepResult,
+    EvaluationResult,
+)
 
 router = APIRouter(prefix="/test", tags=["test"])
+
 
 @router.get("/core-state")
 async def test_core_state():
@@ -18,27 +27,21 @@ async def test_core_state():
         description="Test task",
         confidence=0.9,
         requires_tools=True,
-        tools_needed=["file_operations"]
+        tools_needed=["file_operations"],
     )
 
     # Add plan
     state.plan = ExecutionPlan(
         goal="Test goal",
         steps=[
-            PlanStep(
-                name="Step 1",
-                description="Do something",
-                tool="file_operations"
-            )
-        ]
+            PlanStep(name="Step 1", description="Do something", tool="file_operations")
+        ],
     )
 
     # Add result
     state.step_results = [
         StepResult(
-            step_id=state.plan.steps[0].id,
-            status="success",
-            outputs={"result": "test"}
+            step_id=state.plan.steps[0].id, status="success", outputs={"result": "test"}
         )
     ]
 
@@ -49,7 +52,7 @@ async def test_core_state():
         meets_requirements=True,
         quality_score=0.85,
         feedback="Test passed",
-        next_action="finalize"
+        next_action="finalize",
     )
 
     state.response = "Test completed successfully"
@@ -59,5 +62,5 @@ async def test_core_state():
         "run_id": state.run_id,
         "intent": state.intent.model_dump() if state.intent else None,
         "plan_steps": len(state.plan.steps) if state.plan else 0,
-        "response": state.response
+        "response": state.response,
     }

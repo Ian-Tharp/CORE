@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
-  HttpTestingController,
+  HttpTestingController
 } from '@angular/common/http/testing';
 import { skip } from 'rxjs';
 
@@ -13,7 +13,7 @@ describe('DiscordBridgeService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule]
     });
 
     service = TestBed.inject(DiscordBridgeService);
@@ -47,7 +47,7 @@ describe('DiscordBridgeService', () => {
         bot_user: 'Vigil',
         guilds: 1,
         channel_mappings: 1,
-        bridged_core_channels: [],
+        bridged_core_channels: []
       },
       mappings_count: 1,
       message_links_count: 0,
@@ -55,7 +55,7 @@ describe('DiscordBridgeService', () => {
       delivery_events_count: 0,
       delivery_events_by_status: {},
       delivery_events_by_direction: {},
-      recent_failures: [],
+      recent_failures: []
     });
   });
 
@@ -65,7 +65,7 @@ describe('DiscordBridgeService', () => {
       limit: 10,
       status: 'failed',
       direction: 'core_to_discord',
-      discord_channel_id: 'discord-1',
+      discord_channel_id: 'discord-1'
     }).subscribe();
 
     // Assert
@@ -96,7 +96,7 @@ describe('DiscordBridgeService', () => {
       bot_user: 'Vigil',
       guilds: 1,
       channel_mappings: 2,
-      bridged_core_channels: [],
+      bridged_core_channels: []
     });
 
     // Assert
@@ -119,7 +119,7 @@ describe('DiscordBridgeService', () => {
     const request = httpMock.expectOne('http://localhost:8001/discord/status');
     request.flush('boom', {
       status: 500,
-      statusText: 'Server Error',
+      statusText: 'Server Error'
     });
 
     // Assert

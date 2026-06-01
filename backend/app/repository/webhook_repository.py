@@ -365,7 +365,14 @@ async def get_delivery_stats(hours: int = 24) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to compute delivery stats: {e}")
-        return {"window_hours": hours, "total_deliveries": 0, "successful": 0, "failed": 0, "success_rate": 0.0, "by_event": {}}
+        return {
+            "window_hours": hours,
+            "total_deliveries": 0,
+            "successful": 0,
+            "failed": 0,
+            "success_rate": 0.0,
+            "by_event": {},
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +396,9 @@ def _row_to_dict(row) -> Dict[str, Any]:
         "is_active": row["is_active"],
         "delivery_count": row["delivery_count"],
         "failure_count": row["failure_count"],
-        "last_delivery_at": row["last_delivery_at"].isoformat() if row["last_delivery_at"] else None,
+        "last_delivery_at": (
+            row["last_delivery_at"].isoformat() if row["last_delivery_at"] else None
+        ),
         "last_error": row["last_error"],
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
@@ -410,6 +419,8 @@ def _delivery_to_dict(row) -> Dict[str, Any]:
         "status_code": row["status_code"],
         "response_body": row["response_body"],
         "error": row["error"],
-        "delivered_at": row["delivered_at"].isoformat() if row["delivered_at"] else None,
+        "delivered_at": (
+            row["delivered_at"].isoformat() if row["delivered_at"] else None
+        ),
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }

@@ -36,6 +36,7 @@ from uuid import uuid4
 # CreativeNode — NodeType Literal constraint
 # ===========================================================================
 
+
 class TestCreativeNode:
     def _min_node(self, **overrides) -> dict:
         base = {
@@ -91,6 +92,7 @@ class TestCreativeNode:
 # Cluster — ClusterPhase constraint and default
 # ===========================================================================
 
+
 class TestCluster:
     def _min_cluster(self, **overrides) -> dict:
         base = {
@@ -145,6 +147,7 @@ class TestCluster:
 # Microcosm — MicrocosmState constraint and default
 # ===========================================================================
 
+
 class TestMicrocosm:
     def _min_microcosm(self, **overrides) -> dict:
         base = {
@@ -195,6 +198,7 @@ class TestMicrocosm:
 # Macrocosm — CommunicationTopology constraint and default
 # ===========================================================================
 
+
 class TestMacrocosm:
     def _min_macrocosm(self, **overrides) -> dict:
         base = {"name": "SENTINEL_MACROCOSM"}
@@ -241,6 +245,7 @@ class TestMacrocosm:
 # Composite models — structural
 # ===========================================================================
 
+
 class TestCompositeModels:
     def test_cluster_full_contains_cluster_and_nodes(self):
         """ClusterFull must hold a Cluster and a nodes list."""
@@ -276,6 +281,7 @@ class TestCompositeModels:
 # ===========================================================================
 # CreateClusterRequest — default phase
 # ===========================================================================
+
 
 class TestCreateClusterRequest:
     def test_default_phase_divergence(self):

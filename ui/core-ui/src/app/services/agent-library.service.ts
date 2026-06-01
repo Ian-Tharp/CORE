@@ -128,7 +128,7 @@ export class AgentLibraryService {
 
   public duplicateAgent(id: string): Observable<{ success: boolean; newId: string }> {
     const source = this.agentsSubject.getValue().find(a => a.id === id);
-    if (!source) return of({ success: false, newId: '' });
+    if (!source) {return of({ success: false, newId: '' });}
     const newId = `${source.id}-copy-${Math.floor(Math.random() * 1000)}`;
     const copy: LibraryAgent = { ...source, id: newId, displayName: `${source.displayName} (Copy)`, draft: true, favorite: false, enabled: false, lastUsed: undefined };
     this.agentsSubject.next([copy, ...this.agentsSubject.getValue()]);

@@ -42,6 +42,7 @@ class ToolSafetyError(ValueError):
 # FileOperationsTool
 # ---------------------------------------------------------------------------
 
+
 class FileOperationsTool:
     """
     File read/write/list/search within a sandboxed workspace directory.
@@ -83,8 +84,13 @@ class FileOperationsTool:
     def _read(self, params: Dict[str, Any]) -> Dict[str, Any]:
         path = self._safe_path(params.get("path", ""))
         if not path.is_file():
-            return {"result": f"File not found: {params.get('path')}", "status": "error"}
-        content = path.read_bytes()[: self.MAX_READ_BYTES].decode("utf-8", errors="replace")
+            return {
+                "result": f"File not found: {params.get('path')}",
+                "status": "error",
+            }
+        content = path.read_bytes()[: self.MAX_READ_BYTES].decode(
+            "utf-8", errors="replace"
+        )
         return {
             "result": content,
             "path": str(path.relative_to(self.workspace_dir)),
@@ -108,9 +114,14 @@ class FileOperationsTool:
     def _list(self, params: Dict[str, Any]) -> Dict[str, Any]:
         base = self._safe_path(params.get("path", "."))
         if not base.exists():
-            return {"result": f"Directory not found: {params.get('path', '.')}", "status": "error"}
+            return {
+                "result": f"Directory not found: {params.get('path', '.')}",
+                "status": "error",
+            }
         entries = sorted(p.relative_to(self.workspace_dir) for p in base.iterdir())
-        names = [str(e) + ("/" if (self.workspace_dir / e).is_dir() else "") for e in entries]
+        names = [
+            str(e) + ("/" if (self.workspace_dir / e).is_dir() else "") for e in entries
+        ]
         return {
             "result": "\n".join(names) or "(empty directory)",
             "entries": names,
@@ -174,7 +185,9 @@ class GitTool:
 
         extra_args: List[str] = params.get("args", [])
         # Ensure all extra args are strings and do not start with shell operators
-        sanitized = [str(a) for a in extra_args if not str(a).startswith(("&&", "||", ";", "|"))]
+        sanitized = [
+            str(a) for a in extra_args if not str(a).startswith(("&&", "||", ";", "|"))
+        ]
         cmd = ["git", action] + sanitized
 
         try:
@@ -189,7 +202,9 @@ class GitTool:
             stderr = proc.stderr[:2_000]
             if proc.returncode != 0:
                 return {
-                    "result": stderr or stdout or f"git {action} exited with code {proc.returncode}",
+                    "result": stderr
+                    or stdout
+                    or f"git {action} exited with code {proc.returncode}",
                     "returncode": proc.returncode,
                     "status": "error",
                 }
@@ -200,7 +215,10 @@ class GitTool:
                 "status": "success",
             }
         except subprocess.TimeoutExpired:
-            return {"result": f"git {action} timed out after {self.TIMEOUT_SECONDS}s", "status": "error"}
+            return {
+                "result": f"git {action} timed out after {self.TIMEOUT_SECONDS}s",
+                "status": "error",
+            }
         except FileNotFoundError:
             return {"result": "git not found in PATH", "status": "error"}
 
@@ -211,6 +229,7 @@ class GitTool:
 # ---------------------------------------------------------------------------
 # WebResearchTool
 # ---------------------------------------------------------------------------
+
 
 class WebResearchTool:
     """
@@ -236,9 +255,13 @@ class WebResearchTool:
                 follow_redirects=True,
                 max_redirects=5,
             ) as client:
-                resp = client.get(url, headers={"User-Agent": "CORE/1.0 (research-bot)"})
+                resp = client.get(
+                    url, headers={"User-Agent": "CORE/1.0 (research-bot)"}
+                )
 
-            body = resp.content[: self.MAX_RESPONSE_BYTES].decode("utf-8", errors="replace")
+            body = resp.content[: self.MAX_RESPONSE_BYTES].decode(
+                "utf-8", errors="replace"
+            )
             return {
                 "result": body,
                 "url": str(resp.url),
@@ -260,6 +283,7 @@ class WebResearchTool:
 # DatabaseTool  (CORE REST API bridge)
 # ---------------------------------------------------------------------------
 
+
 class DatabaseTool:
     """
     Database access routed through the CORE REST API.
@@ -271,7 +295,9 @@ class DatabaseTool:
 
     TIMEOUT_SECONDS = 10.0
 
-    def __init__(self, base_url: str = "http://localhost:8001", api_key: Optional[str] = None):
+    def __init__(
+        self, base_url: str = "http://localhost:8001", api_key: Optional[str] = None
+    ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or os.getenv("CORE_API_KEY", "")
 
@@ -281,7 +307,10 @@ class DatabaseTool:
         payload = params.get("payload", {})
 
         if not endpoint:
-            return {"result": "No endpoint specified for database tool", "status": "error"}
+            return {
+                "result": "No endpoint specified for database tool",
+                "status": "error",
+            }
 
         url = f"{self.base_url}/{endpoint}"
         headers = {}
@@ -295,7 +324,10 @@ class DatabaseTool:
                 elif method == "POST":
                     resp = client.post(url, headers=headers, json=payload)
                 else:
-                    return {"result": f"Unsupported HTTP method: {method}", "status": "error"}
+                    return {
+                        "result": f"Unsupported HTTP method: {method}",
+                        "status": "error",
+                    }
 
             return {
                 "result": resp.text[:10_000],
@@ -312,6 +344,7 @@ class DatabaseTool:
 # ---------------------------------------------------------------------------
 # ToolDispatcher
 # ---------------------------------------------------------------------------
+
 
 class ToolDispatcher:
     """
@@ -352,7 +385,9 @@ class ToolDispatcher:
                 "result": f"Unknown tool: '{tool_name}'. Available: {list(self._handlers)}",
                 "status": "error",
             }
-        logger.info("ToolDispatcher: dispatching tool='%s' params=%s", tool_name, params)
+        logger.info(
+            "ToolDispatcher: dispatching tool='%s' params=%s", tool_name, params
+        )
         return handler.execute(params)
 
     def get_artifacts(self, tool_name: str, outputs: Dict[str, Any]) -> List[str]:

@@ -186,7 +186,13 @@ export class TileMetadataService {
   // AI Observations
   // ─────────────────────────────────────────────────────────────
 
-  addAIObservation(tileIndex: number, instanceName: string, observation: string, confidence?: number, tags?: string[]): AIObservation {
+  addAIObservation(
+    tileIndex: number,
+    instanceName: string,
+    observation: string,
+    confidence?: number,
+    tags?: string[]
+  ): AIObservation {
     const meta = this.getOrCreateMetadata(tileIndex);
     const obs: AIObservation = {
       id: crypto.randomUUID(),
@@ -297,7 +303,7 @@ export class TileMetadataService {
 
   updateConnection(connectionId: string, partial: Partial<WorldConnection>): WorldConnection {
     const index = this.connections.findIndex(c => c.id === connectionId);
-    if (index === -1) throw new Error(`Connection ${connectionId} not found`);
+    if (index === -1) {throw new Error(`Connection ${connectionId} not found`);}
 
     this.connections[index] = { ...this.connections[index], ...partial };
     this.connections$.next([...this.connections]);
@@ -307,7 +313,7 @@ export class TileMetadataService {
 
   removeConnection(connectionId: string): void {
     const connection = this.connections.find(c => c.id === connectionId);
-    if (!connection) return;
+    if (!connection) {return;}
 
     // Remove connection ID from both tiles' metadata
     const fromMeta = this.getMetadata(connection.fromTileIndex);

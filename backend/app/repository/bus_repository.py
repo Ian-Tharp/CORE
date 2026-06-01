@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALISATION
 # =============================================================================
 
+
 async def ensure_bus_tables() -> None:
     """Create all Communication Bus tables (idempotent)."""
     pool = await get_db_pool()
@@ -141,6 +142,7 @@ async def ensure_bus_tables() -> None:
 # MESSAGES
 # =============================================================================
 
+
 async def store_message(
     message_id: str,
     sender_id: str,
@@ -250,6 +252,7 @@ async def count_messages_by_priority() -> Dict[str, int]:
 # SUBSCRIPTIONS
 # =============================================================================
 
+
 async def create_subscription(
     subscription_id: str,
     agent_id: str,
@@ -308,6 +311,7 @@ async def count_subscriptions() -> int:
 # =============================================================================
 # EXTERNAL AGENTS
 # =============================================================================
+
 
 async def register_external_agent(
     agent_id: str,
@@ -387,6 +391,7 @@ async def count_external_agents() -> int:
 # =============================================================================
 # DELIVERY RECEIPTS
 # =============================================================================
+
 
 async def create_delivery_receipt(
     receipt_id: str,
@@ -475,6 +480,7 @@ async def avg_delivery_latency_ms() -> Optional[float]:
 # OFFLINE QUEUE
 # =============================================================================
 
+
 async def enqueue_offline(agent_id: str, message_id: str) -> None:
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -518,6 +524,7 @@ async def count_offline_queued() -> int:
 # =============================================================================
 # HELPERS
 # =============================================================================
+
 
 def _row_to_dict(row) -> Dict[str, Any]:
     """Convert an asyncpg Record to a plain dict with ISO datetime strings."""

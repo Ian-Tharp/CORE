@@ -41,6 +41,7 @@ from app.services.comprehension_service import ComprehensionService
 # TEST FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def comprehension_service():
     """Create a ComprehensionService instance for testing."""
@@ -102,7 +103,11 @@ def sample_llm_response():
         "summary": "Research quantum computing developments and summarize findings",
         "entities": [
             {"name": "quantum computing", "entity_type": "topic", "confidence": 0.95},
-            {"name": "latest developments", "entity_type": "temporal", "confidence": 0.8},
+            {
+                "name": "latest developments",
+                "entity_type": "temporal",
+                "confidence": 0.8,
+            },
         ],
         "urgency": "medium",
         "confidence": 0.85,
@@ -154,6 +159,7 @@ def mock_agent_rows():
 # MODEL TESTS
 # =============================================================================
 
+
 class TestComprehensionModels:
     """Tests for Comprehension Engine Pydantic models."""
 
@@ -201,9 +207,7 @@ class TestComprehensionModels:
             action_type=ActionType.QUERY,
             summary="Find information about AI",
             confidence=0.85,
-            entities=[
-                ExtractedEntity(name="AI", entity_type="topic", confidence=0.9)
-            ],
+            entities=[ExtractedEntity(name="AI", entity_type="topic", confidence=0.9)],
             urgency=UrgencyLevel.MEDIUM,
             keywords=["AI", "information"],
         )
@@ -219,11 +223,26 @@ class TestComprehensionModels:
         # Arrange
         context = ContextMatch(
             semantic_matches=[
-                MemoryMatch(memory_id=uuid4(), content="a", similarity=0.8, memory_tier="semantic"),
-                MemoryMatch(memory_id=uuid4(), content="b", similarity=0.7, memory_tier="semantic"),
+                MemoryMatch(
+                    memory_id=uuid4(),
+                    content="a",
+                    similarity=0.8,
+                    memory_tier="semantic",
+                ),
+                MemoryMatch(
+                    memory_id=uuid4(),
+                    content="b",
+                    similarity=0.7,
+                    memory_tier="semantic",
+                ),
             ],
             episodic_matches=[
-                MemoryMatch(memory_id=uuid4(), content="c", similarity=0.6, memory_tier="episodic"),
+                MemoryMatch(
+                    memory_id=uuid4(),
+                    content="c",
+                    similarity=0.6,
+                    memory_tier="episodic",
+                ),
             ],
             procedural_matches=[],
             has_relevant_context=True,
@@ -293,6 +312,7 @@ class TestComprehensionModels:
 # =============================================================================
 # INTENT PARSING TESTS
 # =============================================================================
+
 
 class TestIntentParsing:
     """Tests for intent parsing logic."""
@@ -434,7 +454,9 @@ class TestIntentParsing:
         assert intent.urgency == UrgencyLevel.LOW
         assert priority == 3
 
-    def test_build_intent_from_llm_response(self, comprehension_service, sample_llm_response):
+    def test_build_intent_from_llm_response(
+        self, comprehension_service, sample_llm_response
+    ):
         """Test building intent from a valid LLM response."""
         # Arrange
         llm_result = sample_llm_response
@@ -489,11 +511,14 @@ class TestIntentParsing:
 # CONTEXT MATCHING TESTS
 # =============================================================================
 
+
 class TestContextMatching:
     """Tests for memory context matching."""
 
     @pytest.mark.asyncio
-    async def test_context_search_returns_empty_on_embedding_failure(self, comprehension_service, sample_user_input):
+    async def test_context_search_returns_empty_on_embedding_failure(
+        self, comprehension_service, sample_user_input
+    ):
         """Test context search returns empty ContextMatch when embedding fails."""
         # Arrange
         intent = IntentAnalysis(
@@ -503,18 +528,24 @@ class TestContextMatching:
             keywords=["test"],
         )
 
-        with patch("app.services.comprehension_service.embedding_service") as mock_embed:
+        with patch(
+            "app.services.comprehension_service.embedding_service"
+        ) as mock_embed:
             mock_embed.generate_embedding = AsyncMock(return_value=[0.0] * 768)
 
             # Act
-            context = await comprehension_service._search_memory_context(sample_user_input, intent)
+            context = await comprehension_service._search_memory_context(
+                sample_user_input, intent
+            )
 
             # Assert
             assert isinstance(context, ContextMatch)
             assert not context.has_relevant_context
 
     @pytest.mark.asyncio
-    async def test_context_search_handles_exception(self, comprehension_service, sample_user_input):
+    async def test_context_search_handles_exception(
+        self, comprehension_service, sample_user_input
+    ):
         """Test context search handles exceptions gracefully."""
         # Arrange
         intent = IntentAnalysis(
@@ -524,11 +555,17 @@ class TestContextMatching:
             keywords=["test"],
         )
 
-        with patch("app.services.comprehension_service.embedding_service") as mock_embed:
-            mock_embed.generate_embedding = AsyncMock(side_effect=Exception("Connection error"))
+        with patch(
+            "app.services.comprehension_service.embedding_service"
+        ) as mock_embed:
+            mock_embed.generate_embedding = AsyncMock(
+                side_effect=Exception("Connection error")
+            )
 
             # Act
-            context = await comprehension_service._search_memory_context(sample_user_input, intent)
+            context = await comprehension_service._search_memory_context(
+                sample_user_input, intent
+            )
 
             # Assert
             assert isinstance(context, ContextMatch)
@@ -540,11 +577,14 @@ class TestContextMatching:
 # CAPABILITY MATCHING TESTS
 # =============================================================================
 
+
 class TestCapabilityMatching:
     """Tests for capability matching against agents."""
 
     @pytest.mark.asyncio
-    async def test_capability_match_with_agents(self, comprehension_service, mock_agent_rows):
+    async def test_capability_match_with_agents(
+        self, comprehension_service, mock_agent_rows
+    ):
         """Test capability matching finds relevant agents."""
         # Arrange
         intent = IntentAnalysis(
@@ -563,9 +603,15 @@ class TestCapabilityMatching:
         mock_pool = MagicMock()
         mock_pool.acquire.return_value = mock_acquire_ctx
 
-        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        with patch(
+            "app.dependencies.get_db_pool",
+            new_callable=AsyncMock,
+            return_value=mock_pool,
+        ):
             # Act
-            result = await comprehension_service._match_capabilities(intent, suggested_caps)
+            result = await comprehension_service._match_capabilities(
+                intent, suggested_caps
+            )
 
             # Assert
             assert isinstance(result, CapabilityMatch)
@@ -591,7 +637,11 @@ class TestCapabilityMatching:
         mock_pool = MagicMock()
         mock_pool.acquire.return_value = mock_acquire_ctx
 
-        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        with patch(
+            "app.dependencies.get_db_pool",
+            new_callable=AsyncMock,
+            return_value=mock_pool,
+        ):
             # Act
             result = await comprehension_service._match_capabilities(intent, [])
 
@@ -610,7 +660,11 @@ class TestCapabilityMatching:
             keywords=["test"],
         )
 
-        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
+        with patch(
+            "app.dependencies.get_db_pool",
+            new_callable=AsyncMock,
+            side_effect=Exception("DB error"),
+        ):
             # Act
             result = await comprehension_service._match_capabilities(intent, [])
 
@@ -622,6 +676,7 @@ class TestCapabilityMatching:
 # =============================================================================
 # COMPLEXITY ANALYSIS TESTS
 # =============================================================================
+
 
 class TestComplexityAnalysis:
     """Tests for complexity analysis."""
@@ -672,12 +727,16 @@ class TestComplexityAnalysis:
         # Assert
         assert short_score.estimated_duration_seconds is not None
         assert long_score.estimated_duration_seconds is not None
-        assert long_score.estimated_duration_seconds > short_score.estimated_duration_seconds
+        assert (
+            long_score.estimated_duration_seconds
+            > short_score.estimated_duration_seconds
+        )
 
 
 # =============================================================================
 # HANDLING MODE TESTS
 # =============================================================================
+
 
 class TestHandlingMode:
     """Tests for handling mode determination."""
@@ -702,7 +761,9 @@ class TestHandlingMode:
         )
 
         # Act
-        mode = comprehension_service._determine_handling_mode(intent, complexity, capabilities)
+        mode = comprehension_service._determine_handling_mode(
+            intent, complexity, capabilities
+        )
 
         # Assert
         assert mode == HandlingMode.MULTI_AGENT
@@ -727,7 +788,9 @@ class TestHandlingMode:
         )
 
         # Act
-        mode = comprehension_service._determine_handling_mode(intent, complexity, capabilities)
+        mode = comprehension_service._determine_handling_mode(
+            intent, complexity, capabilities
+        )
 
         # Assert
         assert mode == HandlingMode.SINGLE_AGENT
@@ -749,7 +812,9 @@ class TestHandlingMode:
         capabilities = CapabilityMatch(has_capable_agents=False)
 
         # Act
-        mode = comprehension_service._determine_handling_mode(intent, complexity, capabilities)
+        mode = comprehension_service._determine_handling_mode(
+            intent, complexity, capabilities
+        )
 
         # Assert
         assert mode == HandlingMode.HUMAN_REQUIRED
@@ -771,7 +836,9 @@ class TestHandlingMode:
         capabilities = CapabilityMatch(has_capable_agents=False)
 
         # Act
-        mode = comprehension_service._determine_handling_mode(intent, complexity, capabilities)
+        mode = comprehension_service._determine_handling_mode(
+            intent, complexity, capabilities
+        )
 
         # Assert
         assert mode == HandlingMode.SINGLE_AGENT
@@ -793,7 +860,9 @@ class TestHandlingMode:
         capabilities = CapabilityMatch(has_capable_agents=True, matched_agent_ids=["a"])
 
         # Act
-        mode = comprehension_service._determine_handling_mode(intent, complexity, capabilities)
+        mode = comprehension_service._determine_handling_mode(
+            intent, complexity, capabilities
+        )
 
         # Assert
         assert mode == HandlingMode.NO_AGENT
@@ -802,6 +871,7 @@ class TestHandlingMode:
 # =============================================================================
 # PRIORITY ADJUSTMENT TESTS
 # =============================================================================
+
 
 class TestPriorityAdjustment:
     """Tests for priority adjustment logic."""
@@ -878,17 +948,20 @@ class TestPriorityAdjustment:
         context_strong = ContextMatch(has_relevant_context=True, best_match_score=0.9)
 
         # Act
-        high = comprehension_service._adjust_priority(10, intent_critical, ContextMatch())
+        high = comprehension_service._adjust_priority(
+            10, intent_critical, ContextMatch()
+        )
         low = comprehension_service._adjust_priority(1, intent_none, context_strong)
 
         # Assert
         assert high == 10  # Clamped at 10
-        assert low == 1    # Clamped at 1 (1 - 2 - 1 = -2, clamped to 1)
+        assert low == 1  # Clamped at 1 (1 - 2 - 1 = -2, clamped to 1)
 
 
 # =============================================================================
 # CONFIDENCE SCORING TESTS
 # =============================================================================
+
 
 class TestConfidenceScoring:
     """Tests for overall confidence scoring."""
@@ -949,21 +1022,47 @@ class TestConfidenceScoring:
 # END-TO-END COMPREHENSION FLOW TESTS
 # =============================================================================
 
+
 class TestEndToEndComprehension:
     """End-to-end tests for the full comprehension pipeline."""
 
     @pytest.mark.asyncio
-    async def test_full_comprehension_with_heuristic_fallback(self, comprehension_service, sample_user_input):
+    async def test_full_comprehension_with_heuristic_fallback(
+        self, comprehension_service, sample_user_input
+    ):
         """Test full comprehension pipeline with heuristic fallback when LLM fails."""
         # Arrange — patch LLM to fail, memory to skip, DB to skip
-        with patch.object(comprehension_service, "_call_llm_for_intent", new_callable=AsyncMock, side_effect=Exception("LLM unavailable")):
-            with patch.object(comprehension_service, "_search_memory_context", new_callable=AsyncMock, return_value=ContextMatch()):
-                with patch.object(comprehension_service, "_match_capabilities", new_callable=AsyncMock, return_value=CapabilityMatch(has_capable_agents=True, matched_agent_ids=["a"])):
-                    with patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
-                        mock_repo.store_comprehension_result = AsyncMock(return_value=uuid4())
+        with patch.object(
+            comprehension_service,
+            "_call_llm_for_intent",
+            new_callable=AsyncMock,
+            side_effect=Exception("LLM unavailable"),
+        ):
+            with patch.object(
+                comprehension_service,
+                "_search_memory_context",
+                new_callable=AsyncMock,
+                return_value=ContextMatch(),
+            ):
+                with patch.object(
+                    comprehension_service,
+                    "_match_capabilities",
+                    new_callable=AsyncMock,
+                    return_value=CapabilityMatch(
+                        has_capable_agents=True, matched_agent_ids=["a"]
+                    ),
+                ):
+                    with patch(
+                        "app.services.comprehension_service.comprehension_repository"
+                    ) as mock_repo:
+                        mock_repo.store_comprehension_result = AsyncMock(
+                            return_value=uuid4()
+                        )
 
                         # Act
-                        result = await comprehension_service.comprehend(sample_user_input)
+                        result = await comprehension_service.comprehend(
+                            sample_user_input
+                        )
 
                         # Assert
                         assert isinstance(result, ComprehensionResult)
@@ -972,17 +1071,46 @@ class TestEndToEndComprehension:
                         assert result.processing_time_ms is not None
 
     @pytest.mark.asyncio
-    async def test_full_comprehension_with_llm(self, comprehension_service, sample_user_input, sample_llm_response):
+    async def test_full_comprehension_with_llm(
+        self, comprehension_service, sample_user_input, sample_llm_response
+    ):
         """Test full comprehension pipeline with LLM response."""
         # Arrange
-        with patch.object(comprehension_service, "_call_llm_for_intent", new_callable=AsyncMock, return_value=sample_llm_response):
-            with patch.object(comprehension_service, "_search_memory_context", new_callable=AsyncMock, return_value=ContextMatch(has_relevant_context=True, best_match_score=0.85)):
-                with patch.object(comprehension_service, "_match_capabilities", new_callable=AsyncMock, return_value=CapabilityMatch(has_capable_agents=True, matched_agent_ids=["researcher-001"], best_agent_score=0.8)):
-                    with patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
-                        mock_repo.store_comprehension_result = AsyncMock(return_value=uuid4())
+        with patch.object(
+            comprehension_service,
+            "_call_llm_for_intent",
+            new_callable=AsyncMock,
+            return_value=sample_llm_response,
+        ):
+            with patch.object(
+                comprehension_service,
+                "_search_memory_context",
+                new_callable=AsyncMock,
+                return_value=ContextMatch(
+                    has_relevant_context=True, best_match_score=0.85
+                ),
+            ):
+                with patch.object(
+                    comprehension_service,
+                    "_match_capabilities",
+                    new_callable=AsyncMock,
+                    return_value=CapabilityMatch(
+                        has_capable_agents=True,
+                        matched_agent_ids=["researcher-001"],
+                        best_agent_score=0.8,
+                    ),
+                ):
+                    with patch(
+                        "app.services.comprehension_service.comprehension_repository"
+                    ) as mock_repo:
+                        mock_repo.store_comprehension_result = AsyncMock(
+                            return_value=uuid4()
+                        )
 
                         # Act
-                        result = await comprehension_service.comprehend(sample_user_input)
+                        result = await comprehension_service.comprehend(
+                            sample_user_input
+                        )
 
                         # Assert
                         assert result.status == ComprehensionStatus.COMPLETED
@@ -992,10 +1120,17 @@ class TestEndToEndComprehension:
                         assert result.confidence > 0.5
 
     @pytest.mark.asyncio
-    async def test_comprehension_failure_returns_failed_result(self, comprehension_service, sample_user_input):
+    async def test_comprehension_failure_returns_failed_result(
+        self, comprehension_service, sample_user_input
+    ):
         """Test that catastrophic failure returns a FAILED result instead of raising."""
         # Arrange — everything fails
-        with patch.object(comprehension_service, "_parse_intent", new_callable=AsyncMock, side_effect=Exception("Total failure")):
+        with patch.object(
+            comprehension_service,
+            "_parse_intent",
+            new_callable=AsyncMock,
+            side_effect=Exception("Total failure"),
+        ):
             # Act
             result = await comprehension_service.comprehend(sample_user_input)
 
@@ -1008,6 +1143,7 @@ class TestEndToEndComprehension:
 # =============================================================================
 # FEEDBACK TESTS
 # =============================================================================
+
 
 class TestFeedback:
     """Tests for the feedback and learning loop."""
@@ -1024,7 +1160,9 @@ class TestFeedback:
             submitted_by="user-1",
         )
 
-        with patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
+        with patch(
+            "app.services.comprehension_service.comprehension_repository"
+        ) as mock_repo:
             mock_repo.store_feedback = AsyncMock(return_value=True)
 
             # Act
@@ -1059,6 +1197,7 @@ class TestFeedback:
 # EDGE CASE TESTS
 # =============================================================================
 
+
 class TestEdgeCases:
     """Edge case and boundary tests."""
 
@@ -1072,7 +1211,9 @@ class TestEdgeCases:
         )
 
         # Act
-        intent, complexity, _, _, _ = comprehension_service._heuristic_intent_parse(input_data)
+        intent, complexity, _, _, _ = comprehension_service._heuristic_intent_parse(
+            input_data
+        )
 
         # Assert — should not crash
         assert intent.action_type is not None
@@ -1101,17 +1242,25 @@ class TestEdgeCases:
         )
 
         # Act
-        intent, complexity, _, _, _ = comprehension_service._heuristic_intent_parse(input_data)
+        intent, complexity, _, _, _ = comprehension_service._heuristic_intent_parse(
+            input_data
+        )
 
         # Assert
         assert intent is not None
         assert complexity.overall < 0.2
 
     @pytest.mark.asyncio
-    async def test_capability_registry_returns_system_capabilities(self, comprehension_service):
+    async def test_capability_registry_returns_system_capabilities(
+        self, comprehension_service
+    ):
         """Test capability registry always includes system capabilities."""
         # Arrange — DB fails but system caps should still return
-        with patch("app.dependencies.get_db_pool", new_callable=AsyncMock, side_effect=Exception("DB error")):
+        with patch(
+            "app.dependencies.get_db_pool",
+            new_callable=AsyncMock,
+            side_effect=Exception("DB error"),
+        ):
             # Act
             caps = await comprehension_service.get_capability_registry()
 
@@ -1126,7 +1275,9 @@ class TestEdgeCases:
     async def test_health_check(self, comprehension_service):
         """Test health check returns proper structure."""
         # Arrange
-        with patch("app.services.comprehension_service.embedding_service") as mock_embed:
+        with patch(
+            "app.services.comprehension_service.embedding_service"
+        ) as mock_embed:
             mock_embed.health_check = AsyncMock(return_value=True)
 
             # Act

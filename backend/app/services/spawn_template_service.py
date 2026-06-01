@@ -371,7 +371,9 @@ class SpawnTemplateService:
             mcp_servers.extend(req.extra_mcp_servers)
 
         # Determine display name
-        short_id = req.agent_id.split("-")[-1][:8] if "-" in req.agent_id else req.agent_id[:8]
+        short_id = (
+            req.agent_id.split("-")[-1][:8] if "-" in req.agent_id else req.agent_id[:8]
+        )
         agent_name = req.agent_name or f"{tmpl.name}-{short_id}"
 
         agent_config = AgentConfig(

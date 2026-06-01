@@ -32,6 +32,7 @@ from uuid import uuid4
 # Task — priority bounds and defaults
 # ===========================================================================
 
+
 class TestTask:
     def _min_task(self, **overrides) -> dict:
         base = {"task_type": "research"}
@@ -110,6 +111,7 @@ class TestTask:
 # TaskAssignment — confidence_score bounds
 # ===========================================================================
 
+
 class TestTaskAssignment:
     def _min_assignment(self, **overrides) -> dict:
         base = {
@@ -145,6 +147,7 @@ class TestTaskAssignment:
 # ===========================================================================
 # TaskRoutingScore — all score bounds
 # ===========================================================================
+
 
 class TestTaskRoutingScore:
     def _min_score(self, **overrides) -> dict:
@@ -194,6 +197,7 @@ class TestTaskRoutingScore:
 # TaskStatus constants
 # ===========================================================================
 
+
 class TestTaskStatusConstants:
     def test_queued_value(self):
         """
@@ -223,6 +227,7 @@ class TestTaskStatusConstants:
 # AgentResponse constants
 # ===========================================================================
 
+
 class TestAgentResponseConstants:
     def test_accept_value(self):
         """
@@ -243,6 +248,7 @@ class TestAgentResponseConstants:
 # ===========================================================================
 # TaskType constants
 # ===========================================================================
+
 
 class TestTaskTypeConstants:
     def test_research_value(self):

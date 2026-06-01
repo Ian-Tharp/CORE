@@ -89,7 +89,7 @@ export class TopNavigationComponent implements OnInit, OnDestroy {
     const seen = new Set<string>();
     this.breadcrumbs = this.breadcrumbs.filter(b => {
       const key = `${b.label}|${b.url}`;
-      if (seen.has(key)) return false;
+      if (seen.has(key)) {return false;}
       seen.add(key);
       return true;
     });

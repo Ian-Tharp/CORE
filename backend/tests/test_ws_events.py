@@ -34,6 +34,7 @@ from app.models.ws_events import (
 # EventType enum
 # ===========================================================================
 
+
 class TestEventType:
     def test_agent_activity_value(self):
         """
@@ -63,6 +64,7 @@ class TestEventType:
 # AgentStatus enum
 # ===========================================================================
 
+
 class TestAgentStatus:
     def test_all_values(self):
         """
@@ -81,6 +83,7 @@ class TestAgentStatus:
 # ===========================================================================
 # TaskStage enum
 # ===========================================================================
+
 
 class TestTaskStage:
     def test_all_values(self):
@@ -101,6 +104,7 @@ class TestTaskStage:
 # CouncilEventType enum
 # ===========================================================================
 
+
 class TestCouncilEventType:
     def test_all_values(self):
         """All CouncilEventType values must be correct strings."""
@@ -115,6 +119,7 @@ class TestCouncilEventType:
 # ===========================================================================
 # SystemLevel + NotificationPriority enums
 # ===========================================================================
+
 
 class TestSystemLevel:
     def test_all_severity_levels(self):
@@ -138,6 +143,7 @@ class TestNotificationPriority:
 # ===========================================================================
 # BaseEvent — event_id auto-generation and to_ws_message
 # ===========================================================================
+
 
 class TestBaseEvent:
     def _make_system_event(self):
@@ -195,6 +201,7 @@ class TestBaseEvent:
 # AgentActivityEvent — defaults
 # ===========================================================================
 
+
 class TestAgentActivityEvent:
     def test_default_event_type_is_agent_activity(self):
         """
@@ -206,7 +213,10 @@ class TestAgentActivityEvent:
             action="thinking",
             status=AgentStatus.ACTIVE,
         )
-        assert ev.event_type == EventType.AGENT_ACTIVITY or ev.event_type == "agent_activity"
+        assert (
+            ev.event_type == EventType.AGENT_ACTIVITY
+            or ev.event_type == "agent_activity"
+        )
 
     def test_fields_stored(self):
         """Required fields must be stored correctly."""
@@ -222,6 +232,7 @@ class TestAgentActivityEvent:
 # ===========================================================================
 # TaskProgressEvent — progress_pct and other bounds
 # ===========================================================================
+
 
 class TestTaskProgressEvent:
     def _min_event(self, **overrides) -> dict:
@@ -274,12 +285,15 @@ class TestTaskProgressEvent:
     def test_default_event_type_is_task_progress(self):
         """event_type must default to TASK_PROGRESS."""
         ev = TaskProgressEvent(**self._min_event())
-        assert ev.event_type == EventType.TASK_PROGRESS or ev.event_type == "task_progress"
+        assert (
+            ev.event_type == EventType.TASK_PROGRESS or ev.event_type == "task_progress"
+        )
 
 
 # ===========================================================================
 # CouncilEvent — confidence and round_number bounds
 # ===========================================================================
+
 
 class TestCouncilEvent:
     def _min_event(self, **overrides) -> dict:
@@ -327,6 +341,7 @@ class TestCouncilEvent:
 # ===========================================================================
 # NotificationEvent — priority default and auto_dismiss_ms bounds
 # ===========================================================================
+
 
 class TestNotificationEvent:
     def _min_event(self, **overrides) -> dict:

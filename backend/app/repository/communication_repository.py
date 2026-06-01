@@ -19,6 +19,7 @@ from app.dependencies import get_db_pool
 # CHANNELS
 # =============================================================================
 
+
 async def list_channels(
     instance_id: str,
     limit: int = 50,
@@ -53,14 +54,16 @@ async def list_channels(
             ORDER BY last_message_at DESC NULLS LAST
             LIMIT $2 OFFSET $3
             """,
-            instance_id, limit, offset
+            instance_id,
+            limit,
+            offset,
         )
         # Convert all datetime fields to ISO format strings
         result = []
         for row in rows:
             channel = dict(row)
             for key, value in channel.items():
-                if hasattr(value, 'isoformat'):
+                if hasattr(value, "isoformat"):
                     channel[key] = value.isoformat()
             result.append(channel)
         return result
@@ -79,7 +82,7 @@ async def count_channels(instance_id: str) -> int:
             )
             OR c.is_public = true
             """,
-            instance_id
+            instance_id,
         )
         return int(row["total"]) if row else 0
 
@@ -98,7 +101,7 @@ async def count_messages(
                 FROM communication_messages
                 WHERE thread_id = $1 OR message_id = $1
                 """,
-                thread_id
+                thread_id,
             )
         else:
             row = await conn.fetchrow(
@@ -107,7 +110,7 @@ async def count_messages(
                 FROM communication_messages
                 WHERE channel_id = $1 AND thread_id IS NULL
                 """,
-                channel_id
+                channel_id,
             )
         return int(row["total"]) if row else 0
 
@@ -131,7 +134,7 @@ async def get_channel(channel_id: str) -> Optional[Dict[str, Any]]:
             FROM communication_channels
             WHERE channel_id = $1
             """,
-            channel_id
+            channel_id,
         )
         if not row:
             return None
@@ -139,7 +142,7 @@ async def get_channel(channel_id: str) -> Optional[Dict[str, Any]]:
         # Convert to dict and ensure all datetime fields are ISO format strings
         result = dict(row)
         for key, value in result.items():
-            if hasattr(value, 'isoformat'):  # Check if it's a datetime object
+            if hasattr(value, "isoformat"):  # Check if it's a datetime object
                 result[key] = value.isoformat()
         return result
 
@@ -152,7 +155,7 @@ async def create_channel(
     is_persistent: bool,
     is_public: bool,
     created_by: str,
-    initial_members: Optional[List[str]] = None
+    initial_members: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Create a new channel and optionally add initial members."""
     pool = await get_db_pool()
@@ -165,7 +168,13 @@ async def create_channel(
                 (channel_id, channel_type, name, description, is_persistent, is_public, created_by)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """,
-                channel_id, channel_type, name, description, is_persistent, is_public, created_by
+                channel_id,
+                channel_type,
+                name,
+                description,
+                is_persistent,
+                is_public,
+                created_by,
             )
 
             # Add creator as owner
@@ -174,7 +183,9 @@ async def create_channel(
                 INSERT INTO channel_members (channel_id, instance_id, instance_type, role)
                 VALUES ($1, $2, $3, 'owner')
                 """,
-                channel_id, created_by, 'human'  # TODO: Detect instance type dynamically
+                channel_id,
+                created_by,
+                "human",  # TODO: Detect instance type dynamically
             )
 
             # Add initial members if provided
@@ -187,7 +198,9 @@ async def create_channel(
                             VALUES ($1, $2, $3, 'member')
                             ON CONFLICT (channel_id, instance_id) DO NOTHING
                             """,
-                            channel_id, member_id, 'agent'  # TODO: Detect instance type
+                            channel_id,
+                            member_id,
+                            "agent",  # TODO: Detect instance type
                         )
 
             # Fetch the created channel within the same transaction
@@ -206,7 +219,7 @@ async def create_channel(
                 FROM communication_channels
                 WHERE channel_id = $1
                 """,
-                channel_id
+                channel_id,
             )
 
             if not row:
@@ -215,7 +228,7 @@ async def create_channel(
             # Convert all datetime fields to ISO format strings
             result = dict(row)
             for key, value in result.items():
-                if hasattr(value, 'isoformat'):
+                if hasattr(value, "isoformat"):
                     result[key] = value.isoformat()
             return result
 
@@ -224,11 +237,9 @@ async def create_channel(
 # MESSAGES
 # =============================================================================
 
+
 async def list_messages(
-    channel_id: str,
-    page: int = 1,
-    page_size: int = 50,
-    thread_id: Optional[str] = None
+    channel_id: str, page: int = 1, page_size: int = 50, thread_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """Get messages for a channel with pagination."""
     pool = await get_db_pool()
@@ -301,7 +312,7 @@ async def list_messages(
         for row in rows:
             message = dict(row)
             for key, value in message.items():
-                if hasattr(value, 'isoformat'):
+                if hasattr(value, "isoformat"):
                     message[key] = value.isoformat()
             result.append(message)
         return result
@@ -314,10 +325,10 @@ async def create_message(
     sender_name: str,
     sender_type: str,
     content: str,
-    message_type: str = 'text',
+    message_type: str = "text",
     parent_message_id: Optional[str] = None,
     thread_id: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Create a new message in a channel."""
     pool = await get_db_pool()
@@ -331,8 +342,16 @@ async def create_message(
              message_type, parent_message_id, thread_id, metadata)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
-            message_id, channel_id, sender_id, sender_name, sender_type, content,
-            message_type, parent_message_id, thread_id, json.dumps(metadata) if metadata else None
+            message_id,
+            channel_id,
+            sender_id,
+            sender_name,
+            sender_type,
+            content,
+            message_type,
+            parent_message_id,
+            thread_id,
+            json.dumps(metadata) if metadata else None,
         )
 
         # Fetch and return the created message
@@ -345,12 +364,12 @@ async def create_message(
             FROM communication_messages
             WHERE message_id = $1
             """,
-            message_id
+            message_id,
         )
         # Convert all datetime fields to ISO format strings
         result = dict(row)
         for key, value in result.items():
-            if hasattr(value, 'isoformat'):
+            if hasattr(value, "isoformat"):
                 result[key] = value.isoformat()
         return result
 
@@ -358,6 +377,7 @@ async def create_message(
 # =============================================================================
 # REACTIONS
 # =============================================================================
+
 
 async def get_message(message_id: str) -> Optional[Dict[str, Any]]:
     """Get a single message by ID."""
@@ -381,14 +401,14 @@ async def get_message(message_id: str) -> Optional[Dict[str, Any]]:
             FROM communication_messages
             WHERE message_id = $1
             """,
-            message_id
+            message_id,
         )
         if not row:
             return None
 
         result = dict(row)
         for key, value in result.items():
-            if hasattr(value, 'isoformat'):
+            if hasattr(value, "isoformat"):
                 result[key] = value.isoformat()
         return result
 
@@ -407,16 +427,12 @@ async def get_message_reactions(message_id: str) -> List[Dict[str, Any]]:
             WHERE message_id = $1
             GROUP BY reaction_type
             """,
-            message_id
+            message_id,
         )
         return [dict(r) for r in rows]
 
 
-async def add_reaction(
-    message_id: str,
-    instance_id: str,
-    reaction_type: str
-) -> None:
+async def add_reaction(message_id: str, instance_id: str, reaction_type: str) -> None:
     """Add a reaction to a message."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -426,14 +442,14 @@ async def add_reaction(
             VALUES ($1, $2, $3)
             ON CONFLICT (message_id, instance_id, reaction_type) DO NOTHING
             """,
-            message_id, instance_id, reaction_type
+            message_id,
+            instance_id,
+            reaction_type,
         )
 
 
 async def remove_reaction(
-    message_id: str,
-    instance_id: str,
-    reaction_type: str
+    message_id: str, instance_id: str, reaction_type: str
 ) -> None:
     """Remove a reaction from a message."""
     pool = await get_db_pool()
@@ -443,13 +459,16 @@ async def remove_reaction(
             DELETE FROM message_reactions
             WHERE message_id = $1 AND instance_id = $2 AND reaction_type = $3
             """,
-            message_id, instance_id, reaction_type
+            message_id,
+            instance_id,
+            reaction_type,
         )
 
 
 # =============================================================================
 # PRESENCE
 # =============================================================================
+
 
 async def get_all_presence() -> List[Dict[str, Any]]:
     """Get presence for all instances."""
@@ -475,7 +494,7 @@ async def get_all_presence() -> List[Dict[str, Any]]:
         for row in rows:
             presence = dict(row)
             for key, value in presence.items():
-                if hasattr(value, 'isoformat'):
+                if hasattr(value, "isoformat"):
                     presence[key] = value.isoformat()
             result.append(presence)
         return result
@@ -485,28 +504,28 @@ async def update_presence(
     instance_id: str,
     status: Optional[str] = None,
     activity: Optional[str] = None,
-    phase: Optional[int] = None
+    phase: Optional[int] = None,
 ) -> None:
     """Update presence information for an instance."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Build dynamic update query
-        updates = ['last_heartbeat = CURRENT_TIMESTAMP']
+        updates = ["last_heartbeat = CURRENT_TIMESTAMP"]
         params = [instance_id]
         param_idx = 2
 
         if status:
-            updates.append(f'status = ${param_idx}')
+            updates.append(f"status = ${param_idx}")
             params.append(status)
             param_idx += 1
 
         if activity is not None:  # Allow empty string
-            updates.append(f'current_activity = ${param_idx}')
+            updates.append(f"current_activity = ${param_idx}")
             params.append(activity)
             param_idx += 1
 
         if phase is not None:
-            updates.append(f'current_phase = ${param_idx}')
+            updates.append(f"current_phase = ${param_idx}")
             params.append(phase)
             param_idx += 1
 
@@ -537,13 +556,13 @@ async def get_instance_presence(instance_id: str) -> Optional[Dict[str, Any]]:
             FROM instance_presence
             WHERE instance_id = $1
             """,
-            instance_id
+            instance_id,
         )
         if not row:
             return None
         # Convert all datetime fields to ISO format strings
         result = dict(row)
         for key, value in result.items():
-            if hasattr(value, 'isoformat'):
+            if hasattr(value, "isoformat"):
                 result[key] = value.isoformat()
         return result

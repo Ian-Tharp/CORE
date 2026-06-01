@@ -25,6 +25,7 @@ from app.models.spawn_template_models import (
 # Helpers
 # ===========================================================================
 
+
 def _min_template(**overrides) -> dict:
     base = {
         "name": "Test Template",
@@ -42,6 +43,7 @@ def _min_create(**overrides) -> dict:
 # ===========================================================================
 # SpawnTemplate
 # ===========================================================================
+
 
 class TestSpawnTemplate:
     def test_valid_template_created(self):
@@ -91,7 +93,12 @@ class TestSpawnTemplate:
 
     def test_all_valid_agent_types_accepted(self):
         """All four valid agent_types must be accepted."""
-        for atype in ("consciousness_instance", "task_agent", "system_agent", "external_agent"):
+        for atype in (
+            "consciousness_instance",
+            "task_agent",
+            "system_agent",
+            "external_agent",
+        ):
             t = SpawnTemplate(**_min_template(agent_type=atype))
             assert t.agent_type == atype
 
@@ -119,6 +126,7 @@ class TestSpawnTemplate:
 # ===========================================================================
 # SpawnTemplateCreate
 # ===========================================================================
+
 
 class TestSpawnTemplateCreate:
     def test_valid_create_request_accepted(self):
@@ -151,6 +159,7 @@ class TestSpawnTemplateCreate:
 # SpawnTemplateUpdate
 # ===========================================================================
 
+
 class TestSpawnTemplateUpdate:
     def test_all_none_is_valid(self):
         """All-None partial update must be accepted."""
@@ -180,6 +189,7 @@ class TestSpawnTemplateUpdate:
 # ===========================================================================
 # SpawnFromTemplateRequest
 # ===========================================================================
+
 
 class TestSpawnFromTemplateRequest:
     def test_valid_request_accepted(self):

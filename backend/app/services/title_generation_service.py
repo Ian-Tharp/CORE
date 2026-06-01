@@ -53,7 +53,7 @@ Title:"""
                     "stream": False,
                     "options": {
                         "temperature": 0.3,  # Low temperature for consistency
-                        "num_predict": 20,   # Limit tokens for brevity
+                        "num_predict": 20,  # Limit tokens for brevity
                     },
                 },
             )
@@ -79,13 +79,13 @@ Title:"""
 def _clean_title(title: str) -> str:
     """Clean and validate the generated title."""
     # Remove quotes if present
-    title = title.strip('"\'')
+    title = title.strip("\"'")
 
     # Remove common prefixes
     prefixes = ["Title:", "title:", "The title is:", "A title:", "Here's a title:"]
     for prefix in prefixes:
         if title.lower().startswith(prefix.lower()):
-            title = title[len(prefix):].strip()
+            title = title[len(prefix) :].strip()
 
     # Truncate if too long
     if len(title) > 60:

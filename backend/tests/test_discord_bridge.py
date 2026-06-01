@@ -24,19 +24,23 @@ from app.config.discord import DiscordChannelMapping, DiscordConfig
 # Helpers
 # ===========================================================================
 
+
 def _make_bridge() -> DiscordBridgeService:
     """Build a bridge with a minimal disabled config (no network calls)."""
     config = DiscordConfig(bot_token="", enabled=False)
     return DiscordBridgeService(config=config)
 
 
-def _make_mapping(discord_id: str = "DC_111", core_id: str = "CORE_222") -> DiscordChannelMapping:
+def _make_mapping(
+    discord_id: str = "DC_111", core_id: str = "CORE_222"
+) -> DiscordChannelMapping:
     return DiscordChannelMapping(discord_channel_id=discord_id, core_channel_id=core_id)
 
 
 # ===========================================================================
 # BridgeStatus enum
 # ===========================================================================
+
 
 class TestBridgeStatus:
     def test_disconnected_value(self):
@@ -62,6 +66,7 @@ class TestBridgeStatus:
 # ===========================================================================
 # is_connected property
 # ===========================================================================
+
 
 class TestIsConnected:
     def test_false_when_disconnected(self):
@@ -101,6 +106,7 @@ class TestIsConnected:
 # get_status_info — required keys
 # ===========================================================================
 
+
 class TestGetStatusInfo:
     def test_required_keys_present(self):
         """
@@ -109,9 +115,17 @@ class TestGetStatusInfo:
         """
         bridge = _make_bridge()
         info = bridge.get_status_info()
-        for key in ("status", "connected", "connected_at", "last_error",
-                    "reconnect_attempts", "bot_user", "guilds",
-                    "channel_mappings", "bridged_core_channels"):
+        for key in (
+            "status",
+            "connected",
+            "connected_at",
+            "last_error",
+            "reconnect_attempts",
+            "bot_user",
+            "guilds",
+            "channel_mappings",
+            "bridged_core_channels",
+        ):
             assert key in info, f"Missing key: {key}"
 
     def test_status_value_is_string(self):
@@ -154,6 +168,7 @@ class TestGetStatusInfo:
 # ===========================================================================
 # _split_message — chunking logic
 # ===========================================================================
+
 
 class TestSplitMessage:
     def setup_method(self):
@@ -228,6 +243,7 @@ class TestSplitMessage:
 # ===========================================================================
 # add_channel_mapping / remove_channel_mapping / get_channel_mappings
 # ===========================================================================
+
 
 class TestChannelMappingMutations:
     def setup_method(self):

@@ -160,6 +160,7 @@ class TestRequestMetricsReset:
         m = RequestMetrics()
         old_start = m.start_time
         import time
+
         time.sleep(0.01)
         m.reset()
         assert m.start_time >= old_start

@@ -1,26 +1,48 @@
 import { TestBed } from '@angular/core/testing';
-import {
-  HttpClientTestingModule,
-  HttpTestingController,
-} from '@angular/common/http/testing';
 
 import { ChatService } from './chat-service';
+import { AppConfigService } from '../config/app-config.service';
 
 describe('ChatService', () => {
   let service: ChatService;
-  let httpMock: HttpTestingController;
+  let fetchMock: jest.Mock;
+
+  // Deterministic stream URL so assertions do not depend on the real config.
+  const chatStreamUrl = 'http://localhost:8000/chat/stream';
+
+  // Minimal AppConfigService stand-in exposing only what ChatService reads.
+  const configStub: Pick<AppConfigService, 'chatStreamUrl'> = {
+    chatStreamUrl
+  };
 
   beforeEach(() => {
+    // ChatService streams over the native fetch API (not HttpClient), so we
+    // stub fetch to immediately complete the stream with an empty body.
+    fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: { get: () => null },
+      body: {
+        getReader: () => ({
+          read: () => Promise.resolve({ value: undefined, done: true })
+        })
+      }
+    } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      providers: [
+        ChatService,
+        { provide: AppConfigService, useValue: configStub }
+      ]
     });
 
     service = TestBed.inject(ChatService);
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
-    httpMock.verify();
+    jest.restoreAllMocks();
   });
 
   it('should be created', () => {
@@ -33,20 +55,21 @@ describe('ChatService', () => {
 
     service.sendMessage(content, model).subscribe();
 
-    const req = httpMock.expectOne('http://localhost:8000/chat/stream');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({
+    // The service issues exactly one fetch to the configured stream URL.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+
+    expect(url).toBe(chatStreamUrl);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({
       model,
       messages: [
         {
           role: 'user',
-          content,
-        },
+          content
+        }
       ],
-      stream: true,
+      stream: true
     });
-
-    // Respond with an empty string to complete the observable.
-    req.flush('');
   });
 });

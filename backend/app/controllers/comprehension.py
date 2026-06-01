@@ -37,35 +37,43 @@ router = APIRouter(prefix="/comprehension", tags=["comprehension"])
 # REQUEST/RESPONSE MODELS
 # =============================================================================
 
+
 class AnalyzeRequest(BaseModel):
     """Request model for analyzing input through the Comprehension Engine."""
+
     content: str = Field(..., description="Raw input text to analyze")
     source_type: str = Field(
-        default="user",
-        description="Source type: user, agent, system, tool_output"
+        default="user", description="Source type: user, agent, system, tool_output"
     )
-    source_id: Optional[str] = Field(None, description="ID of the source (user_id, agent_id, etc.)")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
-    conversation_id: Optional[str] = Field(None, description="Conversation context if applicable")
+    source_id: Optional[str] = Field(
+        None, description="ID of the source (user_id, agent_id, etc.)"
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional context"
+    )
+    conversation_id: Optional[str] = Field(
+        None, description="Conversation context if applicable"
+    )
 
-    @field_validator('content')
+    @field_validator("content")
     @classmethod
     def content_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError('Content cannot be empty')
+            raise ValueError("Content cannot be empty")
         return v.strip()
 
-    @field_validator('source_type')
+    @field_validator("source_type")
     @classmethod
     def validate_source_type(cls, v: str) -> str:
-        valid_types = ['user', 'agent', 'system', 'tool_output']
+        valid_types = ["user", "agent", "system", "tool_output"]
         if v not in valid_types:
-            raise ValueError(f'source_type must be one of: {valid_types}')
+            raise ValueError(f"source_type must be one of: {valid_types}")
         return v
 
 
 class AnalyzeResponse(BaseModel):
     """Response model for comprehension analysis."""
+
     comprehension_id: str = Field(..., description="Unique comprehension result ID")
     intent_summary: str = Field(..., description="Summary of parsed intent")
     action_type: str = Field(..., description="Classified action type")
@@ -73,28 +81,48 @@ class AnalyzeResponse(BaseModel):
     confidence: float = Field(..., description="Overall comprehension confidence")
     suggested_task_type: str = Field(..., description="Suggested task type for routing")
     suggested_priority: int = Field(..., description="Suggested priority (1-10)")
-    handling_mode: str = Field(..., description="single_agent, multi_agent, no_agent, or human_required")
-    has_relevant_context: bool = Field(..., description="Whether relevant memory context was found")
-    has_capable_agents: bool = Field(..., description="Whether capable agents were found")
-    context_match_count: int = Field(default=0, description="Number of context matches found")
+    handling_mode: str = Field(
+        ..., description="single_agent, multi_agent, no_agent, or human_required"
+    )
+    has_relevant_context: bool = Field(
+        ..., description="Whether relevant memory context was found"
+    )
+    has_capable_agents: bool = Field(
+        ..., description="Whether capable agents were found"
+    )
+    context_match_count: int = Field(
+        default=0, description="Number of context matches found"
+    )
     processing_time_ms: Optional[int] = Field(None, description="Processing time in ms")
     status: str = Field(..., description="Comprehension status")
     # Full result (included for programmatic consumers)
-    full_result: ComprehensionResult = Field(..., description="Full comprehension result")
+    full_result: ComprehensionResult = Field(
+        ..., description="Full comprehension result"
+    )
 
 
 class FeedbackRequest(BaseModel):
     """Request model for submitting feedback on comprehension accuracy."""
-    comprehension_id: UUID = Field(..., description="ID of the comprehension result to rate")
-    score: float = Field(ge=0.0, le=1.0, description="Accuracy score (0=wrong, 1=perfect)")
-    correct_action_type: Optional[str] = Field(None, description="What the action type should have been")
-    correct_task_type: Optional[str] = Field(None, description="What the task type should have been")
+
+    comprehension_id: UUID = Field(
+        ..., description="ID of the comprehension result to rate"
+    )
+    score: float = Field(
+        ge=0.0, le=1.0, description="Accuracy score (0=wrong, 1=perfect)"
+    )
+    correct_action_type: Optional[str] = Field(
+        None, description="What the action type should have been"
+    )
+    correct_task_type: Optional[str] = Field(
+        None, description="What the task type should have been"
+    )
     notes: Optional[str] = Field(None, description="Additional feedback notes")
     submitted_by: Optional[str] = Field(None, description="Who submitted the feedback")
 
 
 class HistoryResponse(BaseModel):
     """Response model for comprehension history."""
+
     results: List[ComprehensionResult]
     total_count: int
     page: int
@@ -103,6 +131,7 @@ class HistoryResponse(BaseModel):
 
 class CapabilityListResponse(BaseModel):
     """Response model for system capabilities."""
+
     capabilities: List[SystemCapability]
     total: int
 
@@ -110,6 +139,7 @@ class CapabilityListResponse(BaseModel):
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
+
 
 async def get_comprehension_service():
     """Get the comprehension service instance."""
@@ -121,6 +151,7 @@ async def get_comprehension_service():
 # =============================================================================
 # CORE ENDPOINTS
 # =============================================================================
+
 
 @router.post("/analyze", status_code=status.HTTP_200_OK)
 async def analyze_input(
@@ -208,8 +239,12 @@ async def get_comprehension_history(
     page_size: int = Query(50, ge=1, le=200, description="Results per page"),
     source_type: Optional[str] = Query(None, description="Filter by source type"),
     action_type: Optional[str] = Query(None, description="Filter by action type"),
-    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
-    min_confidence: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
+    status_filter: Optional[str] = Query(
+        None, alias="status", description="Filter by status"
+    ),
+    min_confidence: Optional[float] = Query(
+        None, ge=0.0, le=1.0, description="Minimum confidence"
+    ),
     conversation_id: Optional[str] = Query(None, description="Filter by conversation"),
     service=Depends(get_comprehension_service),
     api_key: str = Depends(require_api_key),
@@ -224,14 +259,16 @@ async def get_comprehension_history(
         from app.repository import comprehension_repository
 
         offset = (page - 1) * page_size
-        results, total_count = await comprehension_repository.list_comprehension_results(
-            limit=page_size,
-            offset=offset,
-            source_type=source_type,
-            action_type=action_type,
-            status=status_filter,
-            min_confidence=min_confidence,
-            conversation_id=conversation_id,
+        results, total_count = (
+            await comprehension_repository.list_comprehension_results(
+                limit=page_size,
+                offset=offset,
+                source_type=source_type,
+                action_type=action_type,
+                status=status_filter,
+                min_confidence=min_confidence,
+                conversation_id=conversation_id,
+            )
         )
 
         return HistoryResponse(
@@ -299,6 +336,7 @@ async def submit_feedback(
 # ANALYTICS ENDPOINTS
 # =============================================================================
 
+
 @router.get("/analytics", status_code=status.HTTP_200_OK)
 async def get_analytics(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
@@ -351,6 +389,7 @@ async def get_accuracy_trend(
 # =============================================================================
 # UTILITY ENDPOINTS
 # =============================================================================
+
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def comprehension_health(

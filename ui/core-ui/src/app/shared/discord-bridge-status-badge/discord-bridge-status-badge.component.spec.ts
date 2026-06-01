@@ -22,7 +22,7 @@ describe('DiscordBridgeStatusBadgeComponent', () => {
       tone: 'ready',
       detail: '1 mapped channel ready',
       tooltip: 'Discord Gateway connected.',
-      status: null,
+      status: null
     };
 
     // Act
@@ -41,7 +41,7 @@ describe('DiscordBridgeStatusBadgeComponent', () => {
       tone: 'attention',
       detail: 'Bridge is not connected.',
       tooltip: 'Discord Gateway is disconnected.',
-      status: null,
+      status: null
     };
 
     // Act

@@ -24,7 +24,10 @@ from app.services.ollama_embeddings import embed_texts_via_ollama, embed_texts_b
 # Helpers
 # ===========================================================================
 
-def _mock_response(status_code: int = 200, body: Dict[str, Any] | None = None) -> MagicMock:
+
+def _mock_response(
+    status_code: int = 200, body: Dict[str, Any] | None = None
+) -> MagicMock:
     """Build a mock httpx Response."""
     resp = MagicMock()
     resp.status_code = status_code
@@ -53,6 +56,7 @@ def _build_mock_client(responses: List[MagicMock]) -> AsyncMock:
 # embed_texts_via_ollama — sequential endpoint
 # ===========================================================================
 
+
 class TestEmbedTextsViaOllama:
     @pytest.mark.asyncio
     async def test_empty_input_returns_empty_immediately(self):
@@ -74,8 +78,12 @@ class TestEmbedTextsViaOllama:
         response = _mock_response(200, {"embedding": sentinel_vector})
         client = _build_mock_client([response])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             result, dims = await embed_texts_via_ollama(model="m", texts=["hello"])
 
         assert result == [sentinel_vector]
@@ -91,8 +99,12 @@ class TestEmbedTextsViaOllama:
         response = _mock_response(200, {"embedding": vec})
         client = _build_mock_client([response])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             _, dims = await embed_texts_via_ollama(model="m", texts=["text"])
 
         assert dims == 768
@@ -104,8 +116,12 @@ class TestEmbedTextsViaOllama:
         response = _mock_response(200, {"embeddings": [vec]})
         client = _build_mock_client([response])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             result, dims = await embed_texts_via_ollama(model="m", texts=["text"])
 
         assert result == [vec]
@@ -122,8 +138,12 @@ class TestEmbedTextsViaOllama:
         resp_prompt = _mock_response(200, {"no_embedding_here": True})
         client = _build_mock_client([resp_input, resp_prompt])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             with pytest.raises(httpx.HTTPError, match="missing 'embedding'"):
                 await embed_texts_via_ollama(model="m", texts=["text"])
 
@@ -135,8 +155,12 @@ class TestEmbedTextsViaOllama:
         r2 = _mock_response(200, {"embedding": vec2})
         client = _build_mock_client([r1, r2])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             result, _ = await embed_texts_via_ollama(model="m", texts=["a", "b"])
 
         assert len(result) == 2
@@ -154,8 +178,12 @@ class TestEmbedTextsViaOllama:
         resp_ok = _mock_response(200, {"embedding": vec})
         client = _build_mock_client([resp_404, resp_ok])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             result, _ = await embed_texts_via_ollama(model="m", texts=["text"])
 
         assert result == [vec]
@@ -164,6 +192,7 @@ class TestEmbedTextsViaOllama:
 # ===========================================================================
 # embed_texts_batch — batch endpoint with fallback
 # ===========================================================================
+
 
 class TestEmbedTextsBatch:
     @pytest.mark.asyncio
@@ -183,8 +212,12 @@ class TestEmbedTextsBatch:
         resp = _mock_response(200, {"embeddings": vecs})
         client = _build_mock_client([resp])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             result, dims = await embed_texts_batch(model="m", texts=["a", "b"])
 
         assert result == vecs
@@ -202,10 +235,15 @@ class TestEmbedTextsBatch:
         resp_404 = _mock_response(404)
         client = _build_mock_client([resp_404])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"), \
-             patch("app.services.ollama_embeddings.embed_texts_via_ollama",
-                   new=AsyncMock(return_value=(fallback_vecs, fallback_dims))) as fallback_spy:
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ), patch(
+            "app.services.ollama_embeddings.embed_texts_via_ollama",
+            new=AsyncMock(return_value=(fallback_vecs, fallback_dims)),
+        ) as fallback_spy:
             result, dims = await embed_texts_batch(model="m", texts=["text"])
 
         fallback_spy.assert_called_once()
@@ -218,8 +256,12 @@ class TestEmbedTextsBatch:
         resp_500 = _mock_response(500)
         client = _build_mock_client([resp_500])
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"):
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ):
             with pytest.raises(httpx.HTTPStatusError):
                 await embed_texts_batch(model="m", texts=["text"])
 
@@ -236,10 +278,15 @@ class TestEmbedTextsBatch:
         client.__aexit__ = AsyncMock(return_value=False)
         client.post = AsyncMock(side_effect=ConnectionError("timeout"))
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"), \
-             patch("app.services.ollama_embeddings.embed_texts_via_ollama",
-                   new=AsyncMock(return_value=(fallback_vecs, 2))) as fallback_spy:
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ), patch(
+            "app.services.ollama_embeddings.embed_texts_via_ollama",
+            new=AsyncMock(return_value=(fallback_vecs, 2)),
+        ) as fallback_spy:
             result, _ = await embed_texts_batch(model="m", texts=["text"])
 
         fallback_spy.assert_called_once()
@@ -258,10 +305,15 @@ class TestEmbedTextsBatch:
 
         fallback_vecs = [[0.1, 0.2], [0.3, 0.4]]
 
-        with patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings._get_ollama_base_url", return_value="http://localhost:11434"), \
-             patch("app.services.ollama_embeddings.embed_texts_via_ollama",
-                   new=AsyncMock(return_value=(fallback_vecs, 2))) as fallback_spy:
+        with patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings._get_ollama_base_url",
+            return_value="http://localhost:11434",
+        ), patch(
+            "app.services.ollama_embeddings.embed_texts_via_ollama",
+            new=AsyncMock(return_value=(fallback_vecs, 2)),
+        ) as fallback_spy:
             result, dims = await embed_texts_batch(model="m", texts=["a", "b"])
 
         # Fallback must be invoked when batch returns wrong count

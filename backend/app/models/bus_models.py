@@ -21,8 +21,10 @@ from pydantic import BaseModel, Field
 # ENUMS
 # =============================================================================
 
+
 class MessageType(str, Enum):
     """Types of messages that can be sent on the bus."""
+
     TASK_REQUEST = "task_request"
     TASK_RESULT = "task_result"
     HELP_REQUEST = "help_request"
@@ -37,6 +39,7 @@ class MessageType(str, Enum):
 
 class MessagePriority(str, Enum):
     """Priority levels for bus messages."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -45,6 +48,7 @@ class MessagePriority(str, Enum):
 
 class DeliveryStatus(str, Enum):
     """Status of message delivery."""
+
     PENDING = "pending"
     DELIVERED = "delivered"
     READ = "read"
@@ -55,6 +59,7 @@ class DeliveryStatus(str, Enum):
 # =============================================================================
 # SCOPING
 # =============================================================================
+
 
 class BusScope(BaseModel):
     """
@@ -77,6 +82,7 @@ class BusScope(BaseModel):
     inside a specific microcosm inside a specific macrocosm, so callers should
     populate the parent IDs as well for correct hierarchical matching.
     """
+
     macrocosm_id: Optional[str] = None
     microcosm_id: Optional[str] = None
     cluster_id: Optional[str] = None
@@ -86,6 +92,7 @@ class BusScope(BaseModel):
 # CORE MODELS
 # =============================================================================
 
+
 class BusMessage(BaseModel):
     """
     A structured message sent via the Communication Bus.
@@ -93,41 +100,31 @@ class BusMessage(BaseModel):
     Supports direct agent-to-agent messaging (via ``recipients``), topic-based
     pub/sub (via ``topic``), and broadcast (empty recipients + topic).
     """
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sender_id: str = Field(..., min_length=1, description="Agent ID of the sender")
     recipients: List[str] = Field(
         default_factory=list,
-        description="Target agent IDs. Empty for topic-only / broadcast."
+        description="Target agent IDs. Empty for topic-only / broadcast.",
     )
     message_type: MessageType = Field(..., description="Semantic type of the message")
-    topic: Optional[str] = Field(
-        None,
-        description="Optional topic for pub/sub routing"
-    )
+    topic: Optional[str] = Field(None, description="Optional topic for pub/sub routing")
     payload: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Arbitrary structured payload"
+        default_factory=dict, description="Arbitrary structured payload"
     )
     priority: MessagePriority = Field(
-        default=MessagePriority.NORMAL,
-        description="Delivery priority"
+        default=MessagePriority.NORMAL, description="Delivery priority"
     )
     correlation_id: Optional[str] = Field(
-        None,
-        description="Links request/response pairs together"
+        None, description="Links request/response pairs together"
     )
-    reply_to: Optional[str] = Field(
-        None,
-        description="Message ID this is a reply to"
-    )
+    reply_to: Optional[str] = Field(None, description="Message ID this is a reply to")
     scope: Optional[BusScope] = Field(
         None,
-        description="MMCNC hierarchy scope for targeted delivery (None = all subscribers)"
+        description="MMCNC hierarchy scope for targeted delivery (None = all subscribers)",
     )
     ttl_seconds: Optional[int] = Field(
-        None,
-        ge=1,
-        description="Time-to-live in seconds; expired messages are dropped"
+        None, ge=1, description="Time-to-live in seconds; expired messages are dropped"
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -136,27 +133,29 @@ class BusMessage(BaseModel):
 # SUBSCRIPTION
 # =============================================================================
 
+
 class Subscription(BaseModel):
     """An agent's subscription to a set of message types and/or topics."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     agent_id: str = Field(..., min_length=1)
     message_types: List[MessageType] = Field(
-        default_factory=list,
-        description="Message types to subscribe to (empty = all)"
+        default_factory=list, description="Message types to subscribe to (empty = all)"
     )
     topics: List[str] = Field(
         default_factory=list,
-        description="Topics to subscribe to (empty = all for matched types)"
+        description="Topics to subscribe to (empty = all for matched types)",
     )
     scope: Optional[BusScope] = Field(
         None,
-        description="MMCNC scope filter — only receive messages whose scope overlaps"
+        description="MMCNC scope filter — only receive messages whose scope overlaps",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class SubscriptionCreate(BaseModel):
     """Request body for creating a subscription."""
+
     agent_id: str = Field(..., min_length=1)
     message_types: List[MessageType] = Field(default_factory=list)
     topics: List[str] = Field(default_factory=list)
@@ -167,30 +166,32 @@ class SubscriptionCreate(BaseModel):
 # EXTERNAL AGENTS (webhooks)
 # =============================================================================
 
+
 class WebhookConfig(BaseModel):
     """Configuration for an external agent's webhook endpoint."""
+
     url: str = Field(..., description="HTTPS URL to POST messages to")
     secret: Optional[str] = Field(
-        None,
-        description="Shared secret for HMAC signature verification"
+        None, description="Shared secret for HMAC signature verification"
     )
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_backoff_base_ms: int = Field(
         default=1000,
         ge=100,
         le=60000,
-        description="Base delay (ms) for exponential back-off"
+        description="Base delay (ms) for exponential back-off",
     )
     timeout_ms: int = Field(
         default=5000,
         ge=1000,
         le=30000,
-        description="HTTP request timeout in milliseconds"
+        description="HTTP request timeout in milliseconds",
     )
 
 
 class ExternalAgentRegistration(BaseModel):
     """Registration payload for an external agent (e.g. Vigil on Clawdbot)."""
+
     agent_id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -203,8 +204,10 @@ class ExternalAgentRegistration(BaseModel):
 # DELIVERY
 # =============================================================================
 
+
 class DeliveryReceipt(BaseModel):
     """Confirmation of message delivery."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     message_id: str
     recipient_id: str
@@ -217,8 +220,10 @@ class DeliveryReceipt(BaseModel):
 # METRICS
 # =============================================================================
 
+
 class BusMetrics(BaseModel):
     """Aggregate health / throughput metrics for the bus."""
+
     total_messages_published: int = 0
     total_messages_delivered: int = 0
     total_messages_failed: int = 0
@@ -234,8 +239,10 @@ class BusMetrics(BaseModel):
 # WEBHOOK INCOMING
 # =============================================================================
 
+
 class WebhookIncoming(BaseModel):
     """Payload an external agent sends INTO the bus via the webhook receive endpoint."""
+
     sender_id: str = Field(..., min_length=1)
     recipients: List[str] = Field(default_factory=list)
     message_type: MessageType
@@ -250,8 +257,10 @@ class WebhookIncoming(BaseModel):
 # BROADCAST REQUEST
 # =============================================================================
 
+
 class BroadcastRequest(BaseModel):
     """Request body for broadcasting a message to a topic."""
+
     sender_id: str = Field(..., min_length=1)
     topic: str = Field(..., min_length=1)
     message_type: MessageType = Field(default=MessageType.BROADCAST)

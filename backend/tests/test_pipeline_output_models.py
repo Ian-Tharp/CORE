@@ -29,6 +29,7 @@ from app.models.user_input import UserInput
 # ReasoningTaskStatus enum
 # ===========================================================================
 
+
 class TestReasoningTaskStatus:
     def test_active_defined(self):
         """
@@ -73,6 +74,7 @@ class TestReasoningTaskStatus:
 # ReasoningOutput model
 # ===========================================================================
 
+
 class TestReasoningOutput:
     def test_valid_reasoning_output(self):
         """Valid task_id and task_status must be accepted."""
@@ -92,6 +94,7 @@ class TestReasoningOutput:
 # ===========================================================================
 # ComprehensionOutput enum
 # ===========================================================================
+
 
 class TestComprehensionOutput:
     def test_within_expertise_value(self):
@@ -117,6 +120,7 @@ class TestComprehensionOutput:
 # EvaluationOutput enum
 # ===========================================================================
 
+
 class TestEvaluationOutput:
     def test_satisfactory_value(self):
         """
@@ -138,6 +142,7 @@ class TestEvaluationOutput:
 # OrchestrationOutput model
 # ===========================================================================
 
+
 class TestOrchestrationOutput:
     def test_valid_orchestration_output(self):
         """Valid model with both required fields must be accepted."""
@@ -158,6 +163,7 @@ class TestOrchestrationOutput:
 # ===========================================================================
 # UserInput model
 # ===========================================================================
+
 
 class TestUserInput:
     def test_minimal_user_input_accepted(self):

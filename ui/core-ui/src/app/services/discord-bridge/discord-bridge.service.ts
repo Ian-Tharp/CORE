@@ -12,7 +12,7 @@ import {
   shareReplay,
   startWith,
   switchMap,
-  tap,
+  tap
 } from 'rxjs';
 import { AppConfigService } from '../config/app-config.service';
 
@@ -117,7 +117,7 @@ export class DiscordBridgeService {
   public readonly status$ = this._statusSubject.asObservable();
   public readonly indicator$ = combineLatest([
     this.status$,
-    this._statusUnavailableSubject.asObservable(),
+    this._statusUnavailableSubject.asObservable()
   ]).pipe(
     map(([status, unavailable]) => this._buildIndicator(status, unavailable)),
     shareReplay({ bufferSize: 1, refCount: true })
@@ -236,7 +236,7 @@ export class DiscordBridgeService {
         tone: 'unknown',
         detail: 'Live gateway status is unavailable.',
         tooltip: 'Discord Gateway status is currently unavailable.',
-        status,
+        status
       };
     }
 
@@ -246,7 +246,7 @@ export class DiscordBridgeService {
         tone: 'ready',
         detail: `${status.channel_mappings} mapped channel(s) ready`,
         tooltip: `Discord Gateway connected as ${status.bot_user ?? 'unknown bot'} across ${status.guilds} guild(s).`,
-        status,
+        status
       };
     }
 
@@ -258,7 +258,7 @@ export class DiscordBridgeService {
         tooltip: status.last_error
           ? `Discord Gateway is reconnecting. Last error: ${status.last_error}`
           : 'Discord Gateway is reconnecting.',
-        status,
+        status
       };
     }
 
@@ -269,7 +269,7 @@ export class DiscordBridgeService {
       tooltip: status.last_error
         ? `Discord Gateway disconnected. Last error: ${status.last_error}`
         : 'Discord Gateway is disconnected.',
-      status,
+      status
     };
   }
 }

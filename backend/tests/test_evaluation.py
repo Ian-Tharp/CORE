@@ -51,13 +51,29 @@ from app.services.evaluation_service import (
 # FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def sample_plan_steps():
     """Three-step plan for testing."""
     return [
-        PlanStep(step_index=0, description="Research the topic", expected_output="Summary of findings", required=True),
-        PlanStep(step_index=1, description="Analyze the data", expected_output="Analysis report", required=True),
-        PlanStep(step_index=2, description="Write conclusion", expected_output="Conclusion paragraph", required=False),
+        PlanStep(
+            step_index=0,
+            description="Research the topic",
+            expected_output="Summary of findings",
+            required=True,
+        ),
+        PlanStep(
+            step_index=1,
+            description="Analyze the data",
+            expected_output="Analysis report",
+            required=True,
+        ),
+        PlanStep(
+            step_index=2,
+            description="Write conclusion",
+            expected_output="Conclusion paragraph",
+            required=False,
+        ),
     ]
 
 
@@ -65,9 +81,21 @@ def sample_plan_steps():
 def all_completed_step_results():
     """All steps completed successfully."""
     return [
-        StepResult(step_index=0, status=StepStatus.COMPLETED, output="Found relevant research data."),
-        StepResult(step_index=1, status=StepStatus.COMPLETED, output="Data analysis shows strong trend."),
-        StepResult(step_index=2, status=StepStatus.COMPLETED, output="In conclusion, the findings support the hypothesis."),
+        StepResult(
+            step_index=0,
+            status=StepStatus.COMPLETED,
+            output="Found relevant research data.",
+        ),
+        StepResult(
+            step_index=1,
+            status=StepStatus.COMPLETED,
+            output="Data analysis shows strong trend.",
+        ),
+        StepResult(
+            step_index=2,
+            status=StepStatus.COMPLETED,
+            output="In conclusion, the findings support the hypothesis.",
+        ),
     ]
 
 
@@ -75,9 +103,19 @@ def all_completed_step_results():
 def partial_step_results():
     """One step failed, one partial."""
     return [
-        StepResult(step_index=0, status=StepStatus.COMPLETED, output="Found relevant research data."),
-        StepResult(step_index=1, status=StepStatus.FAILED, error="Analysis service unavailable"),
-        StepResult(step_index=2, status=StepStatus.PARTIAL, output="Partial conclusion drafted."),
+        StepResult(
+            step_index=0,
+            status=StepStatus.COMPLETED,
+            output="Found relevant research data.",
+        ),
+        StepResult(
+            step_index=1, status=StepStatus.FAILED, error="Analysis service unavailable"
+        ),
+        StepResult(
+            step_index=2,
+            status=StepStatus.PARTIAL,
+            output="Partial conclusion drafted.",
+        ),
     ]
 
 
@@ -124,12 +162,15 @@ def poor_evaluation_input(sample_plan_steps, partial_step_results):
 # 1. QUALITY SCORE MODEL TESTS
 # =============================================================================
 
+
 class TestQualityScore:
     """Tests for the QualityScore model."""
 
     def test_compute_overall_default_weights(self):
         # Arrange
-        score = QualityScore(accuracy=0.9, completeness=0.8, relevance=0.7, coherence=0.6)
+        score = QualityScore(
+            accuracy=0.9, completeness=0.8, relevance=0.7, coherence=0.6
+        )
 
         # Act
         overall = score.compute_overall()
@@ -142,8 +183,15 @@ class TestQualityScore:
 
     def test_compute_overall_custom_weights(self):
         # Arrange
-        score = QualityScore(accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0)
-        weights = {"accuracy": 1.0, "completeness": 0.0, "relevance": 0.0, "coherence": 0.0}
+        score = QualityScore(
+            accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0
+        )
+        weights = {
+            "accuracy": 1.0,
+            "completeness": 0.0,
+            "relevance": 0.0,
+            "coherence": 0.0,
+        }
 
         # Act
         overall = score.compute_overall(weights=weights)
@@ -153,7 +201,9 @@ class TestQualityScore:
 
     def test_compute_overall_all_zero(self):
         # Arrange
-        score = QualityScore(accuracy=0.0, completeness=0.0, relevance=0.0, coherence=0.0)
+        score = QualityScore(
+            accuracy=0.0, completeness=0.0, relevance=0.0, coherence=0.0
+        )
 
         # Act
         overall = score.compute_overall()
@@ -165,6 +215,7 @@ class TestQualityScore:
 # =============================================================================
 # 2. HEURISTIC ACCURACY TESTS
 # =============================================================================
+
 
 class TestHeuristicAccuracy:
     """Tests for the accuracy scoring heuristic."""
@@ -214,6 +265,7 @@ class TestHeuristicAccuracy:
 # 3. HEURISTIC COMPLETENESS TESTS
 # =============================================================================
 
+
 class TestHeuristicCompleteness:
     """Tests for the completeness scoring heuristic."""
 
@@ -243,6 +295,7 @@ class TestHeuristicCompleteness:
 # =============================================================================
 # 4. HEURISTIC RELEVANCE TESTS
 # =============================================================================
+
 
 class TestHeuristicRelevance:
     """Tests for the relevance scoring heuristic."""
@@ -288,6 +341,7 @@ class TestHeuristicRelevance:
 # 5. HEURISTIC COHERENCE TESTS
 # =============================================================================
 
+
 class TestHeuristicCoherence:
     """Tests for the coherence scoring heuristic."""
 
@@ -326,6 +380,7 @@ class TestHeuristicCoherence:
 # =============================================================================
 # 6. PLAN COMPLETION TESTS
 # =============================================================================
+
 
 class TestPlanCompletion:
     """Tests for plan completion checking."""
@@ -369,7 +424,9 @@ class TestPlanCompletion:
         assert result.completed_steps == 1
         assert result.required_steps_met is False  # step 1 is required but not started
 
-    def test_step_evaluations_populated(self, sample_plan_steps, all_completed_step_results):
+    def test_step_evaluations_populated(
+        self, sample_plan_steps, all_completed_step_results
+    ):
         # Arrange / Act
         result = _check_plan_completion(sample_plan_steps, all_completed_step_results)
 
@@ -384,12 +441,15 @@ class TestPlanCompletion:
 # 7. VERDICT DETERMINATION TESTS
 # =============================================================================
 
+
 class TestVerdictDetermination:
     """Tests for the verdict determination logic."""
 
     def test_approve_high_quality(self):
         # Arrange
-        quality = QualityScore(accuracy=0.9, completeness=0.8, relevance=0.9, coherence=0.8, overall=0.87)
+        quality = QualityScore(
+            accuracy=0.9, completeness=0.8, relevance=0.9, coherence=0.8, overall=0.87
+        )
         plan = PlanCompletionStatus(required_steps_met=True)
 
         # Act
@@ -400,7 +460,9 @@ class TestVerdictDetermination:
 
     def test_retry_mediocre_quality(self):
         # Arrange
-        quality = QualityScore(accuracy=0.5, completeness=0.5, relevance=0.5, coherence=0.5, overall=0.5)
+        quality = QualityScore(
+            accuracy=0.5, completeness=0.5, relevance=0.5, coherence=0.5, overall=0.5
+        )
         plan = PlanCompletionStatus(required_steps_met=True)
 
         # Act
@@ -411,7 +473,9 @@ class TestVerdictDetermination:
 
     def test_escalate_max_retries_exhausted(self):
         # Arrange
-        quality = QualityScore(accuracy=0.5, completeness=0.5, relevance=0.5, coherence=0.5, overall=0.5)
+        quality = QualityScore(
+            accuracy=0.5, completeness=0.5, relevance=0.5, coherence=0.5, overall=0.5
+        )
         plan = PlanCompletionStatus(required_steps_met=True)
 
         # Act
@@ -422,7 +486,9 @@ class TestVerdictDetermination:
 
     def test_escalate_very_low_quality(self):
         # Arrange
-        quality = QualityScore(accuracy=0.1, completeness=0.1, relevance=0.1, coherence=0.1, overall=0.1)
+        quality = QualityScore(
+            accuracy=0.1, completeness=0.1, relevance=0.1, coherence=0.1, overall=0.1
+        )
         plan = PlanCompletionStatus(required_steps_met=False)
 
         # Act
@@ -433,7 +499,9 @@ class TestVerdictDetermination:
 
     def test_refine_when_plan_steps_unmet_but_decent_quality(self):
         # Arrange
-        quality = QualityScore(accuracy=0.6, completeness=0.5, relevance=0.6, coherence=0.6, overall=0.58)
+        quality = QualityScore(
+            accuracy=0.6, completeness=0.5, relevance=0.6, coherence=0.6, overall=0.58
+        )
         plan = PlanCompletionStatus(required_steps_met=False)
 
         # Act
@@ -444,7 +512,9 @@ class TestVerdictDetermination:
 
     def test_improvements_populated_on_low_dimensions(self):
         # Arrange
-        quality = QualityScore(accuracy=0.3, completeness=0.4, relevance=0.3, coherence=0.4, overall=0.35)
+        quality = QualityScore(
+            accuracy=0.3, completeness=0.4, relevance=0.3, coherence=0.4, overall=0.35
+        )
         plan = PlanCompletionStatus(required_steps_met=True)
 
         # Act
@@ -458,12 +528,15 @@ class TestVerdictDetermination:
 # 8. RETRY LOGIC TESTS
 # =============================================================================
 
+
 class TestRetryLogic:
     """Tests for retry decision building."""
 
     def test_no_retry_on_approve(self):
         # Arrange
-        verdict = EvaluationVerdict(verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9)
+        verdict = EvaluationVerdict(
+            verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9
+        )
         quality = QualityScore(overall=0.9)
 
         # Act
@@ -475,7 +548,9 @@ class TestRetryLogic:
 
     def test_retry_with_exponential_backoff(self):
         # Arrange
-        verdict = EvaluationVerdict(verdict=Verdict.RETRY, reasoning="Needs improvement", confidence=0.7)
+        verdict = EvaluationVerdict(
+            verdict=Verdict.RETRY, reasoning="Needs improvement", confidence=0.7
+        )
         quality = QualityScore(overall=0.5)
 
         # Act
@@ -491,7 +566,9 @@ class TestRetryLogic:
 
     def test_escalation_on_escalate_verdict(self):
         # Arrange
-        verdict = EvaluationVerdict(verdict=Verdict.ESCALATE, reasoning="Too many failures", confidence=0.9)
+        verdict = EvaluationVerdict(
+            verdict=Verdict.ESCALATE, reasoning="Too many failures", confidence=0.9
+        )
         quality = QualityScore(overall=0.2)
 
         # Act
@@ -503,20 +580,30 @@ class TestRetryLogic:
 
     def test_retry_delay_capped(self):
         # Arrange
-        verdict = EvaluationVerdict(verdict=Verdict.RETRY, reasoning="Retry", confidence=0.7)
+        verdict = EvaluationVerdict(
+            verdict=Verdict.RETRY, reasoning="Retry", confidence=0.7
+        )
         quality = QualityScore(overall=0.5)
 
         # Act — high retry count should still cap
-        decision = _build_retry_decision(verdict, quality, retry_count=20, max_retries=100)
+        decision = _build_retry_decision(
+            verdict, quality, retry_count=20, max_retries=100
+        )
 
         # Assert
         assert decision.delay_ms <= EvaluationThresholds.RETRY_MAX_DELAY_MS
 
     def test_adjustments_contain_focus_area(self):
         # Arrange
-        verdict = EvaluationVerdict(verdict=Verdict.RETRY, reasoning="Retry needed", confidence=0.6,
-                                     suggested_improvements=["Improve accuracy"])
-        quality = QualityScore(accuracy=0.3, completeness=0.8, relevance=0.8, coherence=0.8, overall=0.5)
+        verdict = EvaluationVerdict(
+            verdict=Verdict.RETRY,
+            reasoning="Retry needed",
+            confidence=0.6,
+            suggested_improvements=["Improve accuracy"],
+        )
+        quality = QualityScore(
+            accuracy=0.3, completeness=0.8, relevance=0.8, coherence=0.8, overall=0.5
+        )
 
         # Act
         decision = _build_retry_decision(verdict, quality, retry_count=0, max_retries=3)
@@ -529,14 +616,24 @@ class TestRetryLogic:
 # 9. FEEDBACK GENERATION TESTS
 # =============================================================================
 
+
 class TestFeedbackGeneration:
     """Tests for generating human-readable feedback."""
 
     def test_feedback_contains_verdict(self):
         # Arrange
-        quality = QualityScore(overall=0.85, accuracy=0.9, completeness=0.8, relevance=0.85, coherence=0.8)
-        plan = PlanCompletionStatus(total_steps=2, completed_steps=2, required_steps_met=True, completion_rate=1.0)
-        verdict = EvaluationVerdict(verdict=Verdict.APPROVE, reasoning="All good", confidence=0.9)
+        quality = QualityScore(
+            overall=0.85, accuracy=0.9, completeness=0.8, relevance=0.85, coherence=0.8
+        )
+        plan = PlanCompletionStatus(
+            total_steps=2,
+            completed_steps=2,
+            required_steps_met=True,
+            completion_rate=1.0,
+        )
+        verdict = EvaluationVerdict(
+            verdict=Verdict.APPROVE, reasoning="All good", confidence=0.9
+        )
 
         # Act
         feedback = _generate_feedback(quality, plan, verdict)
@@ -547,8 +644,15 @@ class TestFeedbackGeneration:
     def test_feedback_contains_plan_info(self):
         # Arrange
         quality = QualityScore(overall=0.5)
-        plan = PlanCompletionStatus(total_steps=3, completed_steps=1, required_steps_met=False, completion_rate=0.33)
-        verdict = EvaluationVerdict(verdict=Verdict.RETRY, reasoning="Incomplete", confidence=0.6)
+        plan = PlanCompletionStatus(
+            total_steps=3,
+            completed_steps=1,
+            required_steps_met=False,
+            completion_rate=0.33,
+        )
+        verdict = EvaluationVerdict(
+            verdict=Verdict.RETRY, reasoning="Incomplete", confidence=0.6
+        )
 
         # Act
         feedback = _generate_feedback(quality, plan, verdict)
@@ -580,14 +684,18 @@ class TestFeedbackGeneration:
 # 10. FULL EVALUATE INTEGRATION TESTS
 # =============================================================================
 
+
 class TestEvaluateIntegration:
     """Integration tests for the full evaluate() pipeline."""
 
     @pytest.mark.asyncio
     async def test_good_input_gets_approved(self, good_evaluation_input):
         # Arrange — mock repository and memory
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -605,8 +713,11 @@ class TestEvaluateIntegration:
     @pytest.mark.asyncio
     async def test_poor_input_gets_retry(self, poor_evaluation_input):
         # Arrange
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -614,7 +725,11 @@ class TestEvaluateIntegration:
             result = await evaluate(poor_evaluation_input)
 
             # Assert
-            assert result.verdict.verdict in (Verdict.RETRY, Verdict.REFINE, Verdict.ESCALATE)
+            assert result.verdict.verdict in (
+                Verdict.RETRY,
+                Verdict.REFINE,
+                Verdict.ESCALATE,
+            )
             assert result.retry_decision is not None
             mock_repo.store_evaluation.assert_called_once()
 
@@ -624,8 +739,11 @@ class TestEvaluateIntegration:
         poor_evaluation_input.retry_count = 3
         poor_evaluation_input.max_retries = 3
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -642,6 +760,7 @@ class TestEvaluateIntegration:
 # 11. STEP EVALUATION TESTS
 # =============================================================================
 
+
 class TestStepEvaluation:
     """Tests for individual step evaluation."""
 
@@ -651,7 +770,9 @@ class TestStepEvaluation:
         step_input = EvaluateStepInput(
             task_id=uuid4(),
             step_plan=PlanStep(step_index=0, description="Fetch data", required=True),
-            step_result=StepResult(step_index=0, status=StepStatus.COMPLETED, output="Data fetched."),
+            step_result=StepResult(
+                step_index=0, status=StepStatus.COMPLETED, output="Data fetched."
+            ),
             original_intent="Get data from API",
         )
 
@@ -668,7 +789,9 @@ class TestStepEvaluation:
         step_input = EvaluateStepInput(
             task_id=uuid4(),
             step_plan=PlanStep(step_index=0, description="Fetch data", required=True),
-            step_result=StepResult(step_index=0, status=StepStatus.FAILED, error="Timeout"),
+            step_result=StepResult(
+                step_index=0, status=StepStatus.FAILED, error="Timeout"
+            ),
             original_intent="Get data from API",
         )
 
@@ -684,6 +807,7 @@ class TestStepEvaluation:
 # 12. SHOULD_RETRY TESTS
 # =============================================================================
 
+
 class TestShouldRetry:
     """Tests for the should_retry() service function."""
 
@@ -692,7 +816,9 @@ class TestShouldRetry:
         # Arrange
         eval_result = EvaluationResult(
             task_id=uuid4(),
-            verdict=EvaluationVerdict(verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9),
+            verdict=EvaluationVerdict(
+                verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9
+            ),
         )
 
         # Act
@@ -707,8 +833,12 @@ class TestShouldRetry:
         eval_result = EvaluationResult(
             task_id=uuid4(),
             quality_score=QualityScore(overall=0.5),
-            verdict=EvaluationVerdict(verdict=Verdict.RETRY, reasoning="Mediocre", confidence=0.7),
-            retry_decision=RetryDecision(should_retry=True, retry_count=1, max_retries=3, reason="retry"),
+            verdict=EvaluationVerdict(
+                verdict=Verdict.RETRY, reasoning="Mediocre", confidence=0.7
+            ),
+            retry_decision=RetryDecision(
+                should_retry=True, retry_count=1, max_retries=3, reason="retry"
+            ),
         )
 
         # Act
@@ -721,6 +851,7 @@ class TestShouldRetry:
 # =============================================================================
 # 13. EDGE CASES
 # =============================================================================
+
 
 class TestEdgeCases:
     """Edge case and boundary tests."""
@@ -736,8 +867,11 @@ class TestEdgeCases:
             max_retries=3,
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -759,8 +893,11 @@ class TestEdgeCases:
             max_retries=3,
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -783,8 +920,11 @@ class TestEdgeCases:
             max_retries=3,
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -801,8 +941,14 @@ class TestEdgeCases:
         # Arrange
         results = [
             StepResult(step_index=0, status=StepStatus.COMPLETED, output="Done"),
-            StepResult(step_index=1, status=StepStatus.COMPLETED, output="Done analysis"),
-            StepResult(step_index=2, status=StepStatus.FAILED, error="Could not write conclusion"),
+            StepResult(
+                step_index=1, status=StepStatus.COMPLETED, output="Done analysis"
+            ),
+            StepResult(
+                step_index=2,
+                status=StepStatus.FAILED,
+                error="Could not write conclusion",
+            ),
         ]
         inp = EvaluationInput(
             task_id=uuid4(),
@@ -814,8 +960,11 @@ class TestEdgeCases:
             max_retries=3,
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -831,6 +980,7 @@ class TestEdgeCases:
 # 14. HUMAN FEEDBACK TESTS
 # =============================================================================
 
+
 class TestHumanFeedback:
     """Tests for human feedback recording."""
 
@@ -844,11 +994,14 @@ class TestHumanFeedback:
             feedback_text="Looks correct",
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo:
             mock_repo.record_human_feedback = AsyncMock(return_value=True)
 
             # Act
             from app.services.evaluation_service import record_human_feedback
+
             result = await record_human_feedback(eval_id, feedback)
 
             # Assert
@@ -867,11 +1020,14 @@ class TestHumanFeedback:
             feedback_text="This was actually good output",
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo:
             mock_repo.record_human_feedback = AsyncMock(return_value=True)
 
             # Act
             from app.services.evaluation_service import record_human_feedback
+
             result = await record_human_feedback(eval_id, feedback)
 
             # Assert
@@ -881,6 +1037,7 @@ class TestHumanFeedback:
 # =============================================================================
 # 15. METRICS TESTS
 # =============================================================================
+
 
 class TestMetrics:
     """Tests for evaluation metrics aggregation."""
@@ -900,11 +1057,14 @@ class TestMetrics:
             avg_quality_score=0.75,
         )
 
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo:
             mock_repo.get_evaluation_metrics = AsyncMock(return_value=expected)
 
             # Act
             from app.services.evaluation_service import get_evaluation_metrics
+
             result = await get_evaluation_metrics()
 
             # Assert
@@ -916,14 +1076,18 @@ class TestMetrics:
 # 16. MEMORY INTEGRATION TESTS
 # =============================================================================
 
+
 class TestMemoryIntegration:
     """Tests for procedural memory storage on evaluation."""
 
     @pytest.mark.asyncio
     async def test_approved_stores_success_pattern(self, good_evaluation_input):
         # Arrange
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -939,8 +1103,11 @@ class TestMemoryIntegration:
     @pytest.mark.asyncio
     async def test_failed_stores_failure_pattern(self, poor_evaluation_input):
         # Arrange
-        with patch("app.services.evaluation_service.evaluation_repository") as mock_repo, \
-             patch("app.services.evaluation_service.memory_repository") as mock_mem:
+        with patch(
+            "app.services.evaluation_service.evaluation_repository"
+        ) as mock_repo, patch(
+            "app.services.evaluation_service.memory_repository"
+        ) as mock_mem:
             mock_repo.store_evaluation = AsyncMock(return_value=uuid4())
             mock_mem.create_procedural_memory = AsyncMock(return_value=uuid4())
 
@@ -958,6 +1125,7 @@ class TestMemoryIntegration:
 # 17. MODEL VALIDATION TESTS
 # =============================================================================
 
+
 class TestModelValidation:
     """Tests for Pydantic model validation."""
 
@@ -968,7 +1136,9 @@ class TestModelValidation:
 
     def test_quality_score_valid(self):
         # Arrange / Act
-        score = QualityScore(accuracy=0.5, completeness=0.6, relevance=0.7, coherence=0.8)
+        score = QualityScore(
+            accuracy=0.5, completeness=0.6, relevance=0.7, coherence=0.8
+        )
 
         # Assert
         assert score.accuracy == 0.5
@@ -998,6 +1168,7 @@ class TestModelValidation:
 # 18. EVALUATION RESULT SERIALIZATION
 # =============================================================================
 
+
 class TestSerialization:
     """Tests for model serialization."""
 
@@ -1005,8 +1176,16 @@ class TestSerialization:
         # Arrange
         result = EvaluationResult(
             task_id=uuid4(),
-            quality_score=QualityScore(accuracy=0.9, completeness=0.8, relevance=0.7, coherence=0.6, overall=0.8),
-            verdict=EvaluationVerdict(verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9),
+            quality_score=QualityScore(
+                accuracy=0.9,
+                completeness=0.8,
+                relevance=0.7,
+                coherence=0.6,
+                overall=0.8,
+            ),
+            verdict=EvaluationVerdict(
+                verdict=Verdict.APPROVE, reasoning="Good", confidence=0.9
+            ),
         )
 
         # Act
@@ -1023,18 +1202,25 @@ class TestSerialization:
 # 19. THRESHOLD CONSTANTS
 # =============================================================================
 
+
 class TestThresholds:
     """Tests to verify threshold constants are sensible."""
 
     def test_approve_higher_than_retry_min(self):
         # Assert
-        assert EvaluationThresholds.APPROVE_QUALITY > EvaluationThresholds.RETRY_QUALITY_MIN
+        assert (
+            EvaluationThresholds.APPROVE_QUALITY
+            > EvaluationThresholds.RETRY_QUALITY_MIN
+        )
 
     def test_retry_base_delay_positive(self):
         assert EvaluationThresholds.RETRY_BASE_DELAY_MS > 0
 
     def test_retry_max_delay_greater_than_base(self):
-        assert EvaluationThresholds.RETRY_MAX_DELAY_MS > EvaluationThresholds.RETRY_BASE_DELAY_MS
+        assert (
+            EvaluationThresholds.RETRY_MAX_DELAY_MS
+            > EvaluationThresholds.RETRY_BASE_DELAY_MS
+        )
 
     def test_max_retries_positive(self):
         assert EvaluationThresholds.MAX_RETRIES > 0
@@ -1043,6 +1229,7 @@ class TestThresholds:
 # =============================================================================
 # 20. BOUNDARY VERDICT TESTS
 # =============================================================================
+
 
 class TestBoundaryVerdicts:
     """Boundary condition tests for verdict thresholds."""
@@ -1095,6 +1282,7 @@ class TestBoundaryVerdicts:
 # =============================================================================
 # 21. HISTORY FILTER TESTS
 # =============================================================================
+
 
 class TestHistoryFilter:
     """Tests for history filter model."""

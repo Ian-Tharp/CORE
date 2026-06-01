@@ -36,32 +36,47 @@ router = APIRouter(prefix="/catalyst-creativity", tags=["catalyst-creativity"])
 # REQUEST / RESPONSE MODELS
 # =============================================================================
 
+
 class AutoCatalystRequest(BaseModel):
     """Request for a full D→C→S pipeline run."""
+
     prompt: str = Field(..., description="Creative prompt to explore")
     count: int = Field(default=5, ge=1, le=10, description="Number of divergent ideas")
-    config: Optional[Dict[str, Any]] = Field(default=None, description="Optional model/config overrides")
+    config: Optional[Dict[str, Any]] = Field(
+        default=None, description="Optional model/config overrides"
+    )
 
 
 class ConvergenceRequest(BaseModel):
     """Request for convergence phase."""
+
     session_id: str = Field(..., description="Session from divergence phase")
-    divergent_ideas: List[Dict[str, Any]] = Field(..., description="Ideas from divergence phase")
+    divergent_ideas: List[Dict[str, Any]] = Field(
+        ..., description="Ideas from divergence phase"
+    )
 
 
 class SynthesisRequest(BaseModel):
     """Request for synthesis phase."""
+
     session_id: str = Field(..., description="Session ID")
-    divergent_ideas: List[Dict[str, Any]] = Field(..., description="Ideas from divergence")
-    convergent_analysis: Dict[str, Any] = Field(..., description="Analysis from convergence")
+    divergent_ideas: List[Dict[str, Any]] = Field(
+        ..., description="Ideas from divergence"
+    )
+    convergent_analysis: Dict[str, Any] = Field(
+        ..., description="Analysis from convergence"
+    )
 
 
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
 
+
 @router.post("/auto")
-async def auto_catalyst(request: AutoCatalystRequest, api_key: str = Depends(require_api_key)) -> dict:
+async def auto_catalyst(
+    request: AutoCatalystRequest, api_key: str = Depends(require_api_key)
+) -> dict:
     """
     Run the full Catalyst Creativity pipeline end-to-end.
 
@@ -155,7 +170,9 @@ async def catalyst_creativity_divergence(
 
 
 @router.post("/convergence")
-async def catalyst_creativity_convergence(request: ConvergenceRequest, api_key: str = Depends(require_api_key)) -> dict:
+async def catalyst_creativity_convergence(
+    request: ConvergenceRequest, api_key: str = Depends(require_api_key)
+) -> dict:
     """
     Evaluate, group, and rank divergent ideas.
 
@@ -182,7 +199,9 @@ async def catalyst_creativity_convergence(request: ConvergenceRequest, api_key: 
 
 
 @router.post("/synthesis")
-async def catalyst_creativity_synthesis(request: SynthesisRequest, api_key: str = Depends(require_api_key)) -> dict:
+async def catalyst_creativity_synthesis(
+    request: SynthesisRequest, api_key: str = Depends(require_api_key)
+) -> dict:
     """
     Synthesize divergent ideas and convergent analysis into a unified output.
 

@@ -22,6 +22,7 @@ from app.services.embedding_service import EmbeddingService
 # Helpers
 # ===========================================================================
 
+
 def _make_service(client=None) -> EmbeddingService:
     svc = EmbeddingService()
     svc.client = client or _make_client()
@@ -46,6 +47,7 @@ def _make_client(embedding: list | None = None) -> MagicMock:
 # ===========================================================================
 # generate_embedding — single text
 # ===========================================================================
+
 
 class TestGenerateEmbedding:
     @pytest.mark.asyncio
@@ -136,6 +138,7 @@ class TestGenerateEmbedding:
 # generate_embeddings_batch — multiple texts
 # ===========================================================================
 
+
 class TestGenerateEmbeddingsBatch:
     @pytest.mark.asyncio
     async def test_raises_if_not_initialized(self):
@@ -215,6 +218,7 @@ class TestGenerateEmbeddingsBatch:
 # get_model_info — metadata
 # ===========================================================================
 
+
 class TestGetModelInfo:
     @pytest.mark.asyncio
     async def test_returns_model_name(self):
@@ -249,6 +253,7 @@ class TestGetModelInfo:
 # ===========================================================================
 # health_check
 # ===========================================================================
+
 
 class TestHealthCheck:
     @pytest.mark.asyncio

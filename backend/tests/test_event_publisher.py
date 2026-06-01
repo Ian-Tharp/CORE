@@ -76,16 +76,14 @@ class TestPublish:
 
     async def test_publish_returns_false_on_error(self, publisher, mock_ws_manager):
         mock_ws_manager.broadcast_to_all.side_effect = RuntimeError("ws down")
-        event = AgentActivityEvent(
-            agent_id="a", action="b", status=AgentStatus.IDLE
-        )
+        event = AgentActivityEvent(agent_id="a", action="b", status=AgentStatus.IDLE)
         result = await publisher.publish(event)
         assert result is False
 
-    async def test_publish_event_contains_id_and_timestamp(self, publisher, mock_ws_manager):
-        event = SystemEvent(
-            level=SystemLevel.INFO, message="hello"
-        )
+    async def test_publish_event_contains_id_and_timestamp(
+        self, publisher, mock_ws_manager
+    ):
+        event = SystemEvent(level=SystemLevel.INFO, message="hello")
         await publisher.publish(event)
 
         payload = mock_ws_manager.broadcast_to_all.call_args[0][0]
@@ -93,9 +91,7 @@ class TestPublish:
         assert "timestamp" in payload
 
     async def test_publish_passes_session_id_through(self, publisher, mock_ws_manager):
-        event = NotificationEvent(
-            title="t", body="b", session_id="sess-42"
-        )
+        event = NotificationEvent(title="t", body="b", session_id="sess-42")
         await publisher.publish(event)
 
         payload = mock_ws_manager.broadcast_to_all.call_args[0][0]
@@ -117,7 +113,9 @@ class TestPublishToChannel:
         assert args[0] == "chan-1"
         assert args[1]["task_id"] == "t1"
 
-    async def test_channel_publish_returns_false_on_error(self, publisher, mock_ws_manager):
+    async def test_channel_publish_returns_false_on_error(
+        self, publisher, mock_ws_manager
+    ):
         mock_ws_manager.broadcast_to_channel.side_effect = RuntimeError("fail")
         event = SystemEvent(level=SystemLevel.INFO, message="x")
         result = await publisher.publish_to_channel("ch", event)
@@ -137,7 +135,9 @@ class TestPublishToInstance:
         assert args[0] == "inst-7"
         assert args[1]["title"] == "alert"
 
-    async def test_instance_publish_returns_false_on_error(self, publisher, mock_ws_manager):
+    async def test_instance_publish_returns_false_on_error(
+        self, publisher, mock_ws_manager
+    ):
         mock_ws_manager.send_personal_message.side_effect = ConnectionError("gone")
         event = SystemEvent(level=SystemLevel.ERROR, message="err")
         result = await publisher.publish_to_instance("x", event)
@@ -153,7 +153,9 @@ class TestAgentEvents:
     """Tests for agent lifecycle convenience methods."""
 
     async def test_agent_started(self, publisher, mock_ws_manager):
-        result = await publisher.agent_started("comp-agent", "analyzing", "Starting analysis")
+        result = await publisher.agent_started(
+            "comp-agent", "analyzing", "Starting analysis"
+        )
         assert result is True
         payload = mock_ws_manager.broadcast_to_all.call_args[0][0]
         assert payload["agent_id"] == "comp-agent"
@@ -244,7 +246,8 @@ class TestTaskEvents:
 
     async def test_task_progress(self, publisher, mock_ws_manager):
         result = await publisher.task_progress(
-            "t-1", 45,
+            "t-1",
+            45,
             message="Halfway",
             eta_seconds=30,
             current_step="embedding",
@@ -308,7 +311,9 @@ class TestCouncilEvents:
         assert payload["content"] == "This is ethically sound"
         assert payload["confidence"] == 0.85
 
-    async def test_council_perspective_without_confidence(self, publisher, mock_ws_manager):
+    async def test_council_perspective_without_confidence(
+        self, publisher, mock_ws_manager
+    ):
         await publisher.council_perspective("c", "a", "opinion")
         payload = mock_ws_manager.broadcast_to_all.call_args[0][0]
         assert payload["confidence"] is None
@@ -324,9 +329,7 @@ class TestCouncilEvents:
         assert payload["confidence"] == 0.9
 
     async def test_council_synthesis(self, publisher, mock_ws_manager):
-        result = await publisher.council_synthesis(
-            "council-3", "The consensus is..."
-        )
+        result = await publisher.council_synthesis("council-3", "The consensus is...")
         assert result is True
         payload = mock_ws_manager.broadcast_to_all.call_args[0][0]
         assert payload["event"] == "synthesis_ready"
@@ -534,7 +537,9 @@ class TestErrorResilience:
         result = await publisher.publish(event)
         assert result is False
 
-    async def test_channel_publish_catches_value_error(self, publisher, mock_ws_manager):
+    async def test_channel_publish_catches_value_error(
+        self, publisher, mock_ws_manager
+    ):
         mock_ws_manager.broadcast_to_channel.side_effect = ValueError("nope")
         event = SystemEvent(level=SystemLevel.INFO, message="x")
         result = await publisher.publish_to_channel("ch", event)

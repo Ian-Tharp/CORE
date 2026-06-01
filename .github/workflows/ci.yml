@@ -68,7 +68,6 @@ jobs:
 
       - name: Lint (black)
         run: uv run black --check app/ tests/
-        continue-on-error: true # Formatting is not enforced yet.
 
       # `app` is importable via pytest `pythonpath = ["."]` in pyproject.toml,
       # so no PYTHONPATH wiring is needed here. test_sync.py is excluded by
@@ -105,16 +104,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      # ng lint exits non-zero only on errors; the remaining ~190 any/console
+      # items are configured as warnings and do not block.
       - name: Lint
         run: npm run lint
-        continue-on-error: true # Lint is not enforced yet.
 
-      # The required gate: a full Angular compile (type + template checks).
       - name: Build
         run: npm run build:ng -- --configuration development
 
-      # Non-blocking until the legacy auto-generated component specs are repaired
-      # (40 pre-existing failures unrelated to current work). Tracked as tech debt.
       - name: Test
         run: npm test -- --ci --runInBand
-        continue-on-error: true

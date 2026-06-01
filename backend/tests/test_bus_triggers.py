@@ -27,6 +27,7 @@ from app.services.bus_triggers import (
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> BusTriggerService:
     return BusTriggerService()
 
@@ -54,6 +55,7 @@ def _make_rule(
 # TriggerRule.matches — pure pattern logic
 # ===========================================================================
 
+
 class TestTriggerRuleMatches:
     def test_matching_text_returns_true(self):
         """
@@ -78,13 +80,16 @@ class TestTriggerRuleMatches:
 
     def test_invalid_regex_returns_false(self):
         """Invalid regex pattern must return False (not raise)."""
-        rule = TriggerRule(name="bad", pattern="[invalid", action=TriggerAction.COUNCIL_SESSION)
+        rule = TriggerRule(
+            name="bad", pattern="[invalid", action=TriggerAction.COUNCIL_SESSION
+        )
         assert rule.matches("anything") is False
 
 
 # ===========================================================================
 # BusTriggerService — CRUD
 # ===========================================================================
+
 
 class TestTriggerCRUD:
     def test_defaults_loaded_on_init(self):
@@ -117,7 +122,9 @@ class TestTriggerCRUD:
     def test_invalid_regex_raises_on_register(self):
         """Registering a trigger with invalid regex must raise ValueError."""
         svc = _make_service()
-        rule = TriggerRule(name="bad", pattern="[invalid", action=TriggerAction.COUNCIL_SESSION)
+        rule = TriggerRule(
+            name="bad", pattern="[invalid", action=TriggerAction.COUNCIL_SESSION
+        )
         with pytest.raises(ValueError, match="[Ii]nvalid regex"):
             svc.register_trigger(rule)
 
@@ -141,7 +148,12 @@ class TestTriggerCRUD:
         """Re-registering with same id must overwrite (upsert)."""
         svc = _make_service()
         rule_v1 = _make_rule(name="v1")
-        rule_v2 = TriggerRule(id=rule_v1.id, name="v2", pattern=r"\bsentinel\b", action=TriggerAction.COUNCIL_SESSION)
+        rule_v2 = TriggerRule(
+            id=rule_v1.id,
+            name="v2",
+            pattern=r"\bsentinel\b",
+            action=TriggerAction.COUNCIL_SESSION,
+        )
         svc.register_trigger(rule_v1)
         svc.register_trigger(rule_v2)
         found = svc.get_trigger(rule_v1.id)
@@ -151,6 +163,7 @@ class TestTriggerCRUD:
 # ===========================================================================
 # _extract_text — text extraction
 # ===========================================================================
+
 
 class TestExtractText:
     def test_topic_included_in_text(self):
@@ -192,6 +205,7 @@ class TestExtractText:
 # ===========================================================================
 # evaluate_message — dry-run matching
 # ===========================================================================
+
 
 class TestEvaluateMessage:
     @pytest.mark.asyncio
@@ -251,6 +265,7 @@ class TestEvaluateMessage:
 # execute_triggers — action dispatch and error isolation
 # ===========================================================================
 
+
 class TestExecuteTriggers:
     @pytest.mark.asyncio
     async def test_no_matching_triggers_returns_empty_list(self):
@@ -272,7 +287,9 @@ class TestExecuteTriggers:
         rule = _make_rule(pattern=r"\bsentinel\b", name="SENTINEL_RULE")
         svc.register_trigger(rule)
 
-        with patch.object(svc, "_execute_action", new=AsyncMock(return_value={"session_id": "s-1"})):
+        with patch.object(
+            svc, "_execute_action", new=AsyncMock(return_value={"session_id": "s-1"})
+        ):
             results = await svc.execute_triggers(_make_message(text="sentinel fires"))
 
         assert len(results) == 1
@@ -290,7 +307,11 @@ class TestExecuteTriggers:
         rule = _make_rule(pattern=r"\bsentinel\b", name="FAILING_RULE")
         svc.register_trigger(rule)
 
-        with patch.object(svc, "_execute_action", new=AsyncMock(side_effect=RuntimeError("SENTINEL_ERROR"))):
+        with patch.object(
+            svc,
+            "_execute_action",
+            new=AsyncMock(side_effect=RuntimeError("SENTINEL_ERROR")),
+        ):
             results = await svc.execute_triggers(_make_message(text="sentinel fires"))
 
         assert len(results) == 1
@@ -307,8 +328,9 @@ class TestExecuteTriggers:
         svc._triggers.clear()
 
         rule1 = _make_rule(name="FAIL_RULE", pattern=r"\bsentinel\b")
-        rule2 = _make_rule(name="OK_RULE", pattern=r"\bsentinel\b",
-                           action=TriggerAction.CATALYST_RUN)
+        rule2 = _make_rule(
+            name="OK_RULE", pattern=r"\bsentinel\b", action=TriggerAction.CATALYST_RUN
+        )
         svc.register_trigger(rule1)
         svc.register_trigger(rule2)
 

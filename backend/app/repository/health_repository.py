@@ -127,10 +127,20 @@ async def get_history(
             {
                 "id": row["id"],
                 "overall_status": row["overall_status"],
-                "services": json.loads(row["services"]) if isinstance(row["services"], str) else row["services"],
+                "services": (
+                    json.loads(row["services"])
+                    if isinstance(row["services"], str)
+                    else row["services"]
+                ),
                 "total_latency_ms": float(row["total_latency_ms"]),
-                "summary": json.loads(row["summary"]) if isinstance(row["summary"], str) else row["summary"],
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "summary": (
+                    json.loads(row["summary"])
+                    if isinstance(row["summary"], str)
+                    else row["summary"]
+                ),
+                "created_at": (
+                    row["created_at"].isoformat() if row["created_at"] else None
+                ),
             }
             for row in rows
         ]
@@ -154,9 +164,17 @@ async def get_snapshot(snapshot_id: str) -> Optional[Dict[str, Any]]:
         return {
             "id": row["id"],
             "overall_status": row["overall_status"],
-            "services": json.loads(row["services"]) if isinstance(row["services"], str) else row["services"],
+            "services": (
+                json.loads(row["services"])
+                if isinstance(row["services"], str)
+                else row["services"]
+            ),
             "total_latency_ms": float(row["total_latency_ms"]),
-            "summary": json.loads(row["summary"]) if isinstance(row["summary"], str) else row["summary"],
+            "summary": (
+                json.loads(row["summary"])
+                if isinstance(row["summary"], str)
+                else row["summary"]
+            ),
             "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         }
     except Exception as e:
@@ -218,7 +236,13 @@ async def get_status_summary(hours: int = 24) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to compute health summary: {e}")
-        return {"window_hours": hours, "total_checks": 0, "by_status": {}, "avg_latency_ms": 0.0, "uptime_pct": 0.0}
+        return {
+            "window_hours": hours,
+            "total_checks": 0,
+            "by_status": {},
+            "avg_latency_ms": 0.0,
+            "uptime_pct": 0.0,
+        }
 
 
 async def prune_old_snapshots(keep_days: int = 30) -> int:

@@ -22,6 +22,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fake_row(**overrides):
     """Build a dict-like asyncpg Record stub."""
     defaults = {
@@ -68,6 +69,7 @@ def _mock_pool():
 # REPOSITORY TESTS
 # ===========================================================================
 
+
 class TestEnsureAuditTables:
     @pytest.mark.asyncio
     async def test_creates_table_and_indexes(self):
@@ -82,6 +84,7 @@ class TestEnsureAuditTables:
 
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.ensure_audit_tables()
 
         # Should run CREATE TABLE + 5 indexes = at least 6 execute calls
@@ -98,6 +101,7 @@ class TestRecordEvent:
         pool, conn = _mock_pool()
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             event_id = await audit_repository.record(
                 actor="admin",
                 action="api_key.create",
@@ -119,9 +123,8 @@ class TestRecordEvent:
         conn.execute.side_effect = Exception("connection lost")
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
-            result = await audit_repository.record(
-                actor="admin", action="test"
-            )
+
+            result = await audit_repository.record(actor="admin", action="test")
         assert result is None
 
     @pytest.mark.asyncio
@@ -129,6 +132,7 @@ class TestRecordEvent:
         pool, conn = _mock_pool()
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.record(actor="x", action="y")
 
         call_args = conn.execute.call_args
@@ -143,6 +147,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             events = await audit_repository.get_events()
         assert events == []
 
@@ -152,6 +157,7 @@ class TestGetEvents:
         conn.fetch.return_value = [_fake_row()]
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             events = await audit_repository.get_events()
 
         assert len(events) == 1
@@ -166,6 +172,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(actor="vigil")
 
         sql = conn.fetch.call_args[0][0]
@@ -177,6 +184,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(action="api_key.create")
 
         sql = conn.fetch.call_args[0][0]
@@ -188,6 +196,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(
                 resource_type="webhook", resource_id="wh-1"
             )
@@ -202,6 +211,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(outcome="denied")
 
         sql = conn.fetch.call_args[0][0]
@@ -215,6 +225,7 @@ class TestGetEvents:
         until = datetime.now(timezone.utc)
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(since=since, until=until)
 
         sql = conn.fetch.call_args[0][0]
@@ -227,6 +238,7 @@ class TestGetEvents:
         conn.fetch.return_value = []
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.get_events(
                 actor="admin", action="webhook.create", outcome="success"
             )
@@ -242,6 +254,7 @@ class TestGetEvents:
         conn.fetch.side_effect = Exception("timeout")
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             events = await audit_repository.get_events()
         assert events == []
 
@@ -253,6 +266,7 @@ class TestCountEvents:
         conn.fetchval.return_value = 42
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             count = await audit_repository.count_events()
         assert count == 42
 
@@ -262,6 +276,7 @@ class TestCountEvents:
         conn.fetchval.side_effect = Exception("boom")
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             count = await audit_repository.count_events()
         assert count == 0
 
@@ -272,6 +287,7 @@ class TestCountEvents:
         since = datetime.now(timezone.utc) - timedelta(hours=2)
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             await audit_repository.count_events(actor="vigil", since=since)
 
         sql = conn.fetchval.call_args[0][0]
@@ -285,12 +301,16 @@ class TestGetSummary:
         pool, conn = _mock_pool()
         conn.fetchval.return_value = 10
         conn.fetch.side_effect = [
-            [{"action": "api_key.create", "cnt": 7}, {"action": "webhook.delete", "cnt": 3}],
+            [
+                {"action": "api_key.create", "cnt": 7},
+                {"action": "webhook.delete", "cnt": 3},
+            ],
             [{"actor": "admin", "cnt": 10}],
             [{"outcome": "success", "cnt": 9}, {"outcome": "failure", "cnt": 1}],
         ]
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             summary = await audit_repository.get_summary(hours=24)
 
         assert summary["period_hours"] == 24
@@ -305,6 +325,7 @@ class TestGetSummary:
         conn.fetchval.side_effect = Exception("nope")
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             summary = await audit_repository.get_summary()
         assert summary["total_events"] == 0
 
@@ -316,6 +337,7 @@ class TestPruneOldEvents:
         conn.execute.return_value = "DELETE 15"
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             deleted = await audit_repository.prune_old_events(keep_days=30)
         assert deleted == 15
 
@@ -325,6 +347,7 @@ class TestPruneOldEvents:
         conn.execute.side_effect = Exception("disk full")
         with patch("app.repository.audit_repository.get_db_pool", return_value=pool):
             from app.repository import audit_repository
+
             deleted = await audit_repository.prune_old_events()
         assert deleted == 0
 
@@ -332,6 +355,7 @@ class TestPruneOldEvents:
 # ===========================================================================
 # SERVICE TESTS
 # ===========================================================================
+
 
 class TestAuditService:
     @pytest.mark.asyncio
@@ -345,6 +369,7 @@ class TestAuditService:
             request.state.correlation_id = "corr-999"
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             result = await svc.log(
                 actor="admin",
@@ -366,6 +391,7 @@ class TestAuditService:
             mock_repo.record = AsyncMock(return_value="evt-id")
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             result = await svc.log(actor="system", action="startup")
 
@@ -379,6 +405,7 @@ class TestAuditService:
             mock_repo.record = AsyncMock(side_effect=Exception("db down"))
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             result = await svc.log(actor="x", action="y")
             assert result is None  # graceful fallback, no exception
@@ -389,6 +416,7 @@ class TestAuditService:
             mock_repo.record = AsyncMock(return_value="evt-id")
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             await svc.log(actor="x", action="y", outcome="denied")
 
@@ -401,6 +429,7 @@ class TestAuditService:
             mock_repo.get_events = AsyncMock(return_value=[{"id": "1"}])
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             events = await svc.get_events(actor="admin")
 
@@ -413,6 +442,7 @@ class TestAuditService:
             mock_repo.get_summary = AsyncMock(return_value={"total_events": 5})
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             summary = await svc.get_summary(hours=48)
 
@@ -425,6 +455,7 @@ class TestAuditService:
             mock_repo.prune_old_events = AsyncMock(return_value=10)
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             deleted = await svc.prune(keep_days=60)
 
@@ -437,6 +468,7 @@ class TestAuditService:
             mock_repo.record = AsyncMock(return_value="evt-id")
 
             from app.services.audit_service import AuditService
+
             svc = AuditService()
             await svc.log(
                 actor="admin",

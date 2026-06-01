@@ -53,7 +53,7 @@ class CoreGraph:
         return state
 
     def orchestration_node(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        state.setdefault("plan", ["Step 1", "Step 2"]) 
+        state.setdefault("plan", ["Step 1", "Step 2"])
         return state
 
     def reasoning_node(self, state: Dict[str, Any]) -> Dict[str, Any]:

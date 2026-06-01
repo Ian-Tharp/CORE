@@ -31,6 +31,7 @@ from app.services.knowledgebase_service import (
 # _split_text — pure chunking logic
 # ===========================================================================
 
+
 class TestSplitText:
     def test_short_text_returns_single_chunk(self):
         """Text shorter than chunk_size must not be split."""
@@ -101,6 +102,7 @@ class TestSplitText:
 # _cosine_similarity — pure math
 # ===========================================================================
 
+
 class TestCosineSimilarity:
     def test_identical_vectors_return_1(self):
         """
@@ -158,6 +160,7 @@ class TestCosineSimilarity:
 # ===========================================================================
 # build_rag_messages — RAG message construction
 # ===========================================================================
+
 
 class TestBuildRagMessages:
     def _make_chunk(self, doc_id: str, chunk_idx: int, text: str) -> Dict[str, Any]:
@@ -241,6 +244,7 @@ class TestBuildRagMessages:
 # retrieve_context — RAG retrieval (mocked)
 # ===========================================================================
 
+
 class TestRetrieveContext:
     @pytest.mark.asyncio
     async def test_embedding_is_called_for_query(self):
@@ -250,9 +254,10 @@ class TestRetrieveContext:
         """
         sentinel_vec = [0.1, 0.2, 0.3]
 
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([sentinel_vec], 3))) as embed_spy, \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([sentinel_vec], 3)),
+        ) as embed_spy, patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_vector = AsyncMock(return_value=[])
 
             await retrieve_context(query="SENTINEL_QUERY", mode="all")
@@ -269,9 +274,10 @@ class TestRetrieveContext:
         """
         sentinel_vec = [9.9, 8.8, 7.7]
 
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([sentinel_vec], 3))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([sentinel_vec], 3)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_vector = AsyncMock(return_value=[])
 
             await retrieve_context(query="q", mode="all")
@@ -292,9 +298,10 @@ class TestRetrieveContext:
             "text": "SENTINEL_CHUNK_TEXT",
         }
 
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([[0.1]], 1))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([[0.1]], 1)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_vector = AsyncMock(return_value=[sentinel_chunk])
 
             result = await retrieve_context(query="q", mode="all")
@@ -306,8 +313,10 @@ class TestRetrieveContext:
     @pytest.mark.asyncio
     async def test_empty_embedding_returns_empty(self):
         """If embedding fails (returns []), retrieve_context must return empty gracefully."""
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([], 0))):
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([], 0)),
+        ):
             result = await retrieve_context(query="q", mode="all")
 
         assert result == {"chunks": [], "doc_ids": []}
@@ -318,9 +327,10 @@ class TestRetrieveContext:
         SENTINEL — mode='file' must pass file_id as document_filter to repo.
         Ignore mode → global search always → tenant isolation broken → test fails.
         """
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([[0.1]], 1))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([[0.1]], 1)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_vector = AsyncMock(return_value=[])
 
             await retrieve_context(query="q", mode="file", file_id="SENTINEL_FILE_ID")
@@ -331,9 +341,10 @@ class TestRetrieveContext:
     @pytest.mark.asyncio
     async def test_all_mode_passes_no_filter(self):
         """mode='all' must not restrict by document — no document_filter."""
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([[0.1]], 1))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([[0.1]], 1)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_vector = AsyncMock(return_value=[])
 
             await retrieve_context(query="q", mode="all")
@@ -346,6 +357,7 @@ class TestRetrieveContext:
 # retrieve_context_by_instance — instance-scoped retrieval
 # ===========================================================================
 
+
 class TestRetrieveContextByInstance:
     @pytest.mark.asyncio
     async def test_instance_name_passed_to_repo(self):
@@ -353,9 +365,10 @@ class TestRetrieveContextByInstance:
         SENTINEL — retrieve_context_by_instance must pass instance_name to repo.
         Remove instance_name param → all instances can read each other's context → test fails.
         """
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([[0.1]], 1))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([[0.1]], 1)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_instance = AsyncMock(return_value=[])
 
             await retrieve_context_by_instance(
@@ -370,9 +383,10 @@ class TestRetrieveContextByInstance:
     @pytest.mark.asyncio
     async def test_result_contains_instance_name(self):
         """instance_name must be echoed back in the result dict."""
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([[0.1]], 1))), \
-             patch("app.services.knowledgebase_service.repo") as mock_repo:
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([[0.1]], 1)),
+        ), patch("app.services.knowledgebase_service.repo") as mock_repo:
             mock_repo.search_chunks_by_instance = AsyncMock(return_value=[])
 
             result = await retrieve_context_by_instance(
@@ -385,8 +399,10 @@ class TestRetrieveContextByInstance:
     @pytest.mark.asyncio
     async def test_empty_embedding_returns_empty(self):
         """If embedding fails, result must be empty with instance_name preserved."""
-        with patch("app.services.knowledgebase_service._embed_texts_local",
-                   new=AsyncMock(return_value=([], 0))):
+        with patch(
+            "app.services.knowledgebase_service._embed_texts_local",
+            new=AsyncMock(return_value=([], 0)),
+        ):
             result = await retrieve_context_by_instance(
                 query="q",
                 instance_name="inst-1",

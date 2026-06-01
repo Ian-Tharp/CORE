@@ -150,20 +150,20 @@ export class KanbanComponent implements OnInit, OnDestroy {
 
   getFilteredTasks(): KanbanTask[] {
     return this.allTasks.filter(task => {
-      if (this.filterProject && task.payload?.['project'] !== this.filterProject) return false;
-      if (this.filterPriority && this.getPriorityLabel(task.priority) !== this.filterPriority) return false;
+      if (this.filterProject && task.payload?.['project'] !== this.filterProject) {return false;}
+      if (this.filterPriority && this.getPriorityLabel(task.priority) !== this.filterPriority) {return false;}
       if (this.filterAssignee) {
         const assignee = (task.payload?.['assignee'] || '').toLowerCase();
-        if (!assignee.includes(this.filterAssignee.toLowerCase())) return false;
+        if (!assignee.includes(this.filterAssignee.toLowerCase())) {return false;}
       }
       return true;
     });
   }
 
   getPriorityLabel(priority: number): string {
-    if (priority >= 9) return 'critical';
-    if (priority >= 7) return 'high';
-    if (priority >= 4) return 'medium';
+    if (priority >= 9) {return 'critical';}
+    if (priority >= 7) {return 'high';}
+    if (priority >= 4) {return 'medium';}
     return 'low';
   }
 
@@ -289,7 +289,7 @@ export class KanbanComponent implements OnInit, OnDestroy {
   }
 
   getRelativeTime(dateStr: string): string {
-    if (!dateStr) return '';
+    if (!dateStr) {return '';}
     const now = new Date();
     const date = new Date(dateStr);
     const diffMs = now.getTime() - date.getTime();
@@ -298,11 +298,11 @@ export class KanbanComponent implements OnInit, OnDestroy {
     const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
 
-    if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return diffMin + 'm ago';
-    if (diffHr < 24) return diffHr + 'h ago';
-    if (diffDay < 7) return diffDay + 'd ago';
-    if (diffDay < 30) return Math.floor(diffDay / 7) + 'w ago';
+    if (diffSec < 60) {return 'just now';}
+    if (diffMin < 60) {return diffMin + 'm ago';}
+    if (diffHr < 24) {return diffHr + 'h ago';}
+    if (diffDay < 7) {return diffDay + 'd ago';}
+    if (diffDay < 30) {return Math.floor(diffDay / 7) + 'w ago';}
     return Math.floor(diffDay / 30) + 'mo ago';
   }
 
@@ -329,7 +329,7 @@ export class KanbanComponent implements OnInit, OnDestroy {
 
   getAssigneeInitials(task: KanbanTask): string {
     const name = this.getTaskAssignee(task);
-    if (!name) return '?';
+    if (!name) {return '?';}
     return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
   }
 

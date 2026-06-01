@@ -39,7 +39,7 @@ interface ConversationSummary {
     MatTooltipModule,
     MatDividerModule,
     MatProgressSpinnerModule,
-    EnginePlaygroundComponent,
+    EnginePlaygroundComponent
   ]
 })
 export class ConversationsPageComponent implements OnInit {

@@ -323,13 +323,26 @@ class TestHealthAggregatorRecording:
             get_comprehensive_health,
         )
 
-        healthy = ServiceHealth(name="test", status=HealthStatus.HEALTHY, latency_ms=1.0)
-        for m in [mock_db, mock_redis, mock_ollama, mock_vector, mock_ws, mock_engine, mock_bus, mock_tasks, mock_system]:
+        healthy = ServiceHealth(
+            name="test", status=HealthStatus.HEALTHY, latency_ms=1.0
+        )
+        for m in [
+            mock_db,
+            mock_redis,
+            mock_ollama,
+            mock_vector,
+            mock_ws,
+            mock_engine,
+            mock_bus,
+            mock_tasks,
+            mock_system,
+        ]:
             m.return_value = healthy
 
         mock_record.return_value = "snap-id"
 
         import asyncio
+
         result = await get_comprehensive_health()
         # Give fire-and-forget task a chance to run
         await asyncio.sleep(0.05)
@@ -351,13 +364,19 @@ class TestHealthHistoryEndpoints:
     @patch("app.repository.health_repository.get_history")
     async def test_history_endpoint_returns_snapshots(self, mock_history):
         mock_history.return_value = [
-            {"id": "a", "overall_status": "healthy", "created_at": "2026-03-09T12:00:00"}
+            {
+                "id": "a",
+                "overall_status": "healthy",
+                "created_at": "2026-03-09T12:00:00",
+            }
         ]
 
         # Simulate calling the endpoint function directly
         from app.controllers.health import health_history
 
-        result = await health_history(limit=10, offset=0, status_filter=None, since=None, until=None)
+        result = await health_history(
+            limit=10, offset=0, status_filter=None, since=None, until=None
+        )
         assert result["count"] == 1
         assert result["snapshots"][0]["id"] == "a"
 
@@ -393,7 +412,10 @@ class TestHealthHistoryEndpoints:
 
         with pytest.raises(Exception) as exc_info:
             await health_snapshot_detail("missing")
-        assert "404" in str(exc_info.value.status_code) or exc_info.value.status_code == 404
+        assert (
+            "404" in str(exc_info.value.status_code)
+            or exc_info.value.status_code == 404
+        )
 
     @patch("app.repository.health_repository.prune_old_snapshots")
     async def test_prune_endpoint(self, mock_prune):

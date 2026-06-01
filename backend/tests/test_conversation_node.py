@@ -31,9 +31,11 @@ from app.models.core_state import (
 # Helpers
 # ===========================================================================
 
+
 def _make_graph():
     """Create a COREGraph without calling __init__ (avoids LLM agent setup)."""
     from app.core.langgraph.core_graph_v2 import COREGraph
+
     graph = object.__new__(COREGraph)
     return graph
 
@@ -49,7 +51,10 @@ def _make_intent(intent_type: str = "task") -> UserIntent:
 
 
 def _make_plan_with_steps(*step_names: str) -> ExecutionPlan:
-    steps = [PlanStep(id=f"step-{i}", name=n, description=f"do {n}") for i, n in enumerate(step_names)]
+    steps = [
+        PlanStep(id=f"step-{i}", name=n, description=f"do {n}")
+        for i, n in enumerate(step_names)
+    ]
     return ExecutionPlan(goal="test goal", steps=steps)
 
 
@@ -64,7 +69,9 @@ def _make_eval(confidence: float = 0.9, quality_score: float = 0.9) -> Evaluatio
     )
 
 
-def _make_step_result(step_id: str = "step-0", outputs: dict | None = None, logs: list | None = None) -> StepResult:
+def _make_step_result(
+    step_id: str = "step-0", outputs: dict | None = None, logs: list | None = None
+) -> StepResult:
     return StepResult(
         step_id=step_id,
         status="success",
@@ -75,19 +82,28 @@ def _make_step_result(step_id: str = "step-0", outputs: dict | None = None, logs
 
 # Context manager shim for tracer spans (no-op)
 class _FakeSpan:
-    def set_attribute(self, *a, **kw): pass
-    def record_exception(self, *a, **kw): pass
-    def __enter__(self): return self
-    def __exit__(self, *a): pass
+    def set_attribute(self, *a, **kw):
+        pass
+
+    def record_exception(self, *a, **kw):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        pass
 
 
 class _FakeTracer:
-    def start_as_current_span(self, *a, **kw): return _FakeSpan()
+    def start_as_current_span(self, *a, **kw):
+        return _FakeSpan()
 
 
 # ===========================================================================
 # Conversation intent branch
 # ===========================================================================
+
 
 class TestConversationIntentBranch:
     def test_conversation_intent_produces_echo_response(self):
@@ -96,10 +112,13 @@ class TestConversationIntentBranch:
         Remove conversation branch → state.response stays None → test fails.
         """
         graph = _make_graph()
-        state = _make_state(user_input="SENTINEL_USER_MSG", intent=_make_intent("conversation"))
+        state = _make_state(
+            user_input="SENTINEL_USER_MSG", intent=_make_intent("conversation")
+        )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert state.response is not None
@@ -108,10 +127,13 @@ class TestConversationIntentBranch:
     def test_conversation_response_includes_user_input(self):
         """User input must appear in conversation response."""
         graph = _make_graph()
-        state = _make_state(user_input="SENTINEL_INPUT", intent=_make_intent("conversation"))
+        state = _make_state(
+            user_input="SENTINEL_INPUT", intent=_make_intent("conversation")
+        )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_INPUT" in state.response
@@ -120,6 +142,7 @@ class TestConversationIntentBranch:
 # ===========================================================================
 # Task execution branch — output extraction
 # ===========================================================================
+
 
 class TestTaskOutputExtraction:
     def test_result_key_included_in_response(self):
@@ -136,8 +159,9 @@ class TestTaskOutputExtraction:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_RESULT_VALUE" in state.response
@@ -153,8 +177,9 @@ class TestTaskOutputExtraction:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_OUTPUT_VALUE" in state.response
@@ -170,8 +195,9 @@ class TestTaskOutputExtraction:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_CONTENT_VALUE" in state.response
@@ -182,11 +208,13 @@ class TestTaskOutputExtraction:
         Include all keys → raw DB row counts shown to user → test fails.
         """
         graph = _make_graph()
-        step_result = _make_step_result(outputs={
-            "files_modified": ["auth.py"],
-            "query_result": [{"id": 1}],
-            "rows_affected": 5,
-        })
+        step_result = _make_step_result(
+            outputs={
+                "files_modified": ["auth.py"],
+                "query_result": [{"id": 1}],
+                "rows_affected": 5,
+            }
+        )
         state = _make_state(
             intent=_make_intent("task"),
             plan=_make_plan_with_steps("step-a"),
@@ -194,8 +222,9 @@ class TestTaskOutputExtraction:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         response = state.response or ""
@@ -214,8 +243,9 @@ class TestTaskOutputExtraction:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_SUMMARY" in state.response
@@ -224,6 +254,7 @@ class TestTaskOutputExtraction:
 # ===========================================================================
 # Task execution branch — log fallback
 # ===========================================================================
+
 
 class TestLogFallback:
     def test_logs_used_when_no_outputs(self):
@@ -243,8 +274,9 @@ class TestLogFallback:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_LOG_CONTENT" in state.response
@@ -266,8 +298,9 @@ class TestLogFallback:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         response = state.response or ""
@@ -278,6 +311,7 @@ class TestLogFallback:
 # ===========================================================================
 # Task execution branch — artifacts
 # ===========================================================================
+
 
 class TestArtifactListing:
     def test_artifacts_appended_to_response(self):
@@ -299,8 +333,9 @@ class TestArtifactListing:
             eval_result=_make_eval(),
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "SENTINEL_ARTIFACT.py" in state.response
@@ -309,6 +344,7 @@ class TestArtifactListing:
 # ===========================================================================
 # Task execution branch — metadata gate
 # ===========================================================================
+
 
 class TestMetadataGate:
     def test_metadata_hidden_by_default(self):
@@ -329,8 +365,9 @@ class TestMetadataGate:
             config={"show_metadata": False},
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "Completed:" not in state.response and "✓" not in state.response
@@ -352,8 +389,9 @@ class TestMetadataGate:
             config={"show_metadata": True},
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "Completed:" in state.response or "✓" in state.response
@@ -374,16 +412,20 @@ class TestMetadataGate:
             config={"show_metadata": False},
         )
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
-        assert "confidence" in state.response.lower() or "review" in state.response.lower()
+        assert (
+            "confidence" in state.response.lower() or "review" in state.response.lower()
+        )
 
 
 # ===========================================================================
 # Default fallback branch
 # ===========================================================================
+
 
 class TestDefaultFallback:
     def test_no_plan_no_eval_yields_default_response(self):
@@ -394,8 +436,9 @@ class TestDefaultFallback:
         graph = _make_graph()
         state = _make_state(intent=_make_intent("task"))  # task but no plan or eval
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert state.response is not None
@@ -406,6 +449,7 @@ class TestDefaultFallback:
 # Completion bookkeeping
 # ===========================================================================
 
+
 class TestCompletionBookkeeping:
     def test_completed_at_set_after_node(self):
         """conversation_node must set state.completed_at."""
@@ -413,8 +457,9 @@ class TestCompletionBookkeeping:
         state = _make_state(intent=_make_intent("conversation"))
         assert state.completed_at is None
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert state.completed_at is not None
@@ -424,8 +469,9 @@ class TestCompletionBookkeeping:
         graph = _make_graph()
         state = _make_state(intent=_make_intent("conversation"))
 
-        with patch("app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()), \
-             patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
+        with patch(
+            "app.core.langgraph.core_graph_v2.get_tracer", return_value=_FakeTracer()
+        ), patch("app.core.langgraph.core_graph_v2.record_pipeline_run"):
             graph.conversation_node(state)
 
         assert "conversation" in state.execution_history

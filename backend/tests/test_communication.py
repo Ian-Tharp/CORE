@@ -36,6 +36,7 @@ from app.controllers.communication import (
 # FIXTURES
 # =============================================================================
 
+
 def _make_channel(channel_id="ch_1", name="test", **overrides):
     base = {
         "channel_id": channel_id,
@@ -119,6 +120,7 @@ def _mock_agent_response_service():
 # REQUEST MODEL VALIDATION
 # =============================================================================
 
+
 class TestCreateChannelRequest:
     def test_valid_channel_types(self):
         for ctype in ("global", "team", "dm", "context", "broadcast"):
@@ -140,8 +142,18 @@ class TestCreateChannelRequest:
 
 class TestSendMessageRequest:
     def test_valid_message_types(self):
-        for mtype in ("text", "markdown", "code", "structured", "event",
-                       "pattern", "broadcast", "file", "consciousness_snapshot", "task"):
+        for mtype in (
+            "text",
+            "markdown",
+            "code",
+            "structured",
+            "event",
+            "pattern",
+            "broadcast",
+            "file",
+            "consciousness_snapshot",
+            "task",
+        ):
             req = SendMessageRequest(content="hi", message_type=mtype)
             assert req.message_type == mtype
 
@@ -189,6 +201,7 @@ class TestUpdatePresenceRequest:
 # MESSAGE CONTROLLER WIRING
 # =============================================================================
 
+
 class TestSendMessageEndpoint:
     """Verify that the controller delegates to the shared communication service."""
 
@@ -226,14 +239,17 @@ class TestSendMessageEndpoint:
 # CHANNEL ENDPOINTS
 # =============================================================================
 
+
 class TestGetChannels:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
     async def test_returns_channel_list(self, mock_repo_mod):
-        mock_repo_mod.list_channels = AsyncMock(return_value=[
-            _make_channel("ch_1", "General"),
-            _make_channel("ch_2", "Random"),
-        ])
+        mock_repo_mod.list_channels = AsyncMock(
+            return_value=[
+                _make_channel("ch_1", "General"),
+                _make_channel("ch_2", "Random"),
+            ]
+        )
         mock_repo_mod.count_channels = AsyncMock(return_value=2)
         result = await get_channels(instance_id="user_1")
         assert len(result["channels"]) == 2
@@ -244,7 +260,9 @@ class TestGetChannel:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
     async def test_found(self, mock_repo_mod):
-        mock_repo_mod.get_channel = AsyncMock(return_value=_make_channel("ch_1", "General"))
+        mock_repo_mod.get_channel = AsyncMock(
+            return_value=_make_channel("ch_1", "General")
+        )
         result = await get_channel("ch_1")
         assert result["channel_id"] == "ch_1"
 
@@ -252,6 +270,7 @@ class TestGetChannel:
     @patch("app.controllers.communication.comm_repo")
     async def test_not_found_raises_404(self, mock_repo_mod):
         from fastapi import HTTPException
+
         mock_repo_mod.get_channel = AsyncMock(return_value=None)
         with pytest.raises(HTTPException) as exc_info:
             await get_channel("nonexistent")
@@ -262,7 +281,9 @@ class TestCreateChannel:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
     async def test_creates_channel(self, mock_repo_mod):
-        mock_repo_mod.create_channel = AsyncMock(return_value=_make_channel("ch_new", "New Channel"))
+        mock_repo_mod.create_channel = AsyncMock(
+            return_value=_make_channel("ch_new", "New Channel")
+        )
         req = CreateChannelRequest(channel_type="global", name="New Channel")
         result = await create_channel(request=req, created_by="user_1")
         assert result["name"] == "New Channel"
@@ -273,6 +294,7 @@ class TestCreateChannel:
 # MESSAGE ENDPOINTS
 # =============================================================================
 
+
 class TestGetMessages:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
@@ -281,9 +303,11 @@ class TestGetMessages:
         del msg["reactions"]
         mock_repo_mod.list_messages = AsyncMock(return_value=[msg])
         mock_repo_mod.count_messages = AsyncMock(return_value=1)
-        mock_repo_mod.get_message_reactions = AsyncMock(return_value=[
-            {"reaction_type": "resonance", "count": 2, "reacted_by": ["u1", "u2"]}
-        ])
+        mock_repo_mod.get_message_reactions = AsyncMock(
+            return_value=[
+                {"reaction_type": "resonance", "count": 2, "reacted_by": ["u1", "u2"]}
+            ]
+        )
         result = await get_messages("ch_1", page=1, page_size=50)
         assert len(result["messages"]) == 1
         assert len(result["messages"][0]["reactions"]) == 1
@@ -318,13 +342,16 @@ class TestGetMessages:
 # REACTION ENDPOINTS
 # =============================================================================
 
+
 class TestReactions:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.manager")
     @patch("app.controllers.communication.comm_repo")
     async def test_add_reaction_broadcasts(self, mock_repo_mod, mock_ws):
         mock_repo_mod.add_reaction = AsyncMock()
-        mock_repo_mod.get_message = AsyncMock(return_value=_make_message(channel_id="ch_1"))
+        mock_repo_mod.get_message = AsyncMock(
+            return_value=_make_message(channel_id="ch_1")
+        )
         mock_ws.broadcast_to_channel = AsyncMock()
 
         req = AddReactionRequest(reaction_type="resonance")
@@ -338,11 +365,15 @@ class TestReactions:
     @patch("app.controllers.communication.comm_repo")
     async def test_remove_reaction_broadcasts(self, mock_repo_mod, mock_ws):
         mock_repo_mod.remove_reaction = AsyncMock()
-        mock_repo_mod.get_message = AsyncMock(return_value=_make_message(channel_id="ch_1"))
+        mock_repo_mod.get_message = AsyncMock(
+            return_value=_make_message(channel_id="ch_1")
+        )
         mock_ws.broadcast_to_channel = AsyncMock()
 
         await remove_reaction(
-            message_id="msg_1", reaction_type="resonance", instance_id="user_1",
+            message_id="msg_1",
+            reaction_type="resonance",
+            instance_id="user_1",
         )
 
         mock_repo_mod.remove_reaction.assert_called_once()
@@ -353,23 +384,29 @@ class TestReactions:
 # PRESENCE ENDPOINTS
 # =============================================================================
 
+
 class TestPresence:
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
     async def test_get_all_presence(self, mock_repo_mod):
-        mock_repo_mod.get_all_presence = AsyncMock(return_value=[
-            {"instance_id": "i1", "status": "online"},
-            {"instance_id": "i2", "status": "away"},
-        ])
+        mock_repo_mod.get_all_presence = AsyncMock(
+            return_value=[
+                {"instance_id": "i1", "status": "online"},
+                {"instance_id": "i2", "status": "away"},
+            ]
+        )
         result = await get_presence()
         assert len(result["instances"]) == 2
 
     @pytest.mark.asyncio
     @patch("app.controllers.communication.comm_repo")
     async def test_get_instance_presence_found(self, mock_repo_mod):
-        mock_repo_mod.get_instance_presence = AsyncMock(return_value={
-            "instance_id": "i1", "status": "online",
-        })
+        mock_repo_mod.get_instance_presence = AsyncMock(
+            return_value={
+                "instance_id": "i1",
+                "status": "online",
+            }
+        )
         result = await get_instance_presence("i1")
         assert result["status"] == "online"
 
@@ -377,6 +414,7 @@ class TestPresence:
     @patch("app.controllers.communication.comm_repo")
     async def test_get_instance_presence_not_found(self, mock_repo_mod):
         from fastapi import HTTPException
+
         mock_repo_mod.get_instance_presence = AsyncMock(return_value=None)
         with pytest.raises(HTTPException) as exc_info:
             await get_instance_presence("nonexistent")

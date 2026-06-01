@@ -34,6 +34,7 @@ from app.core.security import (
 # create_jwt_token
 # ---------------------------------------------------------------------------
 
+
 class TestCreateJwtToken:
     def test_returns_string(self):
         """SENTINEL — create_jwt_token must return a non-empty string."""
@@ -98,12 +99,16 @@ class TestCreateJwtToken:
     def test_different_roles_produce_different_payloads(self):
         token_admin = create_jwt_token("u", Role.ADMIN)
         token_viewer = create_jwt_token("u", Role.VIEWER)
-        assert decode_jwt_token(token_admin)["role"] != decode_jwt_token(token_viewer)["role"]
+        assert (
+            decode_jwt_token(token_admin)["role"]
+            != decode_jwt_token(token_viewer)["role"]
+        )
 
 
 # ---------------------------------------------------------------------------
 # decode_jwt_token
 # ---------------------------------------------------------------------------
+
 
 class TestDecodeJwtToken:
     def test_valid_token_returns_payload(self):
@@ -134,6 +139,7 @@ class TestDecodeJwtToken:
         Remove expiry claim → expired token accepted → test fails.
         """
         import jwt as _pyjwt
+
         now = datetime.now(tz=timezone.utc)
         payload = {
             "iss": _JWT_ISSUER,
@@ -153,6 +159,7 @@ class TestDecodeJwtToken:
         """
         import jwt as _pyjwt
         from datetime import timedelta
+
         now = datetime.now(tz=timezone.utc)
         payload = {
             "iss": "evil-service",
@@ -174,6 +181,7 @@ class TestDecodeJwtToken:
         """Token signed with a different key must raise JWTError."""
         import jwt as _pyjwt
         from datetime import timedelta
+
         now = datetime.now(tz=timezone.utc)
         payload = {
             "iss": _JWT_ISSUER,
@@ -182,7 +190,9 @@ class TestDecodeJwtToken:
             "iat": now,
             "exp": now + timedelta(minutes=60),
         }
-        wrong_key_token = _pyjwt.encode(payload, "wrong-secret", algorithm=_JWT_ALGORITHM)
+        wrong_key_token = _pyjwt.encode(
+            payload, "wrong-secret", algorithm=_JWT_ALGORITHM
+        )
         with pytest.raises(JWTError):
             decode_jwt_token(wrong_key_token)
 
@@ -191,9 +201,11 @@ class TestDecodeJwtToken:
 # get_jwt_bearer FastAPI dependency
 # ---------------------------------------------------------------------------
 
+
 class TestGetJwtBearer:
     def _make_credentials(self, token: str):
         from fastapi.security import HTTPAuthorizationCredentials
+
         return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     @pytest.mark.asyncio
@@ -216,6 +228,7 @@ class TestGetJwtBearer:
         Remove credentials check → None accepted → test fails.
         """
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await get_jwt_bearer(None)
         assert exc_info.value.status_code == 401
@@ -224,6 +237,7 @@ class TestGetJwtBearer:
     async def test_invalid_token_raises_401(self):
         """Invalid Bearer token must raise HTTP 401."""
         from fastapi import HTTPException
+
         creds = self._make_credentials("invalid.token.here")
         with pytest.raises(HTTPException) as exc_info:
             await get_jwt_bearer(creds)
@@ -258,9 +272,11 @@ class TestGetJwtBearer:
 # require_jwt_role dependency
 # ---------------------------------------------------------------------------
 
+
 class TestRequireJwtRole:
     def _make_credentials(self, token: str):
         from fastapi.security import HTTPAuthorizationCredentials
+
         return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     @pytest.mark.asyncio
@@ -270,6 +286,7 @@ class TestRequireJwtRole:
         Remove role intersection check → always 403 → test fails.
         """
         from fastapi import HTTPException
+
         token = create_jwt_token("frank", Role.ADMIN)
         creds = self._make_credentials(token)
         dep = require_jwt_role(Role.ADMIN)
@@ -296,6 +313,7 @@ class TestRequireJwtRole:
         Allow all roles → security boundary broken → test fails.
         """
         from fastapi import HTTPException
+
         token = create_jwt_token("frank", Role.VIEWER)
         creds = self._make_credentials(token)
         dep = require_jwt_role(Role.ADMIN)
@@ -307,6 +325,7 @@ class TestRequireJwtRole:
     async def test_agent_rejected_for_admin_endpoint(self):
         """AGENT role must be rejected for ADMIN-only require_jwt_role."""
         from fastapi import HTTPException
+
         token = create_jwt_token("agent-user", Role.AGENT)
         creds = self._make_credentials(token)
         dep = require_jwt_role(Role.ADMIN)

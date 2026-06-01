@@ -37,6 +37,7 @@ from app.models.bus_models import (
 # MessageType enum
 # ===========================================================================
 
+
 class TestMessageType:
     def test_task_request_value(self):
         """
@@ -60,9 +61,16 @@ class TestMessageType:
     def test_all_eight_types_defined(self):
         """All 10 message types must be defined in the enum."""
         expected = {
-            "task_request", "task_result", "help_request", "status_update",
-            "capability_query", "capability_response", "heartbeat", "broadcast",
-            "catalyst_phase_complete", "level_transition",
+            "task_request",
+            "task_result",
+            "help_request",
+            "status_update",
+            "capability_query",
+            "capability_response",
+            "heartbeat",
+            "broadcast",
+            "catalyst_phase_complete",
+            "level_transition",
         }
         actual = {m.value for m in MessageType}
         assert expected == actual
@@ -71,6 +79,7 @@ class TestMessageType:
 # ===========================================================================
 # MessagePriority enum
 # ===========================================================================
+
 
 class TestMessagePriority:
     def test_all_priority_values(self):
@@ -88,6 +97,7 @@ class TestMessagePriority:
 # DeliveryStatus enum
 # ===========================================================================
 
+
 class TestDeliveryStatus:
     def test_all_delivery_status_values(self):
         """All five DeliveryStatus values must be correct strings."""
@@ -101,6 +111,7 @@ class TestDeliveryStatus:
 # ===========================================================================
 # BusMessage — sender_id, priority, ttl_seconds
 # ===========================================================================
+
 
 class TestBusMessage:
     def _min_msg(self, **overrides) -> dict:
@@ -166,6 +177,7 @@ class TestBusMessage:
 # Subscription — agent_id min_length
 # ===========================================================================
 
+
 class TestSubscription:
     def test_empty_agent_id_rejected(self):
         """
@@ -192,6 +204,7 @@ class TestSubscription:
 # ===========================================================================
 # WebhookConfig — all three numeric bounds
 # ===========================================================================
+
 
 class TestWebhookConfig:
     def _min_cfg(self, **overrides) -> dict:
@@ -261,6 +274,7 @@ class TestWebhookConfig:
 # ExternalAgentRegistration — name bounds
 # ===========================================================================
 
+
 class TestExternalAgentRegistration:
     def _min_reg(self, **overrides) -> dict:
         base = {
@@ -307,6 +321,7 @@ class TestExternalAgentRegistration:
 # DeliveryReceipt — default status
 # ===========================================================================
 
+
 class TestDeliveryReceipt:
     def test_default_status_is_pending(self):
         """
@@ -332,6 +347,7 @@ class TestDeliveryReceipt:
 # BusMetrics — defaults
 # ===========================================================================
 
+
 class TestBusMetrics:
     def test_all_counts_default_zero(self):
         """
@@ -355,6 +371,7 @@ class TestBusMetrics:
 # ===========================================================================
 # BusScope — all fields optional
 # ===========================================================================
+
 
 class TestBusScope:
     def test_all_fields_optional(self):

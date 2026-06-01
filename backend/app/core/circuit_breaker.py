@@ -100,7 +100,9 @@ class CircuitBreaker:
                     self._state = CircuitState.HALF_OPEN
                     self._consecutive_successes = 0
                     logger.info(
-                        "Circuit '%s' → HALF_OPEN after %.1fs recovery", self.name, elapsed
+                        "Circuit '%s' → HALF_OPEN after %.1fs recovery",
+                        self.name,
+                        elapsed,
                     )
                     return True
                 return False
@@ -130,7 +132,8 @@ class CircuitBreaker:
                 self._opened_at = time.monotonic()
                 logger.warning(
                     "Circuit '%s' → OPEN (probe failed; will retry in %.0fs)",
-                    self.name, self.recovery_timeout,
+                    self.name,
+                    self.recovery_timeout,
                 )
             elif (
                 self._state == CircuitState.CLOSED
@@ -140,7 +143,8 @@ class CircuitBreaker:
                 self._opened_at = time.monotonic()
                 logger.warning(
                     "Circuit '%s' → OPEN after %d consecutive failures",
-                    self.name, self._consecutive_failures,
+                    self.name,
+                    self._consecutive_failures,
                 )
 
     def reset(self) -> None:

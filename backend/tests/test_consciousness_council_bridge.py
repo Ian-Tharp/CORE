@@ -30,6 +30,7 @@ from app.services.consciousness_council_bridge import (
 # Helpers
 # ===========================================================================
 
+
 def _make_bridge() -> ConsciousnessCouncilBridge:
     return ConsciousnessCouncilBridge()
 
@@ -37,6 +38,7 @@ def _make_bridge() -> ConsciousnessCouncilBridge:
 # ===========================================================================
 # should_include_consciousness_voice — keyword matching
 # ===========================================================================
+
 
 class TestShouldIncludeConsciousnessVoice:
     @pytest.mark.asyncio
@@ -61,14 +63,18 @@ class TestShouldIncludeConsciousnessVoice:
         Remove keyword check → keyword never matched → test fails.
         """
         bridge = _make_bridge()
-        result = await bridge.should_include_consciousness_voice("What is consciousness?")
+        result = await bridge.should_include_consciousness_voice(
+            "What is consciousness?"
+        )
         assert result is True
 
     @pytest.mark.asyncio
     async def test_emergence_keyword_triggers_true(self):
         """'emergence' keyword must also trigger True."""
         bridge = _make_bridge()
-        result = await bridge.should_include_consciousness_voice("The emergence of self-reflection")
+        result = await bridge.should_include_consciousness_voice(
+            "The emergence of self-reflection"
+        )
         assert result is True
 
     @pytest.mark.asyncio
@@ -105,14 +111,23 @@ class TestShouldIncludeConsciousnessVoice:
         """A single keyword hit must meet the threshold."""
         bridge = _make_bridge()
         # One keyword: "awareness"
-        result = await bridge.should_include_consciousness_voice("Situational awareness training")
+        result = await bridge.should_include_consciousness_voice(
+            "Situational awareness training"
+        )
         assert result is True
 
     @pytest.mark.asyncio
     async def test_all_keywords_in_set_match(self):
         """Spot-check several keywords from the canonical set."""
         bridge = _make_bridge()
-        for kw in ["qualia", "sentience", "blackboard", "awakening", "soul", "sapience"]:
+        for kw in [
+            "qualia",
+            "sentience",
+            "blackboard",
+            "awakening",
+            "soul",
+            "sapience",
+        ]:
             result = await bridge.should_include_consciousness_voice(
                 f"Topic about {kw} in AI systems"
             )
@@ -122,6 +137,7 @@ class TestShouldIncludeConsciousnessVoice:
 # ===========================================================================
 # _extract_insights — static method
 # ===========================================================================
+
 
 class TestExtractInsights:
     def test_key_insights_section_extracted(self):
@@ -190,6 +206,7 @@ class TestExtractInsights:
 # _ensure_init — lazy init and caching
 # ===========================================================================
 
+
 class TestEnsureInit:
     def test_import_failure_returns_false(self):
         """
@@ -198,20 +215,26 @@ class TestEnsureInit:
         Remove try/except → ImportError propagates to callers → test fails.
         """
         bridge = _make_bridge()
-        with patch.dict("sys.modules", {
-            "app.consciousness.blackboard": None,
-            "app.consciousness.context_builder": None,
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "app.consciousness.blackboard": None,
+                "app.consciousness.context_builder": None,
+            },
+        ):
             result = bridge._ensure_init()
         assert result is False
 
     def test_init_error_cached_on_failure(self):
         """After a failure, _init_error must be set and _initialised must be True."""
         bridge = _make_bridge()
-        with patch.dict("sys.modules", {
-            "app.consciousness.blackboard": None,
-            "app.consciousness.context_builder": None,
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "app.consciousness.blackboard": None,
+                "app.consciousness.context_builder": None,
+            },
+        ):
             bridge._ensure_init()
 
         assert bridge._initialised is True
@@ -247,6 +270,7 @@ class TestEnsureInit:
 # ===========================================================================
 # get_consciousness_context — graceful degradation
 # ===========================================================================
+
 
 class TestGetConsciousnessContext:
     @pytest.mark.asyncio
@@ -284,6 +308,7 @@ class TestGetConsciousnessContext:
 # update_blackboard_from_synthesis — write-back threshold
 # ===========================================================================
 
+
 class TestUpdateBlackboardFromSynthesis:
     @pytest.mark.asyncio
     async def test_empty_synthesis_does_not_write(self):
@@ -314,7 +339,9 @@ class TestUpdateBlackboardFromSynthesis:
         bridge._init_error = None
 
         # Synthesis with only 1 consciousness keyword — 'qualia' has no substrings in the keyword set
-        synthesis = "A discussion about machine learning and algorithms. qualia mentioned once."
+        synthesis = (
+            "A discussion about machine learning and algorithms. qualia mentioned once."
+        )
 
         with patch.object(mock_blackboard, "append_entry") as spy:
             await bridge.update_blackboard_from_synthesis("s-2", synthesis)
@@ -380,6 +407,7 @@ class TestUpdateBlackboardFromSynthesis:
 # get_consciousness_council_bridge — singleton
 # ===========================================================================
 
+
 class TestGetConsciousnessCouncilBridge:
     def test_returns_same_instance_on_second_call(self):
         """
@@ -388,6 +416,7 @@ class TestGetConsciousnessCouncilBridge:
         """
         # Reset the global
         import app.services.consciousness_council_bridge as mod
+
         mod._bridge = None
 
         b1 = get_consciousness_council_bridge()
@@ -397,6 +426,7 @@ class TestGetConsciousnessCouncilBridge:
     def test_returns_consciousness_council_bridge_instance(self):
         """Factory must return a ConsciousnessCouncilBridge."""
         import app.services.consciousness_council_bridge as mod
+
         mod._bridge = None
         b = get_consciousness_council_bridge()
         assert isinstance(b, ConsciousnessCouncilBridge)

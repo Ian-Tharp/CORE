@@ -185,9 +185,9 @@ export class EngineService {
               const text = decoder.decode(value, { stream: true });
               for (const part of text.split('\n\n')) {
                 const trimmed = part.trim();
-                if (!trimmed.startsWith('data:')) continue;
+                if (!trimmed.startsWith('data:')) {continue;}
                 const jsonStr = trimmed.replace(/^data:\s*/, '');
-                if (!jsonStr || jsonStr === '[DONE]') continue;
+                if (!jsonStr || jsonStr === '[DONE]') {continue;}
                 observer.next(JSON.parse(jsonStr));
               }
               readChunk();
@@ -199,7 +199,9 @@ export class EngineService {
     });
   }
 
-  comprehensionStream(payload: { message_id: string; user_input: string; model?: string }): Observable<StepStreamEvent> {
+  comprehensionStream(
+    payload: { message_id: string; user_input: string; model?: string }
+  ): Observable<StepStreamEvent> {
     return this.sse<StepStreamEvent>(`${this.api}/comprehension/stream`, payload);
   }
 
@@ -267,9 +269,9 @@ export class EngineService {
               const text = decoder.decode(value, { stream: true });
               for (const part of text.split('\n\n')) {
                 const trimmed = part.trim();
-                if (!trimmed.startsWith('data:')) continue;
+                if (!trimmed.startsWith('data:')) {continue;}
                 const jsonStr = trimmed.replace(/^data:\s*/, '');
-                if (!jsonStr || jsonStr === '[DONE]') continue;
+                if (!jsonStr || jsonStr === '[DONE]') {continue;}
                 try {
                   const event = JSON.parse(jsonStr) as COREStreamEvent;
                   observer.next(event);

@@ -23,11 +23,12 @@ from app.core.logging_config import JSONFormatter, setup_logging
 # Helpers
 # ===========================================================================
 
+
 def _make_record(
     message: str = "SENTINEL_MESSAGE",
     level: int = logging.INFO,
     name: str = "SENTINEL_LOGGER",
-    **extra
+    **extra,
 ) -> logging.LogRecord:
     record = logging.LogRecord(
         name=name,
@@ -46,6 +47,7 @@ def _make_record(
 # ===========================================================================
 # JSONFormatter.format — required keys
 # ===========================================================================
+
 
 class TestJSONFormatterRequiredKeys:
     def setup_method(self):
@@ -118,6 +120,7 @@ class TestJSONFormatterRequiredKeys:
 # JSONFormatter — optional extra fields
 # ===========================================================================
 
+
 class TestJSONFormatterOptionalFields:
     def setup_method(self):
         self.fmt = JSONFormatter()
@@ -155,6 +158,7 @@ class TestJSONFormatterOptionalFields:
             raise ValueError("SENTINEL_EXCEPTION_MSG")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -175,13 +179,16 @@ class TestJSONFormatterOptionalFields:
 # setup_logging — environment-driven configuration
 # ===========================================================================
 
+
 class TestSetupLogging:
     def test_production_uses_json_formatter(self):
         """
         SENTINEL — CORE_ENV=production must install JSONFormatter on the root handler.
         Use text formatter in production → structured log pipeline gets plain text → test fails.
         """
-        with patch.dict("os.environ", {"CORE_ENV": "production", "CORE_LOG_LEVEL": "INFO"}):
+        with patch.dict(
+            "os.environ", {"CORE_ENV": "production", "CORE_LOG_LEVEL": "INFO"}
+        ):
             setup_logging()
 
         root = logging.getLogger()
@@ -196,7 +203,9 @@ class TestSetupLogging:
         SENTINEL — CORE_ENV != 'production' must NOT install JSONFormatter.
         Force JSON in dev → human-readable logs lost → developer experience broken → test fails.
         """
-        with patch.dict("os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "DEBUG"}):
+        with patch.dict(
+            "os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "DEBUG"}
+        ):
             setup_logging()
 
         root = logging.getLogger()
@@ -210,7 +219,9 @@ class TestSetupLogging:
         SENTINEL — CORE_LOG_LEVEL must control the root logger level.
         Ignore env var → always DEBUG → noisy production logs → test fails.
         """
-        with patch.dict("os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "WARNING"}):
+        with patch.dict(
+            "os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "WARNING"}
+        ):
             setup_logging()
 
         assert logging.getLogger().level == logging.WARNING
@@ -221,7 +232,9 @@ class TestSetupLogging:
         SENTINEL — httpx, httpcore, asyncio loggers must be set to WARNING after setup.
         Leave at DEBUG → megabytes of HTTP wire-level logs in dev → test fails.
         """
-        with patch.dict("os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "DEBUG"}):
+        with patch.dict(
+            "os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "DEBUG"}
+        ):
             setup_logging()
 
         assert logging.getLogger("httpx").level == logging.WARNING
@@ -240,7 +253,9 @@ class TestSetupLogging:
         dummy = logging.StreamHandler()
         root.addHandler(dummy)
 
-        with patch.dict("os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "INFO"}):
+        with patch.dict(
+            "os.environ", {"CORE_ENV": "development", "CORE_LOG_LEVEL": "INFO"}
+        ):
             setup_logging()
 
         # Must be exactly one handler (the new one)

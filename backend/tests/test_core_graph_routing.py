@@ -28,6 +28,7 @@ def graph():
         EvaluationAgent=MagicMock(),
     ):
         from app.core.langgraph.core_graph_v2 import COREGraph
+
         return COREGraph()
 
 
@@ -122,6 +123,7 @@ class TestRouteFromEvaluation:
         Remove loop guard -> revise_plan -> orchestration -> reasoning -> evaluation loops forever.
         """
         from app.core.langgraph import core_graph_v2
+
         max_rev = core_graph_v2._MAX_PLAN_REVISIONS
         state = _state(eval_result=_eval_result("revise_plan"), plan_revisions=max_rev)
         assert graph.route_from_evaluation(state) == "conversation"
@@ -129,8 +131,11 @@ class TestRouteFromEvaluation:
     def test_revise_plan_allowed_below_max(self, graph):
         """revise_plan is allowed when plan_revisions < _MAX_PLAN_REVISIONS."""
         from app.core.langgraph import core_graph_v2
+
         max_rev = core_graph_v2._MAX_PLAN_REVISIONS
-        state = _state(eval_result=_eval_result("revise_plan"), plan_revisions=max_rev - 1)
+        state = _state(
+            eval_result=_eval_result("revise_plan"), plan_revisions=max_rev - 1
+        )
         assert graph.route_from_evaluation(state) == "orchestration"
 
     def test_unknown_action_defaults_to_conversation(self, graph):
@@ -149,5 +154,6 @@ class TestRouteFromEvaluation:
         Set to 0 -> first evaluation always forces finalization -> plans never revised -> test fails.
         """
         from app.core.langgraph import core_graph_v2
+
         assert isinstance(core_graph_v2._MAX_PLAN_REVISIONS, int)
         assert core_graph_v2._MAX_PLAN_REVISIONS > 0

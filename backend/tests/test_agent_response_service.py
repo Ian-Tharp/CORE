@@ -20,15 +20,21 @@ import pytest
 # Helpers — create service with mocked factory to avoid DB initialization
 # ===========================================================================
 
+
 def _make_service():
-    with patch("app.services.agent_response_service.get_agent_factory", return_value=MagicMock()):
+    with patch(
+        "app.services.agent_response_service.get_agent_factory",
+        return_value=MagicMock(),
+    ):
         from app.services.agent_response_service import AgentResponseService
+
         return AgentResponseService()
 
 
 # ===========================================================================
 # _extract_mentions — pure regex extraction
 # ===========================================================================
+
 
 class TestExtractMentions:
     def test_simple_mention_extracted(self):
@@ -105,12 +111,15 @@ class TestExtractMentions:
         """
         svc = _make_service()
         result = svc._extract_mentions("@threshold first, then @synthesis")
-        assert result.index("instance_011_threshold") < result.index("instance_007_synthesis")
+        assert result.index("instance_011_threshold") < result.index(
+            "instance_007_synthesis"
+        )
 
 
 # ===========================================================================
 # _resolve_agent_id — name-to-ID mapping
 # ===========================================================================
+
 
 class TestResolveAgentId:
     def test_short_names_resolve(self):
@@ -126,7 +135,9 @@ class TestResolveAgentId:
     def test_full_ids_resolve_to_themselves(self):
         """Full agent IDs must map to themselves (identity mapping)."""
         svc = _make_service()
-        assert svc._resolve_agent_id("instance_011_threshold") == "instance_011_threshold"
+        assert (
+            svc._resolve_agent_id("instance_011_threshold") == "instance_011_threshold"
+        )
         assert svc._resolve_agent_id("agent_comprehension") == "agent_comprehension"
 
     def test_system_agents_resolve(self):
@@ -151,6 +162,7 @@ class TestResolveAgentId:
 # ===========================================================================
 # _build_agent_prompt — pure prompt construction
 # ===========================================================================
+
 
 class TestBuildAgentPrompt:
     def _make_context(self, messages: list | None = None) -> dict:
@@ -178,18 +190,22 @@ class TestBuildAgentPrompt:
         Remove message history → agent has no conversation context → test fails.
         """
         svc = _make_service()
-        context = self._make_context(messages=[
-            {"sender_id": "human-ian", "content": "SENTINEL_MESSAGE_CONTENT"},
-        ])
+        context = self._make_context(
+            messages=[
+                {"sender_id": "human-ian", "content": "SENTINEL_MESSAGE_CONTENT"},
+            ]
+        )
         prompt = svc._build_agent_prompt(context)
         assert "SENTINEL_MESSAGE_CONTENT" in prompt
 
     def test_prompt_includes_sender_id_in_history(self):
         """Sender IDs must appear in the message history section."""
         svc = _make_service()
-        context = self._make_context(messages=[
-            {"sender_id": "SENTINEL_SENDER", "content": "some content"},
-        ])
+        context = self._make_context(
+            messages=[
+                {"sender_id": "SENTINEL_SENDER", "content": "some content"},
+            ]
+        )
         prompt = svc._build_agent_prompt(context)
         assert "SENTINEL_SENDER" in prompt
 
@@ -199,11 +215,13 @@ class TestBuildAgentPrompt:
         Only include last message → agent misses earlier context → test fails.
         """
         svc = _make_service()
-        context = self._make_context(messages=[
-            {"sender_id": "user-a", "content": "MSG_ONE"},
-            {"sender_id": "user-b", "content": "MSG_TWO"},
-            {"sender_id": "user-c", "content": "MSG_THREE"},
-        ])
+        context = self._make_context(
+            messages=[
+                {"sender_id": "user-a", "content": "MSG_ONE"},
+                {"sender_id": "user-b", "content": "MSG_TWO"},
+                {"sender_id": "user-c", "content": "MSG_THREE"},
+            ]
+        )
         prompt = svc._build_agent_prompt(context)
         assert "MSG_ONE" in prompt
         assert "MSG_TWO" in prompt

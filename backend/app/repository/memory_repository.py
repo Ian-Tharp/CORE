@@ -23,13 +23,15 @@ logger = logging.getLogger(__name__)
 
 class MemoryType(str, Enum):
     """Types of memory in the three-tier system."""
-    SEMANTIC = "semantic"      # Shared knowledge
-    EPISODIC = "episodic"      # Personal experiences
+
+    SEMANTIC = "semantic"  # Shared knowledge
+    EPISODIC = "episodic"  # Personal experiences
     PROCEDURAL = "procedural"  # Role-based procedures
 
 
 class MemoryItem(BaseModel):
     """Base memory item model."""
+
     id: UUID
     content: str
     embedding: List[float]
@@ -42,11 +44,13 @@ class MemoryItem(BaseModel):
 
 class SemanticMemory(MemoryItem):
     """Semantic memory - shared knowledge accessible to all agents."""
+
     source_agent_id: Optional[str] = None
 
 
 class EpisodicMemory(MemoryItem):
     """Episodic memory - personal experiences for specific agents."""
+
     agent_id: str
     memory_type: str = "experience"  # experience, conversation, task_result
     importance: float = 0.5
@@ -56,6 +60,7 @@ class EpisodicMemory(MemoryItem):
 
 class ProceduralMemory(MemoryItem):
     """Procedural memory - role-based learned procedures."""
+
     role: str
     procedure_name: str
     steps: List[str]
@@ -66,6 +71,7 @@ class ProceduralMemory(MemoryItem):
 
 class MemoryStats(BaseModel):
     """Memory statistics for an agent."""
+
     agent_id: str
     semantic_count: int = 0
     episodic_count: int = 0
@@ -78,16 +84,18 @@ class MemoryStats(BaseModel):
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_memory_tables() -> None:
     """Create memory tables if they don't exist."""
     pool = await get_db_pool()
-    
+
     async with pool.acquire() as conn:
         # Enable pgvector extension if not already enabled
         await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        
+
         # Semantic memories table - shared knowledge
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS semantic_memories (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 content TEXT NOT NULL,
@@ -99,10 +107,12 @@ async def ensure_memory_tables() -> None:
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 last_accessed TIMESTAMP WITH TIME ZONE
             )
-        """)
-        
+        """
+        )
+
         # Episodic memories table - personal experiences
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS episodic_memories (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 agent_id VARCHAR(255) NOT NULL,
@@ -118,10 +128,12 @@ async def ensure_memory_tables() -> None:
                 last_accessed TIMESTAMP WITH TIME ZONE,
                 expires_at TIMESTAMP WITH TIME ZONE
             )
-        """)
-        
+        """
+        )
+
         # Procedural memories table - role-based procedures
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedural_memories (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 role VARCHAR(100) NOT NULL,
@@ -138,8 +150,9 @@ async def ensure_memory_tables() -> None:
                 last_accessed TIMESTAMP WITH TIME ZONE,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
-        
+        """
+        )
+
         # Create indexes for efficient querying
         # Vector similarity indexes (cosine distance)
         await conn.execute(
@@ -151,7 +164,7 @@ async def ensure_memory_tables() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_procedural_embedding ON procedural_memories USING hnsw (embedding vector_cosine_ops)"
         )
-        
+
         # Regular indexes for filtering
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_semantic_created ON semantic_memories(created_at DESC)"
@@ -168,7 +181,7 @@ async def ensure_memory_tables() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_episodic_expires ON episodic_memories(expires_at) WHERE expires_at IS NOT NULL"
         )
-        
+
         # GIN indexes for JSONB metadata
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_semantic_metadata ON semantic_memories USING GIN(metadata)"
@@ -179,7 +192,7 @@ async def ensure_memory_tables() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_procedural_metadata ON procedural_memories USING GIN(metadata)"
         )
-        
+
         logger.info("Memory tables ensured")
 
 
@@ -187,10 +200,11 @@ async def ensure_memory_tables() -> None:
 # SEMANTIC MEMORY CRUD
 # =============================================================================
 
+
 async def create_semantic_memory(memory: SemanticMemory) -> UUID:
     """Create a new semantic memory."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO semantic_memories (
             id, content, embedding, metadata, source_agent_id, 
@@ -200,12 +214,12 @@ async def create_semantic_memory(memory: SemanticMemory) -> UUID:
         )
         RETURNING id
     """
-    
+
     # Convert embedding list to pgvector string format if needed
     embedding = memory.embedding
     if isinstance(embedding, list):
         embedding = str(embedding)
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -215,21 +229,19 @@ async def create_semantic_memory(memory: SemanticMemory) -> UUID:
             json.dumps(memory.metadata),
             memory.source_agent_id,
             memory.confidence,
-            memory.created_at
+            memory.created_at,
         )
-        
+
         logger.info(f"Created semantic memory: {result}")
         return result
 
 
 async def search_semantic_memories(
-    query_embedding: List[float],
-    limit: int = 10,
-    threshold: float = 0.7
+    query_embedding: List[float], limit: int = 10, threshold: float = 0.7
 ) -> List[SemanticMemory]:
     """Search semantic memories by vector similarity."""
     pool = await get_db_pool()
-    
+
     query = """
         SELECT *, 1 - (embedding <=> $1) as similarity
         FROM semantic_memories
@@ -237,71 +249,71 @@ async def search_semantic_memories(
         ORDER BY embedding <=> $1
         LIMIT $3
     """
-    
+
     # Convert embedding list to pgvector string format if needed
     if isinstance(query_embedding, list):
         query_embedding = str(query_embedding)
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, query_embedding, threshold, limit)
-        
+
         memories = []
         for row in rows:
             # Parse embedding: pgvector returns as string "[0.1,0.2,...]"
-            raw_emb = row['embedding']
+            raw_emb = row["embedding"]
             if isinstance(raw_emb, str):
                 emb = json.loads(raw_emb)
             elif isinstance(raw_emb, (list, tuple)):
                 emb = [float(x) for x in raw_emb]
             else:
                 emb = []
-            
+
             memory = SemanticMemory(
-                id=row['id'],
-                content=row['content'],
+                id=row["id"],
+                content=row["content"],
                 embedding=emb,
-                metadata=json.loads(row['metadata']) if row['metadata'] else {},
-                source_agent_id=row['source_agent_id'],
-                confidence=row['confidence'],
-                access_count=row['access_count'],
-                created_at=row['created_at'],
-                last_accessed=row['last_accessed']
+                metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                source_agent_id=row["source_agent_id"],
+                confidence=row["confidence"],
+                access_count=row["access_count"],
+                created_at=row["created_at"],
+                last_accessed=row["last_accessed"],
             )
-            memory.metadata['similarity'] = float(row['similarity'])
+            memory.metadata["similarity"] = float(row["similarity"])
             memories.append(memory)
-        
+
         # Update access counts
         if memories:
-            await _update_access_counts('semantic_memories', [m.id for m in memories])
-        
+            await _update_access_counts("semantic_memories", [m.id for m in memories])
+
         return memories
 
 
 async def get_semantic_memory(memory_id: UUID) -> Optional[SemanticMemory]:
     """Get semantic memory by ID."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM semantic_memories WHERE id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, memory_id)
-        
+
         if not row:
             return None
-        
+
         # Update access count
-        await _update_access_counts('semantic_memories', [memory_id])
-        
+        await _update_access_counts("semantic_memories", [memory_id])
+
         return SemanticMemory(
-            id=row['id'],
-            content=row['content'],
-            embedding=list(row['embedding']),
-            metadata=json.loads(row['metadata']) if row['metadata'] else {},
-            source_agent_id=row['source_agent_id'],
-            confidence=row['confidence'],
-            access_count=row['access_count'] + 1,
-            created_at=row['created_at'],
-            last_accessed=datetime.utcnow()
+            id=row["id"],
+            content=row["content"],
+            embedding=list(row["embedding"]),
+            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            source_agent_id=row["source_agent_id"],
+            confidence=row["confidence"],
+            access_count=row["access_count"] + 1,
+            created_at=row["created_at"],
+            last_accessed=datetime.utcnow(),
         )
 
 
@@ -309,10 +321,11 @@ async def get_semantic_memory(memory_id: UUID) -> Optional[SemanticMemory]:
 # EPISODIC MEMORY CRUD
 # =============================================================================
 
+
 async def create_episodic_memory(memory: EpisodicMemory) -> UUID:
     """Create a new episodic memory."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO episodic_memories (
             id, agent_id, content, embedding, memory_type, metadata,
@@ -322,7 +335,7 @@ async def create_episodic_memory(memory: EpisodicMemory) -> UUID:
         )
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -336,9 +349,9 @@ async def create_episodic_memory(memory: EpisodicMemory) -> UUID:
             memory.confidence,
             memory.consolidated,
             memory.created_at,
-            memory.expires_at
+            memory.expires_at,
         )
-        
+
         logger.debug(f"Created episodic memory for agent {memory.agent_id}: {result}")
         return result
 
@@ -348,42 +361,44 @@ async def search_episodic_memories(
     query_embedding: Optional[List[float]] = None,
     limit: int = 10,
     threshold: float = 0.7,
-    memory_type: Optional[str] = None
+    memory_type: Optional[str] = None,
 ) -> List[EpisodicMemory]:
     """Search episodic memories for a specific agent."""
     pool = await get_db_pool()
-    
+
     conditions = ["agent_id = $1"]
     params: list = [agent_id]
     param_count = 1
-    
+
     if memory_type:
         param_count += 1
         conditions.append(f"memory_type = ${param_count}")
         params.append(memory_type)
-    
+
     embedding_param_idx: Optional[int] = None
     if query_embedding:
         param_count += 1
         embedding_param_idx = param_count
         threshold_param_idx = param_count + 1
-        conditions.append(f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}")
+        conditions.append(
+            f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}"
+        )
         params.extend([query_embedding, threshold])
         order_by = f"embedding <=> ${embedding_param_idx}"
         param_count += 1  # for threshold
     else:
         order_by = "created_at DESC"
-    
+
     param_count += 1
     limit_param_idx = param_count
     params.append(limit)
-    
+
     # Build similarity column
     if embedding_param_idx:
         similarity_expr = f"1 - (embedding <=> ${embedding_param_idx}) as similarity"
     else:
         similarity_expr = "NULL::float as similarity"
-    
+
     query = f"""
         SELECT *, {similarity_expr}
         FROM episodic_memories
@@ -391,47 +406,46 @@ async def search_episodic_memories(
         ORDER BY {order_by}
         LIMIT ${limit_param_idx}
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         memories = []
         for row in rows:
             memory = EpisodicMemory(
-                id=row['id'],
-                agent_id=row['agent_id'],
-                content=row['content'],
-                embedding=list(row['embedding']) if row['embedding'] else [],
-                memory_type=row['memory_type'],
-                metadata=json.loads(row['metadata']) if row['metadata'] else {},
-                importance=row['importance'],
-                confidence=row['confidence'],
-                access_count=row['access_count'],
-                consolidated=row['consolidated'],
-                created_at=row['created_at'],
-                last_accessed=row['last_accessed'],
-                expires_at=row['expires_at']
+                id=row["id"],
+                agent_id=row["agent_id"],
+                content=row["content"],
+                embedding=list(row["embedding"]) if row["embedding"] else [],
+                memory_type=row["memory_type"],
+                metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                importance=row["importance"],
+                confidence=row["confidence"],
+                access_count=row["access_count"],
+                consolidated=row["consolidated"],
+                created_at=row["created_at"],
+                last_accessed=row["last_accessed"],
+                expires_at=row["expires_at"],
             )
-            if row['similarity'] is not None:
-                memory.metadata['similarity'] = float(row['similarity'])
+            if row["similarity"] is not None:
+                memory.metadata["similarity"] = float(row["similarity"])
             memories.append(memory)
-        
+
         # Update access counts
         if memories:
-            await _update_access_counts('episodic_memories', [m.id for m in memories])
-        
+            await _update_access_counts("episodic_memories", [m.id for m in memories])
+
         return memories
 
 
 async def consolidate_episodic_memories(
-    agent_id: str,
-    consolidation_threshold_hours: int = 24
+    agent_id: str, consolidation_threshold_hours: int = 24
 ) -> int:
     """Consolidate short-term episodic memories to long-term."""
     pool = await get_db_pool()
-    
+
     cutoff_time = datetime.utcnow() - timedelta(hours=consolidation_threshold_hours)
-    
+
     query = """
         UPDATE episodic_memories 
         SET consolidated = TRUE
@@ -441,35 +455,35 @@ async def consolidate_episodic_memories(
         AND importance > 0.3
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, agent_id, cutoff_time)
         count = len(rows)
-        
+
         if count > 0:
             logger.info(f"Consolidated {count} episodic memories for agent {agent_id}")
-        
+
         return count
 
 
 async def expire_old_memories(days_to_keep: int = 90) -> int:
     """Delete expired episodic memories."""
     pool = await get_db_pool()
-    
+
     query = """
         DELETE FROM episodic_memories 
         WHERE (expires_at IS NOT NULL AND expires_at < NOW())
            OR (created_at < NOW() - make_interval(days => $1) AND importance < 0.2)
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, days_to_keep)
         count = len(rows)
-        
+
         if count > 0:
             logger.info(f"Expired {count} old episodic memories")
-        
+
         return count
 
 
@@ -477,10 +491,11 @@ async def expire_old_memories(days_to_keep: int = 90) -> int:
 # PROCEDURAL MEMORY CRUD
 # =============================================================================
 
+
 async def create_procedural_memory(memory: ProceduralMemory) -> UUID:
     """Create a new procedural memory."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO procedural_memories (
             id, role, procedure_name, content, steps, embedding,
@@ -490,7 +505,7 @@ async def create_procedural_memory(memory: ProceduralMemory) -> UUID:
         )
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -504,9 +519,9 @@ async def create_procedural_memory(memory: ProceduralMemory) -> UUID:
             memory.success_rate,
             memory.confidence,
             memory.created_at,
-            memory.updated_at
+            memory.updated_at,
         )
-        
+
         logger.debug(f"Created procedural memory for role {memory.role}: {result}")
         return result
 
@@ -515,46 +530,48 @@ async def search_procedural_memories(
     role: Optional[str] = None,
     query_embedding: Optional[List[float]] = None,
     limit: int = 10,
-    threshold: float = 0.7
+    threshold: float = 0.7,
 ) -> List[ProceduralMemory]:
     """Search procedural memories by role and/or similarity."""
     pool = await get_db_pool()
-    
+
     conditions: List[str] = []
     params: list = []
     param_count = 0
-    
+
     if role:
         param_count += 1
         conditions.append(f"role = ${param_count}")
         params.append(role)
-    
+
     embedding_param_idx: Optional[int] = None
     if query_embedding:
         param_count += 1
         embedding_param_idx = param_count
         threshold_param_idx = param_count + 1
-        conditions.append(f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}")
+        conditions.append(
+            f"1 - (embedding <=> ${embedding_param_idx}) > ${threshold_param_idx}"
+        )
         params.extend([query_embedding, threshold])
         order_by = f"embedding <=> ${embedding_param_idx}"
         param_count += 1  # for threshold
     else:
         order_by = "updated_at DESC"
-    
+
     where_clause = ""
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
-    
+
     param_count += 1
     limit_param_idx = param_count
     params.append(limit)
-    
+
     # Build similarity column
     if embedding_param_idx:
         similarity_expr = f"1 - (embedding <=> ${embedding_param_idx}) as similarity"
     else:
         similarity_expr = "NULL::float as similarity"
-    
+
     query = f"""
         SELECT *, {similarity_expr}
         FROM procedural_memories
@@ -562,47 +579,52 @@ async def search_procedural_memories(
         ORDER BY {order_by}
         LIMIT ${limit_param_idx}
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         memories = []
         for row in rows:
             memory = ProceduralMemory(
-                id=row['id'],
-                role=row['role'],
-                procedure_name=row['procedure_name'],
-                content=row['content'],
-                steps=json.loads(row['steps']) if isinstance(row['steps'], str) else (row['steps'] or []),
-                embedding=list(row['embedding']) if row['embedding'] else [],
-                metadata=json.loads(row['metadata']) if isinstance(row['metadata'], str) else (row['metadata'] or {}),
-                success_rate=row['success_rate'],
-                usage_count=row['usage_count'],
-                confidence=row['confidence'],
-                access_count=row['access_count'],
-                created_at=row['created_at'],
-                last_accessed=row['last_accessed'],
-                updated_at=row['updated_at']
+                id=row["id"],
+                role=row["role"],
+                procedure_name=row["procedure_name"],
+                content=row["content"],
+                steps=(
+                    json.loads(row["steps"])
+                    if isinstance(row["steps"], str)
+                    else (row["steps"] or [])
+                ),
+                embedding=list(row["embedding"]) if row["embedding"] else [],
+                metadata=(
+                    json.loads(row["metadata"])
+                    if isinstance(row["metadata"], str)
+                    else (row["metadata"] or {})
+                ),
+                success_rate=row["success_rate"],
+                usage_count=row["usage_count"],
+                confidence=row["confidence"],
+                access_count=row["access_count"],
+                created_at=row["created_at"],
+                last_accessed=row["last_accessed"],
+                updated_at=row["updated_at"],
             )
-            if row['similarity'] is not None:
-                memory.metadata['similarity'] = float(row['similarity'])
+            if row["similarity"] is not None:
+                memory.metadata["similarity"] = float(row["similarity"])
             memories.append(memory)
-        
+
         # Update access counts and usage counts
         if memories:
-            await _update_access_counts('procedural_memories', [m.id for m in memories])
+            await _update_access_counts("procedural_memories", [m.id for m in memories])
             await _update_usage_counts([m.id for m in memories])
-        
+
         return memories
 
 
-async def update_procedure_success_rate(
-    procedure_id: UUID,
-    success: bool
-) -> bool:
+async def update_procedure_success_rate(procedure_id: UUID, success: bool) -> bool:
     """Update procedure success rate based on execution result."""
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE procedural_memories 
         SET success_rate = CASE
@@ -612,7 +634,7 @@ async def update_procedure_success_rate(
             updated_at = NOW()
         WHERE id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, procedure_id, success)
         return result == "UPDATE 1"
@@ -622,16 +644,16 @@ async def _update_usage_counts(procedure_ids: List[UUID]) -> None:
     """Update usage counts for procedures."""
     if not procedure_ids:
         return
-        
+
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE procedural_memories 
         SET usage_count = usage_count + 1,
             updated_at = NOW()
         WHERE id = ANY($1)
     """
-    
+
     async with pool.acquire() as conn:
         await conn.execute(query, procedure_ids)
 
@@ -640,51 +662,54 @@ async def _update_usage_counts(procedure_ids: List[UUID]) -> None:
 # CROSS-TIER OPERATIONS
 # =============================================================================
 
+
 async def get_relevant_context(
     query_embedding: List[float],
     agent_id: Optional[str] = None,
     limit_per_tier: int = 5,
-    threshold: float = 0.7
+    threshold: float = 0.7,
 ) -> Dict[str, List[MemoryItem]]:
     """Get relevant context from all memory tiers."""
-    
+
     # Search semantic memories (always included)
     semantic_memories = await search_semantic_memories(
         query_embedding, limit=limit_per_tier, threshold=threshold
     )
-    
+
     # Search episodic memories (if agent_id provided)
     episodic_memories = []
     if agent_id:
         episodic_memories = await search_episodic_memories(
             agent_id, query_embedding, limit=limit_per_tier, threshold=threshold
         )
-    
+
     # Search procedural memories (global)
     procedural_memories = await search_procedural_memories(
         query_embedding=query_embedding, limit=limit_per_tier, threshold=threshold
     )
-    
+
     return {
         "semantic": semantic_memories,
         "episodic": episodic_memories,
-        "procedural": procedural_memories
+        "procedural": procedural_memories,
     }
 
 
 async def get_memory_stats(agent_id: str) -> MemoryStats:
     """Get memory statistics for an agent."""
     pool = await get_db_pool()
-    
+
     # Count semantic memories created by this agent
-    semantic_count_query = "SELECT COUNT(*) FROM semantic_memories WHERE source_agent_id = $1"
-    
+    semantic_count_query = (
+        "SELECT COUNT(*) FROM semantic_memories WHERE source_agent_id = $1"
+    )
+
     # Count episodic memories for this agent
     episodic_count_query = "SELECT COUNT(*) FROM episodic_memories WHERE agent_id = $1"
-    
+
     # Count procedural memories (not agent-specific, but we'll count all)
     procedural_count_query = "SELECT COUNT(*) FROM procedural_memories"
-    
+
     # Total access counts for this agent's memories
     access_count_query = """
         SELECT COALESCE(
@@ -693,7 +718,7 @@ async def get_memory_stats(agent_id: str) -> MemoryStats:
             (SELECT SUM(access_count) FROM episodic_memories WHERE agent_id = $1), 0
         ) as total_access
     """
-    
+
     # Last memory created
     last_memory_query = """
         SELECT MAX(created_at) as last_created FROM (
@@ -702,54 +727,51 @@ async def get_memory_stats(agent_id: str) -> MemoryStats:
             SELECT created_at FROM episodic_memories WHERE agent_id = $1
         ) memories
     """
-    
+
     async with pool.acquire() as conn:
         semantic_count = await conn.fetchval(semantic_count_query, agent_id)
         episodic_count = await conn.fetchval(episodic_count_query, agent_id)
         procedural_count = await conn.fetchval(procedural_count_query)
         total_access = await conn.fetchval(access_count_query, agent_id) or 0
         last_created = await conn.fetchval(last_memory_query, agent_id)
-        
+
         return MemoryStats(
             agent_id=agent_id,
             semantic_count=semantic_count or 0,
             episodic_count=episodic_count or 0,
             procedural_count=procedural_count or 0,
             total_access_count=total_access,
-            last_memory_created=last_created
+            last_memory_created=last_created,
         )
 
 
 async def clear_agent_memories(
-    agent_id: str,
-    tier: Optional[MemoryType] = None
+    agent_id: str, tier: Optional[MemoryType] = None
 ) -> Dict[str, int]:
     """Clear memories for an agent (optionally by tier)."""
     pool = await get_db_pool()
     counts = {}
-    
+
     async with pool.acquire() as conn:
         if not tier or tier == MemoryType.SEMANTIC:
             # Clear semantic memories created by this agent
             result = await conn.execute(
-                "DELETE FROM semantic_memories WHERE source_agent_id = $1",
-                agent_id
+                "DELETE FROM semantic_memories WHERE source_agent_id = $1", agent_id
             )
-            counts['semantic'] = int(result.split()[-1])
-        
+            counts["semantic"] = int(result.split()[-1])
+
         if not tier or tier == MemoryType.EPISODIC:
             # Clear episodic memories for this agent
             result = await conn.execute(
-                "DELETE FROM episodic_memories WHERE agent_id = $1",
-                agent_id
+                "DELETE FROM episodic_memories WHERE agent_id = $1", agent_id
             )
-            counts['episodic'] = int(result.split()[-1])
-        
+            counts["episodic"] = int(result.split()[-1])
+
         if not tier or tier == MemoryType.PROCEDURAL:
             # Note: Procedural memories are role-based, not agent-specific
             # We could clear by role if we had that information
-            counts['procedural'] = 0
-    
+            counts["procedural"] = 0
+
     return counts
 
 
@@ -757,25 +779,28 @@ async def clear_agent_memories(
 # UTILITY FUNCTIONS
 # =============================================================================
 
-_VALID_MEMORY_TABLES = frozenset({"semantic_memories", "episodic_memories", "procedural_memories"})
+_VALID_MEMORY_TABLES = frozenset(
+    {"semantic_memories", "episodic_memories", "procedural_memories"}
+)
+
 
 async def _update_access_counts(table_name: str, memory_ids: List[UUID]) -> None:
     """Update access counts and last_accessed for memories."""
     if not memory_ids:
         return
-    
+
     if table_name not in _VALID_MEMORY_TABLES:
         raise ValueError(f"Invalid table name: {table_name}")
-        
+
     pool = await get_db_pool()
-    
+
     query = f"""
         UPDATE {table_name} 
         SET access_count = access_count + 1,
             last_accessed = NOW()
         WHERE id = ANY($1)
     """
-    
+
     async with pool.acquire() as conn:
         await conn.execute(query, memory_ids)
 
@@ -784,23 +809,29 @@ async def update_embedding_dimensions(new_dimensions: int) -> None:
     """Update embedding vector dimensions in all tables."""
     if new_dimensions <= 0:
         raise ValueError("Dimensions must be positive")
-    
+
     pool = await get_db_pool()
-    
+
     async with pool.acquire() as conn:
         # This is a destructive operation - should only be done during migrations
         logger.warning(f"Updating embedding dimensions to {new_dimensions}")
-        
+
         # Drop existing indexes
         await conn.execute("DROP INDEX IF EXISTS idx_semantic_embedding")
-        await conn.execute("DROP INDEX IF EXISTS idx_episodic_embedding")  
+        await conn.execute("DROP INDEX IF EXISTS idx_episodic_embedding")
         await conn.execute("DROP INDEX IF EXISTS idx_procedural_embedding")
-        
+
         # Alter column types
-        await conn.execute(f"ALTER TABLE semantic_memories ALTER COLUMN embedding TYPE vector({new_dimensions})")
-        await conn.execute(f"ALTER TABLE episodic_memories ALTER COLUMN embedding TYPE vector({new_dimensions})")
-        await conn.execute(f"ALTER TABLE procedural_memories ALTER COLUMN embedding TYPE vector({new_dimensions})")
-        
+        await conn.execute(
+            f"ALTER TABLE semantic_memories ALTER COLUMN embedding TYPE vector({new_dimensions})"
+        )
+        await conn.execute(
+            f"ALTER TABLE episodic_memories ALTER COLUMN embedding TYPE vector({new_dimensions})"
+        )
+        await conn.execute(
+            f"ALTER TABLE procedural_memories ALTER COLUMN embedding TYPE vector({new_dimensions})"
+        )
+
         # Recreate indexes
         await conn.execute(
             f"CREATE INDEX idx_semantic_embedding ON semantic_memories USING hnsw (embedding vector_cosine_ops)"
@@ -811,5 +842,5 @@ async def update_embedding_dimensions(new_dimensions: int) -> None:
         await conn.execute(
             f"CREATE INDEX idx_procedural_embedding ON procedural_memories USING hnsw (embedding vector_cosine_ops)"
         )
-        
+
         logger.info(f"Updated embedding dimensions to {new_dimensions}")

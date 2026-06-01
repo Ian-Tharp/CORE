@@ -2,7 +2,15 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export interface WikiPageDto { id: string; world_id?: string; title: string; content: string; metadata?: any; created_at: string; updated_at: string; }
+export interface WikiPageDto {
+  id: string;
+  world_id?: string;
+  title: string;
+  content: string;
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class CreativeService {
@@ -13,10 +21,15 @@ export class CreativeService {
     const params: any = worldId ? { world_id: worldId } : {};
     return this.http.get<WikiPageDto[]>(`${this.apiUrl}/creative/wiki`, { params });
   }
-  createWiki(payload: { world_id?: string; title: string; content: string; metadata?: any }): Observable<{ id: string }> {
+  createWiki(
+    payload: { world_id?: string; title: string; content: string; metadata?: any }
+  ): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(`${this.apiUrl}/creative/wiki`, payload);
   }
-  updateWiki(id: string, payload: { world_id?: string; title: string; content: string; metadata?: any }): Observable<{ status: string }> {
+  updateWiki(
+    id: string,
+    payload: { world_id?: string; title: string; content: string; metadata?: any }
+  ): Observable<{ status: string }> {
     return this.http.put<{ status: string }>(`${this.apiUrl}/creative/wiki/${id}`, payload);
   }
 

@@ -30,7 +30,11 @@ class UploadData(BaseModel):
 
 
 @router.get("/files")
-async def list_files(q: Optional[str] = None, global_: Optional[bool] = None, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def list_files(
+    q: Optional[str] = None,
+    global_: Optional[bool] = None,
+    api_key: str = Depends(require_api_key),
+) -> List[Dict[str, Any]]:
     docs = await repo.list_documents(q=q, is_global=global_)
     return [
         {
@@ -55,10 +59,14 @@ async def list_files(q: Optional[str] = None, global_: Optional[bool] = None, ap
 
 
 @router.get("/files/{file_id}")
-async def get_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_file(
+    file_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
     return {
         "id": doc["id"],
         "filename": doc["filename"],
@@ -79,7 +87,9 @@ async def get_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dic
 
 
 @router.delete("/files/{file_id}")
-async def delete_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
+async def delete_file(
+    file_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, str]:
     doc = await repo.get_document(file_id)
     if doc and doc.get("storage_path") and os.path.exists(doc["storage_path"]):
         try:
@@ -91,7 +101,12 @@ async def delete_file(file_id: str, api_key: str = Depends(require_api_key)) -> 
         await repo.insert_activity(
             action="delete",
             document_id=file_id,
-            file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+            file_name=(
+                doc.get("title")
+                or doc.get("original_name")
+                or doc.get("filename")
+                or ""
+            ),
             user_id=None,
             details=None,
         )
@@ -101,16 +116,24 @@ async def delete_file(file_id: str, api_key: str = Depends(require_api_key)) -> 
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def upload_file(
+    file: UploadFile = File(...),
+    data: str = Form("{}"),
+    api_key: str = Depends(require_api_key),
+) -> Dict[str, Any]:
     try:
         import json
 
         payload = UploadData(**json.loads(data or "{}"))
     except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid form data")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid form data"
+        )
 
     # Save file to storage
-    storage_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "knowledgebase")
+    storage_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "data", "knowledgebase"
+    )
     storage_dir = os.path.abspath(storage_dir)
     os.makedirs(storage_dir, exist_ok=True)
 
@@ -138,10 +161,15 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
             os.remove(storage_path)
         except Exception:
             pass
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="File already exists in knowledgebase")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="File already exists in knowledgebase",
+        )
 
     # Try to infer mime if missing
-    mime_type = file.content_type or (mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream")
+    mime_type = file.content_type or (
+        mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
+    )
 
     # Optionally process immediately
     if payload.processImmediately:
@@ -160,7 +188,12 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
             await repo.insert_activity(
                 action="upload",
                 document_id=doc_id,
-                file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+                file_name=(
+                    doc.get("title")
+                    or doc.get("original_name")
+                    or doc.get("filename")
+                    or ""
+                ),
                 user_id=None,
                 details=f"mime={mime_type}; size={doc.get('size', 0)}",
             )
@@ -197,10 +230,14 @@ async def upload_file(file: UploadFile = File(...), data: str = Form("{}"), api_
 
 
 @router.post("/files/{file_id}/process")
-async def process_file(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def process_file(
+    file_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
     # Re-process: delete old chunks, re-extract text, re-embed with local Ollama
     await svc.reprocess_document(
         document_id=file_id,
@@ -214,7 +251,12 @@ async def process_file(file_id: str, api_key: str = Depends(require_api_key)) ->
         await repo.insert_activity(
             action="process",
             document_id=file_id,
-            file_name=(doc.get("title") or doc.get("original_name") or doc.get("filename") or ""),
+            file_name=(
+                doc.get("title")
+                or doc.get("original_name")
+                or doc.get("filename")
+                or ""
+            ),
             user_id=None,
             details="re-processed document with OCR fallback",
         )
@@ -234,7 +276,9 @@ class BatchUploadRequest(BaseModel):
 
 
 @router.post("/batch-upload")
-async def batch_upload(payload: BatchUploadRequest, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def batch_upload(
+    payload: BatchUploadRequest, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Batch-upload files from a directory.
 
     NOTE: The directory path must be as seen from INSIDE the Docker container
@@ -245,7 +289,10 @@ async def batch_upload(payload: BatchUploadRequest, api_key: str = Depends(requi
 
     directory = payload.directory
     if not os.path.isdir(directory):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Directory not found: {directory}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Directory not found: {directory}",
+        )
 
     # Scan for files
     extensions = payload.extensions or [".pdf", ".txt", ".md", ".docx", ".json"]
@@ -259,7 +306,9 @@ async def batch_upload(payload: BatchUploadRequest, api_key: str = Depends(requi
     else:
         for fname in os.listdir(directory):
             fpath = os.path.join(directory, fname)
-            if os.path.isfile(fpath) and any(fname.lower().endswith(ext) for ext in extensions):
+            if os.path.isfile(fpath) and any(
+                fname.lower().endswith(ext) for ext in extensions
+            ):
                 found_files.append(fpath)
 
     # Skip duplicates by file hash
@@ -311,7 +360,9 @@ class SemanticSearchRequest(BaseModel):
 
 
 @router.post("/semantic-search")
-async def semantic_search(payload: SemanticSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def semantic_search(
+    payload: SemanticSearchRequest, api_key: str = Depends(require_api_key)
+) -> List[Dict[str, Any]]:
     ctx = await svc.retrieve_context(
         query=payload.query,
         mode="all",
@@ -374,7 +425,9 @@ class InstanceSearchRequest(BaseModel):
 
 
 @router.post("/chunk-search")
-async def chunk_search(payload: ChunkSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def chunk_search(
+    payload: ChunkSearchRequest, api_key: str = Depends(require_api_key)
+) -> List[Dict[str, Any]]:
     """Search at the chunk level — returns actual text passages with similarity scores and source document info."""
     file_filter = [payload.fileId] if payload.fileId else None
     ctx = await svc.retrieve_context(
@@ -396,21 +449,25 @@ async def chunk_search(payload: ChunkSearchRequest, api_key: str = Depends(requi
             doc_cache[did] = doc or {}
         doc = doc_cache.get(did, {})
         similarity = round(1.0 - chunk.get("distance", 0.0), 4)
-        out.append({
-            "chunkId": str(chunk.get("id", "")),
-            "documentId": did,
-            "filename": doc.get("original_name") or doc.get("filename", ""),
-            "title": doc.get("title") or "",
-            "chunkIndex": chunk.get("chunk_index"),
-            "text": chunk.get("text", ""),
-            "similarity": similarity,
-        })
+        out.append(
+            {
+                "chunkId": str(chunk.get("id", "")),
+                "documentId": did,
+                "filename": doc.get("original_name") or doc.get("filename", ""),
+                "title": doc.get("title") or "",
+                "chunkIndex": chunk.get("chunk_index"),
+                "text": chunk.get("text", ""),
+                "similarity": similarity,
+            }
+        )
     out.sort(key=lambda x: x["similarity"], reverse=True)
     return out
 
 
 @router.post("/instance-search")
-async def instance_search(payload: InstanceSearchRequest, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def instance_search(
+    payload: InstanceSearchRequest, api_key: str = Depends(require_api_key)
+) -> List[Dict[str, Any]]:
     """Search chunks filtered by instance perspective - 'what does [instance] think about X?' queries."""
     ctx = await svc.retrieve_context_by_instance(
         query=payload.query,
@@ -419,7 +476,7 @@ async def instance_search(payload: InstanceSearchRequest, api_key: str = Depends
         local_model=(payload.localModel or "nomic-embed-text"),
     )
     chunks = ctx.get("chunks", [])
-    
+
     # Enrich each chunk with document metadata
     doc_cache: Dict[str, Dict[str, Any]] = {}
     out: List[Dict[str, Any]] = []
@@ -430,24 +487,28 @@ async def instance_search(payload: InstanceSearchRequest, api_key: str = Depends
             doc_cache[did] = doc or {}
         doc = doc_cache.get(did, {})
         similarity = round(1.0 - chunk.get("distance", 0.0), 4)
-        out.append({
-            "chunkId": str(chunk.get("id", "")),
-            "documentId": did,
-            "filename": doc.get("original_name") or doc.get("filename", ""),
-            "title": doc.get("title") or "",
-            "chunkIndex": chunk.get("chunk_index"),
-            "text": chunk.get("text", ""),
-            "similarity": similarity,
-            "instanceName": chunk.get("instance_name"),
-            "instanceTimestamp": chunk.get("instance_timestamp"),
-            "sourceDiscussion": chunk.get("source_discussion"),
-        })
+        out.append(
+            {
+                "chunkId": str(chunk.get("id", "")),
+                "documentId": did,
+                "filename": doc.get("original_name") or doc.get("filename", ""),
+                "title": doc.get("title") or "",
+                "chunkIndex": chunk.get("chunk_index"),
+                "text": chunk.get("text", ""),
+                "similarity": similarity,
+                "instanceName": chunk.get("instance_name"),
+                "instanceTimestamp": chunk.get("instance_timestamp"),
+                "sourceDiscussion": chunk.get("source_discussion"),
+            }
+        )
     out.sort(key=lambda x: x["similarity"], reverse=True)
     return out
 
 
 @router.get("/instances")
-async def list_instances(api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def list_instances(
+    api_key: str = Depends(require_api_key),
+) -> List[Dict[str, Any]]:
     """List all instance names that have contributed knowledge with basic stats."""
     instances = await repo.list_instances()
     return [
@@ -463,10 +524,14 @@ async def list_instances(api_key: str = Depends(require_api_key)) -> List[Dict[s
 
 
 @router.post("/files/{file_id}/embed-local")
-async def embed_local(file_id: str, model: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def embed_local(
+    file_id: str, model: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
     await svc.embed_document_locally(document_id=file_id, model=model)
     updated = await repo.get_document(file_id)
     return {
@@ -478,7 +543,9 @@ async def embed_local(file_id: str, model: str, api_key: str = Depends(require_a
 
 
 @router.post("/reindex")
-async def reindex(model: str, only_missing: bool = True, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def reindex(
+    model: str, only_missing: bool = True, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Re-embed all documents using a local model. When only_missing is true, skip docs that already have local vectors."""
     docs = await repo.list_documents()
     count = 0
@@ -491,7 +558,9 @@ async def reindex(model: str, only_missing: bool = True, api_key: str = Depends(
 
 
 @router.get("/activity")
-async def recent_activity(limit: int = 20, api_key: str = Depends(require_api_key)) -> List[Dict[str, Any]]:
+async def recent_activity(
+    limit: int = 20, api_key: str = Depends(require_api_key)
+) -> List[Dict[str, Any]]:
     try:
         rows = await repo.list_recent_activity(limit=limit)
         return [
@@ -511,15 +580,23 @@ async def recent_activity(limit: int = 20, api_key: str = Depends(require_api_ke
 
 
 @router.post("/files/{file_id}/reextract-title")
-async def reextract_title(file_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def reextract_title(
+    file_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     doc = await repo.get_document(file_id)
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
 
     try:
-        title = await svc.reextract_title_for_document(storage_path=doc["storage_path"], mime_type=doc["mime_type"])
+        title = await svc.reextract_title_for_document(
+            storage_path=doc["storage_path"], mime_type=doc["mime_type"]
+        )
         if title:
-            await repo.update_document_title_and_description(document_id=file_id, title=title)
+            await repo.update_document_title_and_description(
+                document_id=file_id, title=title
+            )
             try:
                 await repo.insert_activity(
                     action="annotate",
@@ -533,7 +610,9 @@ async def reextract_title(file_id: str, api_key: str = Depends(require_api_key))
             return {"fileId": file_id, "title": title, "updated": True}
         return {"fileId": file_id, "updated": False}
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/stats")
@@ -551,7 +630,7 @@ async def get_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
             "filesBySource": {},
             "totalEmbeddings": 0,
             "processingQueue": 0,
-            "recentActivity": []
+            "recentActivity": [],
         }
     except Exception:
         return {
@@ -561,7 +640,7 @@ async def get_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
             "filesBySource": {},
             "totalEmbeddings": 0,
             "processingQueue": 0,
-            "recentActivity": []
+            "recentActivity": [],
         }
 
 
@@ -579,18 +658,21 @@ async def get_performance_metrics(
     hours: int = 24,
     operation: Optional[str] = None,
     summary: bool = False,
-    api_key: str = Depends(require_api_key)
+    api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Get embedding performance metrics and statistics.
-    
+
     Args:
         hours: Number of hours of history to retrieve (default 24)
         operation: Filter by operation type (single, batch, document)
         summary: If True, return aggregate summary instead of raw metrics
     """
     try:
-        from app.services.metrics_service import get_embedding_metrics, get_embedding_summary
-        
+        from app.services.metrics_service import (
+            get_embedding_metrics,
+            get_embedding_summary,
+        )
+
         if summary:
             return get_embedding_summary(hours=hours)
         else:
@@ -599,7 +681,7 @@ async def get_performance_metrics(
                 "metrics": metrics,
                 "count": len(metrics),
                 "period_hours": hours,
-                "filtered_operation": operation
+                "filtered_operation": operation,
             }
     except Exception as e:
         logger.error("Failed to retrieve performance metrics: %s", e)
@@ -607,5 +689,5 @@ async def get_performance_metrics(
             "error": "Metrics unavailable",
             "metrics": [],
             "count": 0,
-            "period_hours": hours
+            "period_hours": hours,
         }

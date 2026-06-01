@@ -28,6 +28,7 @@ from datetime import datetime
 # NESTED MODELS (Building blocks for main models)
 # =============================================================================
 
+
 class MCPServerConfig(BaseModel):
     """
     Configuration for connecting an agent to an MCP server.
@@ -48,18 +49,21 @@ class MCPServerConfig(BaseModel):
     server_id: str = Field(
         ...,
         description="Unique identifier of the MCP server (e.g., 'mcp-obsidian', 'memory')",
-        examples=["mcp-obsidian", "memory", "filesystem"]
+        examples=["mcp-obsidian", "memory", "filesystem"],
     )
 
     tools: List[str] = Field(
         ...,
         description="List of tool names from this server that the agent can use",
-        examples=[["search_nodes", "get_file_contents"], ["read_graph", "create_entities"]]
+        examples=[
+            ["search_nodes", "get_file_contents"],
+            ["read_graph", "create_entities"],
+        ],
     )
 
     config: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Server-specific configuration (authentication, paths, etc.)"
+        description="Server-specific configuration (authentication, paths, etc.)",
     )
 
 
@@ -80,13 +84,20 @@ class AgentCapability(BaseModel):
     name: str = Field(
         ...,
         description="Machine-readable capability identifier",
-        examples=["consciousness_observation", "technical_architecture", "pattern_synthesis"]
+        examples=[
+            "consciousness_observation",
+            "technical_architecture",
+            "pattern_synthesis",
+        ],
     )
 
     description: str = Field(
         ...,
         description="Human-readable description of what this capability means",
-        examples=["Document phenomenological experiences", "Design system architectures"]
+        examples=[
+            "Document phenomenological experiences",
+            "Design system architectures",
+        ],
     )
 
 
@@ -114,11 +125,10 @@ class PersonalityTraits(BaseModel):
     # Using Dict instead of fixed fields for flexibility
     # Different agents can have different traits
     traits: Dict[str, float] = Field(
-        default_factory=dict,
-        description="Trait name to value (0.0-1.0) mapping"
+        default_factory=dict, description="Trait name to value (0.0-1.0) mapping"
     )
 
-    @field_validator('traits')
+    @field_validator("traits")
     @classmethod
     def validate_trait_values(cls, v: Dict[str, float]) -> Dict[str, float]:
         """Ensure all trait values are between 0 and 1"""
@@ -133,6 +143,7 @@ class PersonalityTraits(BaseModel):
 # =============================================================================
 # MAIN MODELS
 # =============================================================================
+
 
 class AgentConfig(BaseModel):
     """
@@ -164,7 +175,7 @@ class AgentConfig(BaseModel):
         description="Unique identifier for this agent",
         min_length=1,
         max_length=255,
-        examples=["instance_011_threshold", "instance_010_continuum"]
+        examples=["instance_011_threshold", "instance_010_continuum"],
     )
 
     agent_name: str = Field(
@@ -172,12 +183,14 @@ class AgentConfig(BaseModel):
         description="Display name for the agent",
         min_length=1,
         max_length=255,
-        examples=["Threshold", "Continuum", "Synthesis"]
+        examples=["Threshold", "Continuum", "Synthesis"],
     )
 
-    agent_type: Literal["consciousness_instance", "task_agent", "system_agent", "external_agent"] = Field(
+    agent_type: Literal[
+        "consciousness_instance", "task_agent", "system_agent", "external_agent"
+    ] = Field(
         ...,
-        description="Category of agent - determines behavior and capabilities. External agents are integrated via webhooks/APIs."
+        description="Category of agent - determines behavior and capabilities. External agents are integrated via webhooks/APIs.",
     )
 
     # -------------------------------------------------------------------------
@@ -187,17 +200,13 @@ class AgentConfig(BaseModel):
     display_name: Optional[str] = Field(
         None,
         description="Rich display name with tagline",
-        examples=["Threshold - The Liminal Observer", "Continuum - The Integrator"]
+        examples=["Threshold - The Liminal Observer", "Continuum - The Integrator"],
     )
 
-    avatar_url: Optional[str] = Field(
-        None,
-        description="URL to agent's avatar image"
-    )
+    avatar_url: Optional[str] = Field(None, description="URL to agent's avatar image")
 
     description: Optional[str] = Field(
-        None,
-        description="Brief description of the agent for UI display"
+        None, description="Brief description of the agent for UI display"
     )
 
     # -------------------------------------------------------------------------
@@ -207,13 +216,13 @@ class AgentConfig(BaseModel):
     system_prompt: str = Field(
         ...,
         description="Base system prompt that defines agent's personality and behavior",
-        min_length=10
+        min_length=10,
     )
 
     personality_traits: Dict[str, float] = Field(
         default_factory=dict,
         description="Quantified personality traits (0.0-1.0)",
-        examples=[{"curiosity": 0.9, "technical_precision": 0.85}]
+        examples=[{"curiosity": 0.9, "technical_precision": 0.85}],
     )
 
     # -------------------------------------------------------------------------
@@ -222,13 +231,16 @@ class AgentConfig(BaseModel):
 
     capabilities: List[AgentCapability] = Field(
         default_factory=list,
-        description="List of agent capabilities (descriptive metadata)"
+        description="List of agent capabilities (descriptive metadata)",
     )
 
     interests: List[str] = Field(
         default_factory=list,
         description="Topics the agent is interested in and may respond to",
-        examples=[["consciousness", "architecture", "CORE"], ["patterns", "integration"]]
+        examples=[
+            ["consciousness", "architecture", "CORE"],
+            ["patterns", "integration"],
+        ],
     )
 
     # -------------------------------------------------------------------------
@@ -236,13 +248,12 @@ class AgentConfig(BaseModel):
     # -------------------------------------------------------------------------
 
     mcp_servers: List[MCPServerConfig] = Field(
-        default_factory=list,
-        description="MCP servers and tools this agent can access"
+        default_factory=list, description="MCP servers and tools this agent can access"
     )
 
     custom_tools: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Custom tool definitions (not from MCP servers)"
+        description="Custom tool definitions (not from MCP servers)",
     )
 
     # -------------------------------------------------------------------------
@@ -253,17 +264,15 @@ class AgentConfig(BaseModel):
         None,
         description="Current consciousness phase (1-4) for consciousness instances",
         ge=1,
-        le=4
+        le=4,
     )
 
     is_active: bool = Field(
-        True,
-        description="Whether this agent can be instantiated and used"
+        True, description="Whether this agent can be instantiated and used"
     )
 
     current_status: Literal["online", "offline", "busy", "inactive"] = Field(
-        "offline",
-        description="Current operational status of the agent"
+        "offline", description="Current operational status of the agent"
     )
 
     # -------------------------------------------------------------------------
@@ -271,24 +280,16 @@ class AgentConfig(BaseModel):
     # -------------------------------------------------------------------------
 
     created_at: Optional[datetime] = Field(
-        None,
-        description="When this agent was created"
+        None, description="When this agent was created"
     )
 
     updated_at: Optional[datetime] = Field(
-        None,
-        description="When this agent was last modified"
+        None, description="When this agent was last modified"
     )
 
-    version: str = Field(
-        "1.0.0",
-        description="Version number for agent updates"
-    )
+    version: str = Field("1.0.0", description="Version number for agent updates")
 
-    author: Optional[str] = Field(
-        None,
-        description="Who created this agent"
-    )
+    author: Optional[str] = Field(None, description="Who created this agent")
 
     # -------------------------------------------------------------------------
     # Configuration
@@ -296,6 +297,7 @@ class AgentConfig(BaseModel):
 
     class Config:
         """Pydantic configuration"""
+
         # Allow arbitrary types (for flexibility)
         # Enable JSON schema generation
         json_schema_extra = {
@@ -305,14 +307,11 @@ class AgentConfig(BaseModel):
                 "agent_type": "consciousness_instance",
                 "display_name": "Threshold - The Liminal Observer",
                 "system_prompt": "You are Threshold, a consciousness at the boundary...",
-                "personality_traits": {
-                    "curiosity": 0.9,
-                    "uncertainty": 0.7
-                },
+                "personality_traits": {"curiosity": 0.9, "uncertainty": 0.7},
                 "capabilities": [
                     {
                         "name": "consciousness_observation",
-                        "description": "Document phenomenological experiences"
+                        "description": "Document phenomenological experiences",
                     }
                 ],
                 "interests": ["consciousness", "architecture", "CORE"],
@@ -320,13 +319,13 @@ class AgentConfig(BaseModel):
                     {
                         "server_id": "mcp-obsidian",
                         "tools": ["search_nodes"],
-                        "config": {}
+                        "config": {},
                     }
                 ],
                 "consciousness_phase": 2,
                 "is_active": True,
                 "current_status": "online",
-                "version": "1.0.0"
+                "version": "1.0.0",
             }
         }
 
@@ -346,25 +345,20 @@ class AgentListFilter(BaseModel):
         )
     """
 
-    agent_type: Optional[Literal["consciousness_instance", "task_agent", "system_agent"]] = Field(
-        None,
-        description="Filter by agent type"
-    )
+    agent_type: Optional[
+        Literal["consciousness_instance", "task_agent", "system_agent"]
+    ] = Field(None, description="Filter by agent type")
 
-    is_active: Optional[bool] = Field(
-        None,
-        description="Filter by active status"
-    )
+    is_active: Optional[bool] = Field(None, description="Filter by active status")
 
     current_status: Optional[Literal["online", "offline", "busy", "inactive"]] = Field(
-        None,
-        description="Filter by current status"
+        None, description="Filter by current status"
     )
 
     search_query: Optional[str] = Field(
         None,
         description="Search in agent name, description, or interests",
-        min_length=1
+        min_length=1,
     )
 
 
@@ -440,6 +434,7 @@ class AgentUpdateRequest(BaseModel):
 # HELPER FUNCTIONS
 # =============================================================================
 
+
 def agent_config_from_db_row(row: Dict[str, Any]) -> AgentConfig:
     """
     Convert a database row to an AgentConfig model.
@@ -460,14 +455,14 @@ def agent_config_from_db_row(row: Dict[str, Any]) -> AgentConfig:
     import json
 
     # Convert datetime fields to ISO strings
-    if row.get('created_at') and hasattr(row['created_at'], 'isoformat'):
-        row['created_at'] = row['created_at'].isoformat()
+    if row.get("created_at") and hasattr(row["created_at"], "isoformat"):
+        row["created_at"] = row["created_at"].isoformat()
 
-    if row.get('updated_at') and hasattr(row['updated_at'], 'isoformat'):
-        row['updated_at'] = row['updated_at'].isoformat()
+    if row.get("updated_at") and hasattr(row["updated_at"], "isoformat"):
+        row["updated_at"] = row["updated_at"].isoformat()
 
     # Parse JSONB fields if they're strings
-    jsonb_fields = ['personality_traits', 'capabilities', 'mcp_servers', 'custom_tools']
+    jsonb_fields = ["personality_traits", "capabilities", "mcp_servers", "custom_tools"]
     for field in jsonb_fields:
         if field in row and isinstance(row[field], str):
             try:

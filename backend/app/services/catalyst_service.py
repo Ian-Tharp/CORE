@@ -30,6 +30,7 @@ __all__ = ["CatalystService", "get_catalyst_service"]
 # Session bookkeeping
 # ---------------------------------------------------------------------------
 
+
 class SessionPhase(str, Enum):
     CREATED = "created"
     DIVERGENCE = "divergence"
@@ -75,6 +76,7 @@ class CatalystSession:
 # ---------------------------------------------------------------------------
 # Main service
 # ---------------------------------------------------------------------------
+
 
 class CatalystService:
     """Orchestrates the Divergence → Convergence → Synthesis pipeline."""

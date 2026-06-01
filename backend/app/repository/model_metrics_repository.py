@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Schema
 # ---------------------------------------------------------------------------
 
+
 async def ensure_model_metrics_tables() -> None:
     """Create model_metrics table if it doesn't exist."""
     pool = await get_db_pool()
@@ -58,6 +59,7 @@ async def ensure_model_metrics_tables() -> None:
 # Write
 # ---------------------------------------------------------------------------
 
+
 async def record_metric(
     model_id: str,
     latency_ms: float,
@@ -74,7 +76,11 @@ async def record_metric(
                 INSERT INTO model_metrics (model_id, latency_ms, ttfb_ms, token_count, success)
                 VALUES ($1, $2, $3, $4, $5)
                 """,
-                model_id, latency_ms, ttfb_ms, token_count, success,
+                model_id,
+                latency_ms,
+                ttfb_ms,
+                token_count,
+                success,
             )
     except Exception as exc:
         # Non-critical — log but don't surface to caller
@@ -84,6 +90,7 @@ async def record_metric(
 # ---------------------------------------------------------------------------
 # Read
 # ---------------------------------------------------------------------------
+
 
 async def get_raw_metrics(model_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
@@ -117,6 +124,7 @@ async def get_raw_metrics(model_id: Optional[str] = None) -> List[Dict[str, Any]
 # ---------------------------------------------------------------------------
 # Aggregation (pure Python, DB-independent, fully testable)
 # ---------------------------------------------------------------------------
+
 
 def _percentile(sorted_values: List[float], p: float) -> float:
     """

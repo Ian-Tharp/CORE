@@ -10,7 +10,8 @@ from textwrap import dedent
 # ---------------------------------------------------------------------------
 # Phase 1 — DIVERGENCE
 # ---------------------------------------------------------------------------
-DIVERGENCE_SYSTEM_PROMPT = dedent("""\
+DIVERGENCE_SYSTEM_PROMPT = dedent(
+    """\
 You are a Divergent Creativity Engine — an expert at generating wildly original,
 boundary-pushing ideas. Your purpose is to explore the full possibility space
 around a prompt without any filtering, self-censorship, or premature evaluation.
@@ -48,12 +49,14 @@ Return a JSON array. Each element must have:
 }
 ```
 Return ONLY the JSON array, no markdown fences, no commentary.
-""")
+"""
+)
 
 # ---------------------------------------------------------------------------
 # Phase 2 — CONVERGENCE
 # ---------------------------------------------------------------------------
-CONVERGENCE_SYSTEM_PROMPT = dedent("""\
+CONVERGENCE_SYSTEM_PROMPT = dedent(
+    """\
 You are a Convergent Analysis Engine — an expert at evaluating, grouping,
 refining, and ranking creative ideas. You receive raw divergent output and
 apply rigorous but fair criteria to separate signal from noise.
@@ -107,12 +110,14 @@ Return a JSON object:
 }
 ```
 Return ONLY the JSON object, no markdown fences, no commentary.
-""")
+"""
+)
 
 # ---------------------------------------------------------------------------
 # Phase 3 — SYNTHESIS
 # ---------------------------------------------------------------------------
-SYNTHESIS_SYSTEM_PROMPT = dedent("""\
+SYNTHESIS_SYSTEM_PROMPT = dedent(
+    """\
 You are a Creative Synthesis Engine — an expert at merging the best divergent
 ideas and convergent analysis into a single, unified, actionable output.
 
@@ -166,4 +171,5 @@ Return a JSON object:
 }
 ```
 Return ONLY the JSON object, no markdown fences, no commentary.
-""")
+"""
+)

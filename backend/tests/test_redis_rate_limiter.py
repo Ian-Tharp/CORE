@@ -18,14 +18,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # RedisRateLimiter — unit tests with mocked Redis
 # ---------------------------------------------------------------------------
 
+
 class TestRedisRateLimiter:
     """Tests using a fully mocked Redis pipeline."""
 
     def _make_limiter(self, rpm: int = 60, rph: int = 1000):
         from app.core.security import RedisRateLimiter
-        return RedisRateLimiter(redis_url="redis://test:6379/0",
-                                requests_per_minute=rpm,
-                                requests_per_hour=rph)
+
+        return RedisRateLimiter(
+            redis_url="redis://test:6379/0",
+            requests_per_minute=rpm,
+            requests_per_hour=rph,
+        )
 
     def _mock_redis(self, minute_count: int = 1, hour_count: int = 1):
         """Return a mock Redis client whose pipeline returns (minute, hour) counts.
@@ -34,7 +38,7 @@ class TestRedisRateLimiter:
         coroutine), but pipeline.execute() IS async. Mock accordingly.
         """
         mock_redis = MagicMock()  # sync top-level client
-        mock_pipe = MagicMock()   # sync pipeline (pipeline() is not awaited)
+        mock_pipe = MagicMock()  # sync pipeline (pipeline() is not awaited)
         mock_pipe.execute = AsyncMock(return_value=[minute_count, hour_count])
         mock_redis.pipeline.return_value = mock_pipe
         mock_redis.expire = AsyncMock()
@@ -50,7 +54,9 @@ class TestRedisRateLimiter:
         limiter = self._make_limiter()
         mock_redis = self._mock_redis(minute_count=1, hour_count=1)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             result = await limiter.check_rate_limit("test-client")
 
         mock_redis.pipeline.assert_called_once()
@@ -67,7 +73,9 @@ class TestRedisRateLimiter:
         limiter = self._make_limiter()
         mock_redis = self._mock_redis(minute_count=1, hour_count=1)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             await limiter.check_rate_limit("first-client")
 
         # expire should be called twice (minute key + hour key)
@@ -79,7 +87,9 @@ class TestRedisRateLimiter:
         limiter = self._make_limiter()
         mock_redis = self._mock_redis(minute_count=5, hour_count=50)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             await limiter.check_rate_limit("returning-client")
 
         mock_redis.expire.assert_not_called()
@@ -94,7 +104,9 @@ class TestRedisRateLimiter:
         # Simulate minute counter at 11 (over the 10 rpm limit)
         mock_redis = self._mock_redis(minute_count=11, hour_count=50)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             result = await limiter.check_rate_limit("heavy-client")
 
         assert result["allowed"] is False
@@ -105,7 +117,9 @@ class TestRedisRateLimiter:
         limiter = self._make_limiter(rpm=60, rph=1000)
         mock_redis = self._mock_redis(minute_count=1, hour_count=1)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             result = await limiter.check_rate_limit("normal-client")
 
         assert result["allowed"] is True
@@ -129,7 +143,9 @@ class TestRedisRateLimiter:
         mock_redis.pipeline.side_effect = [incr_pipe, rollback_pipe]
         mock_redis.expire = AsyncMock()
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             result = await limiter.check_rate_limit("over-limit")
 
         assert result["allowed"] is False
@@ -143,8 +159,11 @@ class TestRedisRateLimiter:
         """
         limiter = self._make_limiter()
 
-        with patch.object(limiter, "_get_client",
-                          new=AsyncMock(side_effect=ConnectionError("Redis down"))):
+        with patch.object(
+            limiter,
+            "_get_client",
+            new=AsyncMock(side_effect=ConnectionError("Redis down")),
+        ):
             result = await limiter.check_rate_limit("fallback-client")
 
         assert isinstance(result, dict)
@@ -157,7 +176,9 @@ class TestRedisRateLimiter:
         limiter = self._make_limiter()
         mock_redis = self._mock_redis(1, 1)
 
-        with patch.object(limiter, "_get_client", new=AsyncMock(return_value=mock_redis)):
+        with patch.object(
+            limiter, "_get_client", new=AsyncMock(return_value=mock_redis)
+        ):
             result = await limiter.check_rate_limit("shape-client")
 
         for key in ("allowed", "minute_remaining", "hour_remaining"):
@@ -168,6 +189,7 @@ class TestRedisRateLimiter:
 # Limiter class selection logic (tested without module reload)
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimiterSelection:
     def test_redis_limiter_class_exists(self):
         """
@@ -175,11 +197,13 @@ class TestRateLimiterSelection:
         Remove the class → ImportError → test fails.
         """
         from app.core.security import RedisRateLimiter
+
         assert RedisRateLimiter is not None
 
     def test_redis_limiter_stores_redis_url(self):
         """RedisRateLimiter must accept and store redis_url constructor arg."""
         from app.core.security import RedisRateLimiter
+
         limiter = RedisRateLimiter(redis_url="redis://custom:6379/1")
         assert limiter.redis_url == "redis://custom:6379/1"
 
@@ -189,12 +213,14 @@ class TestRateLimiterSelection:
         Remove _fallback → Redis errors crash callers → test fails.
         """
         from app.core.security import RedisRateLimiter, RateLimiter
+
         limiter = RedisRateLimiter()
         assert isinstance(limiter._fallback, RateLimiter)
 
     def test_rpm_rph_forwarded_to_fallback(self):
         """Constructor rpm/rph must be forwarded to the in-memory fallback."""
         from app.core.security import RedisRateLimiter
+
         limiter = RedisRateLimiter(requests_per_minute=30, requests_per_hour=500)
         assert limiter._fallback.rpm == 30
         assert limiter._fallback.rph == 500

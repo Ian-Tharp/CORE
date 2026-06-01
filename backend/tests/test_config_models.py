@@ -34,6 +34,7 @@ from app.config.models import (
 # ModelProvider enum
 # ===========================================================================
 
+
 class TestModelProvider:
     def test_ollama_value(self):
         """
@@ -63,6 +64,7 @@ class TestModelProvider:
 # ModelConfig.get_base_url — provider routing
 # ===========================================================================
 
+
 class TestGetBaseUrl:
     def test_explicit_base_url_returned_as_is(self):
         """
@@ -82,7 +84,9 @@ class TestGetBaseUrl:
         SENTINEL — OLLAMA provider without explicit base_url must return Ollama URL.
         Return empty string → all Ollama calls fail → test fails.
         """
-        cfg = ModelConfig(provider=ModelProvider.OLLAMA, model_name="test", display_name="Test")
+        cfg = ModelConfig(
+            provider=ModelProvider.OLLAMA, model_name="test", display_name="Test"
+        )
         url = cfg.get_base_url()
         assert "ollama" in url.lower() or "11434" in url
 
@@ -91,26 +95,36 @@ class TestGetBaseUrl:
         SENTINEL — OPENAI provider must return OpenAI API URL.
         Return empty → all OpenAI calls fail → test fails.
         """
-        cfg = ModelConfig(provider=ModelProvider.OPENAI, model_name="test", display_name="Test")
+        cfg = ModelConfig(
+            provider=ModelProvider.OPENAI, model_name="test", display_name="Test"
+        )
         url = cfg.get_base_url()
         assert "openai.com" in url
 
     def test_anthropic_base_url(self):
         """ANTHROPIC provider must return Anthropic API URL."""
-        cfg = ModelConfig(provider=ModelProvider.ANTHROPIC, model_name="test", display_name="Test")
+        cfg = ModelConfig(
+            provider=ModelProvider.ANTHROPIC, model_name="test", display_name="Test"
+        )
         url = cfg.get_base_url()
         assert "anthropic.com" in url
 
     def test_local_provider_returns_empty_string(self):
         """LOCAL provider with no explicit URL must return empty string (safe fallback)."""
-        cfg = ModelConfig(provider=ModelProvider.LOCAL, model_name="test", display_name="Test")
+        cfg = ModelConfig(
+            provider=ModelProvider.LOCAL, model_name="test", display_name="Test"
+        )
         url = cfg.get_base_url()
         assert isinstance(url, str)
 
     def test_ollama_base_url_env_override(self):
         """OLLAMA_BASE_URL env var must override the default Ollama URL."""
-        cfg = ModelConfig(provider=ModelProvider.OLLAMA, model_name="test", display_name="Test")
-        with patch.dict("os.environ", {"OLLAMA_BASE_URL": "http://SENTINEL_CUSTOM:11434"}):
+        cfg = ModelConfig(
+            provider=ModelProvider.OLLAMA, model_name="test", display_name="Test"
+        )
+        with patch.dict(
+            "os.environ", {"OLLAMA_BASE_URL": "http://SENTINEL_CUSTOM:11434"}
+        ):
             url = cfg.get_base_url()
         assert url == "http://SENTINEL_CUSTOM:11434"
 
@@ -119,10 +133,13 @@ class TestGetBaseUrl:
 # ModelConfig.get_api_key
 # ===========================================================================
 
+
 class TestGetApiKey:
     def test_returns_none_without_api_key_env(self):
         """get_api_key must return None when api_key_env is not set."""
-        cfg = ModelConfig(provider=ModelProvider.OLLAMA, model_name="test", display_name="Test")
+        cfg = ModelConfig(
+            provider=ModelProvider.OLLAMA, model_name="test", display_name="Test"
+        )
         assert cfg.get_api_key() is None
 
     def test_returns_env_value_when_set(self):
@@ -149,6 +166,7 @@ class TestGetApiKey:
         )
         with patch.dict("os.environ", {}, clear=False):
             import os
+
             os.environ.pop("NONEXISTENT_VAR_XYZ", None)
             assert cfg.get_api_key() is None
 
@@ -156,6 +174,7 @@ class TestGetApiKey:
 # ===========================================================================
 # MODELS registry — required entries
 # ===========================================================================
+
 
 class TestModelsRegistry:
     def test_phi3_mini_in_registry(self):
@@ -202,6 +221,7 @@ class TestModelsRegistry:
 # DEFAULT_MODELS — required use-case keys
 # ===========================================================================
 
+
 class TestDefaultModels:
     def test_comprehension_key_present(self):
         """
@@ -241,6 +261,7 @@ class TestDefaultModels:
 # get_model_config
 # ===========================================================================
 
+
 class TestGetModelConfig:
     def test_returns_config_for_known_model(self):
         """
@@ -260,6 +281,7 @@ class TestGetModelConfig:
 # ===========================================================================
 # get_default_model
 # ===========================================================================
+
 
 class TestGetDefaultModel:
     def test_dev_comprehension_model(self):
@@ -289,6 +311,7 @@ class TestGetDefaultModel:
 # ===========================================================================
 # list_available_models / get_models_by_provider
 # ===========================================================================
+
 
 class TestListAndFilter:
     def test_list_available_models_returns_all(self):
@@ -322,6 +345,7 @@ class TestListAndFilter:
 # is_model_available
 # ===========================================================================
 
+
 class TestIsModelAvailable:
     def test_unknown_model_not_available(self):
         """
@@ -344,6 +368,7 @@ class TestIsModelAvailable:
         Ignore API key check → callers attempt cloud calls with no credentials → test fails.
         """
         import os
+
         # Ensure the env var is absent
         key_env = MODELS["gpt-4o"].api_key_env
         original = os.environ.pop(key_env, None)

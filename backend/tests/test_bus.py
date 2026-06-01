@@ -35,6 +35,7 @@ from app.services import bus_service
 # HELPERS
 # =============================================================================
 
+
 def _make_message(**overrides) -> BusMessage:
     defaults = dict(
         sender_id="agent-alpha",
@@ -80,6 +81,7 @@ def _fake_stored_message(msg: BusMessage) -> Dict[str, Any]:
 # 1. DIRECT MESSAGE DELIVERY TESTS
 # =============================================================================
 
+
 class TestDirectMessageDelivery:
     """Tests for direct agent-to-agent message publishing."""
 
@@ -89,8 +91,9 @@ class TestDirectMessageDelivery:
         # Arrange
         msg = _make_message()
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -111,8 +114,9 @@ class TestDirectMessageDelivery:
         # Arrange
         msg = _make_message(recipients=["agent-beta", "agent-gamma"])
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -130,10 +134,13 @@ class TestDirectMessageDelivery:
     async def test_sender_does_not_receive_own_message(self):
         """Sender should never be in the delivery set even if subscribed."""
         # Arrange
-        msg = _make_message(sender_id="agent-self", recipients=["agent-self", "agent-beta"])
+        msg = _make_message(
+            sender_id="agent-self", recipients=["agent-self", "agent-beta"]
+        )
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -153,6 +160,7 @@ class TestDirectMessageDelivery:
 # 2. PUB/SUB SUBSCRIPTION & BROADCAST TESTS
 # =============================================================================
 
+
 class TestPubSubBroadcast:
     """Tests for topic-based pub/sub and broadcast."""
 
@@ -167,12 +175,14 @@ class TestPubSubBroadcast:
         )
 
         with patch("app.services.bus_service.repo") as mock_repo:
-            mock_repo.create_subscription = AsyncMock(return_value={
-                "subscription_id": "sub-123",
-                "agent_id": "agent-x",
-                "message_types": ["status_update"],
-                "topics": ["deployments"],
-            })
+            mock_repo.create_subscription = AsyncMock(
+                return_value={
+                    "subscription_id": "sub-123",
+                    "agent_id": "agent-x",
+                    "message_types": ["status_update"],
+                    "topics": ["deployments"],
+                }
+            )
 
             # Act
             result = await bus_service.subscribe("agent-x", sub_create)
@@ -199,8 +209,9 @@ class TestPubSubBroadcast:
             "topics": ["alerts"],
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value={"message_id": "m1"})
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[sub_row])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -238,10 +249,13 @@ class TestPubSubBroadcast:
             "topics": [],
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
-            mock_repo.get_all_subscriptions = AsyncMock(return_value=[sub_status, sub_help])
+            mock_repo.get_all_subscriptions = AsyncMock(
+                return_value=[sub_status, sub_help]
+            )
             mock_repo.get_external_agent = AsyncMock(return_value=None)
             mock_ws.send_message = AsyncMock(return_value=True)
             mock_repo.create_delivery_receipt = AsyncMock(return_value={})
@@ -295,6 +309,7 @@ class TestPubSubBroadcast:
 # 3. EXTERNAL AGENT REGISTRATION & WEBHOOK DELIVERY TESTS
 # =============================================================================
 
+
 class TestExternalAgents:
     """Tests for external agent lifecycle and webhook delivery."""
 
@@ -305,11 +320,13 @@ class TestExternalAgents:
         reg = _make_external_registration()
 
         with patch("app.services.bus_service.repo") as mock_repo:
-            mock_repo.register_external_agent = AsyncMock(return_value={
-                "agent_id": "vigil-001",
-                "name": "Vigil",
-                "webhook_url": "https://example.com/webhook",
-            })
+            mock_repo.register_external_agent = AsyncMock(
+                return_value={
+                    "agent_id": "vigil-001",
+                    "name": "Vigil",
+                    "webhook_url": "https://example.com/webhook",
+                }
+            )
 
             # Act
             result = await bus_service.register_external_agent(reg)
@@ -336,10 +353,12 @@ class TestExternalAgents:
         """Listing should return all registered external agents."""
         # Arrange
         with patch("app.services.bus_service.repo") as mock_repo:
-            mock_repo.list_external_agents = AsyncMock(return_value=[
-                {"agent_id": "vigil-001", "name": "Vigil"},
-                {"agent_id": "sentry-002", "name": "Sentry"},
-            ])
+            mock_repo.list_external_agents = AsyncMock(
+                return_value=[
+                    {"agent_id": "vigil-001", "name": "Vigil"},
+                    {"agent_id": "sentry-002", "name": "Sentry"},
+                ]
+            )
 
             # Act
             agents = await bus_service.list_external_agents()
@@ -361,8 +380,9 @@ class TestExternalAgents:
             "webhook_timeout_ms": 3000,
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.httpx") as mock_httpx:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.httpx"
+        ) as mock_httpx:
             mock_repo.get_external_agent = AsyncMock(return_value=ext_data)
 
             mock_resp = MagicMock()
@@ -394,8 +414,9 @@ class TestExternalAgents:
             "webhook_timeout_ms": 1000,
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.httpx") as mock_httpx:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.httpx"
+        ) as mock_httpx:
             mock_repo.get_external_agent = AsyncMock(return_value=ext_data)
 
             mock_client = AsyncMock()
@@ -426,8 +447,9 @@ class TestExternalAgents:
             "webhook_timeout_ms": 2000,
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.httpx") as mock_httpx:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.httpx"
+        ) as mock_httpx:
             mock_repo.get_external_agent = AsyncMock(return_value=ext_data)
 
             mock_resp = MagicMock()
@@ -451,6 +473,7 @@ class TestExternalAgents:
 # 4. OFFLINE QUEUE & DRAIN TESTS
 # =============================================================================
 
+
 class TestOfflineQueue:
     """Tests for queuing messages when agents are offline."""
 
@@ -460,8 +483,9 @@ class TestOfflineQueue:
         # Arrange
         msg = _make_message(recipients=["offline-agent"])
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -515,6 +539,7 @@ class TestOfflineQueue:
 # 5. MESSAGE ROUTING TESTS (@mention, capability query)
 # =============================================================================
 
+
 class TestMessageRouting:
     """Tests for advanced routing patterns."""
 
@@ -527,8 +552,9 @@ class TestMessageRouting:
             payload={"text": "Hey @agent-beta and @agent-gamma, please help."},
         )
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -589,8 +615,9 @@ class TestMessageRouting:
             "topics": ["capabilities"],
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[sub_row])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -608,6 +635,7 @@ class TestMessageRouting:
 # =============================================================================
 # 6. REQUEST / RESPONSE PATTERN TESTS
 # =============================================================================
+
 
 class TestRequestResponse:
     """Tests for the synchronous request/response pattern."""
@@ -641,14 +669,19 @@ class TestRequestResponse:
                 return [_fake_stored_message(request_msg), reply_row]
             return [_fake_stored_message(request_msg)]
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
-            mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(request_msg))
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
+            mock_repo.store_message = AsyncMock(
+                return_value=_fake_stored_message(request_msg)
+            )
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
             mock_ws.send_message = AsyncMock(return_value=True)
             mock_repo.create_delivery_receipt = AsyncMock(return_value={})
-            mock_repo.get_messages_by_correlation = AsyncMock(side_effect=mock_get_correlated)
+            mock_repo.get_messages_by_correlation = AsyncMock(
+                side_effect=mock_get_correlated
+            )
 
             # Act
             result = await bus_service.request_response(request_msg, timeout_ms=2000)
@@ -664,9 +697,12 @@ class TestRequestResponse:
         # Arrange
         request_msg = _make_message(correlation_id=str(uuid.uuid4()))
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
-            mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(request_msg))
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
+            mock_repo.store_message = AsyncMock(
+                return_value=_fake_stored_message(request_msg)
+            )
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
             mock_ws.send_message = AsyncMock(return_value=True)
@@ -687,9 +723,12 @@ class TestRequestResponse:
         # Arrange
         request_msg = _make_message(correlation_id=None)
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
-            mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(request_msg))
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
+            mock_repo.store_message = AsyncMock(
+                return_value=_fake_stored_message(request_msg)
+            )
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
             mock_ws.send_message = AsyncMock(return_value=True)
@@ -707,6 +746,7 @@ class TestRequestResponse:
 # 7. DELIVERY RECEIPT TRACKING TESTS
 # =============================================================================
 
+
 class TestDeliveryReceipts:
     """Tests for delivery receipt creation and tracking."""
 
@@ -716,8 +756,9 @@ class TestDeliveryReceipts:
         # Arrange
         msg = _make_message(recipients=["agent-beta"])
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -746,9 +787,9 @@ class TestDeliveryReceipts:
             "webhook_timeout_ms": 500,
         }
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws, \
-             patch("app.services.bus_service.httpx") as mock_httpx:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws, patch("app.services.bus_service.httpx") as mock_httpx:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=ext_data)
@@ -773,8 +814,9 @@ class TestDeliveryReceipts:
         # Arrange
         msg = _make_message(recipients=["offline-agent"])
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -794,6 +836,7 @@ class TestDeliveryReceipts:
 # 8. METRICS CALCULATION TESTS
 # =============================================================================
 
+
 class TestMetrics:
     """Tests for bus metrics aggregation."""
 
@@ -803,9 +846,15 @@ class TestMetrics:
         # Arrange
         with patch("app.services.bus_service.repo") as mock_repo:
             mock_repo.count_messages = AsyncMock(return_value=100)
-            mock_repo.count_messages_by_type = AsyncMock(return_value={"task_request": 60, "heartbeat": 40})
-            mock_repo.count_messages_by_priority = AsyncMock(return_value={"normal": 80, "high": 20})
-            mock_repo.count_receipts_by_status = AsyncMock(return_value={"delivered": 90, "failed": 5, "queued": 5})
+            mock_repo.count_messages_by_type = AsyncMock(
+                return_value={"task_request": 60, "heartbeat": 40}
+            )
+            mock_repo.count_messages_by_priority = AsyncMock(
+                return_value={"normal": 80, "high": 20}
+            )
+            mock_repo.count_receipts_by_status = AsyncMock(
+                return_value={"delivered": 90, "failed": 5, "queued": 5}
+            )
             mock_repo.count_subscriptions = AsyncMock(return_value=12)
             mock_repo.count_external_agents = AsyncMock(return_value=2)
             mock_repo.count_offline_queued = AsyncMock(return_value=3)
@@ -851,6 +900,7 @@ class TestMetrics:
 # 9. EDGE CASE TESTS
 # =============================================================================
 
+
 class TestEdgeCases:
     """Tests for edge cases and error scenarios."""
 
@@ -875,9 +925,12 @@ class TestEdgeCases:
         # Arrange
         msg = _make_message()
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
-            mock_repo.store_message = AsyncMock(side_effect=Exception("unique_violation"))
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
+            mock_repo.store_message = AsyncMock(
+                side_effect=Exception("unique_violation")
+            )
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
 
             # Act / Assert — should propagate but not crash unrecoverably
@@ -890,8 +943,9 @@ class TestEdgeCases:
         # Arrange
         msg = _make_message(recipients=[])
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_ws.send_message = AsyncMock(return_value=True)
@@ -909,8 +963,9 @@ class TestEdgeCases:
         # Arrange
         msg = _make_message(priority=MessagePriority.URGENT)
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -930,8 +985,9 @@ class TestEdgeCases:
         # Arrange
         msg = _make_message(ttl_seconds=300)
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -954,8 +1010,9 @@ class TestEdgeCases:
         async def ws_side_effect(agent_id, payload):
             return agent_id == "online-agent"
 
-        with patch("app.services.bus_service.repo") as mock_repo, \
-             patch("app.services.bus_service.agent_ws_manager") as mock_ws:
+        with patch("app.services.bus_service.repo") as mock_repo, patch(
+            "app.services.bus_service.agent_ws_manager"
+        ) as mock_ws:
             mock_repo.store_message = AsyncMock(return_value=_fake_stored_message(msg))
             mock_repo.get_all_subscriptions = AsyncMock(return_value=[])
             mock_repo.get_external_agent = AsyncMock(return_value=None)
@@ -973,6 +1030,7 @@ class TestEdgeCases:
 # =============================================================================
 # 10. MODEL VALIDATION TESTS
 # =============================================================================
+
 
 class TestModelValidation:
     """Tests for Pydantic model validation."""

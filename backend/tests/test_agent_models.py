@@ -33,6 +33,7 @@ from app.models.agent_models import (
 # Helpers
 # ===========================================================================
 
+
 def _min_row(**overrides) -> dict:
     """Minimal valid DB row for AgentConfig."""
     row = {
@@ -60,6 +61,7 @@ def _min_create(**overrides) -> dict:
 # ===========================================================================
 # PersonalityTraits.validate_trait_values (also tested in test_core_state_models)
 # ===========================================================================
+
 
 class TestPersonalityTraitsBounds:
     def test_value_above_one_rejected(self):
@@ -94,6 +96,7 @@ class TestPersonalityTraitsBounds:
 # ===========================================================================
 # AgentCreateRequest — field constraints
 # ===========================================================================
+
 
 class TestAgentCreateRequest:
     def test_valid_request_accepted(self):
@@ -156,6 +159,7 @@ class TestAgentCreateRequest:
 # AgentUpdateRequest — partial updates
 # ===========================================================================
 
+
 class TestAgentUpdateRequest:
     def test_all_none_accepted(self):
         """All-None update request (patch with nothing) must be valid."""
@@ -186,6 +190,7 @@ class TestAgentUpdateRequest:
 # ===========================================================================
 # agent_config_from_db_row
 # ===========================================================================
+
 
 class TestAgentConfigFromDbRow:
     def test_valid_row_produces_agent_config(self):
@@ -273,6 +278,7 @@ class TestAgentConfigFromDbRow:
 # MCPServerConfig
 # ===========================================================================
 
+
 class TestMCPServerConfig:
     def test_valid_config_accepted(self):
         """MCPServerConfig with all required fields must be accepted."""
@@ -294,6 +300,7 @@ class TestMCPServerConfig:
 # ===========================================================================
 # AgentCapability
 # ===========================================================================
+
 
 class TestAgentCapability:
     def test_valid_capability_accepted(self):

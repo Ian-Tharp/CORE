@@ -25,6 +25,7 @@ from app.repository.memory_repository import (
 # FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def memory_service():
     """Create an initialized memory service with mocked dependencies."""
@@ -100,6 +101,7 @@ def sample_procedural_memory():
 # INITIALIZATION TESTS
 # =============================================================================
 
+
 class TestInitialization:
     """Tests for memory service initialization."""
 
@@ -132,6 +134,7 @@ class TestInitialization:
 # SEMANTIC MEMORY TESTS
 # =============================================================================
 
+
 class TestSemanticMemory:
     """Tests for semantic (shared knowledge) operations."""
 
@@ -140,8 +143,11 @@ class TestSemanticMemory:
         """Successfully store a piece of knowledge."""
         expected_id = uuid4()
 
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.create_semantic_memory") as mock_create:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.create_semantic_memory"
+        ) as mock_create:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_create.return_value = expected_id
 
@@ -152,31 +158,44 @@ class TestSemanticMemory:
             )
 
             assert result == expected_id
-            mock_embed.generate_embedding.assert_awaited_once_with("Python supports async/await.")
+            mock_embed.generate_embedding.assert_awaited_once_with(
+                "Python supports async/await."
+            )
             mock_create.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_store_knowledge_propagates_errors(self, memory_service):
         """Store knowledge propagates exceptions from embedding service."""
         with patch("app.services.memory_service.embedding_service") as mock_embed:
-            mock_embed.generate_embedding = AsyncMock(side_effect=RuntimeError("model unavailable"))
+            mock_embed.generate_embedding = AsyncMock(
+                side_effect=RuntimeError("model unavailable")
+            )
 
             with pytest.raises(RuntimeError, match="model unavailable"):
                 await memory_service.store_knowledge("test content", {})
 
     @pytest.mark.asyncio
-    async def test_search_knowledge_success(self, memory_service, sample_semantic_memory, sample_embedding):
+    async def test_search_knowledge_success(
+        self, memory_service, sample_semantic_memory, sample_embedding
+    ):
         """Search knowledge returns matching memories."""
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.search_semantic_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.search_semantic_memories"
+        ) as mock_search:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_search.return_value = [sample_semantic_memory]
 
-            results = await memory_service.search_knowledge("programming languages", limit=5, threshold=0.8)
+            results = await memory_service.search_knowledge(
+                "programming languages", limit=5, threshold=0.8
+            )
 
             assert len(results) == 1
             assert results[0].content == sample_semantic_memory.content
-            mock_search.assert_awaited_once_with(sample_embedding, limit=5, threshold=0.8)
+            mock_search.assert_awaited_once_with(
+                sample_embedding, limit=5, threshold=0.8
+            )
 
     @pytest.mark.asyncio
     async def test_search_knowledge_empty_query(self, memory_service):
@@ -198,6 +217,7 @@ class TestSemanticMemory:
 # EPISODIC MEMORY TESTS
 # =============================================================================
 
+
 class TestEpisodicMemory:
     """Tests for episodic (personal experience) operations."""
 
@@ -206,8 +226,11 @@ class TestEpisodicMemory:
         """Successfully store an agent experience."""
         expected_id = uuid4()
 
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.create_episodic_memory") as mock_create:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.create_episodic_memory"
+        ) as mock_create:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_create.return_value = expected_id
 
@@ -225,12 +248,17 @@ class TestEpisodicMemory:
             assert created_memory.importance == 0.8
 
     @pytest.mark.asyncio
-    async def test_store_experience_temporary_gets_expiration(self, memory_service, sample_embedding):
+    async def test_store_experience_temporary_gets_expiration(
+        self, memory_service, sample_embedding
+    ):
         """Temporary experiences get an expiration date."""
         expected_id = uuid4()
 
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.create_episodic_memory") as mock_create:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.create_episodic_memory"
+        ) as mock_create:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_create.return_value = expected_id
 
@@ -244,10 +272,15 @@ class TestEpisodicMemory:
             assert created_memory.expires_at is not None
 
     @pytest.mark.asyncio
-    async def test_get_agent_experiences_with_query(self, memory_service, sample_episodic_memory, sample_embedding):
+    async def test_get_agent_experiences_with_query(
+        self, memory_service, sample_episodic_memory, sample_embedding
+    ):
         """Retrieve agent experiences filtered by query."""
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.search_episodic_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.search_episodic_memories"
+        ) as mock_search:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_search.return_value = [sample_episodic_memory]
 
@@ -261,9 +294,13 @@ class TestEpisodicMemory:
             mock_search.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_agent_experiences_without_query(self, memory_service, sample_episodic_memory):
+    async def test_get_agent_experiences_without_query(
+        self, memory_service, sample_episodic_memory
+    ):
         """Retrieve agent experiences without query returns recent."""
-        with patch("app.services.memory_service.search_episodic_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.search_episodic_memories"
+        ) as mock_search:
             mock_search.return_value = [sample_episodic_memory]
 
             results = await memory_service.get_agent_experiences(
@@ -283,7 +320,9 @@ class TestEpisodicMemory:
     @pytest.mark.asyncio
     async def test_consolidate_experiences(self, memory_service):
         """Consolidation delegates to repository."""
-        with patch("app.services.memory_service.consolidate_episodic_memories") as mock_consolidate:
+        with patch(
+            "app.services.memory_service.consolidate_episodic_memories"
+        ) as mock_consolidate:
             mock_consolidate.return_value = 5
 
             count = await memory_service.consolidate_experiences("agent-001")
@@ -296,6 +335,7 @@ class TestEpisodicMemory:
 # PROCEDURAL MEMORY TESTS
 # =============================================================================
 
+
 class TestProceduralMemory:
     """Tests for procedural (role-based) operations."""
 
@@ -304,8 +344,11 @@ class TestProceduralMemory:
         """Successfully store a procedure."""
         expected_id = uuid4()
 
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.create_procedural_memory") as mock_create:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.create_procedural_memory"
+        ) as mock_create:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_create.return_value = expected_id
 
@@ -326,7 +369,9 @@ class TestProceduralMemory:
     @pytest.mark.asyncio
     async def test_get_role_procedures(self, memory_service, sample_procedural_memory):
         """Get procedures for a role."""
-        with patch("app.services.memory_service.search_procedural_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.search_procedural_memories"
+        ) as mock_search:
             mock_search.return_value = [sample_procedural_memory]
 
             procedures = await memory_service.get_role_procedures("data_analyst")
@@ -337,10 +382,15 @@ class TestProceduralMemory:
             mock_search.assert_awaited_once_with(role="data_analyst")
 
     @pytest.mark.asyncio
-    async def test_search_procedures_with_query(self, memory_service, sample_procedural_memory, sample_embedding):
+    async def test_search_procedures_with_query(
+        self, memory_service, sample_procedural_memory, sample_embedding
+    ):
         """Search procedures by semantic similarity."""
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.search_procedural_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.search_procedural_memories"
+        ) as mock_search:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_search.return_value = [sample_procedural_memory]
 
@@ -353,12 +403,18 @@ class TestProceduralMemory:
             mock_search.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_search_procedures_empty_query_with_role(self, memory_service, sample_procedural_memory):
+    async def test_search_procedures_empty_query_with_role(
+        self, memory_service, sample_procedural_memory
+    ):
         """Empty query with role falls back to get_role_procedures."""
-        with patch("app.services.memory_service.search_procedural_memories") as mock_search:
+        with patch(
+            "app.services.memory_service.search_procedural_memories"
+        ) as mock_search:
             mock_search.return_value = [sample_procedural_memory]
 
-            procedures = await memory_service.search_procedures(query="", role="data_analyst")
+            procedures = await memory_service.search_procedures(
+                query="", role="data_analyst"
+            )
 
             assert len(procedures) == 1
 
@@ -367,10 +423,14 @@ class TestProceduralMemory:
         """Update procedure success rate."""
         proc_id = uuid4()
 
-        with patch("app.services.memory_service.update_procedure_success_rate") as mock_update:
+        with patch(
+            "app.services.memory_service.update_procedure_success_rate"
+        ) as mock_update:
             mock_update.return_value = True
 
-            result = await memory_service.update_procedure_outcome(proc_id, success=True)
+            result = await memory_service.update_procedure_outcome(
+                proc_id, success=True
+            )
 
             assert result is True
             mock_update.assert_awaited_once_with(proc_id, True)
@@ -380,17 +440,25 @@ class TestProceduralMemory:
 # CROSS-TIER TESTS
 # =============================================================================
 
+
 class TestCrossTierOperations:
     """Tests for cross-tier memory retrieval."""
 
     @pytest.mark.asyncio
     async def test_get_relevant_context(
-        self, memory_service, sample_semantic_memory, sample_episodic_memory,
-        sample_procedural_memory, sample_embedding
+        self,
+        memory_service,
+        sample_semantic_memory,
+        sample_episodic_memory,
+        sample_procedural_memory,
+        sample_embedding,
     ):
         """Get relevant context from all tiers."""
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.get_relevant_context") as mock_ctx:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.get_relevant_context"
+        ) as mock_ctx:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_ctx.return_value = {
                 "semantic": [sample_semantic_memory],
@@ -436,6 +504,7 @@ class TestCrossTierOperations:
 # MEMORY MANAGEMENT TESTS
 # =============================================================================
 
+
 class TestMemoryManagement:
     """Tests for memory management operations."""
 
@@ -478,7 +547,9 @@ class TestMemoryManagement:
         with patch("app.services.memory_service.clear_agent_memories") as mock_clear:
             mock_clear.return_value = {"episodic": 10}
 
-            counts = await memory_service.clear_agent_memories("agent-001", tier="episodic")
+            counts = await memory_service.clear_agent_memories(
+                "agent-001", tier="episodic"
+            )
 
             assert counts["episodic"] == 10
             mock_clear.assert_awaited_once()
@@ -496,10 +567,15 @@ class TestMemoryManagement:
     @pytest.mark.asyncio
     async def test_bulk_import_mixed_types(self, memory_service, sample_embedding):
         """Bulk import handles mixed memory types."""
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.create_semantic_memory") as mock_sem, \
-             patch("app.services.memory_service.create_episodic_memory") as mock_epi, \
-             patch("app.services.memory_service.create_procedural_memory") as mock_proc:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.create_semantic_memory"
+        ) as mock_sem, patch(
+            "app.services.memory_service.create_episodic_memory"
+        ) as mock_epi, patch(
+            "app.services.memory_service.create_procedural_memory"
+        ) as mock_proc:
             mock_embed.generate_embedding = AsyncMock(return_value=sample_embedding)
             mock_sem.return_value = uuid4()
             mock_epi.return_value = uuid4()
@@ -507,9 +583,19 @@ class TestMemoryManagement:
 
             memories = [
                 {"type": "semantic", "content": "fact 1", "metadata": {}},
-                {"type": "episodic", "content": "exp 1", "agent_id": "a1", "metadata": {}},
-                {"type": "procedural", "content": "proc 1", "role": "r1",
-                 "procedure_name": "p1", "steps": ["s1"]},
+                {
+                    "type": "episodic",
+                    "content": "exp 1",
+                    "agent_id": "a1",
+                    "metadata": {},
+                },
+                {
+                    "type": "procedural",
+                    "content": "proc 1",
+                    "role": "r1",
+                    "procedure_name": "p1",
+                    "steps": ["s1"],
+                },
             ]
 
             counts = await memory_service.bulk_import_memories(memories)
@@ -539,6 +625,7 @@ class TestMemoryManagement:
 # HEALTH CHECK TESTS
 # =============================================================================
 
+
 class TestHealthCheck:
     """Tests for health check functionality."""
 
@@ -555,10 +642,15 @@ class TestHealthCheck:
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         mock_pool.acquire.return_value = mock_cm
 
-        with patch("app.services.memory_service.embedding_service") as mock_embed, \
-             patch("app.services.memory_service.get_db_pool", new_callable=AsyncMock) as mock_get_pool:
+        with patch(
+            "app.services.memory_service.embedding_service"
+        ) as mock_embed, patch(
+            "app.services.memory_service.get_db_pool", new_callable=AsyncMock
+        ) as mock_get_pool:
             mock_embed.health_check = AsyncMock(return_value=True)
-            mock_embed.get_model_info = AsyncMock(return_value={"model": "nomic-embed-text"})
+            mock_embed.get_model_info = AsyncMock(
+                return_value={"model": "nomic-embed-text"}
+            )
             mock_get_pool.return_value = mock_pool
 
             health = await memory_service.health_check()
@@ -573,8 +665,12 @@ class TestHealthCheck:
         service = MemoryService()  # Uninitialized
 
         with patch("app.services.memory_service.embedding_service") as mock_embed:
-            mock_embed.health_check = AsyncMock(side_effect=Exception("connection refused"))
-            mock_embed.get_model_info = AsyncMock(side_effect=Exception("connection refused"))
+            mock_embed.health_check = AsyncMock(
+                side_effect=Exception("connection refused")
+            )
+            mock_embed.get_model_info = AsyncMock(
+                side_effect=Exception("connection refused")
+            )
 
             health = await service.health_check()
 
@@ -585,6 +681,7 @@ class TestHealthCheck:
 # =============================================================================
 # REPOSITORY UNIT TESTS
 # =============================================================================
+
 
 class TestMemoryRepository:
     """Tests for repository-level functions."""

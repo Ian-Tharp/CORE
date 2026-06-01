@@ -33,13 +33,15 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_evaluation_tables() -> None:
     """Create evaluation tables if they don't exist."""
     pool = await get_db_pool()
 
     async with pool.acquire() as conn:
         # ── evaluations table ────────────────────────────────────────────
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS evaluations (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 task_id UUID NOT NULL,
@@ -97,7 +99,8 @@ async def ensure_evaluation_tables() -> None:
                 
                 CHECK (verdict IN ('approve', 'retry', 'refine', 'escalate'))
             )
-        """)
+        """
+        )
 
         # ── indexes ──────────────────────────────────────────────────────
         await conn.execute(
@@ -125,6 +128,7 @@ async def ensure_evaluation_tables() -> None:
 # =============================================================================
 # CRUD OPERATIONS
 # =============================================================================
+
 
 async def store_evaluation(result: EvaluationResult) -> UUID:
     """
@@ -177,13 +181,23 @@ async def store_evaluation(result: EvaluationResult) -> UUID:
             result.task_id,
             result.agent_id,
             # quality
-            qs.accuracy, qs.completeness, qs.relevance, qs.coherence, qs.overall,
+            qs.accuracy,
+            qs.completeness,
+            qs.relevance,
+            qs.coherence,
+            qs.overall,
             # verdict
-            v.verdict.value, v.reasoning, v.confidence,
+            v.verdict.value,
+            v.reasoning,
+            v.confidence,
             json.dumps(v.suggested_improvements),
             # plan
-            pc.total_steps, pc.completed_steps, pc.partial_steps,
-            pc.failed_steps, pc.skipped_steps, pc.completion_rate,
+            pc.total_steps,
+            pc.completed_steps,
+            pc.partial_steps,
+            pc.failed_steps,
+            pc.skipped_steps,
+            pc.completion_rate,
             pc.required_steps_met,
             json.dumps([se.model_dump() for se in pc.step_evaluations]),
             # feedback
@@ -211,7 +225,9 @@ async def store_evaluation(result: EvaluationResult) -> UUID:
             result.created_at,
         )
 
-        logger.info(f"Stored evaluation {eval_id} for task {result.task_id} (verdict={v.verdict.value})")
+        logger.info(
+            f"Stored evaluation {eval_id} for task {result.task_id} (verdict={v.verdict.value})"
+        )
         return eval_id
 
 
@@ -335,6 +351,7 @@ async def list_evaluations(
 # HUMAN FEEDBACK
 # =============================================================================
 
+
 async def record_human_feedback(
     evaluation_id: UUID,
     feedback: HumanFeedbackInput,
@@ -375,6 +392,7 @@ async def record_human_feedback(
 # =============================================================================
 # METRICS / AGGREGATION
 # =============================================================================
+
 
 async def get_evaluation_metrics(
     agent_id: Optional[UUID] = None,
@@ -458,8 +476,12 @@ async def get_evaluation_metrics(
             avg_relevance=float(row["avg_relevance"] or 0),
             avg_coherence=float(row["avg_coherence"] or 0),
             avg_plan_completion_rate=float(row["avg_completion_rate"] or 0),
-            human_agreement_rate=(human_agreed / human_total) if human_total > 0 else None,
-            avg_evaluation_duration_ms=float(row["avg_eval_dur"]) if row["avg_eval_dur"] else None,
+            human_agreement_rate=(
+                (human_agreed / human_total) if human_total > 0 else None
+            ),
+            avg_evaluation_duration_ms=(
+                float(row["avg_eval_dur"]) if row["avg_eval_dur"] else None
+            ),
             period_start=row["period_start"],
             period_end=row["period_end"],
         )
@@ -468,6 +490,7 @@ async def get_evaluation_metrics(
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def _row_to_evaluation(row) -> EvaluationResult:
     """Convert a database row into an EvaluationResult model."""
@@ -483,7 +506,11 @@ def _row_to_evaluation(row) -> EvaluationResult:
         verdict=Verdict(row["verdict"]),
         reasoning=row["verdict_reasoning"],
         confidence=row["verdict_confidence"],
-        suggested_improvements=json.loads(row["verdict_improvements"]) if row["verdict_improvements"] else [],
+        suggested_improvements=(
+            json.loads(row["verdict_improvements"])
+            if row["verdict_improvements"]
+            else []
+        ),
     )
 
     # Rebuild step evaluations
@@ -519,7 +546,9 @@ def _row_to_evaluation(row) -> EvaluationResult:
             max_retries=row["retry_max"] or 3,
             escalate=row["retry_escalate"] or False,
             reason=row["retry_reason"] or "",
-            adjustments=json.loads(row["retry_adjustments"]) if row["retry_adjustments"] else {},
+            adjustments=(
+                json.loads(row["retry_adjustments"]) if row["retry_adjustments"] else {}
+            ),
         )
 
     human_feedback = None
@@ -527,7 +556,11 @@ def _row_to_evaluation(row) -> EvaluationResult:
         human_feedback = HumanFeedbackInput(
             evaluation_id=row["id"],
             agree_with_verdict=row["human_agree"],
-            corrected_verdict=Verdict(row["human_corrected_verdict"]) if row["human_corrected_verdict"] else None,
+            corrected_verdict=(
+                Verdict(row["human_corrected_verdict"])
+                if row["human_corrected_verdict"]
+                else None
+            ),
             quality_override=row["human_quality_override"],
             feedback_text=row["human_feedback_text"],
             corrected_output=row["human_corrected_output"],
@@ -541,7 +574,11 @@ def _row_to_evaluation(row) -> EvaluationResult:
         verdict=verdict,
         plan_completion=plan_completion,
         feedback=row["feedback"],
-        suggested_improvements=json.loads(row["suggested_improvements"]) if row["suggested_improvements"] else [],
+        suggested_improvements=(
+            json.loads(row["suggested_improvements"])
+            if row["suggested_improvements"]
+            else []
+        ),
         retry_decision=retry_decision,
         human_feedback=human_feedback,
         model_used=row["model_used"],

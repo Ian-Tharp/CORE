@@ -32,6 +32,7 @@ from app.services.comprehension_service import ComprehensionService
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> ComprehensionService:
     svc = ComprehensionService()
     svc._initialized = True
@@ -80,6 +81,7 @@ def _make_capabilities(
 # _heuristic_intent_parse — keyword routing
 # ===========================================================================
 
+
 class TestHeuristicIntentParse:
     def test_creation_keywords_map_to_creation(self):
         """
@@ -91,9 +93,9 @@ class TestHeuristicIntentParse:
             intent, _, _, _, _ = svc._heuristic_intent_parse(
                 _make_input(f"Please {word} a report")
             )
-            assert intent.action_type == ActionType.CREATION, (
-                f"'{word}' should map to CREATION, got {intent.action_type}"
-            )
+            assert (
+                intent.action_type == ActionType.CREATION
+            ), f"'{word}' should map to CREATION, got {intent.action_type}"
 
     def test_analysis_keywords_map_to_analysis(self):
         """
@@ -105,9 +107,9 @@ class TestHeuristicIntentParse:
             intent, _, _, _, _ = svc._heuristic_intent_parse(
                 _make_input(f"Please {word} the situation")
             )
-            assert intent.action_type == ActionType.ANALYSIS, (
-                f"'{word}' should map to ANALYSIS, got {intent.action_type}"
-            )
+            assert (
+                intent.action_type == ActionType.ANALYSIS
+            ), f"'{word}' should map to ANALYSIS, got {intent.action_type}"
 
     def test_question_words_map_to_query(self):
         """
@@ -115,11 +117,16 @@ class TestHeuristicIntentParse:
         Remove branch → test fails.
         """
         svc = _make_service()
-        for phrase in ["what is this?", "who did it", "how does it work", "why did this happen"]:
+        for phrase in [
+            "what is this?",
+            "who did it",
+            "how does it work",
+            "why did this happen",
+        ]:
             intent, _, _, _, _ = svc._heuristic_intent_parse(_make_input(phrase))
-            assert intent.action_type == ActionType.QUERY, (
-                f"'{phrase}' should map to QUERY, got {intent.action_type}"
-            )
+            assert (
+                intent.action_type == ActionType.QUERY
+            ), f"'{phrase}' should map to QUERY, got {intent.action_type}"
 
     def test_command_keywords_map_to_command(self):
         """SENTINEL — "run", "execute", "deploy" must map to COMMAND."""
@@ -155,13 +162,13 @@ class TestHeuristicIntentParse:
             intent, _, _, priority, _ = svc._heuristic_intent_parse(
                 _make_input(f"This is {word}: fix the bug")
             )
-            assert intent.urgency == UrgencyLevel.CRITICAL, (
-                f"'{word}' should set CRITICAL urgency"
-            )
+            assert (
+                intent.urgency == UrgencyLevel.CRITICAL
+            ), f"'{word}' should set CRITICAL urgency"
             assert priority == 9, f"CRITICAL should yield priority 9, got {priority}"
 
     def test_low_priority_keywords_set_low_urgency(self):
-        """"no rush", "whenever" must set LOW urgency."""
+        """ "no rush", "whenever" must set LOW urgency."""
         svc = _make_service()
         intent, _, _, priority, _ = svc._heuristic_intent_parse(
             _make_input("no rush, finish this whenever you can")
@@ -201,6 +208,7 @@ class TestHeuristicIntentParse:
 # ===========================================================================
 # _determine_handling_mode — routing decision
 # ===========================================================================
+
 
 class TestDetermineHandlingMode:
     def test_no_agents_conversation_still_single(self):
@@ -290,6 +298,7 @@ class TestDetermineHandlingMode:
 # _adjust_priority — urgency-based priority
 # ===========================================================================
 
+
 class TestAdjustPriority:
     def test_critical_urgency_adds_3(self):
         """
@@ -359,6 +368,7 @@ class TestAdjustPriority:
 # _score_confidence — weighted average
 # ===========================================================================
 
+
 class TestScoreConfidence:
     def test_high_intent_confidence_produces_high_score(self):
         """
@@ -369,7 +379,7 @@ class TestScoreConfidence:
         intent = _make_intent(confidence=1.0)
         result = svc._score_confidence(
             intent,
-            ContextMatch(),           # no context → 0.3 base
+            ContextMatch(),  # no context → 0.3 base
             _make_capabilities(has_agents=False),  # no agents → 0.3 base
         )
         # intent=1.0*0.5 + context=0.3*0.25 + cap=0.3*0.25 = 0.5 + 0.075 + 0.075 = 0.65
@@ -412,8 +422,12 @@ class TestScoreConfidence:
         no_context = ContextMatch()
         with_context = ContextMatch(has_relevant_context=True, best_match_score=0.9)
 
-        score_no = svc._score_confidence(intent, no_context, _make_capabilities(has_agents=False))
-        score_yes = svc._score_confidence(intent, with_context, _make_capabilities(has_agents=False))
+        score_no = svc._score_confidence(
+            intent, no_context, _make_capabilities(has_agents=False)
+        )
+        score_yes = svc._score_confidence(
+            intent, with_context, _make_capabilities(has_agents=False)
+        )
 
         assert score_yes > score_no
 
@@ -431,6 +445,7 @@ class TestScoreConfidence:
 # comprehend() — end-to-end with mocked I/O
 # ===========================================================================
 
+
 class TestComprehendEndToEnd:
     @pytest.mark.asyncio
     async def test_comprehend_returns_completed_status(self):
@@ -440,15 +455,21 @@ class TestComprehendEndToEnd:
         """
         svc = _make_service()
 
-        with patch.object(svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))), \
-             patch.object(svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())), \
-             patch.object(svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())), \
-             patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
+        with patch.object(
+            svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))
+        ), patch.object(
+            svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())
+        ), patch.object(
+            svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())
+        ), patch(
+            "app.services.comprehension_service.comprehension_repository"
+        ) as mock_repo:
             mock_repo.store_comprehension_result = AsyncMock(return_value=None)
 
             result = await svc.comprehend(_make_input("create a report"))
 
         from app.models.comprehension_models import ComprehensionStatus
+
         assert result.status == ComprehensionStatus.COMPLETED
 
     @pytest.mark.asyncio
@@ -459,10 +480,15 @@ class TestComprehendEndToEnd:
         """
         svc = _make_service()
 
-        with patch.object(svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))), \
-             patch.object(svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())), \
-             patch.object(svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())), \
-             patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
+        with patch.object(
+            svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))
+        ), patch.object(
+            svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())
+        ), patch.object(
+            svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())
+        ), patch(
+            "app.services.comprehension_service.comprehension_repository"
+        ) as mock_repo:
             mock_repo.store_comprehension_result = AsyncMock(return_value=None)
 
             result = await svc.comprehend(_make_input("analyze the database"))
@@ -478,10 +504,15 @@ class TestComprehendEndToEnd:
         """
         svc = _make_service()
 
-        with patch.object(svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))), \
-             patch.object(svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())), \
-             patch.object(svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())), \
-             patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
+        with patch.object(
+            svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))
+        ), patch.object(
+            svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())
+        ), patch.object(
+            svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())
+        ), patch(
+            "app.services.comprehension_service.comprehension_repository"
+        ) as mock_repo:
             mock_repo.store_comprehension_result = AsyncMock(return_value=None)
 
             await svc.comprehend(_make_input("generate a plan"))
@@ -497,10 +528,13 @@ class TestComprehendEndToEnd:
         """
         svc = _make_service()
 
-        with patch.object(svc, "_parse_intent", new=AsyncMock(side_effect=RuntimeError("boom"))):
+        with patch.object(
+            svc, "_parse_intent", new=AsyncMock(side_effect=RuntimeError("boom"))
+        ):
             result = await svc.comprehend(_make_input("something"))
 
         from app.models.comprehension_models import ComprehensionStatus
+
         assert result.status == ComprehensionStatus.FAILED
         assert result.confidence == 0.0
 
@@ -509,10 +543,15 @@ class TestComprehendEndToEnd:
         """processing_time_ms must be set and non-negative."""
         svc = _make_service()
 
-        with patch.object(svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))), \
-             patch.object(svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())), \
-             patch.object(svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())), \
-             patch("app.services.comprehension_service.comprehension_repository") as mock_repo:
+        with patch.object(
+            svc, "_call_llm_for_intent", new=AsyncMock(side_effect=Exception("no LLM"))
+        ), patch.object(
+            svc, "_search_memory_context", new=AsyncMock(return_value=ContextMatch())
+        ), patch.object(
+            svc, "_match_capabilities", new=AsyncMock(return_value=_make_capabilities())
+        ), patch(
+            "app.services.comprehension_service.comprehension_repository"
+        ) as mock_repo:
             mock_repo.store_comprehension_result = AsyncMock(return_value=None)
 
             result = await svc.comprehend(_make_input("run the tests"))

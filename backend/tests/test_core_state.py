@@ -31,6 +31,7 @@ from app.models.core_state import (
 # Helpers
 # ===========================================================================
 
+
 def _make_step(name: str = "SENTINEL_STEP", **overrides) -> PlanStep:
     base = {"name": name, "description": f"{name} description"}
     base.update(overrides)
@@ -51,6 +52,7 @@ def _make_state(**overrides) -> COREState:
 # ===========================================================================
 # UserIntent — Literal and confidence bounds
 # ===========================================================================
+
 
 class TestUserIntent:
     def test_valid_intent_types_accepted(self):
@@ -98,6 +100,7 @@ class TestUserIntent:
 # PlanStep — status Literal and defaults
 # ===========================================================================
 
+
 class TestPlanStep:
     def test_valid_statuses_accepted(self):
         """All five valid step statuses must be accepted."""
@@ -140,6 +143,7 @@ class TestPlanStep:
 # ===========================================================================
 # EvaluationResult — Literal and bounds
 # ===========================================================================
+
 
 class TestEvaluationResult:
     def _min_eval(self, **overrides) -> dict:
@@ -198,6 +202,7 @@ class TestEvaluationResult:
 # ConversationMessage — role Literal
 # ===========================================================================
 
+
 class TestConversationMessage:
     def test_valid_roles(self):
         """All three valid roles must be accepted."""
@@ -217,6 +222,7 @@ class TestConversationMessage:
 # ===========================================================================
 # COREState — auto-fields and defaults
 # ===========================================================================
+
 
 class TestCOREStateDefaults:
     def test_run_id_auto_generated(self):
@@ -270,6 +276,7 @@ class TestCOREStateDefaults:
 # COREState.add_execution_node
 # ===========================================================================
 
+
 class TestAddExecutionNode:
     def test_appends_to_execution_history(self):
         """
@@ -294,7 +301,11 @@ class TestAddExecutionNode:
         state = _make_state()
         for node in ("comprehension", "orchestration", "reasoning"):
             state.add_execution_node(node)
-        assert state.execution_history == ["comprehension", "orchestration", "reasoning"]
+        assert state.execution_history == [
+            "comprehension",
+            "orchestration",
+            "reasoning",
+        ]
 
     def test_updates_updated_at(self):
         """updated_at must change after add_execution_node."""
@@ -308,6 +319,7 @@ class TestAddExecutionNode:
 # ===========================================================================
 # COREState.add_error / add_warning
 # ===========================================================================
+
 
 class TestAddErrorAndWarning:
     def test_add_error_appends(self):
@@ -332,6 +344,7 @@ class TestAddErrorAndWarning:
 # ===========================================================================
 # COREState.get_step
 # ===========================================================================
+
 
 class TestGetStep:
     def test_returns_none_without_plan(self):
@@ -368,6 +381,7 @@ class TestGetStep:
 # ===========================================================================
 # COREState.update_step_status
 # ===========================================================================
+
 
 class TestUpdateStepStatus:
     def test_updates_status_field(self):
@@ -436,6 +450,7 @@ class TestUpdateStepStatus:
 # ===========================================================================
 # COREState.is_complete
 # ===========================================================================
+
 
 class TestIsComplete:
     def test_false_at_start(self):

@@ -50,10 +50,10 @@ router = APIRouter(prefix="/health", tags=["health"])
 async def health_check() -> Dict[str, Any]:
     """
     Quick health check endpoint.
-    
+
     Returns 200 OK if the service is running.
     Used for basic load balancer health checks.
-    
+
     Response:
         - status: "healthy"
         - service: "core-backend"
@@ -69,10 +69,10 @@ async def deep_health_check(
 ) -> Dict[str, Any]:
     """
     Deep health check with comprehensive service status.
-    
+
     Checks all dependent services and returns aggregate status.
     Returns 200 if system is healthy/degraded, 503 if unhealthy.
-    
+
     Services Checked:
         - database: PostgreSQL with pool stats
         - redis: Cache connectivity and memory
@@ -83,7 +83,7 @@ async def deep_health_check(
         - bus: Inter-agent message queue depths, subscriptions, agents
         - task_queue: Task routing queue depth, success rates
         - system: Host memory, CPU, process resource usage
-    
+
     Response:
         - status: "healthy" | "degraded" | "unhealthy"
         - service: "core-backend"
@@ -94,14 +94,13 @@ async def deep_health_check(
         - summary: {total_services, healthy, degraded, unhealthy, unknown}
     """
     result = await get_comprehensive_health()
-    
+
     # Return 503 if unhealthy
     if result["status"] == HealthStatus.UNHEALTHY.value:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=result
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=result
         )
-    
+
     return result
 
 
@@ -109,22 +108,22 @@ async def deep_health_check(
 async def readiness_probe() -> Dict[str, str]:
     """
     Kubernetes readiness probe.
-    
+
     Returns 200 if service is ready to receive traffic.
     Checks critical dependency (database) before accepting traffic.
     """
     db_status = await check_database()
-    
+
     if db_status.status != HealthStatus.HEALTHY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
                 "status": "not_ready",
                 "reason": "database unavailable",
-                "details": db_status.message
-            }
+                "details": db_status.message,
+            },
         )
-    
+
     return {"status": "ready"}
 
 
@@ -132,7 +131,7 @@ async def readiness_probe() -> Dict[str, str]:
 async def liveness_probe() -> Dict[str, str]:
     """
     Kubernetes liveness probe.
-    
+
     Returns 200 if service is alive.
     Should only fail if service needs restart (memory leak, deadlock, etc).
     """
@@ -143,10 +142,10 @@ async def liveness_probe() -> Dict[str, str]:
 async def metrics() -> Dict[str, Any]:
     """
     Basic metrics endpoint.
-    
+
     Returns operational metrics for monitoring.
     For Prometheus integration, consider prometheus-fastapi-instrumentator.
-    
+
     Response:
         - timestamp: ISO timestamp
         - uptime: {seconds, formatted}
@@ -156,26 +155,23 @@ async def metrics() -> Dict[str, Any]:
     """
     import psutil
     import os
-    
+
     process = psutil.Process(os.getpid())
     memory = process.memory_info()
-    
+
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime": {
             "seconds": round(get_uptime_seconds(), 2),
-            "formatted": get_uptime_formatted()
+            "formatted": get_uptime_formatted(),
         },
         "memory": {
             "rss_mb": round(memory.rss / 1024 / 1024, 2),
             "vms_mb": round(memory.vms / 1024 / 1024, 2),
-            "percent": round(process.memory_percent(), 2)
+            "percent": round(process.memory_percent(), 2),
         },
-        "cpu": {
-            "percent": process.cpu_percent(),
-            "num_threads": process.num_threads()
-        },
-        "connections": len(process.connections())
+        "cpu": {"percent": process.cpu_percent(), "num_threads": process.num_threads()},
+        "connections": len(process.connections()),
     }
 
 
@@ -183,7 +179,9 @@ async def metrics() -> Dict[str, Any]:
 async def health_history(
     limit: int = Query(50, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
-    status_filter: OptionalType[str] = Query(None, alias="status", description="Filter by status"),
+    status_filter: OptionalType[str] = Query(
+        None, alias="status", description="Filter by status"
+    ),
     since: OptionalType[str] = Query(None, description="ISO timestamp lower bound"),
     until: OptionalType[str] = Query(None, description="ISO timestamp upper bound"),
 ) -> Dict[str, Any]:

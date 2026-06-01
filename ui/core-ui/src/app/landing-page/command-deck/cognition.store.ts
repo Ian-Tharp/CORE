@@ -350,15 +350,15 @@ export function reduceCouncilEvent(
 
   const base: CouncilSessionState = isNewSession
     ? {
-        sessionId: ev.council_session_id,
-        phase: ev.event,
-        round: ev.round_number ?? 0,
-        perspectives: [],
-        votes: [],
-        synthesis: null,
-        complete: false,
-        ts: ev.timestamp
-      }
+      sessionId: ev.council_session_id,
+      phase: ev.event,
+      round: ev.round_number ?? 0,
+      perspectives: [],
+      votes: [],
+      synthesis: null,
+      complete: false,
+      ts: ev.timestamp
+    }
     : { ...prev };
 
   const perspectives = base.perspectives.slice();

@@ -41,7 +41,7 @@ from app.dependencies import get_db_pool
 from app.models.agent_models import (
     AgentConfig,
     AgentListFilter,
-    agent_config_from_db_row
+    agent_config_from_db_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 # READ OPERATIONS (Queries)
 # =============================================================================
 
+
 async def list_agents(
     agent_type: Optional[str] = None,
     is_active: Optional[bool] = None,
@@ -58,7 +59,7 @@ async def list_agents(
     search_query: Optional[str] = None,
     tags: Optional[List[str]] = None,
     page: int = 1,
-    page_size: int = 50
+    page_size: int = 50,
 ) -> List[AgentConfig]:
     """
     List agents with optional filtering and pagination.
@@ -138,13 +139,15 @@ async def list_agents(
         search_pattern = f"%{search_query}%"
         params.append(search_pattern)
         param_idx = len(params)
-        query_parts.append(f"""
+        query_parts.append(
+            f"""
             AND (
                 agent_name ILIKE ${param_idx}
                 OR description ILIKE ${param_idx}
                 OR array_to_string(interests, ' ') ILIKE ${param_idx}
             )
-        """)
+        """
+        )
 
     if tags is not None and len(tags) > 0:
         # Tag filtering: agent must have ALL specified tags
@@ -170,7 +173,9 @@ async def list_agents(
             # Convert database rows to AgentConfig models
             agents = [agent_config_from_db_row(dict(row)) for row in rows]
 
-            logger.debug(f"Listed {len(agents)} agents (page {page}, filters: {agent_type}, {is_active})")
+            logger.debug(
+                f"Listed {len(agents)} agents (page {page}, filters: {agent_type}, {is_active})"
+            )
 
             return agents
 
@@ -294,6 +299,7 @@ async def get_agents_by_ids(agent_ids: List[str]) -> List[AgentConfig]:
 # WRITE OPERATIONS (Commands)
 # =============================================================================
 
+
 async def create_agent(agent: AgentConfig) -> str:
     """
     Create a new agent in the library.
@@ -341,14 +347,36 @@ async def create_agent(agent: AgentConfig) -> str:
 
     try:
         import json
-        
+
         # Serialize complex types to JSON strings for JSONB columns
-        personality_json = json.dumps(agent.personality_traits) if agent.personality_traits else '{}'
-        capabilities_json = json.dumps([c.model_dump() if hasattr(c, 'model_dump') else c for c in agent.capabilities]) if agent.capabilities else '[]'
+        personality_json = (
+            json.dumps(agent.personality_traits) if agent.personality_traits else "{}"
+        )
+        capabilities_json = (
+            json.dumps(
+                [
+                    c.model_dump() if hasattr(c, "model_dump") else c
+                    for c in agent.capabilities
+                ]
+            )
+            if agent.capabilities
+            else "[]"
+        )
         interests_list = agent.interests if agent.interests else []
-        mcp_servers_json = json.dumps([s.model_dump() if hasattr(s, 'model_dump') else s for s in agent.mcp_servers]) if agent.mcp_servers else '[]'
-        custom_tools_json = json.dumps(agent.custom_tools) if agent.custom_tools else '[]'
-        
+        mcp_servers_json = (
+            json.dumps(
+                [
+                    s.model_dump() if hasattr(s, "model_dump") else s
+                    for s in agent.mcp_servers
+                ]
+            )
+            if agent.mcp_servers
+            else "[]"
+        )
+        custom_tools_json = (
+            json.dumps(agent.custom_tools) if agent.custom_tools else "[]"
+        )
+
         async with pool.acquire() as conn:
             result = await conn.fetchval(
                 query,
@@ -368,7 +396,7 @@ async def create_agent(agent: AgentConfig) -> str:
                 agent.is_active,
                 agent.current_status,
                 agent.version,
-                agent.author
+                agent.author,
             )
 
             logger.info(f"Created agent: {agent.agent_name} ({result})")
@@ -517,6 +545,7 @@ async def delete_agent(agent_id: str) -> None:
 # STATUS OPERATIONS (Quick updates for common operations)
 # =============================================================================
 
+
 async def set_agent_status(agent_id: str, status: str) -> None:
     """
     Quick helper to update just the agent's status.
@@ -565,9 +594,9 @@ async def set_agent_active(agent_id: str, is_active: bool) -> None:
 # UTILITY OPERATIONS
 # =============================================================================
 
+
 async def count_agents(
-    agent_type: Optional[str] = None,
-    is_active: Optional[bool] = None
+    agent_type: Optional[str] = None, is_active: Optional[bool] = None
 ) -> int:
     """
     Count agents matching filters.
@@ -646,9 +675,9 @@ async def agent_exists(agent_id: str) -> bool:
 # SEARCH & DISCOVERY OPERATIONS
 # =============================================================================
 
+
 async def get_all_tags(
-    agent_type: Optional[str] = None,
-    is_active: Optional[bool] = None
+    agent_type: Optional[str] = None, is_active: Optional[bool] = None
 ) -> List[Dict[str, Any]]:
     """
     Get all unique tags (interests) with their usage counts.
@@ -715,7 +744,7 @@ async def search_agents_fulltext(
     is_active: Optional[bool] = None,
     tags: Optional[List[str]] = None,
     page: int = 1,
-    page_size: int = 50
+    page_size: int = 50,
 ) -> List[AgentConfig]:
     """
     Full-text search across agent fields with relevance ranking.
@@ -802,7 +831,9 @@ async def search_agents_fulltext(
                 row_dict.pop("relevance", None)
                 agents.append(agent_config_from_db_row(row_dict))
 
-            logger.debug(f"Full-text search '{query_text}' returned {len(agents)} results")
+            logger.debug(
+                f"Full-text search '{query_text}' returned {len(agents)} results"
+            )
 
             return agents
 

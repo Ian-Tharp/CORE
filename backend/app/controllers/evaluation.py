@@ -36,8 +36,10 @@ router = APIRouter(prefix="/evaluation", tags=["evaluation"])
 # REQUEST / RESPONSE MODELS
 # =============================================================================
 
+
 class EvaluationResponse(BaseModel):
     """Envelope for a single evaluation result."""
+
     evaluation: EvaluationResult
 
     model_config = ConfigDict(
@@ -50,6 +52,7 @@ class EvaluationResponse(BaseModel):
 
 class EvaluationListResponse(BaseModel):
     """Paginated list of evaluations."""
+
     evaluations: List[EvaluationResult]
     total_count: int
     page: int
@@ -65,11 +68,13 @@ class EvaluationListResponse(BaseModel):
 
 class StepEvaluationResponse(BaseModel):
     """Response for a single step evaluation."""
+
     step_evaluation: StepEvaluation
 
 
 class FeedbackResponse(BaseModel):
     """Response after recording human feedback."""
+
     success: bool
     message: str
 
@@ -78,8 +83,13 @@ class FeedbackResponse(BaseModel):
 # EVALUATION ENDPOINTS
 # =============================================================================
 
-@router.post("/evaluate", status_code=status.HTTP_200_OK, response_model=EvaluationResponse)
-async def evaluate_task_output(request: EvaluationInput, api_key: str = Depends(require_api_key)) -> EvaluationResponse:
+
+@router.post(
+    "/evaluate", status_code=status.HTTP_200_OK, response_model=EvaluationResponse
+)
+async def evaluate_task_output(
+    request: EvaluationInput, api_key: str = Depends(require_api_key)
+) -> EvaluationResponse:
     """
     Evaluate a task's output against the original intent.
 
@@ -98,8 +108,14 @@ async def evaluate_task_output(request: EvaluationInput, api_key: str = Depends(
         )
 
 
-@router.post("/evaluate-step", status_code=status.HTTP_200_OK, response_model=StepEvaluationResponse)
-async def evaluate_single_step(request: EvaluateStepInput, api_key: str = Depends(require_api_key)) -> StepEvaluationResponse:
+@router.post(
+    "/evaluate-step",
+    status_code=status.HTTP_200_OK,
+    response_model=StepEvaluationResponse,
+)
+async def evaluate_single_step(
+    request: EvaluateStepInput, api_key: str = Depends(require_api_key)
+) -> StepEvaluationResponse:
     """Evaluate a single plan step."""
     try:
         step_eval = await evaluation_service.evaluate_step(request)
@@ -117,8 +133,11 @@ async def evaluate_single_step(request: EvaluateStepInput, api_key: str = Depend
 # RESULT RETRIEVAL
 # =============================================================================
 
+
 @router.get("/results/{task_id}", status_code=status.HTTP_200_OK)
-async def get_evaluation_results(task_id: UUID, api_key: str = Depends(require_api_key)) -> List[EvaluationResult]:
+async def get_evaluation_results(
+    task_id: UUID, api_key: str = Depends(require_api_key)
+) -> List[EvaluationResult]:
     """Get all evaluations for a given task, newest first."""
     try:
         results = await evaluation_service.get_evaluations_for_task(task_id)
@@ -143,7 +162,10 @@ async def get_evaluation_results(task_id: UUID, api_key: str = Depends(require_a
 # METRICS
 # =============================================================================
 
-@router.get("/metrics", status_code=status.HTTP_200_OK, response_model=EvaluationMetrics)
+
+@router.get(
+    "/metrics", status_code=status.HTTP_200_OK, response_model=EvaluationMetrics
+)
 async def get_metrics(
     agent_id: Optional[UUID] = Query(None, description="Filter by agent"),
     created_after: Optional[datetime] = Query(None, description="Start of period"),
@@ -170,8 +192,13 @@ async def get_metrics(
 # HUMAN FEEDBACK
 # =============================================================================
 
-@router.post("/feedback", status_code=status.HTTP_200_OK, response_model=FeedbackResponse)
-async def submit_human_feedback(request: HumanFeedbackInput, api_key: str = Depends(require_api_key)) -> FeedbackResponse:
+
+@router.post(
+    "/feedback", status_code=status.HTTP_200_OK, response_model=FeedbackResponse
+)
+async def submit_human_feedback(
+    request: HumanFeedbackInput, api_key: str = Depends(require_api_key)
+) -> FeedbackResponse:
     """Submit human feedback on an existing evaluation."""
     try:
         success = await evaluation_service.record_human_feedback(
@@ -199,13 +226,20 @@ async def submit_human_feedback(request: HumanFeedbackInput, api_key: str = Depe
 # HISTORY
 # =============================================================================
 
-@router.get("/history", status_code=status.HTTP_200_OK, response_model=EvaluationListResponse)
+
+@router.get(
+    "/history", status_code=status.HTTP_200_OK, response_model=EvaluationListResponse
+)
 async def get_evaluation_history(
     task_id: Optional[UUID] = Query(None, description="Filter by task"),
     agent_id: Optional[UUID] = Query(None, description="Filter by agent"),
     verdict: Optional[Verdict] = Query(None, description="Filter by verdict"),
-    min_quality: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum quality score"),
-    max_quality: Optional[float] = Query(None, ge=0.0, le=1.0, description="Maximum quality score"),
+    min_quality: Optional[float] = Query(
+        None, ge=0.0, le=1.0, description="Minimum quality score"
+    ),
+    max_quality: Optional[float] = Query(
+        None, ge=0.0, le=1.0, description="Maximum quality score"
+    ),
     created_after: Optional[datetime] = Query(None, description="Created after"),
     created_before: Optional[datetime] = Query(None, description="Created before"),
     has_human_feedback: Optional[bool] = Query(None, description="Has human feedback"),

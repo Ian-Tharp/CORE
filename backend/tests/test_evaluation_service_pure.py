@@ -42,6 +42,7 @@ from app.services.evaluation_service import (
 # Helpers
 # ===========================================================================
 
+
 def _step(idx: int, required: bool = True, description: str = "step") -> PlanStep:
     return PlanStep(step_index=idx, description=description, required=required)
 
@@ -77,6 +78,7 @@ def _verdict(v: Verdict, improvements: list | None = None) -> EvaluationVerdict:
 # ===========================================================================
 # _heuristic_accuracy
 # ===========================================================================
+
 
 class TestHeuristicAccuracy:
     def test_empty_output_returns_zero(self):
@@ -125,6 +127,7 @@ class TestHeuristicAccuracy:
 # _heuristic_completeness
 # ===========================================================================
 
+
 class TestHeuristicCompleteness:
     def test_no_plan_returns_0_5(self):
         """No plan steps → vacuously 0.5 (can't judge completeness)."""
@@ -166,6 +169,7 @@ class TestHeuristicCompleteness:
 # ===========================================================================
 # _heuristic_relevance
 # ===========================================================================
+
 
 class TestHeuristicRelevance:
     def test_empty_intent_returns_zero(self):
@@ -210,6 +214,7 @@ class TestHeuristicRelevance:
 # _heuristic_coherence
 # ===========================================================================
 
+
 class TestHeuristicCoherence:
     def test_empty_output_returns_zero(self):
         """
@@ -242,8 +247,12 @@ class TestHeuristicCoherence:
         SENTINEL — output starting with '-' must get bullet bonus.
         Remove bullet detection → lists treated same as prose → test fails.
         """
-        plain = _heuristic_coherence("just a simple response with more than ten words here to pass threshold")
-        bulleted = _heuristic_coherence("- First point here with enough words to reach threshold count for test.")
+        plain = _heuristic_coherence(
+            "just a simple response with more than ten words here to pass threshold"
+        )
+        bulleted = _heuristic_coherence(
+            "- First point here with enough words to reach threshold count for test."
+        )
         assert bulleted >= plain
 
     def test_long_output_boosts_score(self):
@@ -263,6 +272,7 @@ class TestHeuristicCoherence:
 # ===========================================================================
 # _evaluate_step_quality
 # ===========================================================================
+
 
 class TestEvaluateStepQuality:
     def test_no_result_returns_zero(self):
@@ -294,20 +304,27 @@ class TestEvaluateStepQuality:
 
     def test_skipped_required_gives_0(self):
         """Required step that was skipped must score 0.0."""
-        assert _evaluate_step_quality(
-            _step(0, required=True), _result(0, StepStatus.SKIPPED)
-        ) == 0.0
+        assert (
+            _evaluate_step_quality(
+                _step(0, required=True), _result(0, StepStatus.SKIPPED)
+            )
+            == 0.0
+        )
 
     def test_skipped_optional_gives_0_3(self):
         """Optional step that was skipped must score 0.3 (acceptable)."""
-        assert _evaluate_step_quality(
-            _step(0, required=False), _result(0, StepStatus.SKIPPED)
-        ) == 0.3
+        assert (
+            _evaluate_step_quality(
+                _step(0, required=False), _result(0, StepStatus.SKIPPED)
+            )
+            == 0.3
+        )
 
 
 # ===========================================================================
 # _check_plan_completion — required_steps_met
 # ===========================================================================
+
 
 class TestCheckPlanCompletion:
     def test_empty_plan_is_complete(self):
@@ -368,15 +385,22 @@ class TestCheckPlanCompletion:
 # _determine_verdict
 # ===========================================================================
 
+
 class TestDetermineVerdict:
     def _plan_met(self) -> PlanCompletionStatus:
         return PlanCompletionStatus(
-            total_steps=1, completed_steps=1, completion_rate=1.0, required_steps_met=True
+            total_steps=1,
+            completed_steps=1,
+            completion_rate=1.0,
+            required_steps_met=True,
         )
 
     def _plan_unmet(self) -> PlanCompletionStatus:
         return PlanCompletionStatus(
-            total_steps=1, completed_steps=0, completion_rate=0.0, required_steps_met=False
+            total_steps=1,
+            completed_steps=0,
+            completion_rate=0.0,
+            required_steps_met=False,
         )
 
     def test_high_quality_all_steps_met_gives_approve(self):
@@ -419,7 +443,13 @@ class TestDetermineVerdict:
     def test_low_dimension_scores_generate_improvements(self):
         """Scores below 0.6 must generate improvement suggestions."""
         verdict = _determine_verdict(
-            _quality(accuracy=0.3, completeness=0.3, relevance=0.3, coherence=0.3, overall=0.3),
+            _quality(
+                accuracy=0.3,
+                completeness=0.3,
+                relevance=0.3,
+                coherence=0.3,
+                overall=0.3,
+            ),
             self._plan_met(),
             0,
             3,
@@ -430,6 +460,7 @@ class TestDetermineVerdict:
 # ===========================================================================
 # _build_retry_decision
 # ===========================================================================
+
 
 class TestBuildRetryDecision:
     def test_approve_verdict_no_retry(self):
@@ -487,13 +518,16 @@ class TestBuildRetryDecision:
         Remove accuracy focus → retry has no targeted improvement → test fails.
         """
         low_accuracy_quality = _quality(accuracy=0.2, overall=0.5)
-        decision = _build_retry_decision(_verdict(Verdict.RETRY), low_accuracy_quality, 0, 3)
+        decision = _build_retry_decision(
+            _verdict(Verdict.RETRY), low_accuracy_quality, 0, 3
+        )
         assert decision.adjustments.get("focus") == "accuracy"
 
 
 # ===========================================================================
 # QualityScore.compute_overall — weighted average
 # ===========================================================================
+
 
 class TestQualityScoreComputeOverall:
     def test_all_ones_gives_1(self):
@@ -523,6 +557,10 @@ class TestQualityScoreComputeOverall:
         SENTINEL — accuracy has highest weight (0.35), so it must influence
         overall more than coherence (0.15).
         """
-        high_acc = QualityScore(accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0)
-        high_coh = QualityScore(accuracy=0.0, completeness=0.0, relevance=0.0, coherence=1.0)
+        high_acc = QualityScore(
+            accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0
+        )
+        high_coh = QualityScore(
+            accuracy=0.0, completeness=0.0, relevance=0.0, coherence=1.0
+        )
         assert high_acc.compute_overall() > high_coh.compute_overall()

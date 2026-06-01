@@ -35,6 +35,7 @@ from uuid import uuid4
 # QualityScore — bounds
 # ===========================================================================
 
+
 class TestQualityScoreBounds:
     def test_accuracy_above_1_rejected(self):
         """
@@ -92,6 +93,7 @@ class TestQualityScoreBounds:
 # QualityScore.compute_overall — weighted math
 # ===========================================================================
 
+
 class TestQualityScoreComputeOverall:
     def test_default_weights_formula(self):
         """
@@ -129,13 +131,27 @@ class TestQualityScoreComputeOverall:
         """
         qs = QualityScore(accuracy=1.0, completeness=0.0, relevance=0.0, coherence=0.0)
         # Give accuracy all the weight
-        score = qs.compute_overall(weights={"accuracy": 1.0, "completeness": 0.0, "relevance": 0.0, "coherence": 0.0})
+        score = qs.compute_overall(
+            weights={
+                "accuracy": 1.0,
+                "completeness": 0.0,
+                "relevance": 0.0,
+                "coherence": 0.0,
+            }
+        )
         assert score == pytest.approx(1.0)
 
     def test_zero_total_weight_returns_zero(self):
         """All-zero custom weights must return 0.0 without dividing by zero."""
         qs = QualityScore(accuracy=1.0)
-        score = qs.compute_overall(weights={"accuracy": 0.0, "completeness": 0.0, "relevance": 0.0, "coherence": 0.0})
+        score = qs.compute_overall(
+            weights={
+                "accuracy": 0.0,
+                "completeness": 0.0,
+                "relevance": 0.0,
+                "coherence": 0.0,
+            }
+        )
         assert score == 0.0
 
     def test_compute_overall_updates_overall_field(self):
@@ -149,6 +165,7 @@ class TestQualityScoreComputeOverall:
 # ===========================================================================
 # EvaluationThresholds — constant values
 # ===========================================================================
+
 
 class TestEvaluationThresholds:
     def test_approve_quality_is_07(self):
@@ -185,6 +202,7 @@ class TestEvaluationThresholds:
 # HumanFeedbackInput — quality_override bounds
 # ===========================================================================
 
+
 class TestHumanFeedbackInput:
     def test_quality_override_above_1_rejected(self):
         """
@@ -209,8 +227,12 @@ class TestHumanFeedbackInput:
 
     def test_quality_override_boundary_accepted(self):
         """0.0 and 1.0 must be accepted as quality_override."""
-        low = HumanFeedbackInput(evaluation_id=uuid4(), agree_with_verdict=True, quality_override=0.0)
-        high = HumanFeedbackInput(evaluation_id=uuid4(), agree_with_verdict=True, quality_override=1.0)
+        low = HumanFeedbackInput(
+            evaluation_id=uuid4(), agree_with_verdict=True, quality_override=0.0
+        )
+        high = HumanFeedbackInput(
+            evaluation_id=uuid4(), agree_with_verdict=True, quality_override=1.0
+        )
         assert low.quality_override == 0.0
         assert high.quality_override == 1.0
 
@@ -223,6 +245,7 @@ class TestHumanFeedbackInput:
 # ===========================================================================
 # EvaluationHistoryFilter — bounds
 # ===========================================================================
+
 
 class TestEvaluationHistoryFilter:
     def test_min_quality_above_1_rejected(self):
@@ -249,6 +272,7 @@ class TestEvaluationHistoryFilter:
 # ===========================================================================
 # EvaluationResult — auto-fields
 # ===========================================================================
+
 
 class TestEvaluationResult:
     def _make_verdict(self) -> EvaluationVerdict:
@@ -278,6 +302,7 @@ class TestEvaluationResult:
 # RetryDecision — delay_ms bounds
 # ===========================================================================
 
+
 class TestRetryDecision:
     def test_delay_ms_negative_rejected(self):
         """
@@ -302,6 +327,7 @@ class TestRetryDecision:
 # ===========================================================================
 # PlanCompletionStatus — completion_rate bounds
 # ===========================================================================
+
 
 class TestPlanCompletionStatus:
     def test_completion_rate_above_1_rejected(self):

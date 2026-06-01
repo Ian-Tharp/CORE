@@ -21,6 +21,7 @@ from app.core.health import HealthStatus, fire_health_alert
 # WebhookEvent — new health alert events
 # ---------------------------------------------------------------------------
 
+
 class TestHealthWebhookEvents:
     def test_health_degraded_event_exists(self):
         """
@@ -47,6 +48,7 @@ class TestHealthWebhookEvents:
 # fire_health_alert unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestFireHealthAlert:
     def _make_health_result(self, status: str = "degraded") -> dict:
         return {
@@ -69,8 +71,13 @@ class TestFireHealthAlert:
         mock_service = MagicMock()
         mock_service.fire = AsyncMock()
 
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
-            await fire_health_alert(HealthStatus.DEGRADED, self._make_health_result("degraded"))
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
+            await fire_health_alert(
+                HealthStatus.DEGRADED, self._make_health_result("degraded")
+            )
 
         mock_service.fire.assert_called_once()
         call_kwargs = mock_service.fire.call_args[1]
@@ -85,8 +92,13 @@ class TestFireHealthAlert:
         mock_service = MagicMock()
         mock_service.fire = AsyncMock()
 
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
-            await fire_health_alert(HealthStatus.UNHEALTHY, self._make_health_result("unhealthy"))
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
+            await fire_health_alert(
+                HealthStatus.UNHEALTHY, self._make_health_result("unhealthy")
+            )
 
         call_kwargs = mock_service.fire.call_args[1]
         assert call_kwargs["event"] == WebhookEvent.HEALTH_UNHEALTHY
@@ -100,8 +112,13 @@ class TestFireHealthAlert:
         mock_service = MagicMock()
         mock_service.fire = AsyncMock()
 
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
-            await fire_health_alert(HealthStatus.DEGRADED, self._make_health_result("degraded"))
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
+            await fire_health_alert(
+                HealthStatus.DEGRADED, self._make_health_result("degraded")
+            )
 
         payload = mock_service.fire.call_args[1]["payload"]
         assert payload["status"] == "degraded"
@@ -116,7 +133,10 @@ class TestFireHealthAlert:
         mock_service.fire = AsyncMock()
 
         health_result = self._make_health_result("degraded")
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
             await fire_health_alert(HealthStatus.DEGRADED, health_result)
 
         payload = mock_service.fire.call_args[1]["payload"]
@@ -131,7 +151,10 @@ class TestFireHealthAlert:
         mock_service = MagicMock()
         mock_service.fire = AsyncMock()
 
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
             await fire_health_alert(HealthStatus.DEGRADED, self._make_health_result())
 
         payload = mock_service.fire.call_args[1]["payload"]
@@ -147,15 +170,22 @@ class TestFireHealthAlert:
         mock_service = MagicMock()
         mock_service.fire = AsyncMock(side_effect=RuntimeError("webhook down"))
 
-        with patch("app.services.webhook_service.get_webhook_service", return_value=mock_service):
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            return_value=mock_service,
+        ):
             # Must not raise
-            await fire_health_alert(HealthStatus.UNHEALTHY, self._make_health_result("unhealthy"))
+            await fire_health_alert(
+                HealthStatus.UNHEALTHY, self._make_health_result("unhealthy")
+            )
 
     @pytest.mark.asyncio
     async def test_import_failure_does_not_raise(self):
         """If webhook_service cannot be imported, alert silently fails."""
-        with patch("app.services.webhook_service.get_webhook_service",
-                   side_effect=RuntimeError("import failed")):
+        with patch(
+            "app.services.webhook_service.get_webhook_service",
+            side_effect=RuntimeError("import failed"),
+        ):
             # Must not raise
             await fire_health_alert(HealthStatus.DEGRADED, self._make_health_result())
 
@@ -164,14 +194,23 @@ class TestFireHealthAlert:
 # get_full_health fires alert on non-healthy status
 # ---------------------------------------------------------------------------
 
+
 class TestGetFullHealthFiresAlert:
     def _ok_check(self, name: str):
         from app.core.health import HealthCheck, HealthStatus
-        return AsyncMock(return_value=HealthCheck(name=name, status=HealthStatus.HEALTHY))
+
+        return AsyncMock(
+            return_value=HealthCheck(name=name, status=HealthStatus.HEALTHY)
+        )
 
     def _failing_check(self, name: str):
         from app.core.health import HealthCheck, HealthStatus
-        return AsyncMock(return_value=HealthCheck(name=name, status=HealthStatus.UNHEALTHY, message="down"))
+
+        return AsyncMock(
+            return_value=HealthCheck(
+                name=name, status=HealthStatus.UNHEALTHY, message="down"
+            )
+        )
 
     @pytest.mark.asyncio
     async def test_unhealthy_check_triggers_alert(self):
@@ -181,13 +220,19 @@ class TestGetFullHealthFiresAlert:
         """
         from app.core import health as health_mod
 
-        with patch("app.core.health.check_database", self._failing_check("database")), \
-             patch("app.core.health.check_ollama", self._ok_check("ollama")), \
-             patch("app.core.health.check_redis", self._ok_check("redis")), \
-             patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
-             patch("app.core.health.check_engine_state", self._ok_check("engine")), \
-             patch("app.core.health.check_mcp_servers", self._ok_check("mcp_servers")), \
-             patch("app.core.health.asyncio.create_task") as task_spy:
+        with patch(
+            "app.core.health.check_database", self._failing_check("database")
+        ), patch("app.core.health.check_ollama", self._ok_check("ollama")), patch(
+            "app.core.health.check_redis", self._ok_check("redis")
+        ), patch(
+            "app.core.health.check_websocket_manager", self._ok_check("ws")
+        ), patch(
+            "app.core.health.check_engine_state", self._ok_check("engine")
+        ), patch(
+            "app.core.health.check_mcp_servers", self._ok_check("mcp_servers")
+        ), patch(
+            "app.core.health.asyncio.create_task"
+        ) as task_spy:
 
             result = await health_mod.get_full_health()
 
@@ -202,13 +247,17 @@ class TestGetFullHealthFiresAlert:
         """
         from app.core import health as health_mod
 
-        with patch("app.core.health.check_database", self._ok_check("db")), \
-             patch("app.core.health.check_ollama", self._ok_check("ollama")), \
-             patch("app.core.health.check_redis", self._ok_check("redis")), \
-             patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
-             patch("app.core.health.check_engine_state", self._ok_check("engine")), \
-             patch("app.core.health.check_mcp_servers", self._ok_check("mcp_servers")), \
-             patch("app.core.health.asyncio.create_task") as task_spy:
+        with patch("app.core.health.check_database", self._ok_check("db")), patch(
+            "app.core.health.check_ollama", self._ok_check("ollama")
+        ), patch("app.core.health.check_redis", self._ok_check("redis")), patch(
+            "app.core.health.check_websocket_manager", self._ok_check("ws")
+        ), patch(
+            "app.core.health.check_engine_state", self._ok_check("engine")
+        ), patch(
+            "app.core.health.check_mcp_servers", self._ok_check("mcp_servers")
+        ), patch(
+            "app.core.health.asyncio.create_task"
+        ) as task_spy:
 
             result = await health_mod.get_full_health()
 

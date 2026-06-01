@@ -19,6 +19,7 @@ from typing import List, Optional
 # Mock factories
 # ---------------------------------------------------------------------------
 
+
 def _make_pypdf_reader(pages_text: List[str], metadata_title: Optional[str] = None):
     """Mock pypdf.PdfReader."""
     reader = MagicMock()
@@ -46,13 +47,14 @@ def _make_fitz_doc(pages_text: List[str], ocr_text: Optional[List[str]] = None):
     mock_pages = []
     for i, t in enumerate(pages_text):
         page = MagicMock()
-        ocr_val = (ocr_text[i] if ocr_text and i < len(ocr_text) else "")
+        ocr_val = ocr_text[i] if ocr_text and i < len(ocr_text) else ""
 
         def make_get_text(text_val, ocr_val):
             def get_text(mode="text"):
                 if mode == "ocr":
                     return ocr_val
                 return text_val
+
             return get_text
 
         page.get_text = make_get_text(t, ocr_val)
@@ -86,6 +88,7 @@ def _patch_tesseract_available(available=True):
 # TEXT PDF — pypdf works, no OCR fallback
 # =============================================================================
 
+
 class TestTextPdfExtraction:
 
     @pytest.mark.asyncio
@@ -94,8 +97,10 @@ class TestTextPdfExtraction:
         from app.services.knowledgebase_service import _extract_title_and_text
 
         reader = _make_pypdf_reader(
-            ["Page one has plenty of content here for testing." * 3,
-             "Page two also has content."],
+            [
+                "Page one has plenty of content here for testing." * 3,
+                "Page two also has content.",
+            ],
             metadata_title="My Document",
         )
         with _patch_pypdf(reader):
@@ -136,6 +141,7 @@ class TestTextPdfExtraction:
 # SCANNED PDF — pypdf empty, pymupdf OCR fallback
 # =============================================================================
 
+
 class TestOcrFallback:
 
     @pytest.mark.asyncio
@@ -150,7 +156,9 @@ class TestOcrFallback:
         )
 
         with _patch_pypdf(reader), _patch_fitz(fitz_doc), _patch_tesseract_available():
-            title, text = await _extract_title_and_text("/scanned.pdf", "application/pdf")
+            title, text = await _extract_title_and_text(
+                "/scanned.pdf", "application/pdf"
+            )
 
         assert "OCR Chapter 1" in text
         assert "OCR page 2" in text
@@ -210,6 +218,7 @@ class TestOcrFallback:
 # MIXED PDF
 # =============================================================================
 
+
 class TestMixedPdf:
 
     @pytest.mark.asyncio
@@ -245,6 +254,7 @@ class TestMixedPdf:
 # CORRUPTED / EMPTY
 # =============================================================================
 
+
 class TestCorruptedPdf:
 
     @pytest.mark.asyncio
@@ -259,7 +269,9 @@ class TestCorruptedPdf:
         mock_fitz.open.side_effect = Exception("also corrupt")
 
         with patch.dict("sys.modules", {"pypdf": mock_pypdf, "fitz": mock_fitz}):
-            title, text = await _extract_title_and_text("/corrupt.pdf", "application/pdf")
+            title, text = await _extract_title_and_text(
+                "/corrupt.pdf", "application/pdf"
+            )
 
         # Falls through to text-file fallback; no crash
         assert isinstance(text, str)
@@ -291,7 +303,9 @@ class TestCorruptedPdf:
         reader.pages = [bad_page, good_page]
 
         with _patch_pypdf(reader):
-            title, text = await _extract_title_and_text("/partial.pdf", "application/pdf")
+            title, text = await _extract_title_and_text(
+                "/partial.pdf", "application/pdf"
+            )
 
         assert "Good content" in text
 
@@ -300,11 +314,15 @@ class TestCorruptedPdf:
 # PAGE LIMIT
 # =============================================================================
 
+
 class TestPageLimit:
 
     def test_pymupdf_respects_max_pages(self):
         """_PYMUPDF_MAX_OCR_PAGES limits how many pages are processed."""
-        from app.services.knowledgebase_service import _extract_pdf_with_pymupdf, _PYMUPDF_MAX_OCR_PAGES
+        from app.services.knowledgebase_service import (
+            _extract_pdf_with_pymupdf,
+            _PYMUPDF_MAX_OCR_PAGES,
+        )
 
         num = _PYMUPDF_MAX_OCR_PAGES + 50
         fitz_doc = _make_fitz_doc(
@@ -323,12 +341,14 @@ class TestPageLimit:
 
     def test_max_pages_constant_is_500(self):
         from app.services.knowledgebase_service import _PYMUPDF_MAX_OCR_PAGES
+
         assert _PYMUPDF_MAX_OCR_PAGES == 500
 
 
 # =============================================================================
 # TITLE EXTRACTION EDGE CASES
 # =============================================================================
+
 
 class TestTitleEdgeCases:
 
@@ -365,6 +385,7 @@ class TestTitleEdgeCases:
 # =============================================================================
 # NON-PDF SANITY CHECKS
 # =============================================================================
+
 
 class TestNonPdf:
 

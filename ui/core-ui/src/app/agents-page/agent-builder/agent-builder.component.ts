@@ -273,7 +273,7 @@ export class AgentBuilderComponent implements OnInit {
   };
 
   get filteredMcpServers(): McpServer[] {
-    if (!this.mcpSearchQuery) return this.mcpServers;
+    if (!this.mcpSearchQuery) {return this.mcpServers;}
     const query = this.mcpSearchQuery.toLowerCase();
     return this.mcpServers.filter(server => 
       server.name.toLowerCase().includes(query) ||
@@ -316,7 +316,8 @@ export class AgentBuilderComponent implements OnInit {
   canProceed(): boolean {
     switch (this.currentStepIndex) {
       case 0:
-        return !!this.agentConfig.name && !!this.agentConfig.type && !!this.agentConfig.systemPrompt && !!this.agentConfig.model;
+        return !!this.agentConfig.name && !!this.agentConfig.type &&
+          !!this.agentConfig.systemPrompt && !!this.agentConfig.model;
       case 1:
         return true; // Knowledge base is optional
       case 2:
@@ -407,7 +408,7 @@ export class AgentBuilderComponent implements OnInit {
   }
 
   async sendTestMessage(): Promise<void> {
-    if (!this.testPrompt.trim()) return;
+    if (!this.testPrompt.trim()) {return;}
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),

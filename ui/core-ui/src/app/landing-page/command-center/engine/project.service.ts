@@ -31,7 +31,7 @@ export class ProjectService {
   private readonly legacyStorageKey = 'core.hexWorld.projects.v1';
 
   private isTileGridSnapshot(value: unknown): value is TileGridSnapshot {
-    if (typeof value !== 'object' || value === null) return false;
+    if (typeof value !== 'object' || value === null) {return false;}
     const v = value as Record<string, unknown>;
     return (
       typeof v['id'] === 'string' &&
@@ -44,7 +44,7 @@ export class ProjectService {
 
   // Convert legacy hex world config to tile grid config
   private convertLegacyConfig(config: any): TileGridConfig {
-    if (config.cellRadius) return config; // Already converted
+    if (config.cellRadius) {return config;} // Already converted
     return {
       cellRadius: config.radius || 1,
       gridWidth: config.gridWidth || 50,
@@ -81,10 +81,10 @@ export class ProjectService {
 
   private loadFromStorage(key: string): TileGridSnapshot[] {
     const raw = localStorage.getItem(key);
-    if (!raw) return [];
+    if (!raw) {return [];}
     try {
       const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return [];
+      if (!Array.isArray(parsed)) {return [];}
       return parsed.filter((x) => this.isTileGridSnapshot(x)) as TileGridSnapshot[];
     } catch {
       return [];

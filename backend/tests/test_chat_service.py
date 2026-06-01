@@ -28,6 +28,7 @@ from app.services.chat_service import (
 # _normalise_provider — pure function
 # ===========================================================================
 
+
 class TestNormaliseProvider:
     def test_ollama_stays_ollama(self):
         """SENTINEL — "ollama" must stay "ollama"."""
@@ -57,6 +58,7 @@ class TestNormaliseProvider:
 # chat_service — circuit breaker gate
 # ===========================================================================
 
+
 class TestCircuitBreakerGate:
     def _make_open_breaker(self):
         b = MagicMock()
@@ -77,10 +79,14 @@ class TestCircuitBreakerGate:
         Remove breaker check → request goes to provider even when circuit is OPEN → test fails.
         """
         open_breaker = self._make_open_breaker()
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=open_breaker):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=open_breaker
+        ):
             chunks = []
             async for chunk in chat_service(
-                model="gpt-4", messages=[{"role": "user", "content": "hi"}], provider="openai"
+                model="gpt-4",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="openai",
             ):
                 chunks.append(chunk)
 
@@ -95,10 +101,13 @@ class TestCircuitBreakerGate:
         Remove early return → provider called despite open circuit → test fails.
         """
         open_breaker = self._make_open_breaker()
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=open_breaker), \
-             patch("app.services.chat_service._get_openai_client") as mock_client:
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=open_breaker
+        ), patch("app.services.chat_service._get_openai_client") as mock_client:
             async for _ in chat_service(
-                model="gpt-4", messages=[{"role": "user", "content": "hi"}], provider="openai"
+                model="gpt-4",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="openai",
             ):
                 pass
 
@@ -109,6 +118,7 @@ class TestCircuitBreakerGate:
 # chat_service — message truncation
 # ===========================================================================
 
+
 class TestMessageTruncation:
     @pytest.mark.asyncio
     async def test_messages_over_limit_are_truncated(self):
@@ -117,7 +127,9 @@ class TestMessageTruncation:
         Remove truncation → provider receives full history → context window exceeded → test fails.
         """
         # Build a large history (10 extra messages)
-        messages = [{"role": "user", "content": f"msg {i}"} for i in range(MAX_MESSAGES + 10)]
+        messages = [
+            {"role": "user", "content": f"msg {i}"} for i in range(MAX_MESSAGES + 10)
+        ]
 
         captured_messages = []
 
@@ -131,9 +143,12 @@ class TestMessageTruncation:
         breaker.record_success = MagicMock()
         breaker.record_failure = MagicMock()
 
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
-            async for _ in chat_service(model="m", messages=messages, provider="ollama"):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
+            async for _ in chat_service(
+                model="m", messages=messages, provider="ollama"
+            ):
                 pass
 
         assert len(captured_messages) <= MAX_MESSAGES
@@ -145,7 +160,9 @@ class TestMessageTruncation:
         Drop system messages during truncation → LLM loses its persona → test fails.
         """
         system_msg = {"role": "system", "content": "SENTINEL_SYSTEM"}
-        user_msgs = [{"role": "user", "content": f"msg {i}"} for i in range(MAX_MESSAGES)]
+        user_msgs = [
+            {"role": "user", "content": f"msg {i}"} for i in range(MAX_MESSAGES)
+        ]
         messages = [system_msg] + user_msgs  # One over limit
 
         captured_messages = []
@@ -160,9 +177,12 @@ class TestMessageTruncation:
         breaker.record_success = MagicMock()
         breaker.record_failure = MagicMock()
 
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
-            async for _ in chat_service(model="m", messages=messages, provider="ollama"):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
+            async for _ in chat_service(
+                model="m", messages=messages, provider="ollama"
+            ):
                 pass
 
         roles = [m["role"] for m in captured_messages]
@@ -175,6 +195,7 @@ class TestMessageTruncation:
 # chat_service — circuit breaker telemetry (record_success / record_failure)
 # ===========================================================================
 
+
 class TestCircuitBreakerTelemetry:
     @pytest.mark.asyncio
     async def test_record_success_called_after_successful_stream(self):
@@ -182,6 +203,7 @@ class TestCircuitBreakerTelemetry:
         SENTINEL — on a clean stream, breaker.record_success() must be called.
         Remove record_success → breaker never resets from HALF_OPEN → test fails.
         """
+
         async def _fake_ollama(**kwargs):
             yield f"data: {json.dumps({'delta': 'hello'})}\n\n"
 
@@ -190,9 +212,14 @@ class TestCircuitBreakerTelemetry:
         breaker.record_success = MagicMock()
         breaker.record_failure = MagicMock()
 
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
-            async for _ in chat_service(model="m", messages=[{"role": "user", "content": "hi"}], provider="ollama"):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch("app.services.chat_service._stream_from_ollama", new=_fake_ollama):
+            async for _ in chat_service(
+                model="m",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="ollama",
+            ):
                 pass
 
         breaker.record_success.assert_called_once()
@@ -203,6 +230,7 @@ class TestCircuitBreakerTelemetry:
         SENTINEL — when every attempt fails, breaker.record_failure() must be called.
         Remove record_failure → circuit never opens on repeated failures → test fails.
         """
+
         async def _failing_ollama(**kwargs):
             raise ConnectionError("no ollama")
             yield  # make generator
@@ -212,10 +240,18 @@ class TestCircuitBreakerTelemetry:
         breaker.record_success = MagicMock()
         breaker.record_failure = MagicMock()
 
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_failing_ollama), \
-             patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
-            async for _ in chat_service(model="m", messages=[{"role": "user", "content": "hi"}], provider="ollama"):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch(
+            "app.services.chat_service._stream_from_ollama", new=_failing_ollama
+        ), patch(
+            "app.services.chat_service.asyncio.sleep", new=AsyncMock()
+        ):
+            async for _ in chat_service(
+                model="m",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="ollama",
+            ):
                 pass
 
         breaker.record_failure.assert_called_once()
@@ -226,6 +262,7 @@ class TestCircuitBreakerTelemetry:
         SENTINEL — exhausted retries must yield a provider_error SSE.
         Remove the final error yield → caller silently gets no content → test fails.
         """
+
         async def _failing_ollama(**kwargs):
             raise ConnectionError("SENTINEL_ERROR_MSG")
             yield
@@ -236,11 +273,17 @@ class TestCircuitBreakerTelemetry:
         breaker.record_failure = MagicMock()
 
         chunks = []
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_failing_ollama), \
-             patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch(
+            "app.services.chat_service._stream_from_ollama", new=_failing_ollama
+        ), patch(
+            "app.services.chat_service.asyncio.sleep", new=AsyncMock()
+        ):
             async for chunk in chat_service(
-                model="m", messages=[{"role": "user", "content": "hi"}], provider="ollama"
+                model="m",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="ollama",
             ):
                 chunks.append(chunk)
 
@@ -251,6 +294,7 @@ class TestCircuitBreakerTelemetry:
 # ===========================================================================
 # chat_service — retry behavior
 # ===========================================================================
+
 
 class TestRetryBehavior:
     @pytest.mark.asyncio
@@ -275,16 +319,24 @@ class TestRetryBehavior:
         breaker.record_success = MagicMock()
         breaker.record_failure = MagicMock()
 
-        with patch("app.services.chat_service.get_circuit_breaker", return_value=breaker), \
-             patch("app.services.chat_service._stream_from_ollama", new=_flaky_ollama), \
-             patch("app.services.chat_service.asyncio.sleep", new=AsyncMock()):
+        with patch(
+            "app.services.chat_service.get_circuit_breaker", return_value=breaker
+        ), patch(
+            "app.services.chat_service._stream_from_ollama", new=_flaky_ollama
+        ), patch(
+            "app.services.chat_service.asyncio.sleep", new=AsyncMock()
+        ):
             chunks = []
             async for chunk in chat_service(
-                model="m", messages=[{"role": "user", "content": "hi"}], provider="ollama"
+                model="m",
+                messages=[{"role": "user", "content": "hi"}],
+                provider="ollama",
             ):
                 chunks.append(chunk)
 
         # Should have succeeded on final retry — no error chunk
         error_chunks = [c for c in chunks if "event: error" in c]
         assert len(error_chunks) == 0, "Should succeed after retries"
-        assert call_count == MAX_RETRIES + 1  # Failed MAX_RETRIES times, succeeded on last
+        assert (
+            call_count == MAX_RETRIES + 1
+        )  # Failed MAX_RETRIES times, succeeded on last

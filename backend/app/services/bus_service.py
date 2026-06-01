@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 # PUBLISHING
 # =============================================================================
 
+
 async def publish(message: BusMessage) -> DeliveryReceipt:
     """
     Publish a message on the bus.
@@ -167,6 +168,7 @@ async def request_response(
 # SUBSCRIPTIONS
 # =============================================================================
 
+
 async def subscribe(agent_id: str, sub: SubscriptionCreate) -> Subscription:
     subscription_id = str(uuid.uuid4())
     await repo.create_subscription(
@@ -211,6 +213,7 @@ async def get_subscriptions(agent_id: str) -> List[Subscription]:
 # DELIVERY (INTERNAL / EXTERNAL / QUEUE)
 # =============================================================================
 
+
 async def deliver_to_internal(agent_id: str, message: BusMessage) -> bool:
     """Deliver via the Agent WebSocket manager."""
     payload = {
@@ -252,7 +255,7 @@ async def deliver_to_external(agent_id: str, message: BusMessage) -> bool:
             logger.warning(f"Webhook to {agent_id} failed (attempt {attempt+1}): {exc}")
 
         if attempt < max_retries:
-            await asyncio.sleep(backoff_base * (2 ** attempt) / 1000)
+            await asyncio.sleep(backoff_base * (2**attempt) / 1000)
 
     return False
 
@@ -270,6 +273,7 @@ async def drain_queue(agent_id: str) -> List[Dict[str, Any]]:
 # =============================================================================
 # EXTERNAL AGENT MANAGEMENT
 # =============================================================================
+
 
 async def register_external_agent(
     registration: ExternalAgentRegistration,
@@ -303,6 +307,7 @@ async def list_external_agents() -> List[Dict[str, Any]]:
 # METRICS
 # =============================================================================
 
+
 async def get_metrics() -> BusMetrics:
     total_published = await repo.count_messages()
     by_type = await repo.count_messages_by_type()
@@ -329,6 +334,7 @@ async def get_metrics() -> BusMetrics:
 # =============================================================================
 # INTERNAL HELPERS
 # =============================================================================
+
 
 async def _deliver(target_id: str, message: BusMessage) -> DeliveryReceipt:
     """Route delivery to the right channel and persist a receipt."""

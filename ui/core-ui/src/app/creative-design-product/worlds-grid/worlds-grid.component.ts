@@ -23,7 +23,7 @@ export class WorldsGridComponent {
     // Load remote worlds with latest preview
     this.worldsSvc.listWorlds(24, 0).pipe(
       switchMap((list) => {
-        if (!list || list.length === 0) return of([] as RemoteWorldCardModel[]);
+        if (!list || list.length === 0) {return of([] as RemoteWorldCardModel[]);}
         const streams = list.map((w) => this.worldsSvc.getLatestSnapshot(w.id).pipe(
           catchError(() => of(null)),
           map((snap) => ({ id: w.id, name: w.name, updated_at: w.updated_at, preview: (snap as any)?.preview ?? null }))

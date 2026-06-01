@@ -25,6 +25,7 @@ from app.services.catalyst_service import CatalystService, CatalystSession, Sess
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> CatalystService:
     """Create service with a mocked model router."""
     mock_router = MagicMock()
@@ -40,6 +41,7 @@ def _setup_llm(service: CatalystService, return_value: Any) -> None:
 # ===========================================================================
 # CatalystSession — state tracking
 # ===========================================================================
+
 
 class TestCatalystSession:
     def test_initial_phase_is_created(self):
@@ -80,6 +82,7 @@ class TestCatalystSession:
 # _select_model
 # ===========================================================================
 
+
 class TestSelectModel:
     def test_explicit_model_in_config_used_directly(self):
         """
@@ -107,12 +110,15 @@ class TestSelectModel:
 # _llm_json — JSON parsing and fence stripping
 # ===========================================================================
 
+
 class TestLlmJson:
     @pytest.mark.asyncio
     async def test_clean_json_object_parsed(self):
         """Valid JSON response must be parsed and returned as a dict."""
         svc = _make_service()
-        svc._router.complete = AsyncMock(return_value={"content": '{"key": "SENTINEL_VALUE"}'})
+        svc._router.complete = AsyncMock(
+            return_value={"content": '{"key": "SENTINEL_VALUE"}'}
+        )
         result = await svc._llm_json("sys", "user", "model")
         assert result == {"key": "SENTINEL_VALUE"}
 
@@ -120,7 +126,9 @@ class TestLlmJson:
     async def test_json_array_parsed(self):
         """JSON array response must be parsed and returned as a list."""
         svc = _make_service()
-        svc._router.complete = AsyncMock(return_value={"content": '[{"id": 1}, {"id": 2}]'})
+        svc._router.complete = AsyncMock(
+            return_value={"content": '[{"id": 1}, {"id": 2}]'}
+        )
         result = await svc._llm_json("sys", "user", "model")
         assert isinstance(result, list)
         assert len(result) == 2
@@ -132,9 +140,9 @@ class TestLlmJson:
         Remove fence stripping → JSONDecodeError raised for valid content → test fails.
         """
         svc = _make_service()
-        svc._router.complete = AsyncMock(return_value={
-            "content": '```json\n{"key": "SENTINEL_FENCED"}\n```'
-        })
+        svc._router.complete = AsyncMock(
+            return_value={"content": '```json\n{"key": "SENTINEL_FENCED"}\n```'}
+        )
         result = await svc._llm_json("sys", "user", "model")
         assert result == {"key": "SENTINEL_FENCED"}
 
@@ -142,9 +150,9 @@ class TestLlmJson:
     async def test_bare_fence_stripped(self):
         """``` (without json) fences must also be stripped."""
         svc = _make_service()
-        svc._router.complete = AsyncMock(return_value={
-            "content": '```\n{"key": "bare"}\n```'
-        })
+        svc._router.complete = AsyncMock(
+            return_value={"content": '```\n{"key": "bare"}\n```'}
+        )
         result = await svc._llm_json("sys", "user", "model")
         assert result == {"key": "bare"}
 
@@ -178,6 +186,7 @@ class TestLlmJson:
 # ===========================================================================
 # start_session / get_session
 # ===========================================================================
+
 
 class TestSessionManagement:
     def test_start_session_returns_dict_with_session_id(self):
@@ -220,6 +229,7 @@ class TestSessionManagement:
 # ===========================================================================
 # run_divergence
 # ===========================================================================
+
 
 class TestRunDivergence:
     @pytest.mark.asyncio
@@ -290,6 +300,7 @@ class TestRunDivergence:
 # run_convergence
 # ===========================================================================
 
+
 class TestRunConvergence:
     @pytest.mark.asyncio
     async def test_convergence_returns_analysis_from_llm(self):
@@ -329,6 +340,7 @@ class TestRunConvergence:
 # run_synthesis
 # ===========================================================================
 
+
 class TestRunSynthesis:
     @pytest.mark.asyncio
     async def test_synthesis_sets_phase_complete(self):
@@ -359,6 +371,7 @@ class TestRunSynthesis:
 # auto_catalyst — full pipeline
 # ===========================================================================
 
+
 class TestAutoCatalyst:
     @pytest.mark.asyncio
     async def test_auto_catalyst_runs_all_three_phases(self):
@@ -381,9 +394,13 @@ class TestAutoCatalyst:
             call_log.append("synthesis")
             return {"summary": "done"}
 
-        with patch.object(svc, "run_divergence", side_effect=_fake_diverge), \
-             patch.object(svc, "run_convergence", side_effect=_fake_converge), \
-             patch.object(svc, "run_synthesis", side_effect=_fake_synthesize):
+        with patch.object(
+            svc, "run_divergence", side_effect=_fake_diverge
+        ), patch.object(
+            svc, "run_convergence", side_effect=_fake_converge
+        ), patch.object(
+            svc, "run_synthesis", side_effect=_fake_synthesize
+        ):
             await svc.auto_catalyst("test prompt")
 
         assert call_log == ["divergence", "convergence", "synthesis"]
@@ -409,9 +426,13 @@ class TestAutoCatalyst:
             session.synthesis_result = {"summary": "done"}
             return {"summary": "done"}
 
-        with patch.object(svc, "run_divergence", side_effect=_fake_diverge), \
-             patch.object(svc, "run_convergence", side_effect=_fake_converge), \
-             patch.object(svc, "run_synthesis", side_effect=_fake_synthesize):
+        with patch.object(
+            svc, "run_divergence", side_effect=_fake_diverge
+        ), patch.object(
+            svc, "run_convergence", side_effect=_fake_converge
+        ), patch.object(
+            svc, "run_synthesis", side_effect=_fake_synthesize
+        ):
             result = await svc.auto_catalyst("test prompt")
 
         assert "session_id" in result
@@ -437,9 +458,13 @@ class TestAutoCatalyst:
         async def _fake_synthesize(session_id, ideas, convergence):
             return {"summary": "done"}
 
-        with patch.object(svc, "run_divergence", side_effect=_fake_diverge), \
-             patch.object(svc, "run_convergence", side_effect=_fake_converge), \
-             patch.object(svc, "run_synthesis", side_effect=_fake_synthesize):
+        with patch.object(
+            svc, "run_divergence", side_effect=_fake_diverge
+        ), patch.object(
+            svc, "run_convergence", side_effect=_fake_converge
+        ), patch.object(
+            svc, "run_synthesis", side_effect=_fake_synthesize
+        ):
             await svc.auto_catalyst("prompt")
 
         assert convergence_input == sentinel_ideas

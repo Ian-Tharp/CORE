@@ -16,7 +16,7 @@ from app.models.core_state import (
     UserIntent,
     ExecutionPlan,
     StepResult,
-    EvaluationResult
+    EvaluationResult,
 )
 from app.utils.json_repair import safe_json_loads, extract_json_object
 
@@ -169,7 +169,7 @@ Respond in JSON format:
         user_input: str,
         intent: Optional[UserIntent],
         plan: ExecutionPlan,
-        step_results: List[StepResult]
+        step_results: List[StepResult],
     ) -> EvaluationResult:
         """
         Evaluate execution results using LLM for nuanced quality assessment.
@@ -210,7 +210,8 @@ Respond in JSON format:
         all_succeeded = not failed_steps
         success_rate = (
             sum(1 for r in step_results if r.status == "success") / len(step_results)
-            if step_results else 0.0
+            if step_results
+            else 0.0
         )
 
         if all_succeeded:
@@ -334,14 +335,17 @@ Evaluate whether the user's request was satisfied by the execution above."""
 
             data = safe_json_loads(extracted)
             if data is None:
-                raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
+                raise ValueError(
+                    f"Could not parse JSON from response: {content[:200]}..."
+                )
 
             # Validate next_action — default to finalize if LLM returns garbage
             valid_actions = {"finalize", "retry_step", "revise_plan", "ask_user"}
             next_action = data.get("next_action", "finalize")
             if next_action not in valid_actions:
                 logger.warning(
-                    "LLM returned invalid next_action '%s', defaulting to 'finalize'", next_action
+                    "LLM returned invalid next_action '%s', defaulting to 'finalize'",
+                    next_action,
                 )
                 next_action = "finalize"
 
@@ -364,6 +368,7 @@ Evaluate whether the user's request was satisfied by the execution above."""
         except Exception as exc:
             logger.warning(
                 "LLM evaluation failed for model=%s (using rule-based fallback): %s",
-                self.model, exc,
+                self.model,
+                exc,
             )
             return self._rule_based_evaluate(step_results)

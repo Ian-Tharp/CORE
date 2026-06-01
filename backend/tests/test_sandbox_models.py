@@ -41,6 +41,7 @@ from app.sandbox.security import (
 # StateScope enum
 # ===========================================================================
 
+
 class TestStateScope:
     def test_task_value(self):
         """
@@ -72,6 +73,7 @@ class TestStateScope:
 # ===========================================================================
 # AgentState defaults
 # ===========================================================================
+
 
 class TestAgentState:
     def test_default_scope_is_task(self):
@@ -107,6 +109,7 @@ class TestAgentState:
 # ===========================================================================
 # EventType enum
 # ===========================================================================
+
 
 class TestEventType:
     def test_state_updated_value(self):
@@ -149,6 +152,7 @@ class TestEventType:
 # StateManager._make_state_key — four scope branches
 # ===========================================================================
 
+
 class TestMakeStateKey:
     def setup_method(self):
         self.mgr = StateManager(data_dir="/tmp/sentinel_test_state")
@@ -159,7 +163,9 @@ class TestMakeStateKey:
         Remove GLOBAL branch → global keys gain agent_id prefix → different agents
         see different global state → cross-agent sharing breaks → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.GLOBAL)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.GLOBAL
+        )
         assert "SENTINEL_AGENT" not in key
         assert "SENTINEL_TASK" not in key
 
@@ -177,7 +183,9 @@ class TestMakeStateKey:
         SENTINEL — AGENT key must include agent_id.
         Remove agent_id → all agents share same agent-scope key → state trampled → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.AGENT)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.AGENT
+        )
         assert "SENTINEL_AGENT" in key
 
     def test_agent_scope_excludes_task_id(self):
@@ -185,7 +193,9 @@ class TestMakeStateKey:
         SENTINEL — AGENT key must NOT include task_id.
         Include task_id → each task gets different agent state → persistence broken → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.AGENT)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.AGENT
+        )
         assert "SENTINEL_TASK" not in key
 
     def test_agent_scope_key_format(self):
@@ -200,7 +210,9 @@ class TestMakeStateKey:
         SENTINEL — SESSION key must include task_id (session correlator).
         Use agent_id instead → cross-agent session isolation broken → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.SESSION)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.SESSION
+        )
         assert "SENTINEL_TASK" in key
 
     def test_session_scope_excludes_agent_id(self):
@@ -208,7 +220,9 @@ class TestMakeStateKey:
         SENTINEL — SESSION key must NOT include agent_id.
         Include agent_id → multiple agents in same session can't share → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.SESSION)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.SESSION
+        )
         assert "SENTINEL_AGENT" not in key
 
     def test_session_scope_key_format(self):
@@ -222,21 +236,24 @@ class TestMakeStateKey:
         SENTINEL — TASK key must include BOTH agent_id and task_id.
         Drop agent_id → tasks from different agents collide → state corrupted → test fails.
         """
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.TASK)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.TASK
+        )
         assert "SENTINEL_AGENT" in key
         assert "SENTINEL_TASK" in key
 
     def test_task_scope_key_format(self):
         """TASK key must start with 'task:' and end with ':task'."""
-        key = self.mgr._make_state_key("SENTINEL_AGENT", "SENTINEL_TASK", StateScope.TASK)
+        key = self.mgr._make_state_key(
+            "SENTINEL_AGENT", "SENTINEL_TASK", StateScope.TASK
+        )
         assert key.startswith("task:")
         assert key.endswith(":task")
 
     def test_all_four_keys_are_distinct(self):
         """All four scope keys for the same agent/task must be unique."""
         keys = [
-            self.mgr._make_state_key("agent-1", "task-1", scope)
-            for scope in StateScope
+            self.mgr._make_state_key("agent-1", "task-1", scope) for scope in StateScope
         ]
         assert len(set(keys)) == 4
 
@@ -256,6 +273,7 @@ class TestMakeStateKey:
 # ===========================================================================
 # StateManager.get_status
 # ===========================================================================
+
 
 class TestStateManagerGetStatus:
     def setup_method(self):
@@ -300,6 +318,7 @@ class TestStateManagerGetStatus:
 # ContainerStatus enum
 # ===========================================================================
 
+
 class TestContainerStatus:
     def test_creating_value(self):
         """CREATING must equal 'creating'."""
@@ -332,6 +351,7 @@ class TestContainerStatus:
 # ===========================================================================
 # ContainerConfig defaults
 # ===========================================================================
+
 
 class TestContainerConfig:
     def test_default_image(self):
@@ -383,6 +403,7 @@ class TestContainerConfig:
 # ===========================================================================
 # ContainerManager.get_status
 # ===========================================================================
+
 
 class TestContainerManagerGetStatus:
     def setup_method(self):
@@ -440,6 +461,7 @@ class TestContainerManagerGetStatus:
 # ===========================================================================
 # ContainerManager._build_docker_config — pure config builder
 # ===========================================================================
+
 
 class TestBuildDockerConfig:
     def setup_method(self):
@@ -545,6 +567,7 @@ class TestBuildDockerConfig:
 # TrustLevel enum and TRUST_PRESETS
 # ===========================================================================
 
+
 class TestTrustLevel:
     def test_trusted_value(self):
         """TRUSTED must equal 'trusted'."""
@@ -597,6 +620,7 @@ class TestTrustLevel:
 # ===========================================================================
 # get_security_config helper
 # ===========================================================================
+
 
 class TestGetSecurityConfig:
     def test_returns_config_for_each_level(self):

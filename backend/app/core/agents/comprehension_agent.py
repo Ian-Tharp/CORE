@@ -93,6 +93,7 @@ Respond in JSON format:
         if not api_key:
             try:
                 from app.auth import VALID_API_KEYS
+
                 api_key = next(iter(VALID_API_KEYS), None)
             except Exception:
                 pass
@@ -108,7 +109,9 @@ Respond in JSON format:
                     headers={"X-API-Key": api_key},
                 )
             if resp.status_code != 200:
-                logger.debug("KB search returned HTTP %s, skipping RAG", resp.status_code)
+                logger.debug(
+                    "KB search returned HTTP %s, skipping RAG", resp.status_code
+                )
                 return None
 
             results: list = resp.json()
@@ -120,7 +123,12 @@ Respond in JSON format:
                 similarity = float(r.get("similarity", 0.0))
                 if similarity < _KB_MIN_SIMILARITY:
                     continue
-                title = r.get("title") or r.get("originalName") or r.get("filename") or "Document"
+                title = (
+                    r.get("title")
+                    or r.get("originalName")
+                    or r.get("filename")
+                    or "Document"
+                )
                 description = (r.get("description") or "").strip()
                 entry = f"- [{title}] (relevance: {similarity:.2f})"
                 if description:
@@ -159,12 +167,17 @@ Respond in JSON format:
         try:
             rag_context = self.check_knowledge_base(user_input)
         except Exception as exc:
-            logger.debug("check_knowledge_base raised unexpectedly (non-critical): %s", exc)
+            logger.debug(
+                "check_knowledge_base raised unexpectedly (non-critical): %s", exc
+            )
             rag_context = None
         system_content = self.system_prompt
         if rag_context:
             system_content = self.system_prompt + f"\n\n{rag_context}"
-            logger.debug("Injected RAG context (%d chars) into comprehension prompt", len(rag_context))
+            logger.debug(
+                "Injected RAG context (%d chars) into comprehension prompt",
+                len(rag_context),
+            )
 
         try:
             response = client.chat.completions.create(
@@ -196,7 +209,9 @@ Respond in JSON format:
 
             data = safe_json_loads(extracted)
             if data is None:
-                raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
+                raise ValueError(
+                    f"Could not parse JSON from response: {content[:200]}..."
+                )
 
             # Build UserIntent from response
             intent = UserIntent(
@@ -205,10 +220,12 @@ Respond in JSON format:
                 confidence=float(data.get("confidence", 0.7)),
                 requires_tools=data.get("requires_tools", False),
                 tools_needed=data.get("tools_needed", []),
-                ambiguities=data.get("ambiguities", [])
+                ambiguities=data.get("ambiguities", []),
             )
 
-            logger.info(f"Intent classified as: {intent.type} (confidence: {intent.confidence})")
+            logger.info(
+                f"Intent classified as: {intent.type} (confidence: {intent.confidence})"
+            )
             return intent
 
         except Exception as e:
@@ -220,7 +237,7 @@ Respond in JSON format:
                 confidence=0.5,
                 requires_tools=False,
                 tools_needed=[],
-                ambiguities=[]
+                ambiguities=[],
             )
 
     # ------------------------------------------------------------------
@@ -230,23 +247,35 @@ Respond in JSON format:
     # ------------------------------------------------------------------
     _AMBIGUITY_PATTERNS: list[tuple[str, str]] = [
         # Unresolved pronouns / deictic references
-        (r"\b(it|that|this|those|these|they|them|the thing|the stuff)\b",
-         "Unresolved pronoun or deictic reference: what does '{match}' refer to?"),
+        (
+            r"\b(it|that|this|those|these|they|them|the thing|the stuff)\b",
+            "Unresolved pronoun or deictic reference: what does '{match}' refer to?",
+        ),
         # Underspecified file / code artifacts
-        (r"\bthe\s+(file|component|function|class|module|service|endpoint|route|method|variable)\b",
-         "Underspecified artifact: which {match}?"),
+        (
+            r"\bthe\s+(file|component|function|class|module|service|endpoint|route|method|variable)\b",
+            "Underspecified artifact: which {match}?",
+        ),
         # Underspecified temporal reference
-        (r"\b(recently|before|after|last time|earlier|previously|just now)\b",
-         "Ambiguous temporal reference: when exactly is '{match}'?"),
+        (
+            r"\b(recently|before|after|last time|earlier|previously|just now)\b",
+            "Ambiguous temporal reference: when exactly is '{match}'?",
+        ),
         # Vague quantity
-        (r"\b(some|a few|several|many|a couple of|a bunch of)\b",
-         "Vague quantity: how many does '{match}' mean?"),
+        (
+            r"\b(some|a few|several|many|a couple of|a bunch of)\b",
+            "Vague quantity: how many does '{match}' mean?",
+        ),
         # Underspecified location
-        (r"\b(there|somewhere|in that place|in the other place)\b",
-         "Underspecified location: where is '{match}'?"),
+        (
+            r"\b(there|somewhere|in that place|in the other place)\b",
+            "Underspecified location: where is '{match}'?",
+        ),
         # Relative / comparative without referent
-        (r"\b(better|faster|smaller|larger|cleaner|simpler)\s+than\b",
-         "Comparative without referent: better/faster than what?"),
+        (
+            r"\b(better|faster|smaller|larger|cleaner|simpler)\s+than\b",
+            "Comparative without referent: better/faster than what?",
+        ),
     ]
 
     def detect_ambiguities(self, user_input: str) -> list[str]:

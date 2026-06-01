@@ -25,6 +25,7 @@ from app.core.middleware import RequestContextMiddleware
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_app(*middleware_classes) -> FastAPI:
     """Build a minimal FastAPI app with the given middleware."""
     app = FastAPI()
@@ -45,6 +46,7 @@ def _build_app(*middleware_classes) -> FastAPI:
 # ---------------------------------------------------------------------------
 # CorrelationIDMiddleware
 # ---------------------------------------------------------------------------
+
 
 class TestCorrelationIDMiddleware:
     """Tests for the CorrelationIDMiddleware."""
@@ -93,6 +95,7 @@ class TestCorrelationIDMiddleware:
 # RequestContextMiddleware reads X-Correlation-ID header
 # ---------------------------------------------------------------------------
 
+
 class TestRequestContextReusesCorrelationID:
     """Verify RequestContextMiddleware reads the incoming header."""
 
@@ -125,6 +128,7 @@ class TestRequestContextReusesCorrelationID:
 # get_correlation_id helper
 # ---------------------------------------------------------------------------
 
+
 class TestGetCorrelationIdHelper:
 
     def test_returns_correlation_id_when_set(self):
@@ -153,10 +157,12 @@ class TestGetCorrelationIdHelper:
 # Integration: full middleware stack
 # ---------------------------------------------------------------------------
 
+
 class TestFullMiddlewareStack:
 
     def setup_method(self):
         from app.core.middleware import ErrorHandlerMiddleware, MetricsMiddleware
+
         app = FastAPI()
 
         @app.get("/ok")

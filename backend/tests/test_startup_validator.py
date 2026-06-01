@@ -60,7 +60,9 @@ class TestValidateUrl:
 
 
 class TestValidateBool:
-    @pytest.mark.parametrize("value", ["true", "false", "True", "FALSE", "1", "0", "yes", "no"])
+    @pytest.mark.parametrize(
+        "value", ["true", "false", "True", "FALSE", "1", "0", "yes", "no"]
+    )
     def test_valid_booleans(self, value):
         assert _validate_bool(value) is None
 
@@ -140,7 +142,8 @@ class TestValidateStartupConfig:
             issues = validate_startup_config()
 
         security_errors = [
-            i for i in issues
+            i
+            for i in issues
             if i.severity == Severity.ERROR and i.category == "security"
         ]
         assert len(security_errors) > 0
@@ -155,7 +158,8 @@ class TestValidateStartupConfig:
             issues = validate_startup_config()
 
         security_errors = [
-            i for i in issues
+            i
+            for i in issues
             if i.severity == Severity.ERROR and i.category == "security"
         ]
         assert len(security_errors) == 0
@@ -170,7 +174,8 @@ class TestValidateStartupConfig:
             issues = validate_startup_config()
 
         rate_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.category == "security" and "rate" in i.message.lower()
         ]
         assert len(rate_issues) > 0

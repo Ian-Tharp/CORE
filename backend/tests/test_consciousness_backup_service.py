@@ -35,11 +35,14 @@ from app.services.consciousness_backup_service import (
 # Helpers
 # ===========================================================================
 
+
 def _make_service(tmp_path: Path) -> ConsciousnessBackupService:
     return ConsciousnessBackupService(backup_directory=str(tmp_path))
 
 
-def _write_backup_file(tmp_path: Path, backup_id: str, meta_override: Dict[str, Any] | None = None) -> Path:
+def _write_backup_file(
+    tmp_path: Path, backup_id: str, meta_override: Dict[str, Any] | None = None
+) -> Path:
     """Write a syntactically valid JSON backup and compute its checksum."""
     data: Dict[str, Any] = {
         "metadata": {
@@ -73,6 +76,7 @@ def _write_backup_file(tmp_path: Path, backup_id: str, meta_override: Dict[str, 
 # ===========================================================================
 # _row_to_dict — pure type conversion
 # ===========================================================================
+
 
 class TestRowToDict:
     def test_plain_values_pass_through(self):
@@ -124,6 +128,7 @@ class TestRowToDict:
 # ===========================================================================
 # verify_backup — checksum validation
 # ===========================================================================
+
 
 class TestVerifyBackup:
     @pytest.mark.asyncio
@@ -199,6 +204,7 @@ class TestVerifyBackup:
 # list_backups — discovery and sort
 # ===========================================================================
 
+
 class TestListBackups:
     @pytest.mark.asyncio
     async def test_empty_directory_returns_empty_list(self):
@@ -214,8 +220,11 @@ class TestListBackups:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)
             svc = _make_service(path)
-            _write_backup_file(path, "consciousness_backup_20240601_120000",
-                               meta_override={"backup_id": "consciousness_backup_20240601_120000"})
+            _write_backup_file(
+                path,
+                "consciousness_backup_20240601_120000",
+                meta_override={"backup_id": "consciousness_backup_20240601_120000"},
+            )
             backups = await svc.list_backups()
 
         assert len(backups) == 1
@@ -236,16 +245,22 @@ class TestListBackups:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)
             svc = _make_service(path)
-            _write_backup_file(path, "consciousness_backup_20240101_000000",
-                               meta_override={
-                                   "backup_id": "consciousness_backup_20240101_000000",
-                                   "timestamp": "2024-01-01T00:00:00+00:00",
-                               })
-            _write_backup_file(path, "consciousness_backup_20241231_000000",
-                               meta_override={
-                                   "backup_id": "consciousness_backup_20241231_000000",
-                                   "timestamp": "2024-12-31T00:00:00+00:00",
-                               })
+            _write_backup_file(
+                path,
+                "consciousness_backup_20240101_000000",
+                meta_override={
+                    "backup_id": "consciousness_backup_20240101_000000",
+                    "timestamp": "2024-01-01T00:00:00+00:00",
+                },
+            )
+            _write_backup_file(
+                path,
+                "consciousness_backup_20241231_000000",
+                meta_override={
+                    "backup_id": "consciousness_backup_20241231_000000",
+                    "timestamp": "2024-12-31T00:00:00+00:00",
+                },
+            )
             backups = await svc.list_backups()
 
         assert len(backups) == 2
@@ -275,6 +290,7 @@ class TestListBackups:
 # restore_backup — dry-run and verification
 # ===========================================================================
 
+
 class TestRestoreBackup:
     @pytest.mark.asyncio
     async def test_dry_run_returns_validated_status(self):
@@ -285,13 +301,16 @@ class TestRestoreBackup:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)
             svc = _make_service(path)
-            backup_file = _write_backup_file(path, "consciousness_backup_20240601_restore",
-                                             meta_override={
-                                                 "backup_id": "consciousness_backup_20240601_restore",
-                                                 "total_messages": 7,
-                                                 "total_agents": 3,
-                                                 "total_instances": 4,
-                                             })
+            backup_file = _write_backup_file(
+                path,
+                "consciousness_backup_20240601_restore",
+                meta_override={
+                    "backup_id": "consciousness_backup_20240601_restore",
+                    "total_messages": 7,
+                    "total_agents": 3,
+                    "total_instances": 4,
+                },
+            )
             result = await svc.restore_backup(str(backup_file), dry_run=True)
 
         assert result["status"] == "validated"
@@ -332,10 +351,13 @@ class TestRestoreBackup:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)
             svc = _make_service(path)
-            backup_file = _write_backup_file(path, "consciousness_backup_20240601_idcheck",
-                                             meta_override={
-                                                 "backup_id": "SENTINEL_BACKUP_ID",
-                                             })
+            backup_file = _write_backup_file(
+                path,
+                "consciousness_backup_20240601_idcheck",
+                meta_override={
+                    "backup_id": "SENTINEL_BACKUP_ID",
+                },
+            )
             result = await svc.restore_backup(str(backup_file), dry_run=True)
 
         assert result["backup_id"] == "SENTINEL_BACKUP_ID"

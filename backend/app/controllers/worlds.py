@@ -64,7 +64,9 @@ class RenameWorldRequest(BaseModel):
 @router.post("", response_model=CreateWorldResponse)
 async def create_world(payload: CreateWorldRequest) -> CreateWorldResponse:
     try:
-        world_id = await repo.create_world(payload.name, origin=(payload.origin or "human"), tags=payload.tags)
+        world_id = await repo.create_world(
+            payload.name, origin=(payload.origin or "human"), tags=payload.tags
+        )
         return CreateWorldResponse(id=world_id, name=payload.name)
     except Exception as exc:  # noqa: BLE001
         # If schema is out-of-date, the repo will already try a fallback. Bubble a clear message if still failing.
@@ -72,7 +74,9 @@ async def create_world(payload: CreateWorldRequest) -> CreateWorldResponse:
 
 
 @router.get("", response_model=List[Dict[str, str]])
-async def list_worlds(limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)) -> List[Dict[str, str]]:
+async def list_worlds(
+    limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)
+) -> List[Dict[str, str]]:
     return await repo.list_worlds(limit=limit, offset=offset)
 
 
@@ -100,7 +104,9 @@ async def get_latest_snapshot(world_id: str) -> SnapshotPayload:
 
 
 @router.get("/{world_id}/snapshots", response_model=List[Dict[str, str]])
-async def list_world_snapshots(world_id: str, limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)) -> List[Dict[str, str]]:
+async def list_world_snapshots(
+    world_id: str, limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)
+) -> List[Dict[str, str]]:
     return await repo.list_snapshots(world_id, limit=limit, offset=offset)
 
 
@@ -127,5 +133,3 @@ async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""
     world = await repo.get_world_by_name(name)
     return world
-
-

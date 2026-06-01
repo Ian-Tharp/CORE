@@ -25,14 +25,18 @@ class StepResponse(BaseModel):
     evaluation: Optional[str] = None
 
 
-def _llm_or_stub(system_prompt: str, user_input: str, model_override: Optional[str] = None) -> str:
+def _llm_or_stub(
+    system_prompt: str, user_input: str, model_override: Optional[str] = None
+) -> str:
     """Call an LLM if configured; otherwise return a stubbed response.
 
     This keeps the playground usable without credentials while enabling
     real model calls in properly configured environments.
     """
     if ChatOpenAI and os.getenv("OPENAI_API_KEY"):
-        chosen_model = (model_override or os.getenv("OPENAI_MODEL", "gpt-4o-mini")).strip()
+        chosen_model = (
+            model_override or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        ).strip()
         prompts = [("system", system_prompt), ("user", user_input)]
 
         def _supports_temperature(model_name: str) -> bool:
@@ -50,7 +54,9 @@ def _llm_or_stub(system_prompt: str, user_input: str, model_override: Optional[s
         except Exception as exc:  # noqa: BLE001
             # If temperature was the cause and the model was misclassified, fallback once
             msg_text = str(exc).lower()
-            if "temperature" in msg_text and ("unsupported" in msg_text or "does not support" in msg_text):
+            if "temperature" in msg_text and (
+                "unsupported" in msg_text or "does not support" in msg_text
+            ):
                 try:
                     llm = ChatOpenAI(model=chosen_model)
                     msg = llm.invoke(prompts)
@@ -67,7 +73,9 @@ def _sse(data: dict) -> str:
 
 
 @router.post("")
-async def core_entry(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)):
+async def core_entry(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+):
     # This is the entry point of the C.O.R.E cognitive engine.
     # This goes through each of the steps for the CORE flow, starting with:
     # Comprehension:
@@ -90,23 +98,33 @@ async def core_entry(user_input: UserInput, request: Request, api_key: str = Dep
     #  - If the result was Satisfactory, then we route to the Conversation step to complete the plan.
     # Conversation:
     #  - This is the node to send the final response to the user.
-    return {"message": "CORE entry acknowledged. Use /core/comprehension → /core/orchestration → /core/reasoning → /core/evaluation for step-by-step playground."}
+    return {
+        "message": "CORE entry acknowledged. Use /core/comprehension → /core/orchestration → /core/reasoning → /core/evaluation for step-by-step playground."
+    }
 
 
 @router.post("/comprehension")
-async def comprehension(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
+async def comprehension(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StepResponse:
     system = (
         "Classify the input as command/query/conversation; identify capabilities and whether tools are needed. "
         "Return a short explanation."
     )
     text = _llm_or_stub(system, user_input.user_input, user_input.model)
     # naive routing decision: if 'plan' or 'steps' present → orchestration; else conversation
-    route = "orchestration" if any(k in text.lower() for k in ["plan", "steps", "capability"]) else "conversation"
+    route = (
+        "orchestration"
+        if any(k in text.lower() for k in ["plan", "steps", "capability"])
+        else "conversation"
+    )
     return StepResponse(step="Comprehension", text=text, routing_decision=route)
 
 
 @router.post("/comprehension/stream")
-async def comprehension_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
+async def comprehension_stream(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StreamingResponse:
     system = (
         "Classify the input as command/query/conversation; identify capabilities and whether tools are needed. "
         "Return a short explanation."
@@ -126,13 +144,23 @@ async def comprehension_stream(user_input: UserInput, request: Request, api_key:
         duration_ms = int((time.perf_counter() - start) * 1000)
         ttfb_ms = int(((first or time.perf_counter()) - start) * 1000)
         tokens = len(text.split())
-        yield _sse({"type": "metrics", "duration_ms": duration_ms, "ttfb_ms": ttfb_ms, "tokens": tokens})
+        yield _sse(
+            {
+                "type": "metrics",
+                "duration_ms": duration_ms,
+                "ttfb_ms": ttfb_ms,
+                "tokens": tokens,
+            }
+        )
         yield _sse({"type": "end"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 
+
 @router.post("/orchestration")
-async def orchestration(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
+async def orchestration(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Previous comprehension: {user_input.comprehension_text}")
@@ -150,7 +178,9 @@ async def orchestration(user_input: UserInput, request: Request, api_key: str = 
 
 
 @router.post("/orchestration/stream")
-async def orchestration_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
+async def orchestration_stream(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Previous comprehension: {user_input.comprehension_text}")
@@ -174,14 +204,23 @@ async def orchestration_stream(user_input: UserInput, request: Request, api_key:
         duration_ms = int((time.perf_counter() - start) * 1000)
         ttfb_ms = int(((first or time.perf_counter()) - start) * 1000)
         tokens = len(text.split())
-        yield _sse({"type": "metrics", "duration_ms": duration_ms, "ttfb_ms": ttfb_ms, "tokens": tokens})
+        yield _sse(
+            {
+                "type": "metrics",
+                "duration_ms": duration_ms,
+                "ttfb_ms": ttfb_ms,
+                "tokens": tokens,
+            }
+        )
         yield _sse({"type": "end"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @router.post("/reasoning")
-async def reasoning(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
+async def reasoning(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -199,7 +238,9 @@ async def reasoning(user_input: UserInput, request: Request, api_key: str = Depe
 
 
 @router.post("/reasoning/stream")
-async def reasoning_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
+async def reasoning_stream(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -225,14 +266,23 @@ async def reasoning_stream(user_input: UserInput, request: Request, api_key: str
         duration_ms = int((time.perf_counter() - start) * 1000)
         ttfb_ms = int(((first or time.perf_counter()) - start) * 1000)
         tokens = len(text.split())
-        yield _sse({"type": "metrics", "duration_ms": duration_ms, "ttfb_ms": ttfb_ms, "tokens": tokens})
+        yield _sse(
+            {
+                "type": "metrics",
+                "duration_ms": duration_ms,
+                "ttfb_ms": ttfb_ms,
+                "tokens": tokens,
+            }
+        )
         yield _sse({"type": "end"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @router.post("/evaluation")
-async def evaluation(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StepResponse:
+async def evaluation(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StepResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -245,7 +295,8 @@ async def evaluation(user_input: UserInput, request: Request, api_key: str = Dep
     ctx = ("\n\nContext:\n" + "\n".join(context_bits)) if context_bits else ""
     system = (
         "Evaluate the most recent result against the desired outcome. "
-        "Answer SATISFACTORY or UNSATISFACTORY and explain briefly; propose a revision if needed." + ctx
+        "Answer SATISFACTORY or UNSATISFACTORY and explain briefly; propose a revision if needed."
+        + ctx
     )
     text = _llm_or_stub(system, user_input.user_input, user_input.model)
     verdict = "SATISFACTORY" if "satisf" in text.lower() else "UNSATISFACTORY"
@@ -253,7 +304,9 @@ async def evaluation(user_input: UserInput, request: Request, api_key: str = Dep
 
 
 @router.post("/evaluation/stream")
-async def evaluation_stream(user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)) -> StreamingResponse:
+async def evaluation_stream(
+    user_input: UserInput, request: Request, api_key: str = Depends(require_api_key)
+) -> StreamingResponse:
     context_bits = []
     if user_input.comprehension_text:
         context_bits.append(f"Comprehension: {user_input.comprehension_text}")
@@ -266,7 +319,8 @@ async def evaluation_stream(user_input: UserInput, request: Request, api_key: st
     ctx = ("\n\nContext:\n" + "\n".join(context_bits)) if context_bits else ""
     system = (
         "Evaluate the most recent result against the desired outcome. "
-        "Answer SATISFACTORY or UNSATISFACTORY and explain briefly; propose a revision if needed." + ctx
+        "Answer SATISFACTORY or UNSATISFACTORY and explain briefly; propose a revision if needed."
+        + ctx
     )
     start = time.perf_counter()
     text = _llm_or_stub(system, user_input.user_input, user_input.model)
@@ -281,7 +335,14 @@ async def evaluation_stream(user_input: UserInput, request: Request, api_key: st
         duration_ms = int((time.perf_counter() - start) * 1000)
         ttfb_ms = int(((first or time.perf_counter()) - start) * 1000)
         tokens = len(text.split())
-        yield _sse({"type": "metrics", "duration_ms": duration_ms, "ttfb_ms": ttfb_ms, "tokens": tokens})
+        yield _sse(
+            {
+                "type": "metrics",
+                "duration_ms": duration_ms,
+                "ttfb_ms": ttfb_ms,
+                "tokens": tokens,
+            }
+        )
         yield _sse({"type": "end"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")

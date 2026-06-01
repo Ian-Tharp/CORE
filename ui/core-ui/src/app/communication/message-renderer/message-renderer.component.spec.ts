@@ -10,10 +10,14 @@ describe('MessageRendererComponent', () => {
     await TestBed.configureTestingModule({
       imports: [MessageRendererComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(MessageRendererComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('message', {
+      content: 'Hello world',
+      message_type: 'text'
+    });
     fixture.detectChanges();
   });
 

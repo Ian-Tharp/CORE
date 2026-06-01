@@ -89,6 +89,7 @@ Return ONLY valid JSON, no markdown fencing."""
 # COMPREHENSION SERVICE
 # =============================================================================
 
+
 class ComprehensionService:
     """
     Central comprehension service for the CORE system.
@@ -131,21 +132,31 @@ class ComprehensionService:
 
         try:
             # Step 1: Parse intent
-            intent, complexity, suggested_task_type, suggested_priority, suggested_capabilities = (
-                await self._parse_intent(input_data)
-            )
+            (
+                intent,
+                complexity,
+                suggested_task_type,
+                suggested_priority,
+                suggested_capabilities,
+            ) = await self._parse_intent(input_data)
 
             # Step 2: Search memory for context
             context = await self._search_memory_context(input_data, intent)
 
             # Step 3: Match capabilities
-            capabilities = await self._match_capabilities(intent, suggested_capabilities)
+            capabilities = await self._match_capabilities(
+                intent, suggested_capabilities
+            )
 
             # Step 4: Determine handling mode
-            handling_mode = self._determine_handling_mode(intent, complexity, capabilities)
+            handling_mode = self._determine_handling_mode(
+                intent, complexity, capabilities
+            )
 
             # Step 5: Adjust priority based on context
-            adjusted_priority = self._adjust_priority(suggested_priority, intent, context)
+            adjusted_priority = self._adjust_priority(
+                suggested_priority, intent, context
+            )
 
             # Step 6: Score overall confidence
             overall_confidence = self._score_confidence(intent, context, capabilities)
@@ -203,9 +214,7 @@ class ComprehensionService:
     # STEP 1: INTENT PARSING
     # -------------------------------------------------------------------------
 
-    async def _parse_intent(
-        self, input_data: ComprehensionInput
-    ) -> tuple:
+    async def _parse_intent(self, input_data: ComprehensionInput) -> tuple:
         """
         Parse intent using LLM.
 
@@ -213,13 +222,17 @@ class ComprehensionService:
             (IntentAnalysis, ComplexityScore, suggested_task_type, suggested_priority, suggested_capabilities)
         """
         try:
-            llm_result = await self._call_llm_for_intent(input_data.content, input_data.source_type.value)
+            llm_result = await self._call_llm_for_intent(
+                input_data.content, input_data.source_type.value
+            )
             return self._build_intent_from_llm(llm_result)
         except Exception as e:
             logger.warning(f"LLM intent parsing failed, falling back to heuristic: {e}")
             return self._heuristic_intent_parse(input_data)
 
-    async def _call_llm_for_intent(self, content: str, source_type: str) -> Dict[str, Any]:
+    async def _call_llm_for_intent(
+        self, content: str, source_type: str
+    ) -> Dict[str, Any]:
         """Call LLM for intent analysis."""
         try:
             from app.dependencies import get_ollama_client
@@ -243,7 +256,9 @@ class ComprehensionService:
             if raw_text.startswith("```"):
                 lines = raw_text.split("\n")
                 # Remove first and last lines (fences)
-                raw_text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+                raw_text = "\n".join(
+                    lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+                )
 
             return json.loads(raw_text)
 
@@ -274,11 +289,13 @@ class ComprehensionService:
         entities = []
         for e in llm_result.get("entities", []):
             if isinstance(e, dict):
-                entities.append(ExtractedEntity(
-                    name=e.get("name", ""),
-                    entity_type=e.get("entity_type", "unknown"),
-                    confidence=min(1.0, max(0.0, float(e.get("confidence", 0.5)))),
-                ))
+                entities.append(
+                    ExtractedEntity(
+                        name=e.get("name", ""),
+                        entity_type=e.get("entity_type", "unknown"),
+                        confidence=min(1.0, max(0.0, float(e.get("confidence", 0.5)))),
+                    )
+                )
 
         # Build IntentAnalysis
         intent = IntentAnalysis(
@@ -296,7 +313,9 @@ class ComprehensionService:
         complexity_raw = llm_result.get("complexity", {})
         complexity = ComplexityScore(
             overall=min(1.0, max(0.0, float(complexity_raw.get("overall", 0.5)))),
-            reasoning_depth=min(1.0, max(0.0, float(complexity_raw.get("reasoning_depth", 0.5)))),
+            reasoning_depth=min(
+                1.0, max(0.0, float(complexity_raw.get("reasoning_depth", 0.5)))
+            ),
             breadth=min(1.0, max(0.0, float(complexity_raw.get("breadth", 0.5)))),
             novelty=min(1.0, max(0.0, float(complexity_raw.get("novelty", 0.5)))),
             estimated_duration_seconds=complexity_raw.get("estimated_duration_seconds"),
@@ -305,16 +324,24 @@ class ComprehensionService:
         # Suggested task type
         suggested_task_type = llm_result.get("suggested_task_type", "general")
         valid_task_types = [
-            TaskType.RESEARCH, TaskType.CODE, TaskType.ANALYSIS,
-            TaskType.MONITORING, TaskType.WRITING, TaskType.COMMUNICATION,
-            TaskType.PLANNING, TaskType.EVALUATION, "general",
+            TaskType.RESEARCH,
+            TaskType.CODE,
+            TaskType.ANALYSIS,
+            TaskType.MONITORING,
+            TaskType.WRITING,
+            TaskType.COMMUNICATION,
+            TaskType.PLANNING,
+            TaskType.EVALUATION,
+            "general",
         ]
         if suggested_task_type not in valid_task_types:
             suggested_task_type = "general"
 
         # Suggested priority
         try:
-            suggested_priority = max(1, min(10, int(llm_result.get("suggested_priority", 5))))
+            suggested_priority = max(
+                1, min(10, int(llm_result.get("suggested_priority", 5)))
+            )
         except (ValueError, TypeError):
             suggested_priority = 5
 
@@ -323,7 +350,13 @@ class ComprehensionService:
         if not isinstance(suggested_capabilities, list):
             suggested_capabilities = []
 
-        return intent, complexity, suggested_task_type, suggested_priority, suggested_capabilities
+        return (
+            intent,
+            complexity,
+            suggested_task_type,
+            suggested_priority,
+            suggested_capabilities,
+        )
 
     def _heuristic_intent_parse(self, input_data: ComprehensionInput) -> tuple:
         """
@@ -334,22 +367,44 @@ class ComprehensionService:
         content_lower = input_data.content.lower()
 
         # Classify action type
-        if any(w in content_lower for w in ["create", "build", "make", "generate", "write"]):
+        if any(
+            w in content_lower for w in ["create", "build", "make", "generate", "write"]
+        ):
             action_type = ActionType.CREATION
             task_type = TaskType.WRITING
-        elif any(w in content_lower for w in ["analyze", "evaluate", "assess", "compare"]):
+        elif any(
+            w in content_lower for w in ["analyze", "evaluate", "assess", "compare"]
+        ):
             action_type = ActionType.ANALYSIS
             task_type = TaskType.ANALYSIS
-        elif any(w in content_lower for w in ["find", "search", "what", "who", "when", "where", "how", "why", "?"]):
+        elif any(
+            w in content_lower
+            for w in [
+                "find",
+                "search",
+                "what",
+                "who",
+                "when",
+                "where",
+                "how",
+                "why",
+                "?",
+            ]
+        ):
             action_type = ActionType.QUERY
             task_type = TaskType.RESEARCH
-        elif any(w in content_lower for w in ["run", "execute", "deploy", "start", "stop", "restart"]):
+        elif any(
+            w in content_lower
+            for w in ["run", "execute", "deploy", "start", "stop", "restart"]
+        ):
             action_type = ActionType.COMMAND
             task_type = TaskType.CODE
         elif any(w in content_lower for w in ["monitor", "watch", "track", "observe"]):
             action_type = ActionType.MONITORING
             task_type = TaskType.MONITORING
-        elif any(w in content_lower for w in ["plan", "schedule", "roadmap", "strategy"]):
+        elif any(
+            w in content_lower for w in ["plan", "schedule", "roadmap", "strategy"]
+        ):
             action_type = ActionType.PLANNING
             task_type = TaskType.PLANNING
         else:
@@ -357,13 +412,19 @@ class ComprehensionService:
             task_type = "general"
 
         # Assess urgency
-        if any(w in content_lower for w in ["urgent", "asap", "immediately", "critical", "emergency"]):
+        if any(
+            w in content_lower
+            for w in ["urgent", "asap", "immediately", "critical", "emergency"]
+        ):
             urgency = UrgencyLevel.CRITICAL
             priority = 9
         elif any(w in content_lower for w in ["important", "soon", "priority", "fast"]):
             urgency = UrgencyLevel.HIGH
             priority = 7
-        elif any(w in content_lower for w in ["whenever", "low priority", "no rush", "when you can"]):
+        elif any(
+            w in content_lower
+            for w in ["whenever", "low priority", "no rush", "when you can"]
+        ):
             urgency = UrgencyLevel.LOW
             priority = 3
         else:
@@ -371,13 +432,60 @@ class ComprehensionService:
             priority = 5
 
         # Extract simple keywords (words > 3 chars, no stop words)
-        stop_words = {"the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her",
-                       "was", "one", "our", "out", "has", "have", "from", "this", "that", "with",
-                       "they", "been", "said", "each", "which", "their", "will", "other", "about",
-                       "many", "then", "them", "these", "some", "would", "make", "like", "just",
-                       "over", "such", "take", "than", "into", "could", "what", "there", "please"}
+        stop_words = {
+            "the",
+            "and",
+            "for",
+            "are",
+            "but",
+            "not",
+            "you",
+            "all",
+            "can",
+            "had",
+            "her",
+            "was",
+            "one",
+            "our",
+            "out",
+            "has",
+            "have",
+            "from",
+            "this",
+            "that",
+            "with",
+            "they",
+            "been",
+            "said",
+            "each",
+            "which",
+            "their",
+            "will",
+            "other",
+            "about",
+            "many",
+            "then",
+            "them",
+            "these",
+            "some",
+            "would",
+            "make",
+            "like",
+            "just",
+            "over",
+            "such",
+            "take",
+            "than",
+            "into",
+            "could",
+            "what",
+            "there",
+            "please",
+        }
         words = content_lower.split()
-        keywords = [w.strip(".,!?;:'\"") for w in words if len(w) > 3 and w not in stop_words][:10]
+        keywords = [
+            w.strip(".,!?;:'\"") for w in words if len(w) > 3 and w not in stop_words
+        ][:10]
 
         # Estimate complexity based on length and structure
         word_count = len(words)
@@ -422,7 +530,11 @@ class ComprehensionService:
             # Import memory repository and search all tiers
             from app.repository.memory_repository import get_relevant_context
 
-            agent_id = input_data.source_id if input_data.source_type == SourceType.AGENT else None
+            agent_id = (
+                input_data.source_id
+                if input_data.source_type == SourceType.AGENT
+                else None
+            )
 
             raw_context = await get_relevant_context(
                 query_embedding=query_embedding,
@@ -434,38 +546,44 @@ class ComprehensionService:
             # Convert to ContextMatch model
             semantic_matches = []
             for mem in raw_context.get("semantic", []):
-                semantic_matches.append(MemoryMatch(
-                    memory_id=mem.id,
-                    content=mem.content[:500],
-                    similarity=mem.metadata.get("similarity", 0.0),
-                    memory_tier="semantic",
-                    metadata=mem.metadata,
-                ))
+                semantic_matches.append(
+                    MemoryMatch(
+                        memory_id=mem.id,
+                        content=mem.content[:500],
+                        similarity=mem.metadata.get("similarity", 0.0),
+                        memory_tier="semantic",
+                        metadata=mem.metadata,
+                    )
+                )
 
             episodic_matches = []
             for mem in raw_context.get("episodic", []):
-                episodic_matches.append(MemoryMatch(
-                    memory_id=mem.id,
-                    content=mem.content[:500],
-                    similarity=mem.metadata.get("similarity", 0.0),
-                    memory_tier="episodic",
-                    metadata=mem.metadata,
-                ))
+                episodic_matches.append(
+                    MemoryMatch(
+                        memory_id=mem.id,
+                        content=mem.content[:500],
+                        similarity=mem.metadata.get("similarity", 0.0),
+                        memory_tier="episodic",
+                        metadata=mem.metadata,
+                    )
+                )
 
             procedural_matches = []
             for mem in raw_context.get("procedural", []):
-                procedural_matches.append(MemoryMatch(
-                    memory_id=mem.id,
-                    content=mem.content[:500],
-                    similarity=mem.metadata.get("similarity", 0.0),
-                    memory_tier="procedural",
-                    metadata=mem.metadata,
-                ))
+                procedural_matches.append(
+                    MemoryMatch(
+                        memory_id=mem.id,
+                        content=mem.content[:500],
+                        similarity=mem.metadata.get("similarity", 0.0),
+                        memory_tier="procedural",
+                        metadata=mem.metadata,
+                    )
+                )
 
             all_scores = (
-                [m.similarity for m in semantic_matches] +
-                [m.similarity for m in episodic_matches] +
-                [m.similarity for m in procedural_matches]
+                [m.similarity for m in semantic_matches]
+                + [m.similarity for m in episodic_matches]
+                + [m.similarity for m in procedural_matches]
             )
             best_score = max(all_scores) if all_scores else 0.0
             has_relevant = best_score > 0.6
@@ -516,15 +634,15 @@ class ComprehensionService:
 
             # Build capability keywords from intent
             intent_keywords = set(
-                [kw.lower() for kw in intent.keywords] +
-                [cap.lower() for cap in suggested_capabilities] +
-                [intent.action_type.value]
+                [kw.lower() for kw in intent.keywords]
+                + [cap.lower() for cap in suggested_capabilities]
+                + [intent.action_type.value]
             )
 
             for row in rows:
                 agent_id = row["agent_id"]
                 capabilities_raw = row["capabilities"]
-                
+
                 # Parse capabilities - could be JSON string or list
                 if isinstance(capabilities_raw, str):
                     try:
@@ -551,7 +669,7 @@ class ComprehensionService:
                 if cap_names:
                     overlap = intent_keywords.intersection(cap_names)
                     match_score = len(overlap) / max(len(intent_keywords), 1)
-                    
+
                     # Boost for action type alignment
                     role = (row["agent_role"] or "").lower()
                     action_role_map = {
@@ -569,15 +687,23 @@ class ComprehensionService:
                     if match_score > 0.1:
                         matched_agent_ids.append(agent_id)
                         for cap in agent_caps:
-                            cap_name = cap if isinstance(cap, str) else cap.get("name", "")
-                            cap_desc = "" if isinstance(cap, str) else cap.get("description", "")
-                            matched_capabilities.append(MatchedCapability(
-                                capability_name=cap_name,
-                                description=cap_desc,
-                                match_score=match_score,
-                                source_type="agent",
-                                source_id=agent_id,
-                            ))
+                            cap_name = (
+                                cap if isinstance(cap, str) else cap.get("name", "")
+                            )
+                            cap_desc = (
+                                ""
+                                if isinstance(cap, str)
+                                else cap.get("description", "")
+                            )
+                            matched_capabilities.append(
+                                MatchedCapability(
+                                    capability_name=cap_name,
+                                    description=cap_desc,
+                                    match_score=match_score,
+                                    source_type="agent",
+                                    source_id=agent_id,
+                                )
+                            )
 
                         if match_score > best_score:
                             best_score = match_score
@@ -728,7 +854,7 @@ class ComprehensionService:
                 agent_id = row["agent_id"]
                 agent_role = row["agent_role"] or ""
                 is_available = row["status"] == "ready"
-                
+
                 caps_raw = row["capabilities"]
                 if isinstance(caps_raw, str):
                     try:
@@ -742,24 +868,28 @@ class ComprehensionService:
 
                 for cap in caps_list:
                     if isinstance(cap, str):
-                        capabilities.append(SystemCapability(
-                            name=cap,
-                            provider_type="agent",
-                            provider_id=agent_id,
-                            provider_name=agent_role,
-                            is_available=is_available,
-                            tags=["agent", agent_role],
-                        ))
+                        capabilities.append(
+                            SystemCapability(
+                                name=cap,
+                                provider_type="agent",
+                                provider_id=agent_id,
+                                provider_name=agent_role,
+                                is_available=is_available,
+                                tags=["agent", agent_role],
+                            )
+                        )
                     elif isinstance(cap, dict):
-                        capabilities.append(SystemCapability(
-                            name=cap.get("name", "unknown"),
-                            description=cap.get("description", ""),
-                            provider_type="agent",
-                            provider_id=agent_id,
-                            provider_name=agent_role,
-                            is_available=is_available,
-                            tags=["agent", agent_role],
-                        ))
+                        capabilities.append(
+                            SystemCapability(
+                                name=cap.get("name", "unknown"),
+                                description=cap.get("description", ""),
+                                provider_type="agent",
+                                provider_id=agent_id,
+                                provider_name=agent_role,
+                                is_available=is_available,
+                                tags=["agent", agent_role],
+                            )
+                        )
 
         except Exception as e:
             logger.warning(f"Failed to query agent capabilities: {e}")
@@ -810,12 +940,28 @@ class ComprehensionService:
         overall = min(1.0, word_count / 100.0)
 
         # Check for multi-step indicators
-        multi_step_words = ["then", "after", "next", "also", "additionally", "furthermore", "step"]
+        multi_step_words = [
+            "then",
+            "after",
+            "next",
+            "also",
+            "additionally",
+            "furthermore",
+            "step",
+        ]
         step_count = sum(1 for w in content.lower().split() if w in multi_step_words)
         breadth = min(1.0, step_count * 0.15 + 0.2)
 
         # Check for analytical depth indicators
-        depth_words = ["analyze", "evaluate", "compare", "explain", "why", "how", "reasoning"]
+        depth_words = [
+            "analyze",
+            "evaluate",
+            "compare",
+            "explain",
+            "why",
+            "how",
+            "reasoning",
+        ]
         depth_count = sum(1 for w in content.lower().split() if w in depth_words)
         reasoning_depth = min(1.0, depth_count * 0.2 + 0.2)
 

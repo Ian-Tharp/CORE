@@ -31,6 +31,7 @@ from app.core.telemetry import setup_telemetry, get_tracer, reset_telemetry
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def reset_otel():
     """Reset the module-level OTel state before and after each test."""
@@ -51,6 +52,7 @@ def memory_exporter() -> InMemorySpanExporter:
 # setup_telemetry / get_tracer basics
 # ---------------------------------------------------------------------------
 
+
 class TestSetupTelemetry:
     def test_returns_tracer_provider(self, memory_exporter):
         provider = setup_telemetry(exporter=InMemorySpanExporter())
@@ -69,6 +71,7 @@ class TestSetupTelemetry:
         """Without OTEL_EXPORTER_OTLP_ENDPOINT, setup_telemetry should not raise."""
         with patch.dict("os.environ", {}, clear=False):
             import os
+
             os.environ.pop("OTEL_EXPORTER_OTLP_ENDPOINT", None)
             provider = setup_telemetry()  # No exporter injected, no endpoint set
         assert isinstance(provider, TracerProvider)
@@ -91,9 +94,11 @@ class TestSetupTelemetry:
 # Node span names — sentinel tests
 # ---------------------------------------------------------------------------
 
+
 def _make_core_state():
     """Create a minimal COREState for node method calls."""
     from app.models.core_state import COREState
+
     return COREState(user_input="test input", session_id="test-session")
 
 
@@ -108,7 +113,9 @@ class TestNodeSpanNames:
 
         graph = COREGraph.__new__(COREGraph)
         mock_agent = MagicMock()
-        mock_agent.analyze_intent.return_value = MagicMock(type="conversation", confidence=0.9)
+        mock_agent.analyze_intent.return_value = MagicMock(
+            type="conversation", confidence=0.9
+        )
         graph.comprehension_agent = mock_agent
 
         state = _make_core_state()
@@ -116,9 +123,9 @@ class TestNodeSpanNames:
 
         spans = memory_exporter.get_finished_spans()
         span_names = [s.name for s in spans]
-        assert "core.comprehension" in span_names, (
-            f"Expected 'core.comprehension' span, got: {span_names}"
-        )
+        assert (
+            "core.comprehension" in span_names
+        ), f"Expected 'core.comprehension' span, got: {span_names}"
 
     def test_orchestration_node_creates_span(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -130,13 +137,15 @@ class TestNodeSpanNames:
         graph.orchestration_agent = mock_agent
 
         state = _make_core_state()
-        state.intent = UserIntent(type="task", description="do something", confidence=0.9)
+        state.intent = UserIntent(
+            type="task", description="do something", confidence=0.9
+        )
         graph.orchestration_node(state)
 
         span_names = [s.name for s in memory_exporter.get_finished_spans()]
-        assert "core.orchestration" in span_names, (
-            f"Expected 'core.orchestration' span, got: {span_names}"
-        )
+        assert (
+            "core.orchestration" in span_names
+        ), f"Expected 'core.orchestration' span, got: {span_names}"
 
     def test_reasoning_node_creates_span(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -154,9 +163,9 @@ class TestNodeSpanNames:
         graph.reasoning_node(state)
 
         span_names = [s.name for s in memory_exporter.get_finished_spans()]
-        assert "core.reasoning" in span_names, (
-            f"Expected 'core.reasoning' span, got: {span_names}"
-        )
+        assert (
+            "core.reasoning" in span_names
+        ), f"Expected 'core.reasoning' span, got: {span_names}"
 
     def test_evaluation_node_creates_span(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -180,9 +189,9 @@ class TestNodeSpanNames:
         graph.evaluation_node(state)
 
         span_names = [s.name for s in memory_exporter.get_finished_spans()]
-        assert "core.evaluation" in span_names, (
-            f"Expected 'core.evaluation' span, got: {span_names}"
-        )
+        assert (
+            "core.evaluation" in span_names
+        ), f"Expected 'core.evaluation' span, got: {span_names}"
 
     def test_conversation_node_creates_span(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -191,13 +200,15 @@ class TestNodeSpanNames:
         graph = COREGraph.__new__(COREGraph)
 
         state = _make_core_state()
-        state.intent = UserIntent(type="conversation", description="chat", confidence=0.9)
+        state.intent = UserIntent(
+            type="conversation", description="chat", confidence=0.9
+        )
         graph.conversation_node(state)
 
         span_names = [s.name for s in memory_exporter.get_finished_spans()]
-        assert "core.conversation" in span_names, (
-            f"Expected 'core.conversation' span, got: {span_names}"
-        )
+        assert (
+            "core.conversation" in span_names
+        ), f"Expected 'core.conversation' span, got: {span_names}"
 
     def test_all_five_pipeline_stages_produce_spans(self, memory_exporter):
         """
@@ -255,6 +266,7 @@ class TestNodeSpanNames:
 # Span attributes
 # ---------------------------------------------------------------------------
 
+
 class TestSpanAttributes:
     def test_comprehension_span_has_node_name_attribute(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -267,7 +279,11 @@ class TestSpanAttributes:
 
         graph.comprehension_node(_make_core_state())
 
-        span = next(s for s in memory_exporter.get_finished_spans() if s.name == "core.comprehension")
+        span = next(
+            s
+            for s in memory_exporter.get_finished_spans()
+            if s.name == "core.comprehension"
+        )
         assert span.attributes.get("node.name") == "comprehension"
 
     def test_orchestration_span_has_pipeline_stage_attribute(self, memory_exporter):
@@ -284,7 +300,11 @@ class TestSpanAttributes:
         state.intent = UserIntent(type="task", description="t", confidence=0.9)
         graph.orchestration_node(state)
 
-        span = next(s for s in memory_exporter.get_finished_spans() if s.name == "core.orchestration")
+        span = next(
+            s
+            for s in memory_exporter.get_finished_spans()
+            if s.name == "core.orchestration"
+        )
         assert span.attributes.get("pipeline.stage") == "2_orchestration"
 
     def test_reasoning_span_records_step_count(self, memory_exporter):
@@ -302,7 +322,11 @@ class TestSpanAttributes:
 
         graph.reasoning_node(state)
 
-        span = next(s for s in memory_exporter.get_finished_spans() if s.name == "core.reasoning")
+        span = next(
+            s
+            for s in memory_exporter.get_finished_spans()
+            if s.name == "core.reasoning"
+        )
         assert span.attributes.get("plan.step_count") == 1
 
     def test_evaluation_span_records_next_action(self, memory_exporter):
@@ -328,13 +352,18 @@ class TestSpanAttributes:
         state.plan = ExecutionPlan(goal="g", steps=[])
         graph.evaluation_node(state)
 
-        span = next(s for s in memory_exporter.get_finished_spans() if s.name == "core.evaluation")
+        span = next(
+            s
+            for s in memory_exporter.get_finished_spans()
+            if s.name == "core.evaluation"
+        )
         assert span.attributes.get("eval.next_action") == "revise_plan"
 
 
 # ---------------------------------------------------------------------------
 # Parent-child relationships
 # ---------------------------------------------------------------------------
+
 
 class TestSpanParentChild:
     """
@@ -364,9 +393,9 @@ class TestSpanParentChild:
         assert root is not None, "Root span not found"
         assert child is not None, "Comprehension span not found"
         assert child.parent is not None, "Comprehension span has no parent"
-        assert child.parent.span_id == root.context.span_id, (
-            "Comprehension span parent does not match root span"
-        )
+        assert (
+            child.parent.span_id == root.context.span_id
+        ), "Comprehension span parent does not match root span"
 
     def test_orchestration_span_is_child_of_root_span(self, memory_exporter):
         from app.core.langgraph.core_graph_v2 import COREGraph
@@ -416,6 +445,7 @@ class TestSpanParentChild:
 # Error recording
 # ---------------------------------------------------------------------------
 
+
 class TestSpanErrorRecording:
     def test_comprehension_exception_sets_error_attribute(self, memory_exporter):
         """
@@ -426,7 +456,9 @@ class TestSpanErrorRecording:
 
         graph = COREGraph.__new__(COREGraph)
         graph.comprehension_agent = MagicMock()
-        graph.comprehension_agent.analyze_intent.side_effect = RuntimeError("SENTINEL_ERROR")
+        graph.comprehension_agent.analyze_intent.side_effect = RuntimeError(
+            "SENTINEL_ERROR"
+        )
 
         graph.comprehension_node(_make_core_state())
 

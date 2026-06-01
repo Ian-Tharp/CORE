@@ -31,7 +31,7 @@ export const routes: Routes = [
   },
   {
     path: 'conversations',
-    component: ConversationsPageComponent,
+    component: ConversationsPageComponent
   },
   {
     path: 'communication',
@@ -52,11 +52,11 @@ export const routes: Routes = [
   },
   {
     path: 'knowledge',
-    component: KnowledgebaseComponent,
+    component: KnowledgebaseComponent
   },
   {
     path: 'knowledge-attribution',
-    component: AttributionBrowserComponent,
+    component: AttributionBrowserComponent
   },
   {
     path: 'analytics',

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { Observable, BehaviorSubject, Subject, of, throwError } from 'rxjs';
-import { map, tap, catchError, finalize, filter } from 'rxjs/operators';
+import { map, tap, catchError, filter } from 'rxjs/operators';
 import {
   KnowledgeFile,
   VectorEmbedding,
@@ -19,8 +19,7 @@ import {
   KnowledgeAttribution,
   AttributionFilter,
   AttributedKnowledge,
-  AttributionStats,
-  AttributionVerificationStatus
+  AttributionStats
 } from '../../models/attribution.models';
 import { AppConfigService } from '../config/app-config.service';
 
@@ -318,13 +317,13 @@ export class KnowledgebaseService {
   private buildFilterParams(filter: KnowledgebaseFilter): any {
     const params: any = {};
     
-    if (filter.searchQuery) params.q = filter.searchQuery;
-    if (filter.tags?.length) params.tags = filter.tags.join(',');
-    if (filter.fileTypes?.length) params.types = filter.fileTypes.join(',');
-    if (filter.sources?.length) params.sources = filter.sources.join(',');
-    if (filter.status?.length) params.status = filter.status.join(',');
-    if (filter.isGlobal !== undefined) params.global = filter.isGlobal.toString();
-    if (filter.userId) params.userId = filter.userId;
+    if (filter.searchQuery) {params.q = filter.searchQuery;}
+    if (filter.tags?.length) {params.tags = filter.tags.join(',');}
+    if (filter.fileTypes?.length) {params.types = filter.fileTypes.join(',');}
+    if (filter.sources?.length) {params.sources = filter.sources.join(',');}
+    if (filter.status?.length) {params.status = filter.status.join(',');}
+    if (filter.isGlobal !== undefined) {params.global = filter.isGlobal.toString();}
+    if (filter.userId) {params.userId = filter.userId;}
     if (filter.dateRange) {
       params.startDate = filter.dateRange.start.toISOString();
       params.endDate = filter.dateRange.end.toISOString();
@@ -342,7 +341,11 @@ export class KnowledgebaseService {
   }
 
   // Poll the backend for file details until we see READY and metadata populated
-  private refreshFileUntilReady(fileId: string, maxAttempts: number = 80, intervalMs: number = 1500): Observable<KnowledgeFile | null> {
+  private refreshFileUntilReady(
+    fileId: string,
+    maxAttempts: number = 80,
+    intervalMs: number = 1500
+  ): Observable<KnowledgeFile | null> {
     return new Observable<KnowledgeFile | null>((subscriber) => {
       let attempts = 0;
       const tick = () => {
@@ -438,8 +441,8 @@ export class KnowledgebaseService {
   private buildAttributionFilterParams(filter: AttributionFilter): any {
     const params: any = {};
     
-    if (filter.instanceId) params.instanceId = filter.instanceId;
-    if (filter.searchQuery) params.q = filter.searchQuery;
+    if (filter.instanceId) {params.instanceId = filter.instanceId;}
+    if (filter.searchQuery) {params.q = filter.searchQuery;}
     if (filter.verificationStatus?.length) {
       params.status = filter.verificationStatus.join(',');
     }
@@ -453,7 +456,7 @@ export class KnowledgebaseService {
 
   // Utility methods for file size formatting
   formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) {return '0 Bytes';}
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));

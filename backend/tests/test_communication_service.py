@@ -76,7 +76,11 @@ class TestCommunicationServiceThreadResolution:
             new=AsyncMock(return_value=parent_message),
         ), patch(
             "app.services.communication_service.comm_repo.create_message",
-            new=AsyncMock(return_value=_make_message("child-1", parent_message_id="parent-1", thread_id="parent-1")),
+            new=AsyncMock(
+                return_value=_make_message(
+                    "child-1", parent_message_id="parent-1", thread_id="parent-1"
+                )
+            ),
         ) as mock_create, patch(
             "app.services.communication_service.websocket_manager.broadcast_to_channel",
             new=AsyncMock(),
@@ -107,7 +111,11 @@ class TestCommunicationServiceThreadResolution:
             new=AsyncMock(return_value=parent_message),
         ), patch(
             "app.services.communication_service.comm_repo.create_message",
-            new=AsyncMock(return_value=_make_message("child-1", parent_message_id="reply-1", thread_id="root-1")),
+            new=AsyncMock(
+                return_value=_make_message(
+                    "child-1", parent_message_id="reply-1", thread_id="root-1"
+                )
+            ),
         ) as mock_create, patch(
             "app.services.communication_service.websocket_manager.broadcast_to_channel",
             new=AsyncMock(),
@@ -146,9 +154,13 @@ class TestCommunicationServiceDiscordForwarding:
         bridge = MagicMock()
         bridge.is_connected = True
         bridge.get_channel_mappings.return_value = {mapping.discord_channel_id: mapping}
-        bridge.send_to_discord = AsyncMock(return_value=["discord-msg-1", "discord-msg-2"])
+        bridge.send_to_discord = AsyncMock(
+            return_value=["discord-msg-1", "discord-msg-2"]
+        )
 
-        def _link_lookup(*, core_message_id: str, discord_channel_id: str | None = None):
+        def _link_lookup(
+            *, core_message_id: str, discord_channel_id: str | None = None
+        ):
             if core_message_id == "core-msg-1":
                 return None
             if core_message_id == "parent-1":
@@ -252,7 +264,10 @@ class TestCommunicationServiceDiscordForwarding:
         # Assert
         mock_create_event.assert_awaited_once()
         assert mock_create_event.await_args.kwargs["status"] == "failed"
-        assert mock_create_event.await_args.kwargs["error"] == "Discord bridge not connected"
+        assert (
+            mock_create_event.await_args.kwargs["error"]
+            == "Discord bridge not connected"
+        )
 
 
 @pytest.mark.asyncio
@@ -361,7 +376,10 @@ class TestCommunicationServiceDiscordIngress:
         create_kwargs = mock_create_message.await_args.kwargs
         assert create_kwargs["parent_message_id"] == "core-parent"
         assert create_kwargs["thread_id"] == "core-root"
-        assert create_kwargs["metadata"]["discord_reference_message_id"] == "discord-parent"
+        assert (
+            create_kwargs["metadata"]["discord_reference_message_id"]
+            == "discord-parent"
+        )
         mock_create_link.assert_awaited_once()
         mock_create_event.assert_awaited_once()
         assert mock_create_event.await_args.kwargs["status"] == "success"

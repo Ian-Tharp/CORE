@@ -26,6 +26,7 @@ from app.models.comprehension_state import (
 # ComprehensionContext — Literals and defaults
 # ===========================================================================
 
+
 class TestComprehensionContext:
     def test_conversation_route_accepted(self):
         """
@@ -105,6 +106,7 @@ class TestComprehensionContext:
 # KnowledgeBaseResult
 # ===========================================================================
 
+
 class TestKnowledgeBaseResult:
     def test_valid_result_with_answer(self):
         """
@@ -156,6 +158,7 @@ class TestKnowledgeBaseResult:
 # ===========================================================================
 # CapabilitiesResult
 # ===========================================================================
+
 
 class TestCapabilitiesResult:
     def test_can_handle_true_stored(self):

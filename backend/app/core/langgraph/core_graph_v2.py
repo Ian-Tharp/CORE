@@ -14,7 +14,13 @@ from langgraph.types import Send
 # Prevents infinite revise_plan → orchestration → reasoning → evaluation loops.
 _MAX_PLAN_REVISIONS = int(os.getenv("CORE_MAX_PLAN_REVISIONS", "3"))
 
-from app.models.core_state import COREState, UserIntent, ExecutionPlan, PlanStep, EvaluationResult
+from app.models.core_state import (
+    COREState,
+    UserIntent,
+    ExecutionPlan,
+    PlanStep,
+    EvaluationResult,
+)
 from app.core.agents.comprehension_agent import ComprehensionAgent
 from app.core.agents.orchestration_agent import OrchestrationAgent
 from app.core.agents.reasoning_agent import ReasoningAgent
@@ -42,8 +48,11 @@ class COREGraph:
         # Initialize agents with configurable model
         # Priority: CORE_DEFAULT_MODEL env var > centralized config > hardcoded fallback
         from app.config.models import get_default_model
-        ollama_model = os.getenv("CORE_DEFAULT_MODEL", get_default_model("comprehension"))
-        
+
+        ollama_model = os.getenv(
+            "CORE_DEFAULT_MODEL", get_default_model("comprehension")
+        )
+
         self.comprehension_agent = ComprehensionAgent(model=ollama_model)
         self.orchestration_agent = OrchestrationAgent(model=ollama_model)
         self.reasoning_agent = ReasoningAgent(model=ollama_model)
@@ -71,7 +80,7 @@ class COREGraph:
             {
                 "orchestration": "orchestration",
                 "conversation": "conversation",
-            }
+            },
         )
 
         # Orchestration always goes to Reasoning
@@ -88,7 +97,7 @@ class COREGraph:
                 "conversation": "conversation",
                 "orchestration": "orchestration",  # Revise plan
                 "reasoning": "reasoning",  # Retry step
-            }
+            },
         )
 
         # Conversation always ends
@@ -129,7 +138,9 @@ class COREGraph:
                 state.intent = intent
 
                 span.set_attribute("intent.type", intent.type if intent else "unknown")
-                span.set_attribute("intent.confidence", float(intent.confidence) if intent else 0.0)
+                span.set_attribute(
+                    "intent.confidence", float(intent.confidence) if intent else 0.0
+                )
 
             except Exception as e:
                 span.record_exception(e)
@@ -139,7 +150,7 @@ class COREGraph:
                 state.intent = UserIntent(
                     type="conversation",
                     description="Error in comprehension, falling back to chat",
-                    confidence=0.5
+                    confidence=0.5,
                 )
 
         return state
@@ -180,7 +191,7 @@ class COREGraph:
                     intent=state.intent,
                     previous_plan=state.plan,
                     evaluation_feedback=feedback,
-                    revision=revision_num
+                    revision=revision_num,
                 )
 
                 state.plan = plan
@@ -231,7 +242,7 @@ class COREGraph:
                 results = self.reasoning_agent.execute_plan(
                     plan=state.plan,
                     start_from_step=start_step_id,
-                    enable_tools=state.config.get("enable_tools", True)
+                    enable_tools=state.config.get("enable_tools", True),
                 )
 
                 # Update state with results
@@ -279,9 +290,15 @@ class COREGraph:
                 state.eval_result = evaluation
 
                 if evaluation:
-                    span.set_attribute("eval.status", evaluation.overall_status or "unknown")
-                    span.set_attribute("eval.next_action", evaluation.next_action or "unknown")
-                    span.set_attribute("eval.confidence", float(evaluation.confidence or 0.0))
+                    span.set_attribute(
+                        "eval.status", evaluation.overall_status or "unknown"
+                    )
+                    span.set_attribute(
+                        "eval.next_action", evaluation.next_action or "unknown"
+                    )
+                    span.set_attribute(
+                        "eval.confidence", float(evaluation.confidence or 0.0)
+                    )
 
             except Exception as e:
                 span.record_exception(e)
@@ -294,7 +311,7 @@ class COREGraph:
                     meets_requirements=True,
                     quality_score=0.5,
                     feedback="Evaluation failed, defaulting to success",
-                    next_action="finalize"
+                    next_action="finalize",
                 )
 
         return state
@@ -308,6 +325,7 @@ class COREGraph:
         - Minimal metadata (only if debugging enabled or low confidence)
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         tracer = get_tracer()
@@ -316,7 +334,9 @@ class COREGraph:
             span.set_attribute("pipeline.stage", "5_conversation")
 
             state.add_execution_node("conversation")
-            logger.info(f"[CONVERSATION] Starting. step_results={len(state.step_results)}, plan={state.plan is not None}, eval={state.eval_result is not None}")
+            logger.info(
+                f"[CONVERSATION] Starting. step_results={len(state.step_results)}, plan={state.plan is not None}, eval={state.eval_result is not None}"
+            )
 
             try:
                 # For simple conversations (no task execution)
@@ -328,15 +348,28 @@ class COREGraph:
                     response_parts = []
 
                     # PRIMARY: Add the actual task outputs first (what the user actually wants!)
-                    logger.info(f"[CONVERSATION] Processing {len(state.step_results)} step results")
+                    logger.info(
+                        f"[CONVERSATION] Processing {len(state.step_results)} step results"
+                    )
                     for result in state.step_results:
-                        logger.info(f"[CONVERSATION] Step {result.step_id}: outputs={result.outputs}")
+                        logger.info(
+                            f"[CONVERSATION] Step {result.step_id}: outputs={result.outputs}"
+                        )
                         if result.outputs:
                             for key, value in result.outputs.items():
                                 if key in ("result", "output", "content"):
-                                    logger.info(f"[CONVERSATION] Found '{key}' output: {str(value)[:100]}")
+                                    logger.info(
+                                        f"[CONVERSATION] Found '{key}' output: {str(value)[:100]}"
+                                    )
                                     response_parts.append(str(value))
-                                elif key not in ("files_modified", "query_result", "rows_affected", "branch", "commit_sha", "files_changed"):
+                                elif key not in (
+                                    "files_modified",
+                                    "query_result",
+                                    "rows_affected",
+                                    "branch",
+                                    "commit_sha",
+                                    "files_changed",
+                                ):
                                     # Skip technical outputs, include named content
                                     response_parts.append(str(value))
 
@@ -346,8 +379,17 @@ class COREGraph:
                             if result.logs:
                                 # Filter out technical logs
                                 meaningful_logs = [
-                                    log for log in result.logs
-                                    if not log.startswith(("Executing", "Tool:", "Parameters:", "Model:", "LLM"))
+                                    log
+                                    for log in result.logs
+                                    if not log.startswith(
+                                        (
+                                            "Executing",
+                                            "Tool:",
+                                            "Parameters:",
+                                            "Model:",
+                                            "LLM",
+                                        )
+                                    )
                                 ]
                                 response_parts.extend(meaningful_logs)
 
@@ -362,7 +404,9 @@ class COREGraph:
                     show_metadata = state.config.get("show_metadata", False)
                     if show_metadata or state.eval_result.confidence < 0.7:
                         response_parts.append("")
-                        completed_steps = [s for s in state.plan.steps if s.status == "completed"]
+                        completed_steps = [
+                            s for s in state.plan.steps if s.status == "completed"
+                        ]
                         response_parts.append(
                             f"✓ Completed: {state.plan.goal} "
                             f"({len(completed_steps)} steps, {state.eval_result.quality_score:.0%} quality)"
@@ -373,16 +417,28 @@ class COREGraph:
                                 f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
                             )
 
-                    state.response = "\n".join(response_parts) if response_parts else "Task completed."
-                    logger.info(f"[CONVERSATION] Final response set (len={len(state.response)}): {state.response[:200] if state.response else 'NONE'}")
+                    state.response = (
+                        "\n".join(response_parts)
+                        if response_parts
+                        else "Task completed."
+                    )
+                    logger.info(
+                        f"[CONVERSATION] Final response set (len={len(state.response)}): {state.response[:200] if state.response else 'NONE'}"
+                    )
 
                 else:
-                    state.response = "Task processed. Check execution history for details."
-                    logger.info("[CONVERSATION] No plan or eval_result, using default response")
+                    state.response = (
+                        "Task processed. Check execution history for details."
+                    )
+                    logger.info(
+                        "[CONVERSATION] No plan or eval_result, using default response"
+                    )
 
                 # Mark as complete
                 state.completed_at = state.updated_at
-                logger.info(f"[CONVERSATION] Complete. response={state.response[:100] if state.response else 'NONE'}")
+                logger.info(
+                    f"[CONVERSATION] Complete. response={state.response[:100] if state.response else 'NONE'}"
+                )
 
             except Exception as e:
                 logger.error(f"[CONVERSATION] Exception: {e}", exc_info=True)
@@ -403,7 +459,9 @@ class COREGraph:
     # Routing Logic
     # ======================
 
-    def route_from_comprehension(self, state: COREState) -> Literal["orchestration", "conversation"]:
+    def route_from_comprehension(
+        self, state: COREState
+    ) -> Literal["orchestration", "conversation"]:
         """
         Route after comprehension based on intent type.
 
@@ -433,11 +491,15 @@ class COREGraph:
             return "conversation"  # Default to conversation on error
 
         # Loop guard: cap plan revisions to prevent infinite cycles
-        if (state.eval_result.next_action == "revise_plan"
-                and state.plan_revisions >= _MAX_PLAN_REVISIONS):
+        if (
+            state.eval_result.next_action == "revise_plan"
+            and state.plan_revisions >= _MAX_PLAN_REVISIONS
+        ):
             import logging
+
             logging.getLogger(__name__).warning(
-                "Max plan revisions (%d) reached — forcing finalization", _MAX_PLAN_REVISIONS
+                "Max plan revisions (%d) reached — forcing finalization",
+                _MAX_PLAN_REVISIONS,
             )
             return "conversation"
 

@@ -37,6 +37,7 @@ from app.utils.errors import (
 # COREError — base exception
 # ===========================================================================
 
+
 class TestCOREError:
     def test_defaults(self):
         """Default code is CORE_ERROR, status 500."""
@@ -48,7 +49,9 @@ class TestCOREError:
 
     def test_custom_fields(self):
         """Custom code, status, and details are stored correctly."""
-        err = COREError("bad input", code="BAD_INPUT", status_code=400, details={"field": "x"})
+        err = COREError(
+            "bad input", code="BAD_INPUT", status_code=400, details={"field": "x"}
+        )
         assert err.code == "BAD_INPUT"
         assert err.status_code == 400
         assert err.details == {"field": "x"}
@@ -63,7 +66,9 @@ class TestCOREError:
         SENTINEL — to_response must populate error, code, details.
         Return empty ErrorResponse → callers lose error context → test fails.
         """
-        err = COREError("SENTINEL_MSG", code="SENTINEL_CODE", details={"key": "SENTINEL_DETAIL"})
+        err = COREError(
+            "SENTINEL_MSG", code="SENTINEL_CODE", details={"key": "SENTINEL_DETAIL"}
+        )
         resp = err.to_response(correlation_id="SENTINEL_CORR")
         assert isinstance(resp, ErrorResponse)
         assert resp.error == "SENTINEL_MSG"
@@ -81,6 +86,7 @@ class TestCOREError:
 # ===========================================================================
 # NotFoundError
 # ===========================================================================
+
 
 class TestNotFoundError:
     def test_code_derived_from_resource_type(self):
@@ -126,6 +132,7 @@ class TestNotFoundError:
 # ValidationError (COREValidationError)
 # ===========================================================================
 
+
 class TestCOREValidationError:
     def test_code_is_validation_error(self):
         """Code must be VALIDATION_ERROR."""
@@ -155,6 +162,7 @@ class TestCOREValidationError:
 # AuthenticationError / AuthorizationError
 # ===========================================================================
 
+
 class TestAuthErrors:
     def test_authentication_error_defaults(self):
         """AuthenticationError defaults to 401 with AUTHENTICATION_ERROR code."""
@@ -172,6 +180,7 @@ class TestAuthErrors:
 # ===========================================================================
 # RateLimitError
 # ===========================================================================
+
 
 class TestRateLimitError:
     def test_message_includes_retry_after(self):
@@ -205,6 +214,7 @@ class TestRateLimitError:
 # ServiceUnavailableError
 # ===========================================================================
 
+
 class TestServiceUnavailableError:
     def test_default_message_includes_service_name(self):
         """Default message must include the service name."""
@@ -230,6 +240,7 @@ class TestServiceUnavailableError:
 # ===========================================================================
 # ExecutionError
 # ===========================================================================
+
 
 class TestExecutionError:
     def test_run_id_in_details(self):
@@ -269,6 +280,7 @@ class TestExecutionError:
 # handle_core_errors decorator
 # ===========================================================================
 
+
 class TestHandleCoreErrors:
     @pytest.mark.asyncio
     async def test_core_error_converts_to_http_exception(self):
@@ -276,6 +288,7 @@ class TestHandleCoreErrors:
         SENTINEL — COREError must become HTTPException with correct status.
         Remove COREError branch → COREError raises 500 regardless of status_code → test fails.
         """
+
         @handle_core_errors
         async def endpoint():
             raise NotFoundError("Agent", "agent-1")
@@ -292,6 +305,7 @@ class TestHandleCoreErrors:
         SENTINEL — HTTPException must be re-raised unchanged.
         Catch HTTPException → callers lose the original 403 status → test fails.
         """
+
         @handle_core_errors
         async def endpoint():
             raise HTTPException(status_code=403, detail="forbidden")
@@ -304,6 +318,7 @@ class TestHandleCoreErrors:
     @pytest.mark.asyncio
     async def test_unexpected_exception_becomes_500(self):
         """Unexpected Exception must become a 500 HTTPException."""
+
         @handle_core_errors
         async def endpoint():
             raise RuntimeError("unexpected")
@@ -317,6 +332,7 @@ class TestHandleCoreErrors:
     @pytest.mark.asyncio
     async def test_success_returns_value(self):
         """Decorator must not interfere with successful functions."""
+
         @handle_core_errors
         async def endpoint():
             return {"ok": True}
@@ -347,6 +363,7 @@ class TestHandleCoreErrors:
     @pytest.mark.asyncio
     async def test_core_error_detail_includes_code_and_message(self):
         """Error detail dict must include error message and code."""
+
         @handle_core_errors
         async def endpoint():
             raise COREError("SENTINEL_MESSAGE", code="SENTINEL_CODE")
@@ -362,6 +379,7 @@ class TestHandleCoreErrors:
 # ===========================================================================
 # core_exception_handler
 # ===========================================================================
+
 
 class TestCoreExceptionHandler:
     @pytest.mark.asyncio
@@ -388,6 +406,7 @@ class TestCoreExceptionHandler:
         resp = await core_exception_handler(req, exc)
 
         import json
+
         body = json.loads(resp.body)
         assert body["error"] == "SENTINEL_ERR"
         assert body["code"] == "SENTINEL_CD"
@@ -405,5 +424,6 @@ class TestCoreExceptionHandler:
         resp = await core_exception_handler(req, exc)
 
         import json
+
         body = json.loads(resp.body)
         assert body.get("correlation_id") == "SENTINEL_TRACE"

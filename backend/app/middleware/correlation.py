@@ -34,7 +34,9 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Prefer incoming header for distributed tracing; generate if absent
-        correlation_id = request.headers.get(CORRELATION_HEADER) or str(uuid.uuid4())[:8]
+        correlation_id = (
+            request.headers.get(CORRELATION_HEADER) or str(uuid.uuid4())[:8]
+        )
 
         # Store on request state — both names point to the same value
         request.state.correlation_id = correlation_id

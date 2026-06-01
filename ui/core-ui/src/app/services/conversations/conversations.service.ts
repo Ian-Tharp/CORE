@@ -12,8 +12,8 @@ export class ConversationsService {
 
   list(page?: number, pageSize?: number): Observable<ConversationSummary[]> {
     let params = new HttpParams();
-    if (page) params = params.set('page', String(page));
-    if (pageSize) params = params.set('page_size', String(pageSize));
+    if (page) {params = params.set('page', String(page));}
+    if (pageSize) {params = params.set('page_size', String(pageSize));}
     return this._http.get<ConversationSummary[]>(`${this._cfg.conversationsUrl}/`, { params });
   }
 

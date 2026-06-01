@@ -71,9 +71,7 @@ def record_pipeline_run(state: "COREState") -> dict:
         # Intent
         "intent_type": state.intent.type if state.intent else None,
         "task_category": state.intent.task_category if state.intent else None,
-        "intent_confidence": (
-            float(state.intent.confidence) if state.intent else None
-        ),
+        "intent_confidence": (float(state.intent.confidence) if state.intent else None),
         # Plan
         "plan_goal": state.plan.goal if state.plan else None,
         "plan_step_count": len(state.plan.steps) if state.plan else 0,

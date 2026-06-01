@@ -79,7 +79,10 @@ async def list_conversations(
                 page_size,
                 max(0, (page - 1) * page_size),
             )
-        return [{"id": r["id"], "title": r["title"], "messages": r["messages"]} for r in rows]
+        return [
+            {"id": r["id"], "title": r["title"], "messages": r["messages"]}
+            for r in rows
+        ]
 
 
 async def count_conversations(*, search: Optional[str] = None) -> int:
@@ -122,7 +125,10 @@ async def get_conversation(conv_id: str) -> Optional[_Conversation]:
         return {
             "id": conv_row["id"],
             "title": conv_row["title"],
-            "messages": [{"role": r["role"], "content": r["content"], "thinking": r["thinking"]} for r in msg_rows],
+            "messages": [
+                {"role": r["role"], "content": r["content"], "thinking": r["thinking"]}
+                for r in msg_rows
+            ],
         }
 
 
@@ -206,7 +212,9 @@ async def update_title(conv_id: str, title: str) -> None:
         )
 
 
-async def _insert_messages(conn: asyncpg.Connection, conv_id: str, messages: List[_Message]) -> None:
+async def _insert_messages(
+    conn: asyncpg.Connection, conv_id: str, messages: List[_Message]
+) -> None:
     """Helper to bulk-insert messages for a given conversation id."""
     if not messages:
         return

@@ -1,4 +1,5 @@
 """Structured JSON logging configuration for CORE."""
+
 import json
 import logging
 import os
@@ -53,9 +54,9 @@ def setup_logging():
     if env == "production":
         handler.setFormatter(JSONFormatter())
     else:
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        ))
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
 
     root.addHandler(handler)
 

@@ -102,7 +102,9 @@ class CommunicationService:
                 core_channel_id=mapping.core_channel_id,
                 discord_message_id=discord_message_id,
                 discord_channel_id=discord_channel_id,
-                discord_guild_id=str(discord_message.guild.id) if discord_message.guild else None,
+                discord_guild_id=(
+                    str(discord_message.guild.id) if discord_message.guild else None
+                ),
                 metadata={"reason": "duplicate_link"},
             )
             return None
@@ -126,10 +128,13 @@ class CommunicationService:
             "discord_message_id": discord_message_id,
             "discord_channel_id": discord_channel_id,
             "discord_author_id": str(discord_message.author.id),
-            "discord_guild_id": str(discord_message.guild.id) if discord_message.guild else None,
+            "discord_guild_id": (
+                str(discord_message.guild.id) if discord_message.guild else None
+            ),
             "discord_reference_message_id": (
                 str(referenced_message.message_id)
-                if referenced_message and getattr(referenced_message, "message_id", None)
+                if referenced_message
+                and getattr(referenced_message, "message_id", None)
                 else None
             ),
             "discord_thread_id": (
@@ -161,7 +166,9 @@ class CommunicationService:
             discord_author_id=metadata["discord_author_id"],
             direction="discord_to_core",
             metadata={
-                "discord_reference_message_id": metadata["discord_reference_message_id"],
+                "discord_reference_message_id": metadata[
+                    "discord_reference_message_id"
+                ],
                 "discord_thread_id": metadata["discord_thread_id"],
             },
         )
@@ -176,7 +183,9 @@ class CommunicationService:
             discord_guild_id=metadata["discord_guild_id"],
             metadata={
                 "parent_core_message_id": parent_core_message_id,
-                "discord_reference_message_id": metadata["discord_reference_message_id"],
+                "discord_reference_message_id": metadata[
+                    "discord_reference_message_id"
+                ],
             },
         )
 
@@ -253,9 +262,11 @@ class CommunicationService:
 
         for mapping in mappings:
 
-            existing_link = await discord_repository.get_primary_message_link_for_core_message(
-                core_message_id=message["message_id"],
-                discord_channel_id=mapping.discord_channel_id,
+            existing_link = (
+                await discord_repository.get_primary_message_link_for_core_message(
+                    core_message_id=message["message_id"],
+                    discord_channel_id=mapping.discord_channel_id,
+                )
             )
             if existing_link:
                 logger.debug(
@@ -346,9 +357,11 @@ class CommunicationService:
         if not parent_message_id:
             return None
 
-        parent_link = await discord_repository.get_primary_message_link_for_core_message(
-            core_message_id=parent_message_id,
-            discord_channel_id=discord_channel_id,
+        parent_link = (
+            await discord_repository.get_primary_message_link_for_core_message(
+                core_message_id=parent_message_id,
+                discord_channel_id=discord_channel_id,
+            )
         )
         if parent_link:
             return parent_link.get("discord_message_id")

@@ -11,7 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import {
   DiscordBridgeIndicator,
-  DiscordBridgeService,
+  DiscordBridgeService
 } from '../../services/discord-bridge/discord-bridge.service';
 import { DiscordBridgeStatusBadgeComponent } from '../discord-bridge-status-badge/discord-bridge-status-badge.component';
 

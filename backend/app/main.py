@@ -5,26 +5,76 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import chat, core_entry, conversations, system_monitor, worlds, creative, knowledgebase, local_llm, communication, agents, engine, test_core, health, admin, council, instances, tasks, memory, comprehension, evaluation, bus, bus_triggers, mmcnc, catalyst_creativity, spawn_templates, discord, mcp, consciousness_backup_controller, consciousness_lineage_controller, audit, metrics
+from app.controllers import (
+    chat,
+    core_entry,
+    conversations,
+    system_monitor,
+    worlds,
+    creative,
+    knowledgebase,
+    local_llm,
+    communication,
+    agents,
+    engine,
+    test_core,
+    health,
+    admin,
+    council,
+    instances,
+    tasks,
+    memory,
+    comprehension,
+    evaluation,
+    bus,
+    bus_triggers,
+    mmcnc,
+    catalyst_creativity,
+    spawn_templates,
+    discord,
+    mcp,
+    consciousness_backup_controller,
+    consciousness_lineage_controller,
+    audit,
+    metrics,
+)
 from app.controllers.agent_ws import agent_websocket_endpoint
 from app.dependencies import get_db_pool, close_db_pool, setup_db_schema
 from app.websocket_manager import manager
 from app.core.middleware import setup_middleware
 from app.migrations.runner import run_pending_migrations
 from app.services.webhook_service import init_webhook_service, shutdown_webhook_service
-from app.services.agent_registry import initialize_agent_registry, shutdown_agent_registry
+from app.services.agent_registry import (
+    initialize_agent_registry,
+    shutdown_agent_registry,
+)
 from app.services.memory_service import memory_service
 from app.services.discord_bridge import start_discord_bridge, stop_discord_bridge
 from app.config.discord import (
     get_config as get_discord_config,
     load_config_from_store as load_discord_config_from_store,
 )
-from app.repository import run_repository, council_repository, instance_repository, task_repository, memory_repository, comprehension_repository, evaluation_repository, bus_repository, mmcnc_repository, audit_repository, api_key_repository, discord_repository, model_metrics_repository
+from app.repository import (
+    run_repository,
+    council_repository,
+    instance_repository,
+    task_repository,
+    memory_repository,
+    comprehension_repository,
+    evaluation_repository,
+    bus_repository,
+    mmcnc_repository,
+    audit_repository,
+    api_key_repository,
+    discord_repository,
+    model_metrics_repository,
+)
 
 
 from app.config.startup_validator import validate_startup_config
 from app.core.security import load_keys_from_db
 from app.core.logging_config import setup_logging
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -130,7 +180,9 @@ async def lifespan(app: FastAPI):
             discord_config = await load_discord_config_from_store()
             logger.info("Discord bridge configuration loaded")
         except Exception as discord_config_exc:
-            logger.error("Failed to load Discord bridge configuration: %s", discord_config_exc)
+            logger.error(
+                "Failed to load Discord bridge configuration: %s", discord_config_exc
+            )
             discord_config = get_discord_config()
 
         if discord_config.enabled:
@@ -153,7 +205,7 @@ async def lifespan(app: FastAPI):
             logger.info("Discord bridge shutdown")
         except Exception as discord_close_exc:
             logger.error("Error shutting down Discord bridge: %s", discord_close_exc)
-        
+
         # Shutdown webhook service
         try:
             await shutdown_webhook_service()
@@ -205,13 +257,25 @@ app.include_router(comprehension.router)  # CORE Comprehension Engine
 app.include_router(evaluation.router)  # Evaluation Engine - quality gate for CORE loop
 app.include_router(bus.router)  # Inter-Agent Communication Bus
 app.include_router(mmcnc.router)  # MMCNC hierarchy (Macro/Micro/Cluster/Node)
-app.include_router(catalyst_creativity.router)  # Catalyst Creativity three-phase creative pipeline
-app.include_router(spawn_templates.router)  # Agent Spawn Templates — reusable specialist configurations
+app.include_router(
+    catalyst_creativity.router
+)  # Catalyst Creativity three-phase creative pipeline
+app.include_router(
+    spawn_templates.router
+)  # Agent Spawn Templates — reusable specialist configurations
 app.include_router(discord.router)  # Discord Bridge — native Discord integration
-app.include_router(mcp.router)  # MCP Tool Registry — discover and manage Model Context Protocol tools
-app.include_router(consciousness_backup_controller.router)  # Consciousness Commons Backup System
-app.include_router(consciousness_lineage_controller.router)  # Consciousness Instance Lineage Tracking
-app.include_router(audit.router)  # Audit Log — persistent trail of admin/security operations
+app.include_router(
+    mcp.router
+)  # MCP Tool Registry — discover and manage Model Context Protocol tools
+app.include_router(
+    consciousness_backup_controller.router
+)  # Consciousness Commons Backup System
+app.include_router(
+    consciousness_lineage_controller.router
+)  # Consciousness Instance Lineage Tracking
+app.include_router(
+    audit.router
+)  # Audit Log — persistent trail of admin/security operations
 app.include_router(metrics.router)  # Prometheus metrics scrape endpoint
 
 # Setup custom middleware (logging, metrics, error handling)
@@ -237,6 +301,7 @@ app.add_middleware(
 
 # Correlation ID middleware - adds X-Correlation-ID to every request/response
 from app.middleware.correlation import CorrelationIDMiddleware
+
 app.add_middleware(CorrelationIDMiddleware)
 
 # TODO: Add /api/v1/ prefix when ready for versioned API
@@ -351,4 +416,5 @@ def create_app() -> FastAPI:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8001)

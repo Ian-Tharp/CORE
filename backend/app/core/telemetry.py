@@ -80,6 +80,7 @@ def setup_telemetry(exporter: Optional[SpanExporter] = None) -> TracerProvider:
                 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
                     OTLPSpanExporter,
                 )
+
                 otlp = OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces")
                 provider.add_span_processor(BatchSpanProcessor(otlp))
                 logger.info("OTel: OTLP exporter configured → %s", endpoint)

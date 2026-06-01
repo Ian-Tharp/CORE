@@ -273,10 +273,10 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   private _stageForAgent(agent: AgentActivityEvent): StageId | null {
     const raw = `${agent.agent_id} ${agent.action} ${agent.message ?? ''}`.toLowerCase();
-    if (raw.includes('comprehension')) return 'comprehension';
-    if (raw.includes('orchestration')) return 'orchestration';
-    if (raw.includes('reasoning')) return 'reasoning';
-    if (raw.includes('evaluation')) return 'evaluation';
+    if (raw.includes('comprehension')) {return 'comprehension';}
+    if (raw.includes('orchestration')) {return 'orchestration';}
+    if (raw.includes('reasoning')) {return 'reasoning';}
+    if (raw.includes('evaluation')) {return 'evaluation';}
     return null;
   }
 
@@ -479,7 +479,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
    * Get system health status color
    */
   getSystemHealthColor(): string {
-    if (!this.systemHealth) return 'var(--core-text-dim)';
+    if (!this.systemHealth) {return 'var(--core-text-dim)';}
 
     switch (this.systemHealth.status) {
       case 'healthy': return 'var(--core-success)';
@@ -513,11 +513,11 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     const diffMs = now.getTime() - activityTime.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
     
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) {return 'Just now';}
+    if (diffMins < 60) {return `${diffMins}m ago`;}
     
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) {return `${diffHours}h ago`;}
     
     return activityTime.toLocaleDateString();
   }

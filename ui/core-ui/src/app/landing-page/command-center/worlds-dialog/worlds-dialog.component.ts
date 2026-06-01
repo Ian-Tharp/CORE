@@ -38,7 +38,7 @@ export class WorldsDialogComponent {
   }
 
   public onDelete(world: { id: string; name: string }): void {
-    if (!confirm(`Delete world "${world.name}" and all snapshots?`)) return;
+    if (!confirm(`Delete world "${world.name}" and all snapshots?`)) {return;}
     this.worldsSvc.deleteWorld(world.id).subscribe({
       next: () => {
         // Refresh list
@@ -47,7 +47,7 @@ export class WorldsDialogComponent {
           next: (res) => { this.worlds = res; this.isLoading = false; },
           error: () => { this.isLoading = false; }
         });
-      },
+      }
     });
   }
 }

@@ -26,6 +26,7 @@ from app.services.agent_mcp_service import AgentMCPService, get_agent_mcp_servic
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> AgentMCPService:
     return AgentMCPService()
 
@@ -51,6 +52,7 @@ def _make_mcp_config(
 # ===========================================================================
 # _is_cache_valid — TTL logic
 # ===========================================================================
+
 
 class TestIsCacheValid:
     def test_missing_server_returns_false(self):
@@ -89,13 +91,16 @@ class TestIsCacheValid:
         """Cache age == TTL must be considered expired (not strictly less-than)."""
         svc = _make_service()
         svc._tool_cache["srv"] = {}
-        svc._last_cache_update["srv"] = datetime.utcnow() - svc._cache_ttl - timedelta(seconds=1)
+        svc._last_cache_update["srv"] = (
+            datetime.utcnow() - svc._cache_ttl - timedelta(seconds=1)
+        )
         assert svc._is_cache_valid("srv") is False
 
 
 # ===========================================================================
 # clear_cache — selective and full eviction
 # ===========================================================================
+
 
 class TestClearCache:
     def test_clear_all_removes_all_entries(self):
@@ -138,6 +143,7 @@ class TestClearCache:
 # _get_server_config — config building
 # ===========================================================================
 
+
 class TestGetServerConfig:
     def test_known_server_obsidian_has_stdio_transport(self):
         """'mcp-obsidian' must return a stdio transport config."""
@@ -169,7 +175,10 @@ class TestGetServerConfig:
         svc = _make_service()
         # Ensure OBSIDIAN_API_KEY is empty in env so _get_server_config produces blank
         import os
-        with patch.dict(os.environ, {"OBSIDIAN_API_KEY": "", "OBSIDIAN_VAULT_PATH": ""}):
+
+        with patch.dict(
+            os.environ, {"OBSIDIAN_API_KEY": "", "OBSIDIAN_VAULT_PATH": ""}
+        ):
             config = svc._get_server_config("mcp-obsidian", {})
         env = config.get("env", {})
         for val in env.values():
@@ -179,14 +188,18 @@ class TestGetServerConfig:
         """agent_config values must override os.getenv for Obsidian config."""
         svc = _make_service()
         import os
+
         with patch.dict(os.environ, {"OBSIDIAN_API_KEY": "env_key"}):
-            config = svc._get_server_config("mcp-obsidian", {"OBSIDIAN_API_KEY": "SENTINEL_OVERRIDE"})
+            config = svc._get_server_config(
+                "mcp-obsidian", {"OBSIDIAN_API_KEY": "SENTINEL_OVERRIDE"}
+            )
         assert config["env"].get("OBSIDIAN_API_KEY") == "SENTINEL_OVERRIDE"
 
 
 # ===========================================================================
 # get_tools_for_agent — filtering and error isolation
 # ===========================================================================
+
 
 class TestGetToolsForAgent:
     @pytest.mark.asyncio
@@ -208,8 +221,11 @@ class TestGetToolsForAgent:
         tool_b = _make_tool("tool-b-not-allowed")
         mcp_cfg = _make_mcp_config(server_id="srv", tools=["SENTINEL_ALLOWED"])
 
-        with patch("app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True), \
-             patch.object(svc, "_get_server_tools", new=AsyncMock(return_value=[tool_a, tool_b])):
+        with patch(
+            "app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True
+        ), patch.object(
+            svc, "_get_server_tools", new=AsyncMock(return_value=[tool_a, tool_b])
+        ):
             result = await svc.get_tools_for_agent([mcp_cfg])
 
         tool_names = [t.name for t in result]
@@ -226,8 +242,9 @@ class TestGetToolsForAgent:
         tools = [_make_tool("tool-x"), _make_tool("tool-y")]
         mcp_cfg = _make_mcp_config(server_id="srv", tools=[])
 
-        with patch("app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True), \
-             patch.object(svc, "_get_server_tools", new=AsyncMock(return_value=tools)):
+        with patch(
+            "app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True
+        ), patch.object(svc, "_get_server_tools", new=AsyncMock(return_value=tools)):
             result = await svc.get_tools_for_agent([mcp_cfg])
 
         assert len(result) == 2
@@ -246,12 +263,15 @@ class TestGetToolsForAgent:
                 raise RuntimeError("server unreachable")
             return [good_tool]
 
-        with patch("app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True), \
-             patch.object(svc, "_get_server_tools", side_effect=_fake_get):
-            result = await svc.get_tools_for_agent([
-                _make_mcp_config(server_id="bad-server"),
-                _make_mcp_config(server_id="good-server"),
-            ])
+        with patch(
+            "app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True
+        ), patch.object(svc, "_get_server_tools", side_effect=_fake_get):
+            result = await svc.get_tools_for_agent(
+                [
+                    _make_mcp_config(server_id="bad-server"),
+                    _make_mcp_config(server_id="good-server"),
+                ]
+            )
 
         tool_names = [t.name for t in result]
         assert "SENTINEL_GOOD_TOOL" in tool_names
@@ -266,12 +286,15 @@ class TestGetToolsForAgent:
         async def _fake_get(server_id, config):
             return tools_a if server_id == "srv-a" else tools_b
 
-        with patch("app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True), \
-             patch.object(svc, "_get_server_tools", side_effect=_fake_get):
-            result = await svc.get_tools_for_agent([
-                _make_mcp_config(server_id="srv-a"),
-                _make_mcp_config(server_id="srv-b"),
-            ])
+        with patch(
+            "app.services.agent_mcp_service._HAS_MCP_ADAPTERS", True
+        ), patch.object(svc, "_get_server_tools", side_effect=_fake_get):
+            result = await svc.get_tools_for_agent(
+                [
+                    _make_mcp_config(server_id="srv-a"),
+                    _make_mcp_config(server_id="srv-b"),
+                ]
+            )
 
         tool_names = [t.name for t in result]
         assert "tool-server-a" in tool_names
@@ -281,6 +304,7 @@ class TestGetToolsForAgent:
 # ===========================================================================
 # list_available_servers — static list
 # ===========================================================================
+
 
 class TestListAvailableServers:
     @pytest.mark.asyncio
@@ -309,6 +333,7 @@ class TestListAvailableServers:
 # get_agent_mcp_service — singleton
 # ===========================================================================
 
+
 class TestGetAgentMcpService:
     def test_returns_same_instance_on_second_call(self):
         """
@@ -316,6 +341,7 @@ class TestGetAgentMcpService:
         Create new instance each call → tool cache never reused → test fails.
         """
         import app.services.agent_mcp_service as mod
+
         mod._agent_mcp_service = None
 
         s1 = get_agent_mcp_service()

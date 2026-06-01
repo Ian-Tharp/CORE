@@ -12,7 +12,16 @@ import { LibraryFilter, LibrarySort } from '../../../models/agent.models';
 @Component({
   selector: 'app-agent-filter-bar',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatChipsModule, MatIconModule, MatSelectModule, MatButtonModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatChipsModule,
+    MatIconModule,
+    MatSelectModule,
+    MatButtonModule
+  ],
   templateUrl: './agent-filter-bar.component.html',
   styleUrls: ['./agent-filter-bar.component.scss']
 })

@@ -73,8 +73,11 @@ router = APIRouter(prefix="/mmcnc", tags=["mmcnc"])
 # MACROCOSM ENDPOINTS
 # =============================================================================
 
+
 @router.post("/macrocosms", response_model=Macrocosm)
-async def create_macrocosm(request: CreateMacrocosmRequest, api_key: str = Depends(require_api_key)) -> Macrocosm:
+async def create_macrocosm(
+    request: CreateMacrocosmRequest, api_key: str = Depends(require_api_key)
+) -> Macrocosm:
     """
     Create a new macrocosm.
 
@@ -120,12 +123,16 @@ async def list_macrocosms(
 
 
 @router.get("/macrocosms/{macrocosm_id}", response_model=Macrocosm)
-async def get_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_api_key)) -> Macrocosm:
+async def get_macrocosm(
+    macrocosm_id: UUID, api_key: str = Depends(require_api_key)
+) -> Macrocosm:
     """Get a macrocosm by ID."""
     try:
         macrocosm = await repo.get_macrocosm(macrocosm_id)
         if not macrocosm:
-            raise HTTPException(status_code=404, detail=f"Macrocosm {macrocosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Macrocosm {macrocosm_id} not found"
+            )
         return macrocosm
     except HTTPException:
         raise
@@ -135,7 +142,11 @@ async def get_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_api_k
 
 
 @router.patch("/macrocosms/{macrocosm_id}", response_model=Macrocosm)
-async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest, api_key: str = Depends(require_api_key)) -> Macrocosm:
+async def update_macrocosm(
+    macrocosm_id: UUID,
+    request: UpdateMacrocosmRequest,
+    api_key: str = Depends(require_api_key),
+) -> Macrocosm:
     """
     Partially update a macrocosm.
 
@@ -148,7 +159,9 @@ async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest, 
 
         success = await repo.update_macrocosm(macrocosm_id, updates)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Macrocosm {macrocosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Macrocosm {macrocosm_id} not found"
+            )
 
         macrocosm = await repo.get_macrocosm(macrocosm_id)
         return macrocosm
@@ -161,12 +174,16 @@ async def update_macrocosm(macrocosm_id: UUID, request: UpdateMacrocosmRequest, 
 
 
 @router.delete("/macrocosms/{macrocosm_id}")
-async def delete_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
+async def delete_macrocosm(
+    macrocosm_id: UUID, api_key: str = Depends(require_api_key)
+) -> dict:
     """Delete a macrocosm."""
     try:
         success = await repo.delete_macrocosm(macrocosm_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Macrocosm {macrocosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Macrocosm {macrocosm_id} not found"
+            )
         return {"id": str(macrocosm_id), "message": "Macrocosm deleted successfully"}
     except HTTPException:
         raise
@@ -179,8 +196,11 @@ async def delete_macrocosm(macrocosm_id: UUID, api_key: str = Depends(require_ap
 # MICROCOSM ENDPOINTS
 # =============================================================================
 
+
 @router.post("/microcosms", response_model=Microcosm)
-async def create_microcosm(request: CreateMicrocosmRequest, api_key: str = Depends(require_api_key)) -> Microcosm:
+async def create_microcosm(
+    request: CreateMicrocosmRequest, api_key: str = Depends(require_api_key)
+) -> Microcosm:
     """
     Create a new microcosm.
 
@@ -220,7 +240,9 @@ async def create_microcosm(request: CreateMicrocosmRequest, api_key: str = Depen
 async def list_microcosms(
     agent_id: Optional[str] = Query(default=None, description="Filter by agent ID"),
     state: Optional[str] = Query(default=None, description="Filter by state"),
-    parent_macrocosm_id: Optional[UUID] = Query(default=None, description="Filter by parent macrocosm"),
+    parent_macrocosm_id: Optional[UUID] = Query(
+        default=None, description="Filter by parent macrocosm"
+    ),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     api_key: str = Depends(require_api_key),
@@ -240,12 +262,16 @@ async def list_microcosms(
 
 
 @router.get("/microcosms/{microcosm_id}", response_model=Microcosm)
-async def get_microcosm(microcosm_id: UUID, api_key: str = Depends(require_api_key)) -> Microcosm:
+async def get_microcosm(
+    microcosm_id: UUID, api_key: str = Depends(require_api_key)
+) -> Microcosm:
     """Get a microcosm by ID."""
     try:
         microcosm = await repo.get_microcosm(microcosm_id)
         if not microcosm:
-            raise HTTPException(status_code=404, detail=f"Microcosm {microcosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Microcosm {microcosm_id} not found"
+            )
         return microcosm
     except HTTPException:
         raise
@@ -255,7 +281,11 @@ async def get_microcosm(microcosm_id: UUID, api_key: str = Depends(require_api_k
 
 
 @router.patch("/microcosms/{microcosm_id}", response_model=Microcosm)
-async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest, api_key: str = Depends(require_api_key)) -> Microcosm:
+async def update_microcosm(
+    microcosm_id: UUID,
+    request: UpdateMicrocosmRequest,
+    api_key: str = Depends(require_api_key),
+) -> Microcosm:
     """Partially update a microcosm."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -264,7 +294,9 @@ async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest, 
 
         success = await repo.update_microcosm(microcosm_id, updates)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Microcosm {microcosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Microcosm {microcosm_id} not found"
+            )
 
         microcosm = await repo.get_microcosm(microcosm_id)
         return microcosm
@@ -277,12 +309,16 @@ async def update_microcosm(microcosm_id: UUID, request: UpdateMicrocosmRequest, 
 
 
 @router.delete("/microcosms/{microcosm_id}")
-async def delete_microcosm(microcosm_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
+async def delete_microcosm(
+    microcosm_id: UUID, api_key: str = Depends(require_api_key)
+) -> dict:
     """Delete a microcosm."""
     try:
         success = await repo.delete_microcosm(microcosm_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Microcosm {microcosm_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Microcosm {microcosm_id} not found"
+            )
         return {"id": str(microcosm_id), "message": "Microcosm deleted successfully"}
     except HTTPException:
         raise
@@ -295,8 +331,11 @@ async def delete_microcosm(microcosm_id: UUID, api_key: str = Depends(require_ap
 # CLUSTER ENDPOINTS
 # =============================================================================
 
+
 @router.post("/clusters", response_model=Cluster)
-async def create_cluster(request: CreateClusterRequest, api_key: str = Depends(require_api_key)) -> Cluster:
+async def create_cluster(
+    request: CreateClusterRequest, api_key: str = Depends(require_api_key)
+) -> Cluster:
     """
     Create a new cluster.
 
@@ -329,7 +368,9 @@ async def create_cluster(request: CreateClusterRequest, api_key: str = Depends(r
 
 @router.get("/clusters", response_model=List[Cluster])
 async def list_clusters(
-    parent_microcosm_id: Optional[UUID] = Query(default=None, description="Filter by parent microcosm"),
+    parent_microcosm_id: Optional[UUID] = Query(
+        default=None, description="Filter by parent microcosm"
+    ),
     phase: Optional[str] = Query(default=None, description="Filter by phase"),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
@@ -349,12 +390,16 @@ async def list_clusters(
 
 
 @router.get("/clusters/{cluster_id}", response_model=Cluster)
-async def get_cluster(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> Cluster:
+async def get_cluster(
+    cluster_id: UUID, api_key: str = Depends(require_api_key)
+) -> Cluster:
     """Get a cluster by ID."""
     try:
         cluster = await repo.get_cluster(cluster_id)
         if not cluster:
-            raise HTTPException(status_code=404, detail=f"Cluster {cluster_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Cluster {cluster_id} not found"
+            )
         return cluster
     except HTTPException:
         raise
@@ -364,7 +409,11 @@ async def get_cluster(cluster_id: UUID, api_key: str = Depends(require_api_key))
 
 
 @router.patch("/clusters/{cluster_id}", response_model=Cluster)
-async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest, api_key: str = Depends(require_api_key)) -> Cluster:
+async def update_cluster(
+    cluster_id: UUID,
+    request: UpdateClusterRequest,
+    api_key: str = Depends(require_api_key),
+) -> Cluster:
     """Partially update a cluster."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -373,7 +422,9 @@ async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest, api_ke
 
         success = await repo.update_cluster(cluster_id, updates)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Cluster {cluster_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Cluster {cluster_id} not found"
+            )
 
         cluster = await repo.get_cluster(cluster_id)
         return cluster
@@ -386,12 +437,16 @@ async def update_cluster(cluster_id: UUID, request: UpdateClusterRequest, api_ke
 
 
 @router.delete("/clusters/{cluster_id}")
-async def delete_cluster(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
+async def delete_cluster(
+    cluster_id: UUID, api_key: str = Depends(require_api_key)
+) -> dict:
     """Delete a cluster and all its nodes (cascade)."""
     try:
         success = await repo.delete_cluster(cluster_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Cluster {cluster_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Cluster {cluster_id} not found"
+            )
         return {"id": str(cluster_id), "message": "Cluster deleted successfully"}
     except HTTPException:
         raise
@@ -404,8 +459,11 @@ async def delete_cluster(cluster_id: UUID, api_key: str = Depends(require_api_ke
 # CREATIVE NODE ENDPOINTS
 # =============================================================================
 
+
 @router.post("/nodes", response_model=CreativeNode)
-async def create_node(request: CreateCreativeNodeRequest, api_key: str = Depends(require_api_key)) -> CreativeNode:
+async def create_node(
+    request: CreateCreativeNodeRequest, api_key: str = Depends(require_api_key)
+) -> CreativeNode:
     """
     Create a new creative node.
 
@@ -441,7 +499,9 @@ async def create_node(request: CreateCreativeNodeRequest, api_key: str = Depends
 
 @router.get("/nodes", response_model=List[CreativeNode])
 async def list_nodes(
-    parent_cluster_id: Optional[UUID] = Query(default=None, description="Filter by parent cluster"),
+    parent_cluster_id: Optional[UUID] = Query(
+        default=None, description="Filter by parent cluster"
+    ),
     node_type: Optional[str] = Query(default=None, description="Filter by node type"),
     limit: int = Query(default=50, ge=1, le=200, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
@@ -461,7 +521,9 @@ async def list_nodes(
 
 
 @router.get("/nodes/{node_id}", response_model=CreativeNode)
-async def get_node(node_id: UUID, api_key: str = Depends(require_api_key)) -> CreativeNode:
+async def get_node(
+    node_id: UUID, api_key: str = Depends(require_api_key)
+) -> CreativeNode:
     """Get a creative node by ID."""
     try:
         node = await repo.get_node(node_id)
@@ -476,7 +538,11 @@ async def get_node(node_id: UUID, api_key: str = Depends(require_api_key)) -> Cr
 
 
 @router.patch("/nodes/{node_id}", response_model=CreativeNode)
-async def update_node(node_id: UUID, request: UpdateCreativeNodeRequest, api_key: str = Depends(require_api_key)) -> CreativeNode:
+async def update_node(
+    node_id: UUID,
+    request: UpdateCreativeNodeRequest,
+    api_key: str = Depends(require_api_key),
+) -> CreativeNode:
     """Partially update a creative node."""
     try:
         updates = request.model_dump(exclude_none=True)
@@ -516,8 +582,11 @@ async def delete_node(node_id: UUID, api_key: str = Depends(require_api_key)) ->
 # NAVIGATION / HIERARCHY
 # =============================================================================
 
+
 @router.get("/navigate/{entity_id}", response_model=HierarchyContext)
-async def navigate_hierarchy(entity_id: UUID, api_key: str = Depends(require_api_key)) -> HierarchyContext:
+async def navigate_hierarchy(
+    entity_id: UUID, api_key: str = Depends(require_api_key)
+) -> HierarchyContext:
     """
     Navigate the MMCNC hierarchy from any entity.
 
@@ -536,7 +605,7 @@ async def navigate_hierarchy(entity_id: UUID, api_key: str = Depends(require_api
         if not context:
             raise HTTPException(
                 status_code=404,
-                detail=f"Entity {entity_id} not found in any MMCNC level"
+                detail=f"Entity {entity_id} not found in any MMCNC level",
             )
 
         return context
@@ -549,7 +618,9 @@ async def navigate_hierarchy(entity_id: UUID, api_key: str = Depends(require_api
 
 
 @router.get("/clusters/{cluster_id}/lineage", response_model=HierarchyContext)
-async def get_cluster_lineage(cluster_id: UUID, api_key: str = Depends(require_api_key)) -> HierarchyContext:
+async def get_cluster_lineage(
+    cluster_id: UUID, api_key: str = Depends(require_api_key)
+) -> HierarchyContext:
     """
     Get the full hierarchy lineage for a specific cluster.
 
@@ -560,8 +631,7 @@ async def get_cluster_lineage(cluster_id: UUID, api_key: str = Depends(require_a
 
         if not context:
             raise HTTPException(
-                status_code=404,
-                detail=f"Cluster {cluster_id} not found"
+                status_code=404, detail=f"Cluster {cluster_id} not found"
             )
 
         return context

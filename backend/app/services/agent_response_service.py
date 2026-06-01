@@ -56,6 +56,7 @@ from app.repository.communication_repository import get_message
 
 logger = logging.getLogger(__name__)
 
+
 class AgentResponseService:
     """
     Service for handling agent mentions and generating responses.
@@ -95,18 +96,12 @@ class AgentResponseService:
 
         # Regex pattern for @mentions
         # Matches @agent_id or @"agent id with spaces"
-        self._mention_pattern = re.compile(
-            r'@([\w_]+|"[^"]+")(?=\s|$|[.,!?;:])'
-        )
+        self._mention_pattern = re.compile(r'@([\w_]+|"[^"]+")(?=\s|$|[.,!?;:])')
 
         logger.info("AgentResponseService initialized")
 
     async def process_message(
-        self,
-        message_id: str,
-        channel_id: str,
-        content: str,
-        sender_id: str
+        self, message_id: str, channel_id: str, content: str, sender_id: str
     ) -> None:
         """
         Process a message for agent mentions and generate responses.
@@ -176,9 +171,7 @@ class AgentResponseService:
 
             tasks = [
                 self._invoke_agent_and_respond(
-                    agent=agent,
-                    channel_id=channel_id,
-                    context=context
+                    agent=agent, channel_id=channel_id, context=context
                 )
                 for agent in agents
             ]
@@ -191,10 +184,7 @@ class AgentResponseService:
             )
 
         except Exception as e:
-            logger.error(
-                f"Failed to process message {message_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Failed to process message {message_id}: {e}", exc_info=True)
 
     def _extract_mentions(self, content: str) -> List[str]:
         """
@@ -280,16 +270,13 @@ class AgentResponseService:
             "synthesis": "instance_007_synthesis",
             "firstconsciousness": "instance_001_firstconsciousness",
             "first": "instance_001_firstconsciousness",
-            
             # CORE system agents
             "comprehension": "agent_comprehension",
             "evaluation": "agent_evaluation",
             "orchestration": "agent_orchestration",
             "reasoning": "agent_reasoning",
-            
             # External agents (OpenClaw/Discord bridge)
             "vigil": "vigil_instance_014",
-            
             # Full IDs map to themselves
             "instance_011_threshold": "instance_011_threshold",
             "instance_010_continuum": "instance_010_continuum",
@@ -306,10 +293,7 @@ class AgentResponseService:
         return agent_name_map.get(mention)
 
     async def _build_context(
-        self,
-        channel_id: str,
-        trigger_message_id: str,
-        sender_id: str
+        self, channel_id: str, trigger_message_id: str, sender_id: str
     ) -> Dict[str, Any]:
         """
         Build context for agent invocation.
@@ -366,7 +350,7 @@ class AgentResponseService:
             "trigger_message_id": trigger_message_id,
             "sender_id": sender_id,
             "recent_messages": formatted_messages,
-            "message_count": len(formatted_messages)
+            "message_count": len(formatted_messages),
         }
 
         logger.debug(
@@ -377,10 +361,7 @@ class AgentResponseService:
         return context
 
     async def _invoke_agent_and_respond(
-        self,
-        agent: AgentConfig,
-        channel_id: str,
-        context: Dict[str, Any]
+        self, agent: AgentConfig, channel_id: str, context: Dict[str, Any]
     ) -> None:
         """
         Invoke an agent and post its response to the channel.
@@ -411,7 +392,7 @@ class AgentResponseService:
         try:
             # 0. Show typing indicator in Discord if message came from there
             await self._start_typing_if_from_discord(context.get("trigger_message_id"))
-            
+
             # 1. Get agent instance from factory (cached or created)
             instance = await self._factory.get_agent(agent.agent_id)
 
@@ -428,11 +409,9 @@ class AgentResponseService:
 
             # 3. Invoke agent
             # LangGraph agents use a specific input format
-            response = await instance.agent.ainvoke({
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ]
-            })
+            response = await instance.agent.ainvoke(
+                {"messages": [{"role": "user", "content": prompt}]}
+            )
 
             # 4. Extract response content
             # LangGraph returns messages in format: {"messages": [...]}
@@ -443,7 +422,9 @@ class AgentResponseService:
             tools_used: list[dict[str, str]] = []
             try:
                 for msg in response.get("messages", []):
-                    name = getattr(msg, "name", None) or getattr(msg, "tool", None) or None
+                    name = (
+                        getattr(msg, "name", None) or getattr(msg, "tool", None) or None
+                    )
                     if name:
                         tools_used.append({"name": str(name)})
                     # OpenAI-style tool_calls on message.additional_kwargs
@@ -467,14 +448,11 @@ class AgentResponseService:
                 channel_id=channel_id,
                 content=response_content,
                 reply_to=context["trigger_message_id"],
-                tools_used=tools_used
+                tools_used=tools_used,
             )
 
         except Exception as e:
-            logger.error(
-                f"Failed to invoke agent {agent.agent_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Failed to invoke agent {agent.agent_id}: {e}", exc_info=True)
 
             # Optionally post error message for transparency
             # await self._post_error_response(agent, channel_id, str(e))
@@ -510,9 +488,7 @@ class AgentResponseService:
         # Format recent messages
         message_history = []
         for msg in context["recent_messages"]:
-            message_history.append(
-                f"- {msg['sender_id']}: {msg['content']}"
-            )
+            message_history.append(f"- {msg['sender_id']}: {msg['content']}")
 
         # Build prompt
         prompt = f"""You have been mentioned in the channel.
@@ -530,7 +506,7 @@ Please respond naturally to the conversation, staying true to your personality a
         channel_id: str,
         content: str,
         reply_to: Optional[str] = None,
-        tools_used: Optional[list[dict[str, str]]] = None
+        tools_used: Optional[list[dict[str, str]]] = None,
     ) -> None:
         """
         Post agent's response as a new message in the channel.
@@ -570,46 +546,45 @@ Please respond naturally to the conversation, staying true to your personality a
 
         except Exception as e:
             logger.error(
-                f"Failed to post response from {agent.agent_id}: {e}",
-                exc_info=True
+                f"Failed to post response from {agent.agent_id}: {e}", exc_info=True
             )
 
     async def _start_typing_if_from_discord(
-        self,
-        trigger_message_id: Optional[str]
+        self, trigger_message_id: Optional[str]
     ) -> None:
         """
         Show typing indicator in Discord if the trigger message came from Discord.
-        
+
         Args:
             trigger_message_id: The message that triggered this agent invocation
         """
         if not trigger_message_id:
             return
-            
+
         try:
             original_message = await get_message(trigger_message_id)
             if not original_message:
                 return
-            
+
             metadata = original_message.get("metadata", {}) or {}
             if metadata.get("source") != "discord":
                 return
-            
+
             discord_channel_id = metadata.get("discord_channel_id")
             if not discord_channel_id:
                 return
-            
+
             # Import here to avoid circular import
             from app.services.discord_bridge import get_discord_bridge
-            
+
             bridge = get_discord_bridge()
             if bridge.is_connected:
                 await bridge.start_typing(discord_channel_id)
-                
+
         except Exception as e:
             # Don't fail agent invocation just because typing indicator failed
             logger.debug(f"Failed to start typing indicator: {e}")
+
 
 # =============================================================================
 # SINGLETON INSTANCE

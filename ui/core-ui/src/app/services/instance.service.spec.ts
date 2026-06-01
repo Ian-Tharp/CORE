@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
-  HttpTestingController,
+  HttpTestingController
 } from '@angular/common/http/testing';
 
 import { InstanceService } from './instance.service';
@@ -12,7 +12,7 @@ describe('InstanceService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule]
     });
 
     service = TestBed.inject(InstanceService);
@@ -53,12 +53,12 @@ describe('InstanceService', () => {
           memory_usage: { memory_mb: 128 },
           cpu_usage: 0.25,
           created_at: '2026-03-29T20:00:00Z',
-          last_heartbeat: '2026-03-29T20:05:00Z',
-        },
+          last_heartbeat: '2026-03-29T20:05:00Z'
+        }
       ],
       total_count: 1,
       page: 1,
-      page_size: 200,
+      page_size: 200
     });
 
     expect(responseValue).toHaveLength(1);
@@ -68,7 +68,7 @@ describe('InstanceService', () => {
         container_id: 'container-1',
         agent_id: 'agent-1',
         agent_role: 'researcher',
-        status: 'ready',
+        status: 'ready'
       })
     );
     expect(responseValue[0].resource_profile.cpu_percent).toBe(0.25);
@@ -86,9 +86,9 @@ describe('InstanceService', () => {
       services: {},
       uptime: {
         seconds: 10,
-        formatted: '10s',
+        formatted: '10s'
       },
-      timestamp: '2026-03-29T20:00:00Z',
+      timestamp: '2026-03-29T20:00:00Z'
     });
   });
 

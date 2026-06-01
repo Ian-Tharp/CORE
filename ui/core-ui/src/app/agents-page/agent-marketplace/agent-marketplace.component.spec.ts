@@ -10,7 +10,7 @@ describe('AgentMarketplaceComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AgentMarketplaceComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(AgentMarketplaceComponent);
     component = fixture.componentInstance;

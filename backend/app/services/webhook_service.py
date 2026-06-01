@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class WebhookEvent(str, Enum):
     """Webhook event types."""
+
     WILDCARD = "*"
     RUN_STARTED = "run.started"
     RUN_COMPLETED = "run.completed"
@@ -89,7 +90,9 @@ class WebhookRegistration:
             "delivery_count": self.delivery_count,
             "failure_count": self.failure_count,
             "created_at": self.created_at.isoformat(),
-            "last_delivery": self.last_delivery.isoformat() if self.last_delivery else None,
+            "last_delivery": (
+                self.last_delivery.isoformat() if self.last_delivery else None
+            ),
             "last_error": self.last_error,
         }
 
@@ -158,7 +161,9 @@ class WebhookDelivery:
             "attempts": self.attempts,
             "status_code": self.status_code,
             "error": self.error,
-            "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
+            "delivered_at": (
+                self.delivered_at.isoformat() if self.delivered_at else None
+            ),
             "created_at": self.created_at.isoformat(),
         }
 
@@ -329,7 +334,9 @@ class WebhookService:
                     payload=full_payload,
                 )
                 await self._delivery_queue.put((webhook, delivery))
-                logger.debug(f"Queued webhook delivery {delivery.id} for {webhook.name}")
+                logger.debug(
+                    f"Queued webhook delivery {delivery.id} for {webhook.name}"
+                )
 
     async def _delivery_worker(self):
         """Background worker that processes webhook deliveries."""
@@ -425,7 +432,9 @@ class WebhookService:
         webhook.last_error = delivery.error
 
         # Persist failure
-        await webhook_repository.increment_failure_count(webhook.id, delivery.error or "unknown")
+        await webhook_repository.increment_failure_count(
+            webhook.id, delivery.error or "unknown"
+        )
         await webhook_repository.record_delivery(
             delivery_id=delivery.id,
             webhook_id=webhook.id,

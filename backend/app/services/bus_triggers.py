@@ -35,8 +35,10 @@ logger = logging.getLogger(__name__)
 # MODELS
 # =============================================================================
 
+
 class TriggerAction(str, Enum):
     """Actions a trigger can invoke."""
+
     COUNCIL_SESSION = "council_session"
     CATALYST_RUN = "catalyst_run"
 
@@ -57,9 +59,12 @@ class TriggerRule(BaseModel):
         enabled: Whether the trigger is currently active.
         created_at: When the trigger was registered.
     """
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str = Field(..., min_length=1, max_length=255)
-    pattern: str = Field(..., min_length=1, description="Regex pattern (case-insensitive)")
+    pattern: str = Field(
+        ..., min_length=1, description="Regex pattern (case-insensitive)"
+    )
     action: TriggerAction = Field(..., description="Action to execute on match")
     config: Dict[str, Any] = Field(default_factory=dict)
     enabled: bool = Field(default=True)
@@ -76,6 +81,7 @@ class TriggerRule(BaseModel):
 
 class TriggerResult(BaseModel):
     """Outcome of executing a single trigger against a message."""
+
     trigger_id: str
     trigger_name: str
     action: TriggerAction
@@ -86,6 +92,7 @@ class TriggerResult(BaseModel):
 
 class TriggerEvaluation(BaseModel):
     """Dry-run evaluation result — shows which triggers *would* fire."""
+
     message_id: str
     matched_triggers: List[Dict[str, Any]] = Field(default_factory=list)
     total_triggers_checked: int = 0
@@ -121,6 +128,7 @@ _DEFAULT_TRIGGERS: List[TriggerRule] = [
 # =============================================================================
 # SERVICE
 # =============================================================================
+
 
 class BusTriggerService:
     """
@@ -194,12 +202,14 @@ class BusTriggerService:
             if not rule.enabled:
                 continue
             if rule.matches(text):
-                matched.append({
-                    "trigger_id": rule.id,
-                    "trigger_name": rule.name,
-                    "action": rule.action.value,
-                    "pattern": rule.pattern,
-                })
+                matched.append(
+                    {
+                        "trigger_id": rule.id,
+                        "trigger_name": rule.name,
+                        "action": rule.action.value,
+                        "pattern": rule.pattern,
+                    }
+                )
 
         return TriggerEvaluation(
             message_id=message.id,
@@ -232,29 +242,37 @@ class BusTriggerService:
 
             try:
                 result = await self._execute_action(rule, message, text)
-                results.append(TriggerResult(
-                    trigger_id=rule.id,
-                    trigger_name=rule.name,
-                    action=rule.action,
-                    success=True,
-                    result=result,
-                ))
+                results.append(
+                    TriggerResult(
+                        trigger_id=rule.id,
+                        trigger_name=rule.name,
+                        action=rule.action,
+                        success=True,
+                        result=result,
+                    )
+                )
                 logger.info(
                     "Trigger %s fired for message %s → %s",
-                    rule.id, message.id, rule.action.value,
+                    rule.id,
+                    message.id,
+                    rule.action.value,
                 )
             except Exception as exc:
                 logger.error(
                     "Trigger %s failed for message %s: %s",
-                    rule.id, message.id, exc,
+                    rule.id,
+                    message.id,
+                    exc,
                 )
-                results.append(TriggerResult(
-                    trigger_id=rule.id,
-                    trigger_name=rule.name,
-                    action=rule.action,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    TriggerResult(
+                        trigger_id=rule.id,
+                        trigger_name=rule.name,
+                        action=rule.action,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         return results
 
@@ -292,7 +310,7 @@ class BusTriggerService:
             voice_ids=config.get("voice_ids"),
             rounds=config.get("rounds", 2),
             context=f"Auto-triggered by bus message {message.id} "
-                    f"from {message.sender_id} (trigger: {rule.name})",
+            f"from {message.sender_id} (trigger: {rule.name})",
             initiator_id=f"bus-trigger:{rule.id}",
         )
 

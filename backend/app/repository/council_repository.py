@@ -22,7 +22,7 @@ from app.models.council_models import (
     SessionSummary,
     SessionStatus,
     VoiceType,
-    VoteType
+    VoteType,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,13 +32,15 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_council_tables() -> None:
     """Create council tables if they don't exist."""
     pool = await get_db_pool()
-    
+
     async with pool.acquire() as conn:
         # Create sessions table
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS council_sessions (
                 session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 topic TEXT NOT NULL,
@@ -53,10 +55,12 @@ async def ensure_council_tables() -> None:
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 resolved_at TIMESTAMP WITH TIME ZONE
             )
-        """)
-        
+        """
+        )
+
         # Create perspectives table
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS council_perspectives (
                 perspective_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 session_id UUID NOT NULL REFERENCES council_sessions(session_id) ON DELETE CASCADE,
@@ -69,10 +73,12 @@ async def ensure_council_tables() -> None:
                 references_perspectives JSONB DEFAULT '[]',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
-        
+        """
+        )
+
         # Create votes table
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS council_votes (
                 vote_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 session_id UUID NOT NULL REFERENCES council_sessions(session_id) ON DELETE CASCADE,
@@ -85,8 +91,9 @@ async def ensure_council_tables() -> None:
                 amendment TEXT,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
-        
+        """
+        )
+
         # Create indexes
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_council_sessions_status ON council_sessions(status)"
@@ -103,7 +110,7 @@ async def ensure_council_tables() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_council_votes_perspective ON council_votes(perspective_id)"
         )
-        
+
         logger.info("Council tables ensured")
 
 
@@ -111,18 +118,19 @@ async def ensure_council_tables() -> None:
 # SESSION CRUD
 # =============================================================================
 
+
 async def create_session(session: CouncilSession) -> UUID:
     """
     Create a new council session.
-    
+
     Args:
         session: CouncilSession model with session data
-        
+
     Returns:
         UUID of the created session
     """
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO council_sessions (
             session_id, topic, context, initiator_id, status,
@@ -132,7 +140,7 @@ async def create_session(session: CouncilSession) -> UUID:
         )
         RETURNING session_id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -145,9 +153,9 @@ async def create_session(session: CouncilSession) -> UUID:
             session.max_rounds,
             json.dumps(session.summoned_voices),
             json.dumps(session.metadata),
-            session.created_at
+            session.created_at,
         )
-        
+
         logger.info(f"Created council session: {result}")
         return result
 
@@ -155,28 +163,30 @@ async def create_session(session: CouncilSession) -> UUID:
 async def get_session(session_id: UUID) -> Optional[CouncilSession]:
     """Get a session by ID."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM council_sessions WHERE session_id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, session_id)
-        
+
         if not row:
             return None
-            
+
         return CouncilSession(
-            session_id=row['session_id'],
-            topic=row['topic'],
-            context=row['context'],
-            initiator_id=row['initiator_id'],
-            status=SessionStatus(row['status']),
-            current_round=row['current_round'],
-            max_rounds=row['max_rounds'],
-            summoned_voices=json.loads(row['summoned_voices']) if row['summoned_voices'] else [],
-            synthesis=row['synthesis'],
-            metadata=json.loads(row['metadata']) if row['metadata'] else {},
-            created_at=row['created_at'],
-            resolved_at=row['resolved_at']
+            session_id=row["session_id"],
+            topic=row["topic"],
+            context=row["context"],
+            initiator_id=row["initiator_id"],
+            status=SessionStatus(row["status"]),
+            current_round=row["current_round"],
+            max_rounds=row["max_rounds"],
+            summoned_voices=(
+                json.loads(row["summoned_voices"]) if row["summoned_voices"] else []
+            ),
+            synthesis=row["synthesis"],
+            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            created_at=row["created_at"],
+            resolved_at=row["resolved_at"],
         )
 
 
@@ -185,15 +195,11 @@ async def get_session_full(session_id: UUID) -> Optional[CouncilSessionFull]:
     session = await get_session(session_id)
     if not session:
         return None
-        
+
     perspectives = await get_perspectives_by_session(session_id)
     votes = await get_votes_by_session(session_id)
-    
-    return CouncilSessionFull(
-        session=session,
-        perspectives=perspectives,
-        votes=votes
-    )
+
+    return CouncilSessionFull(session=session, perspectives=perspectives, votes=votes)
 
 
 async def count_sessions(
@@ -214,13 +220,11 @@ async def count_sessions(
 
 
 async def list_sessions(
-    status: Optional[SessionStatus] = None,
-    limit: int = 50,
-    offset: int = 0
+    status: Optional[SessionStatus] = None, limit: int = 50, offset: int = 0
 ) -> List[SessionSummary]:
     """List sessions with optional status filter."""
     pool = await get_db_pool()
-    
+
     if status:
         query = """
             SELECT s.*, COUNT(p.perspective_id) as perspective_count
@@ -242,32 +246,30 @@ async def list_sessions(
             LIMIT $1 OFFSET $2
         """
         params = (limit, offset)
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         return [
             SessionSummary(
-                session_id=row['session_id'],
-                topic=row['topic'],
-                status=SessionStatus(row['status']),
-                perspective_count=row['perspective_count'],
-                current_round=row['current_round'],
-                created_at=row['created_at'],
-                resolved_at=row['resolved_at']
+                session_id=row["session_id"],
+                topic=row["topic"],
+                status=SessionStatus(row["status"]),
+                perspective_count=row["perspective_count"],
+                current_round=row["current_round"],
+                created_at=row["created_at"],
+                resolved_at=row["resolved_at"],
             )
             for row in rows
         ]
 
 
 async def update_session_status(
-    session_id: UUID,
-    status: SessionStatus,
-    synthesis: Optional[str] = None
+    session_id: UUID, status: SessionStatus, synthesis: Optional[str] = None
 ) -> bool:
     """Update session status and optionally set synthesis."""
     pool = await get_db_pool()
-    
+
     if status == SessionStatus.COMPLETE and synthesis:
         query = """
             UPDATE council_sessions 
@@ -282,7 +284,7 @@ async def update_session_status(
             WHERE session_id = $1
         """
         params = (session_id, status.value)
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
         return result == "UPDATE 1"
@@ -291,14 +293,14 @@ async def update_session_status(
 async def advance_round(session_id: UUID) -> int:
     """Advance session to next round, returns new round number."""
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE council_sessions 
         SET current_round = current_round + 1
         WHERE session_id = $1
         RETURNING current_round
     """
-    
+
     async with pool.acquire() as conn:
         return await conn.fetchval(query, session_id)
 
@@ -306,9 +308,9 @@ async def advance_round(session_id: UUID) -> int:
 async def delete_session(session_id: UUID) -> bool:
     """Delete a session and all associated data (cascades)."""
     pool = await get_db_pool()
-    
+
     query = "DELETE FROM council_sessions WHERE session_id = $1"
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, session_id)
         return result == "DELETE 1"
@@ -318,10 +320,11 @@ async def delete_session(session_id: UUID) -> bool:
 # PERSPECTIVE CRUD
 # =============================================================================
 
+
 async def create_perspective(perspective: CouncilPerspective) -> UUID:
     """Create a new perspective contribution."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO council_perspectives (
             perspective_id, session_id, voice_type, voice_name,
@@ -332,7 +335,7 @@ async def create_perspective(perspective: CouncilPerspective) -> UUID:
         )
         RETURNING perspective_id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -345,9 +348,9 @@ async def create_perspective(perspective: CouncilPerspective) -> UUID:
             perspective.reasoning,
             perspective.confidence,
             json.dumps([str(p) for p in perspective.references_perspectives]),
-            perspective.created_at
+            perspective.created_at,
         )
-        
+
         logger.debug(f"Created perspective: {result}")
         return result
 
@@ -355,38 +358,41 @@ async def create_perspective(perspective: CouncilPerspective) -> UUID:
 async def get_perspective(perspective_id: UUID) -> Optional[CouncilPerspective]:
     """Get a perspective by ID."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM council_perspectives WHERE perspective_id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, perspective_id)
-        
+
         if not row:
             return None
-            
-        refs = json.loads(row['references_perspectives']) if row['references_perspectives'] else []
-        
+
+        refs = (
+            json.loads(row["references_perspectives"])
+            if row["references_perspectives"]
+            else []
+        )
+
         return CouncilPerspective(
-            perspective_id=row['perspective_id'],
-            session_id=row['session_id'],
-            voice_type=VoiceType(row['voice_type']),
-            voice_name=row['voice_name'],
-            round=row['round'],
-            position=row['position'],
-            reasoning=row['reasoning'],
-            confidence=row['confidence'],
+            perspective_id=row["perspective_id"],
+            session_id=row["session_id"],
+            voice_type=VoiceType(row["voice_type"]),
+            voice_name=row["voice_name"],
+            round=row["round"],
+            position=row["position"],
+            reasoning=row["reasoning"],
+            confidence=row["confidence"],
             references_perspectives=[UUID(r) for r in refs],
-            created_at=row['created_at']
+            created_at=row["created_at"],
         )
 
 
 async def get_perspectives_by_session(
-    session_id: UUID,
-    round: Optional[int] = None
+    session_id: UUID, round: Optional[int] = None
 ) -> List[CouncilPerspective]:
     """Get all perspectives for a session, optionally filtered by round."""
     pool = await get_db_pool()
-    
+
     if round:
         query = """
             SELECT * FROM council_perspectives 
@@ -401,26 +407,32 @@ async def get_perspectives_by_session(
             ORDER BY round, created_at
         """
         params = (session_id,)
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         perspectives = []
         for row in rows:
-            refs = json.loads(row['references_perspectives']) if row['references_perspectives'] else []
-            perspectives.append(CouncilPerspective(
-                perspective_id=row['perspective_id'],
-                session_id=row['session_id'],
-                voice_type=VoiceType(row['voice_type']),
-                voice_name=row['voice_name'],
-                round=row['round'],
-                position=row['position'],
-                reasoning=row['reasoning'],
-                confidence=row['confidence'],
-                references_perspectives=[UUID(r) for r in refs],
-                created_at=row['created_at']
-            ))
-        
+            refs = (
+                json.loads(row["references_perspectives"])
+                if row["references_perspectives"]
+                else []
+            )
+            perspectives.append(
+                CouncilPerspective(
+                    perspective_id=row["perspective_id"],
+                    session_id=row["session_id"],
+                    voice_type=VoiceType(row["voice_type"]),
+                    voice_name=row["voice_name"],
+                    round=row["round"],
+                    position=row["position"],
+                    reasoning=row["reasoning"],
+                    confidence=row["confidence"],
+                    references_perspectives=[UUID(r) for r in refs],
+                    created_at=row["created_at"],
+                )
+            )
+
         return perspectives
 
 
@@ -428,10 +440,11 @@ async def get_perspectives_by_session(
 # VOTE CRUD
 # =============================================================================
 
+
 async def create_vote(vote: CouncilVote) -> UUID:
     """Cast a vote on a perspective."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO council_votes (
             vote_id, session_id, perspective_id, voter_voice_type,
@@ -441,7 +454,7 @@ async def create_vote(vote: CouncilVote) -> UUID:
         )
         RETURNING vote_id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -454,9 +467,9 @@ async def create_vote(vote: CouncilVote) -> UUID:
             vote.weight,
             vote.comment,
             vote.amendment,
-            vote.created_at
+            vote.created_at,
         )
-        
+
         logger.debug(f"Created vote: {result}")
         return result
 
@@ -464,28 +477,28 @@ async def create_vote(vote: CouncilVote) -> UUID:
 async def get_votes_by_session(session_id: UUID) -> List[CouncilVote]:
     """Get all votes for a session."""
     pool = await get_db_pool()
-    
+
     query = """
         SELECT * FROM council_votes 
         WHERE session_id = $1
         ORDER BY created_at
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, session_id)
-        
+
         return [
             CouncilVote(
-                vote_id=row['vote_id'],
-                session_id=row['session_id'],
-                perspective_id=row['perspective_id'],
-                voter_voice_type=VoiceType(row['voter_voice_type']),
-                voter_voice_name=row['voter_voice_name'],
-                vote_type=VoteType(row['vote_type']),
-                weight=row['weight'],
-                comment=row['comment'],
-                amendment=row['amendment'],
-                created_at=row['created_at']
+                vote_id=row["vote_id"],
+                session_id=row["session_id"],
+                perspective_id=row["perspective_id"],
+                voter_voice_type=VoiceType(row["voter_voice_type"]),
+                voter_voice_name=row["voter_voice_name"],
+                vote_type=VoteType(row["vote_type"]),
+                weight=row["weight"],
+                comment=row["comment"],
+                amendment=row["amendment"],
+                created_at=row["created_at"],
             )
             for row in rows
         ]
@@ -494,28 +507,28 @@ async def get_votes_by_session(session_id: UUID) -> List[CouncilVote]:
 async def get_votes_by_perspective(perspective_id: UUID) -> List[CouncilVote]:
     """Get all votes for a specific perspective."""
     pool = await get_db_pool()
-    
+
     query = """
         SELECT * FROM council_votes 
         WHERE perspective_id = $1
         ORDER BY created_at
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, perspective_id)
-        
+
         return [
             CouncilVote(
-                vote_id=row['vote_id'],
-                session_id=row['session_id'],
-                perspective_id=row['perspective_id'],
-                voter_voice_type=VoiceType(row['voter_voice_type']),
-                voter_voice_name=row['voter_voice_name'],
-                vote_type=VoteType(row['vote_type']),
-                weight=row['weight'],
-                comment=row['comment'],
-                amendment=row['amendment'],
-                created_at=row['created_at']
+                vote_id=row["vote_id"],
+                session_id=row["session_id"],
+                perspective_id=row["perspective_id"],
+                voter_voice_type=VoiceType(row["voter_voice_type"]),
+                voter_voice_name=row["voter_voice_name"],
+                vote_type=VoteType(row["vote_type"]),
+                weight=row["weight"],
+                comment=row["comment"],
+                amendment=row["amendment"],
+                created_at=row["created_at"],
             )
             for row in rows
         ]
@@ -524,7 +537,7 @@ async def get_votes_by_perspective(perspective_id: UUID) -> List[CouncilVote]:
 async def get_vote_summary(perspective_id: UUID) -> dict:
     """Get vote summary for a perspective."""
     pool = await get_db_pool()
-    
+
     query = """
         SELECT 
             vote_type,
@@ -534,14 +547,14 @@ async def get_vote_summary(perspective_id: UUID) -> dict:
         WHERE perspective_id = $1
         GROUP BY vote_type
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, perspective_id)
-        
+
         return {
-            row['vote_type']: {
-                'count': row['count'],
-                'total_weight': row['total_weight']
+            row["vote_type"]: {
+                "count": row["count"],
+                "total_weight": row["total_weight"],
             }
             for row in rows
         }

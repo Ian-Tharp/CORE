@@ -12,8 +12,8 @@ describe('coreApiKeyInterceptor', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([coreApiKeyInterceptor])),
-        provideHttpClientTesting(),
-      ],
+        provideHttpClientTesting()
+      ]
     });
 
     http = TestBed.inject(HttpClient);

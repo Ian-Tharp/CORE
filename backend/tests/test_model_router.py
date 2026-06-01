@@ -29,6 +29,7 @@ from app.services.model_router import (
 # ModelConfig
 # ---------------------------------------------------------------------------
 
+
 class TestModelConfig:
     def test_to_dict_includes_expected_keys(self):
         cfg = ModelConfig(
@@ -69,6 +70,7 @@ class TestModelConfig:
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class TestEnums:
     def test_model_provider_values(self):
         assert ModelProvider.OLLAMA.value == "ollama"
@@ -84,6 +86,7 @@ class TestEnums:
 # ---------------------------------------------------------------------------
 # MODELS registry
 # ---------------------------------------------------------------------------
+
 
 class TestModelsRegistry:
     def test_registry_not_empty(self):
@@ -108,6 +111,7 @@ class TestModelsRegistry:
 # ---------------------------------------------------------------------------
 # ModelRouter — listing / lookup
 # ---------------------------------------------------------------------------
+
 
 class TestModelRouterLookup:
     def setup_method(self):
@@ -147,6 +151,7 @@ class TestModelRouterLookup:
 # ModelRouter — select_model
 # ---------------------------------------------------------------------------
 
+
 class TestSelectModel:
     def setup_method(self):
         self.router = ModelRouter()
@@ -173,9 +178,7 @@ class TestSelectModel:
         assert cfg.supports_vision is True
 
     def test_require_tools_excludes_non_tools(self):
-        model_id = self.router.select_model(
-            task_type="reasoning", require_tools=True
-        )
+        model_id = self.router.select_model(task_type="reasoning", require_tools=True)
         cfg = MODELS.get(model_id)
         assert cfg is not None
         assert cfg.supports_tools is True
@@ -189,9 +192,7 @@ class TestSelectModel:
         assert cfg.cost_per_1k_output <= 0.001
 
     def test_prefer_local_true_favors_ollama(self):
-        model_id = self.router.select_model(
-            task_type="simple", prefer_local=True
-        )
+        model_id = self.router.select_model(task_type="simple", prefer_local=True)
         cfg = MODELS.get(model_id)
         assert cfg is not None
         assert cfg.provider == ModelProvider.OLLAMA
@@ -209,9 +210,7 @@ class TestSelectModel:
         assert model_id == self.router.default_model
 
     def test_creative_maps_to_balanced(self):
-        model_id = self.router.select_model(
-            task_type="creative", prefer_local=True
-        )
+        model_id = self.router.select_model(task_type="creative", prefer_local=True)
         cfg = MODELS.get(model_id)
         assert cfg is not None
         # Should prefer balanced tier
@@ -221,6 +220,7 @@ class TestSelectModel:
 # ---------------------------------------------------------------------------
 # ModelRouter — usage tracking
 # ---------------------------------------------------------------------------
+
 
 class TestUsageTracking:
     def setup_method(self):
@@ -273,6 +273,7 @@ class TestUsageTracking:
 # ModelRouter — client creation
 # ---------------------------------------------------------------------------
 
+
 class TestClientCreation:
     def setup_method(self):
         self.router = ModelRouter()
@@ -307,6 +308,7 @@ class TestClientCreation:
 # ModelRouter — complete (mocked)
 # ---------------------------------------------------------------------------
 
+
 class TestComplete:
     def setup_method(self):
         self.router = ModelRouter()
@@ -314,7 +316,9 @@ class TestComplete:
     @pytest.mark.asyncio
     async def test_complete_unknown_model_raises(self):
         with pytest.raises(ValueError, match="Unknown model"):
-            await self.router.complete("nonexistent", [{"role": "user", "content": "hi"}])
+            await self.router.complete(
+                "nonexistent", [{"role": "user", "content": "hi"}]
+            )
 
     @pytest.mark.asyncio
     async def test_complete_success(self):
@@ -342,7 +346,9 @@ class TestComplete:
         # Mock time.time to return deterministic values so duration_ms is non-zero
         # regardless of Windows timer resolution or mock call speed.
         time_seq = iter([1000.0, 1000.05])  # 50 ms elapsed
-        with patch("app.services.model_router.time.time", side_effect=lambda: next(time_seq)):
+        with patch(
+            "app.services.model_router.time.time", side_effect=lambda: next(time_seq)
+        ):
             result = await self.router.complete(
                 "gpt-oss:20b",
                 [{"role": "user", "content": "test"}],
@@ -422,15 +428,18 @@ class TestComplete:
 # Global singleton
 # ---------------------------------------------------------------------------
 
+
 class TestGetModelRouter:
     def test_returns_model_router_instance(self):
         import app.services.model_router as mod
+
         mod._model_router = None  # reset
         router = get_model_router()
         assert isinstance(router, ModelRouter)
 
     def test_returns_same_instance(self):
         import app.services.model_router as mod
+
         mod._model_router = None
         r1 = get_model_router()
         r2 = get_model_router()
@@ -440,6 +449,7 @@ class TestGetModelRouter:
 # ---------------------------------------------------------------------------
 # Default model from env
 # ---------------------------------------------------------------------------
+
 
 class TestDefaultModelEnv:
     def test_default_model_from_env(self):
@@ -458,6 +468,7 @@ class TestDefaultModelEnv:
 # ModelRouter — select_model_for_intent (UNTESTED before this block)
 # ---------------------------------------------------------------------------
 
+
 class TestSelectModelForIntent:
     def setup_method(self):
         self.router = ModelRouter()
@@ -471,7 +482,7 @@ class TestSelectModelForIntent:
         # With both provided, task_category="code" should drive model selection
         model_with_cat = self.router.select_model_for_intent(
             intent_type="conversation",  # maps to "simple"
-            task_category="code",         # maps to "complex"
+            task_category="code",  # maps to "complex"
         )
         model_without_cat = self.router.select_model_for_intent(
             intent_type="conversation",
@@ -494,8 +505,12 @@ class TestSelectModelForIntent:
 
     def test_hyphenated_category_normalised(self):
         """'data-analysis' must be normalised to 'data_analysis' for lookup."""
-        hyphen = self.router.select_model_for_intent(intent_type="task", task_category="data-analysis")
-        underscore = self.router.select_model_for_intent(intent_type="task", task_category="data_analysis")
+        hyphen = self.router.select_model_for_intent(
+            intent_type="task", task_category="data-analysis"
+        )
+        underscore = self.router.select_model_for_intent(
+            intent_type="task", task_category="data_analysis"
+        )
         assert hyphen == underscore
 
     def test_unknown_intent_falls_back_to_complex(self):
@@ -503,7 +518,9 @@ class TestSelectModelForIntent:
         SENTINEL — unknown intent_type must fall back to 'complex' task type.
         Return None or raise → unknown intents crash routing → test fails.
         """
-        model = self.router.select_model_for_intent(intent_type="SENTINEL_UNKNOWN_INTENT")
+        model = self.router.select_model_for_intent(
+            intent_type="SENTINEL_UNKNOWN_INTENT"
+        )
         assert isinstance(model, str) and len(model) > 0
 
     def test_none_intent_falls_back_to_complex(self):

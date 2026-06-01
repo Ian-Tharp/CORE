@@ -22,7 +22,16 @@ import { takeUntil } from 'rxjs/operators';
 @Component({
   selector: 'app-communication',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatBadgeModule, MatMenuModule, MatDividerModule, MessageRendererComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatBadgeModule,
+    MatMenuModule,
+    MatDividerModule,
+    MessageRendererComponent
+  ],
   templateUrl: './communication.component.html',
   styleUrl: './communication.component.scss'
 })
@@ -142,9 +151,9 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   private toolsCacheLocal: Map<string, AgentToolDto[]> = new Map();
 
   onAgentToolsHover(message: Message) {
-    if (message.sender_type !== 'agent') return;
+    if (message.sender_type !== 'agent') {return;}
     const id = message.sender_id;
-    if (this.toolsHoverTimers.has(id)) return;
+    if (this.toolsHoverTimers.has(id)) {return;}
     const timer = setTimeout(() => {
       this.visibleToolsMenus.add(id);
       // Always refresh once when opening to ensure full list (handles first-time partials)
@@ -160,7 +169,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   onAgentToolsHoverLeave(message: Message) {
     const id = message.sender_id;
     const t = this.toolsHoverTimers.get(id);
-    if (t) clearTimeout(t);
+    if (t) {clearTimeout(t);}
     this.toolsHoverTimers.delete(id);
     this.visibleToolsMenus.delete(id);
   }
@@ -251,8 +260,6 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       .pipe(takeUntil(this.destroy$))
       .subscribe(event => {
         const messageId = event['message_id'] as string;
-        const instanceId = event['instance_id'] as string;
-        const reactionType = event['reaction_type'] as string;
 
         // Find the message and update its reactions
         const message = this.messages.find(m => m.message_id === messageId);
@@ -394,7 +401,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   sendMessage() {
-    if (!this.messageText.trim() || !this.selectedChannel) return;
+    if (!this.messageText.trim() || !this.selectedChannel) {return;}
 
     // Prepare metadata
     const metadata: any = {
@@ -414,7 +421,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       parentMessageId,
       threadId
     ).subscribe({
-      next: (newMessage) => {
+      next: (_newMessage) => {
         // Message will be added via WebSocket broadcast, so no need to add locally
         // This prevents duplication since sender also receives their own message via WebSocket
 
@@ -431,7 +438,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   private simulateResponse() {
-    if (!this.selectedChannel) return;
+    if (!this.selectedChannel) {return;}
 
     // Determine who should respond based on channel type
     let responderId = '';
@@ -528,7 +535,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   onMessageListScroll() {
-    if (!this.messageListContainer) return;
+    if (!this.messageListContainer) {return;}
 
     const element = this.messageListContainer.nativeElement;
     const scrollPosition = element.scrollTop + element.clientHeight;
@@ -539,7 +546,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   private scrollToBottom(): void {
-    if (!this.messageListContainer) return;
+    if (!this.messageListContainer) {return;}
 
     try {
       const element = this.messageListContainer.nativeElement;
@@ -630,10 +637,10 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   openDirectMessage(instance: InstancePresence) {
     // Extract the base instance ID (handle both formats: instance_011_threshold and just threshold)
     const instanceIdParts = instance.instance_id.split('_');
-    let baseInstanceId = instanceIdParts[instanceIdParts.length - 1]; // Get last part (e.g., "threshold")
+    const baseInstanceId = instanceIdParts[instanceIdParts.length - 1]; // Get last part (e.g., "threshold")
 
     // Try to find existing DM channel with various ID formats
-    let dmChannel = this.channels.find(c =>
+    const dmChannel = this.channels.find(c =>
       c.channel_id === `dm_${instance.instance_id}` || // dm_instance_011_threshold
       c.channel_id === `dm_${baseInstanceId}` // dm_threshold
     );
@@ -784,7 +791,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   /** Toggle inline thread expansion in channel view */
   toggleInlineThread(message: Message) {
     const threadId = message.thread_id || message.message_id;
-    if (!threadId) return;
+    if (!threadId) {return;}
     if (this.expandedThreadIds.has(threadId)) {
       this.expandedThreadIds.delete(threadId);
       return;
@@ -804,7 +811,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
 
   getInlineThreadMessages(message: Message): Message[] {
     const threadId = message.thread_id || message.message_id;
-    if (!threadId) return [];
+    if (!threadId) {return [];}
     return this.inlineThreadCache.get(threadId) || [];
   }
 
@@ -881,8 +888,8 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     if (onlineIndex >= 0) {
       // Update existing online instance
       this.onlineInstances[onlineIndex].status = status as 'online' | 'away' | 'busy' | 'offline';
-      if (activity !== undefined) this.onlineInstances[onlineIndex].current_activity = activity;
-      if (phase !== undefined) this.onlineInstances[onlineIndex].current_phase = phase;
+      if (activity !== undefined) {this.onlineInstances[onlineIndex].current_activity = activity;}
+      if (phase !== undefined) {this.onlineInstances[onlineIndex].current_phase = phase;}
 
       // Move to away list if status changed to away
       if (status === 'away' || status === 'busy') {
@@ -892,17 +899,16 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     } else if (awayIndex >= 0) {
       // Update existing away instance
       this.awayInstances[awayIndex].status = status as 'online' | 'away' | 'busy' | 'offline';
-      if (activity !== undefined) this.awayInstances[awayIndex].current_activity = activity;
-      if (phase !== undefined) this.awayInstances[awayIndex].current_phase = phase;
+      if (activity !== undefined) {this.awayInstances[awayIndex].current_activity = activity;}
+      if (phase !== undefined) {this.awayInstances[awayIndex].current_phase = phase;}
 
       // Move to online list if status changed to online
       if (status === 'online') {
         this.onlineInstances.push(this.awayInstances[awayIndex]);
         this.awayInstances.splice(awayIndex, 1);
       }
-    }
-    // If not found, reload presence (new instance may have joined)
-    else {
+    } else {
+      // If not found, reload presence (new instance may have joined)
       this.loadPresence();
     }
   }
@@ -1036,10 +1042,10 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   toggleReaction(message: Message, reactionType: 'resonance' | 'question' | 'insight' | 'acknowledge' | 'pattern') {
-    if (!message.reactions) return;
+    if (!message.reactions) {return;}
 
     const reaction = message.reactions.find(r => r.reaction_type === reactionType);
-    if (!reaction) return;
+    if (!reaction) {return;}
 
     if (reaction.hasReacted) {
       // Remove user's reaction
@@ -1112,7 +1118,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       const matchesText = message.content.toLowerCase().includes(query) ||
                          message.sender_name.toLowerCase().includes(query);
 
-      if (!matchesText) return false;
+      if (!matchesText) {return false;}
 
       // Sender filter
       if (this.searchFilters.sender && message.sender_name !== this.searchFilters.sender) {
@@ -1223,7 +1229,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
 
   scrollToResult(index: number) {
     const result = this.searchResults[index];
-    if (!result) return;
+    if (!result) {return;}
 
     // Find the message element and scroll to it
     // In production, you'd use element IDs and scrollIntoView
@@ -1299,7 +1305,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
    */
   getTypingText(): string {
     const typers = Array.from(this.typingUsers.values());
-    if (typers.length === 0) return '';
+    if (typers.length === 0) {return '';}
 
     if (typers.length === 1) {
       return `${typers[0].name} is typing...`;
@@ -1345,7 +1351,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
    * Get the parent message for a reply
    */
   getParentMessage(message: Message): Message | null {
-    if (!message.parent_message_id) return null;
+    if (!message.parent_message_id) {return null;}
 
     // Search in current messages list (channel or thread)
     const messageList = this.isThreadMode ? this.threadMessages : this.messages;
@@ -1441,22 +1447,19 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
    * Scroll the dropdown to keep the selected item visible
    */
   private scrollToSelectedMention(): void {
-    if (!this.mentionDropdown || !this.mentionItems) return;
+    if (!this.mentionDropdown || !this.mentionItems) {return;}
 
     setTimeout(() => {
       const items = this.mentionItems?.toArray();
-      if (!items || items.length === 0) return;
+      if (!items || items.length === 0) {return;}
 
       const selectedItem = items[this.selectedSuggestionIndex];
-      if (!selectedItem) return;
+      if (!selectedItem) {return;}
 
       const dropdownElement = this.mentionDropdown?.nativeElement;
       const itemElement = selectedItem.nativeElement;
 
       if (dropdownElement && itemElement) {
-        const dropdownRect = dropdownElement.getBoundingClientRect();
-        const itemRect = itemElement.getBoundingClientRect();
-
         // Check if item is out of view
         const itemTop = itemElement.offsetTop;
         const itemBottom = itemTop + itemElement.offsetHeight;
@@ -1477,7 +1480,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   private updateMentionSuggestions() {
-    if (!this.selectedChannel || !this.currentUser) return;
+    if (!this.selectedChannel || !this.currentUser) {return;}
 
     const context = {
       userId: this.currentUser.instance_id,
@@ -1495,7 +1498,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   selectMention(suggestion: MentionSuggestion) {
-    if (!this.messageInput) return;
+    if (!this.messageInput) {return;}
 
     const textarea = this.messageInput.nativeElement;
     const currentText = textarea.value;

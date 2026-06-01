@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, shareReplay } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 import { AppConfigService } from './config/app-config.service';
 
 export interface AgentToolDto {
@@ -19,7 +19,7 @@ export class AgentToolsService {
 
   getTools(agentId: string): Observable<AgentToolDto[]> {
     const cached = this.cache.get(agentId);
-    if (cached) return cached;
+    if (cached) {return cached;}
     const req = this.http
       .get<{ tools: AgentToolDto[] }>(`${this.apiBase}/${agentId}/tools`)
       .pipe(shareReplay(1));

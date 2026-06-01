@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { WikiComponent } from './wiki.component';
-import { CreativeDataService, WikiPage, WikiPageType } from '../services/creative-data.service';
+import { CreativeDataService, WikiPage } from '../services/creative-data.service';
 import { CreativeService } from '../../services/creative/creative.service';
 
 describe('WikiComponent', () => {
@@ -12,7 +12,7 @@ describe('WikiComponent', () => {
   let fixture: ComponentFixture<WikiComponent>;
   let mockCreativeDataService: jest.Mocked<CreativeDataService>;
   let mockCreativeService: jest.Mocked<CreativeService>;
-  let mockActivatedRoute: jest.Mocked<ActivatedRoute>;
+  let _mockActivatedRoute: jest.Mocked<ActivatedRoute>;
 
   const mockWikiPage: WikiPage = {
     id: 'test-id',
@@ -55,13 +55,13 @@ describe('WikiComponent', () => {
         { provide: ActivatedRoute, useValue: activatedRouteMock }
       ]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(WikiComponent);
     component = fixture.componentInstance;
     mockCreativeDataService = TestBed.inject(CreativeDataService) as jest.Mocked<CreativeDataService>;
     mockCreativeService = TestBed.inject(CreativeService) as jest.Mocked<CreativeService>;
-    mockActivatedRoute = TestBed.inject(ActivatedRoute) as jest.Mocked<ActivatedRoute>;
+    _mockActivatedRoute = TestBed.inject(ActivatedRoute) as jest.Mocked<ActivatedRoute>;
 
     // Setup default return values
     mockCreativeService.listWiki.mockReturnValue(of([]));
@@ -190,12 +190,16 @@ describe('WikiComponent', () => {
 
   describe('Filtering and Search', () => {
     beforeEach(() => {
+      // detectChanges() runs ngOnInit -> refresh(), which overwrites pages.
+      // Assign the test fixtures AFTER the first change-detection cycle.
+      fixture.detectChanges();
       component.pages = [
         { ...mockWikiPage, title: 'Lore Page', metadata: { type: 'Lore', tags: ['history'] } },
         { ...mockWikiPage, id: '2', title: 'Faction Page', metadata: { type: 'Factions', tags: ['military'] } },
-        { ...mockWikiPage, id: '3', title: 'Search Test', content: 'Contains searchable text' }
+        // Override metadata so this page does not inherit mockWikiPage's
+        // type 'Lore', otherwise the section filter would match two pages.
+        { ...mockWikiPage, id: '3', title: 'Search Test', content: 'Contains searchable text', metadata: { type: 'Items', tags: [] } }
       ];
-      fixture.detectChanges();
     });
 
     it('should filter pages by section', () => {
@@ -313,7 +317,9 @@ describe('WikiComponent', () => {
 
       component.duplicatePage();
 
-      expect(mockCreativeDataService.createWiki).toHaveBeenCalledWith('world-1', 'Test Page (Copy)');
+      // duplicatePage() uses the component's own worldId (set from the route
+      // during ngOnInit), not contextPage.worldId.
+      expect(mockCreativeDataService.createWiki).toHaveBeenCalledWith('test-world-id', 'Test Page (Copy)');
       expect(mockCreativeService.createWiki).toHaveBeenCalled();
     });
 
@@ -381,23 +387,24 @@ describe('WikiComponent', () => {
     });
 
     it('should handle drag over', () => {
-      const mockEvent = new DragEvent('dragover');
-      const preventDefaultSpy = jest.spyOn(mockEvent, 'preventDefault');
+      // jsdom does not implement DragEvent; use a minimal stub.
+      const preventDefault = jest.fn();
+      const mockEvent = { preventDefault } as unknown as DragEvent;
 
       component.onDragOver(mockEvent);
 
-      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(preventDefault).toHaveBeenCalled();
       expect(component.dragOverEditor).toBe(true);
     });
 
     it('should handle drag leave', () => {
-      const mockEvent = new DragEvent('dragleave');
-      const preventDefaultSpy = jest.spyOn(mockEvent, 'preventDefault');
+      const preventDefault = jest.fn();
+      const mockEvent = { preventDefault } as unknown as DragEvent;
       component.dragOverEditor = true;
 
       component.onDragLeave(mockEvent);
 
-      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(preventDefault).toHaveBeenCalled();
       expect(component.dragOverEditor).toBe(false);
     });
 
@@ -459,8 +466,13 @@ describe('WikiComponent', () => {
     });
 
     it('should get connection suggestions', () => {
+      // Give editing its own metadata object so it is independent of the shared
+      // mockWikiPage.metadata that other tests mutate.
+      component.editing = { ...mockWikiPage, id: 'editing-id', metadata: { tags: ['test'] } };
+      // The candidate pages must use different ids than editing or
+      // getConnectionSuggestions() filters them out.
       component.pages = [
-        { ...mockWikiPage, title: 'Related Page', metadata: { tags: ['test'] } },
+        { ...mockWikiPage, id: 'related-1', title: 'Related Page', metadata: { tags: ['test'] } },
         { ...mockWikiPage, id: '2', title: 'Unrelated Page', metadata: { tags: ['other'] } }
       ];
 

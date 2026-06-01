@@ -156,11 +156,20 @@ class TestWebhookRepositoryList:
         now = datetime.now(timezone.utc)
         conn.fetch.return_value = [
             {
-                "id": "wh-001", "name": "a", "url": "https://a.com",
-                "events": ["run.completed"], "secret": None, "headers": "{}",
-                "max_retries": 3, "is_active": True, "delivery_count": 0,
-                "failure_count": 0, "last_delivery_at": None, "last_error": None,
-                "created_at": now, "updated_at": now,
+                "id": "wh-001",
+                "name": "a",
+                "url": "https://a.com",
+                "events": ["run.completed"],
+                "secret": None,
+                "headers": "{}",
+                "max_retries": 3,
+                "is_active": True,
+                "delivery_count": 0,
+                "failure_count": 0,
+                "last_delivery_at": None,
+                "last_error": None,
+                "created_at": now,
+                "updated_at": now,
             },
         ]
 
@@ -480,7 +489,11 @@ class TestWebhookServiceUnregister:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_unregister_removes_from_memory_and_db(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         mock_repo.delete_registration = AsyncMock(return_value=True)
 
@@ -510,7 +523,11 @@ class TestWebhookServiceUpdate:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_update_changes_fields(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         mock_repo.update_registration = AsyncMock(return_value=True)
 
@@ -522,7 +539,9 @@ class TestWebhookServiceUpdate:
         )
         svc.webhooks[reg.id] = reg
 
-        updated = await svc.update_webhook(reg.id, name="new-name", url="https://new.com")
+        updated = await svc.update_webhook(
+            reg.id, name="new-name", url="https://new.com"
+        )
         assert updated.name == "new-name"
         assert updated.url == "https://new.com"
         mock_repo.update_registration.assert_awaited_once()
@@ -541,7 +560,11 @@ class TestWebhookServiceFire:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_fire_queues_matching_webhooks(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         svc = WebhookService()
         svc._delivery_queue = AsyncMock()
@@ -565,7 +588,11 @@ class TestWebhookServiceFire:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_fire_wildcard_matches_all(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         svc = WebhookService()
         svc._delivery_queue = AsyncMock()
@@ -582,7 +609,11 @@ class TestWebhookServiceFire:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_fire_skips_inactive(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         svc = WebhookService()
         svc._delivery_queue = AsyncMock()
@@ -600,7 +631,11 @@ class TestWebhookServiceFire:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_fire_payload_includes_metadata(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
         svc = WebhookService()
         svc._delivery_queue = AsyncMock()
@@ -628,7 +663,10 @@ class TestWebhookServiceDeliver:
     @patch("app.services.webhook_service.webhook_repository")
     async def test_successful_delivery(self, mock_repo):
         from app.services.webhook_service import (
-            WebhookService, WebhookRegistration, WebhookDelivery, WebhookEvent,
+            WebhookService,
+            WebhookRegistration,
+            WebhookDelivery,
+            WebhookEvent,
         )
 
         mock_repo.increment_delivery_count = AsyncMock()
@@ -667,7 +705,10 @@ class TestWebhookServiceDeliver:
     @patch("app.services.webhook_service.webhook_repository")
     async def test_failed_delivery_retries(self, mock_repo):
         from app.services.webhook_service import (
-            WebhookService, WebhookRegistration, WebhookDelivery, WebhookEvent,
+            WebhookService,
+            WebhookRegistration,
+            WebhookDelivery,
+            WebhookEvent,
         )
 
         mock_repo.increment_failure_count = AsyncMock()
@@ -696,7 +737,9 @@ class TestWebhookServiceDeliver:
         )
 
         # Patch sleep to avoid waiting
-        with patch("app.services.webhook_service.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "app.services.webhook_service.asyncio.sleep", new_callable=AsyncMock
+        ):
             await svc._deliver(webhook, delivery)
 
         assert delivery.delivered_at is None
@@ -709,7 +752,10 @@ class TestWebhookServiceDeliver:
         import hashlib
         import hmac as hmac_mod
         from app.services.webhook_service import (
-            WebhookService, WebhookRegistration, WebhookDelivery, WebhookEvent,
+            WebhookService,
+            WebhookRegistration,
+            WebhookDelivery,
+            WebhookEvent,
         )
 
         mock_repo.increment_delivery_count = AsyncMock()
@@ -756,7 +802,10 @@ class TestWebhookServiceDeliver:
     @patch("app.services.webhook_service.webhook_repository")
     async def test_delivery_exception_retries(self, mock_repo):
         from app.services.webhook_service import (
-            WebhookService, WebhookRegistration, WebhookDelivery, WebhookEvent,
+            WebhookService,
+            WebhookRegistration,
+            WebhookDelivery,
+            WebhookEvent,
         )
 
         mock_repo.increment_failure_count = AsyncMock()
@@ -779,7 +828,9 @@ class TestWebhookServiceDeliver:
             payload={},
         )
 
-        with patch("app.services.webhook_service.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "app.services.webhook_service.asyncio.sleep", new_callable=AsyncMock
+        ):
             await svc._deliver(webhook, delivery)
 
         assert delivery.error == "refused"
@@ -793,23 +844,25 @@ class TestWebhookServiceStart:
     async def test_start_loads_from_db(self, mock_repo):
         from app.services.webhook_service import WebhookService
 
-        mock_repo.list_registrations = AsyncMock(return_value=[
-            {
-                "id": "wh-loaded",
-                "name": "from-db",
-                "url": "https://loaded.com",
-                "events": ["run.completed"],
-                "secret": None,
-                "headers": {},
-                "max_retries": 3,
-                "is_active": True,
-                "delivery_count": 42,
-                "failure_count": 3,
-                "last_delivery_at": None,
-                "last_error": None,
-                "created_at": "2026-03-24T10:00:00+00:00",
-            },
-        ])
+        mock_repo.list_registrations = AsyncMock(
+            return_value=[
+                {
+                    "id": "wh-loaded",
+                    "name": "from-db",
+                    "url": "https://loaded.com",
+                    "events": ["run.completed"],
+                    "secret": None,
+                    "headers": {},
+                    "max_retries": 3,
+                    "is_active": True,
+                    "delivery_count": 42,
+                    "failure_count": 3,
+                    "last_delivery_at": None,
+                    "last_error": None,
+                    "created_at": "2026-03-24T10:00:00+00:00",
+                },
+            ]
+        )
 
         svc = WebhookService()
 
@@ -839,20 +892,30 @@ class TestWebhookServiceStats:
 
     @patch("app.services.webhook_service.webhook_repository")
     async def test_get_stats(self, mock_repo):
-        from app.services.webhook_service import WebhookService, WebhookRegistration, WebhookEvent
+        from app.services.webhook_service import (
+            WebhookService,
+            WebhookRegistration,
+            WebhookEvent,
+        )
 
-        mock_repo.get_delivery_stats = AsyncMock(return_value={
-            "window_hours": 24,
-            "total_deliveries": 100,
-            "successful": 95,
-            "failed": 5,
-            "success_rate": 0.95,
-            "by_event": {},
-        })
+        mock_repo.get_delivery_stats = AsyncMock(
+            return_value={
+                "window_hours": 24,
+                "total_deliveries": 100,
+                "successful": 95,
+                "failed": 5,
+                "success_rate": 0.95,
+                "by_event": {},
+            }
+        )
 
         svc = WebhookService()
-        active = WebhookRegistration(url="https://a.com", events=[WebhookEvent.RUN_COMPLETED])
-        inactive = WebhookRegistration(url="https://b.com", events=[WebhookEvent.RUN_FAILED])
+        active = WebhookRegistration(
+            url="https://a.com", events=[WebhookEvent.RUN_COMPLETED]
+        )
+        inactive = WebhookRegistration(
+            url="https://b.com", events=[WebhookEvent.RUN_FAILED]
+        )
         inactive.is_active = False
         svc.webhooks[active.id] = active
         svc.webhooks[inactive.id] = inactive

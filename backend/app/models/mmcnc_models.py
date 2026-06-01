@@ -35,6 +35,7 @@ CommunicationTopology = Literal["mesh", "hierarchical", "hub_spoke"]
 # CORE MODELS
 # =============================================================================
 
+
 class CreativeNode(BaseModel):
     """
     A single creative artifact produced during cluster deliberation.
@@ -55,38 +56,32 @@ class CreativeNode(BaseModel):
     """
 
     id: UUID = Field(
-        default_factory=uuid4,
-        description="Unique identifier for this node"
+        default_factory=uuid4, description="Unique identifier for this node"
     )
 
     content: str = Field(
         ...,
-        description="The creative content — a thought, action description, observation, or synthesis"
+        description="The creative content — a thought, action description, observation, or synthesis",
     )
 
     node_type: NodeType = Field(
         ...,
-        description="Type of creative node: thought, action, observation, or synthesis"
+        description="Type of creative node: thought, action, observation, or synthesis",
     )
 
-    parent_cluster_id: UUID = Field(
-        ...,
-        description="Cluster this node belongs to"
-    )
+    parent_cluster_id: UUID = Field(..., description="Cluster this node belongs to")
 
     embedding: Optional[List[float]] = Field(
-        default=None,
-        description="Vector embedding for semantic similarity search"
+        default=None, description="Vector embedding for semantic similarity search"
     )
 
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Arbitrary metadata (source, confidence, tags, etc.)"
+        description="Arbitrary metadata (source, confidence, tags, etc.)",
     )
 
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="When this node was created"
+        default_factory=datetime.utcnow, description="When this node was created"
     )
 
 
@@ -114,53 +109,44 @@ class Cluster(BaseModel):
     """
 
     id: UUID = Field(
-        default_factory=uuid4,
-        description="Unique identifier for this cluster"
+        default_factory=uuid4, description="Unique identifier for this cluster"
     )
 
     name: str = Field(
-        ...,
-        description="Human-readable name for this deliberation cluster"
+        ..., description="Human-readable name for this deliberation cluster"
     )
 
     phase: ClusterPhase = Field(
         default="divergence",
-        description="Current phase: divergence → convergence → synthesis → complete"
+        description="Current phase: divergence → convergence → synthesis → complete",
     )
 
     parent_microcosm_id: UUID = Field(
-        ...,
-        description="Microcosm this cluster belongs to"
+        ..., description="Microcosm this cluster belongs to"
     )
 
     node_ids: List[str] = Field(
-        default_factory=list,
-        description="IDs of creative nodes in this cluster"
+        default_factory=list, description="IDs of creative nodes in this cluster"
     )
 
     divergence_output: Optional[str] = Field(
-        default=None,
-        description="Summary output from the divergence phase"
+        default=None, description="Summary output from the divergence phase"
     )
 
     convergence_output: Optional[str] = Field(
-        default=None,
-        description="Summary output from the convergence phase"
+        default=None, description="Summary output from the convergence phase"
     )
 
     synthesis_output: Optional[str] = Field(
-        default=None,
-        description="Final synthesized output from the cluster"
+        default=None, description="Final synthesized output from the cluster"
     )
 
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="When this cluster was created"
+        default_factory=datetime.utcnow, description="When this cluster was created"
     )
 
     completed_at: Optional[datetime] = Field(
-        default=None,
-        description="When this cluster reached the complete phase"
+        default=None, description="When this cluster reached the complete phase"
     )
 
 
@@ -186,43 +172,36 @@ class Microcosm(BaseModel):
     """
 
     id: UUID = Field(
-        default_factory=uuid4,
-        description="Unique identifier for this microcosm"
+        default_factory=uuid4, description="Unique identifier for this microcosm"
     )
 
     agent_id: str = Field(
         ...,
-        description="Agent that owns this microcosm (links to AgentConfig.agent_id)"
+        description="Agent that owns this microcosm (links to AgentConfig.agent_id)",
     )
 
-    name: str = Field(
-        ...,
-        description="Human-readable name for this workspace"
-    )
+    name: str = Field(..., description="Human-readable name for this workspace")
 
     parent_macrocosm_id: Optional[UUID] = Field(
         default=None,
-        description="Macrocosm this microcosm belongs to (optional for standalone)"
+        description="Macrocosm this microcosm belongs to (optional for standalone)",
     )
 
     cluster_ids: List[str] = Field(
-        default_factory=list,
-        description="IDs of clusters within this microcosm"
+        default_factory=list, description="IDs of clusters within this microcosm"
     )
 
     memory_namespace: str = Field(
-        ...,
-        description="Unique namespace for this microcosm's memory isolation"
+        ..., description="Unique namespace for this microcosm's memory isolation"
     )
 
     tool_permissions: List[str] = Field(
         default_factory=list,
-        description="Tools this microcosm's agent is allowed to use"
+        description="Tools this microcosm's agent is allowed to use",
     )
 
     state: MicrocosmState = Field(
-        default="active",
-        description="Current state: active, dormant, or archived"
+        default="active", description="Current state: active, dormant, or archived"
     )
 
 
@@ -245,33 +224,27 @@ class Macrocosm(BaseModel):
     """
 
     id: UUID = Field(
-        default_factory=uuid4,
-        description="Unique identifier for this macrocosm"
+        default_factory=uuid4, description="Unique identifier for this macrocosm"
     )
 
-    name: str = Field(
-        ...,
-        description="Human-readable name for this macrocosm"
-    )
+    name: str = Field(..., description="Human-readable name for this macrocosm")
 
     microcosm_ids: List[str] = Field(
-        default_factory=list,
-        description="IDs of microcosms in this macrocosm"
+        default_factory=list, description="IDs of microcosms in this macrocosm"
     )
 
     governance_rules: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Rules governing microcosm coordination (quorum, voting, etc.)"
+        description="Rules governing microcosm coordination (quorum, voting, etc.)",
     )
 
     communication_topology: CommunicationTopology = Field(
         default="mesh",
-        description="How microcosms communicate: mesh, hierarchical, or hub_spoke"
+        description="How microcosms communicate: mesh, hierarchical, or hub_spoke",
     )
 
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="When this macrocosm was created"
+        default_factory=datetime.utcnow, description="When this macrocosm was created"
     )
 
 
@@ -279,110 +252,77 @@ class Macrocosm(BaseModel):
 # CREATE REQUEST MODELS
 # =============================================================================
 
+
 class CreateCreativeNodeRequest(BaseModel):
     """Request to create a new creative node."""
 
-    content: str = Field(
-        ...,
-        description="The creative content"
-    )
+    content: str = Field(..., description="The creative content")
 
-    node_type: NodeType = Field(
-        ...,
-        description="Type of creative node"
-    )
+    node_type: NodeType = Field(..., description="Type of creative node")
 
-    parent_cluster_id: UUID = Field(
-        ...,
-        description="Cluster this node belongs to"
-    )
+    parent_cluster_id: UUID = Field(..., description="Cluster this node belongs to")
 
     embedding: Optional[List[float]] = Field(
-        default=None,
-        description="Optional vector embedding"
+        default=None, description="Optional vector embedding"
     )
 
     metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Optional metadata"
+        default_factory=dict, description="Optional metadata"
     )
 
 
 class CreateClusterRequest(BaseModel):
     """Request to create a new cluster."""
 
-    name: str = Field(
-        ...,
-        description="Name for the cluster"
-    )
+    name: str = Field(..., description="Name for the cluster")
 
     parent_microcosm_id: UUID = Field(
-        ...,
-        description="Microcosm this cluster belongs to"
+        ..., description="Microcosm this cluster belongs to"
     )
 
     phase: ClusterPhase = Field(
-        default="divergence",
-        description="Initial phase (defaults to divergence)"
+        default="divergence", description="Initial phase (defaults to divergence)"
     )
 
 
 class CreateMicrocosmRequest(BaseModel):
     """Request to create a new microcosm."""
 
-    agent_id: str = Field(
-        ...,
-        description="Agent that owns this microcosm"
-    )
+    agent_id: str = Field(..., description="Agent that owns this microcosm")
 
-    name: str = Field(
-        ...,
-        description="Name for the workspace"
-    )
+    name: str = Field(..., description="Name for the workspace")
 
     parent_macrocosm_id: Optional[UUID] = Field(
-        default=None,
-        description="Parent macrocosm (optional)"
+        default=None, description="Parent macrocosm (optional)"
     )
 
-    memory_namespace: str = Field(
-        ...,
-        description="Unique memory namespace"
-    )
+    memory_namespace: str = Field(..., description="Unique memory namespace")
 
     tool_permissions: List[str] = Field(
-        default_factory=list,
-        description="Allowed tools"
+        default_factory=list, description="Allowed tools"
     )
 
-    state: MicrocosmState = Field(
-        default="active",
-        description="Initial state"
-    )
+    state: MicrocosmState = Field(default="active", description="Initial state")
 
 
 class CreateMacrocosmRequest(BaseModel):
     """Request to create a new macrocosm."""
 
-    name: str = Field(
-        ...,
-        description="Name for the macrocosm"
-    )
+    name: str = Field(..., description="Name for the macrocosm")
 
     governance_rules: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Governance rules"
+        default_factory=dict, description="Governance rules"
     )
 
     communication_topology: CommunicationTopology = Field(
-        default="mesh",
-        description="Communication topology"
+        default="mesh", description="Communication topology"
     )
 
 
 # =============================================================================
 # UPDATE REQUEST MODELS
 # =============================================================================
+
 
 class UpdateCreativeNodeRequest(BaseModel):
     """Request to update a creative node (partial)."""
@@ -429,6 +369,7 @@ class UpdateMacrocosmRequest(BaseModel):
 # COMPOSITE MODELS (for API responses)
 # =============================================================================
 
+
 class ClusterFull(BaseModel):
     """A cluster with all its creative nodes."""
 
@@ -464,5 +405,5 @@ class HierarchyContext(BaseModel):
     node: Optional[CreativeNode] = None
     entity_type: str = Field(
         ...,
-        description="Type of the queried entity: macrocosm, microcosm, cluster, or node"
+        description="Type of the queried entity: macrocosm, microcosm, cluster, or node",
     )

@@ -18,6 +18,7 @@ import math
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_embedding(dim: int = 768, seed: float = 1.0) -> List[float]:
     """Generate a deterministic non-zero vector."""
     return [math.sin(seed * (i + 1)) * 0.5 + 0.1 for i in range(dim)]
@@ -29,8 +30,11 @@ def _mock_httpx_response(status_code: int = 200, json_data=None):
     resp.json.return_value = json_data or {}
     if status_code >= 400:
         import httpx
+
         resp.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError("error", request=MagicMock(), response=resp)
+            side_effect=httpx.HTTPStatusError(
+                "error", request=MagicMock(), response=resp
+            )
         )
     else:
         resp.raise_for_status = MagicMock()
@@ -38,7 +42,9 @@ def _mock_httpx_response(status_code: int = 200, json_data=None):
 
 
 def _patch_ollama_base_url(url="http://localhost:11434"):
-    return patch("app.services.ollama_embeddings._get_ollama_base_url", return_value=url)
+    return patch(
+        "app.services.ollama_embeddings._get_ollama_base_url", return_value=url
+    )
 
 
 def _make_async_client(post_side_effect=None, post_return_value=None):
@@ -57,6 +63,7 @@ def _make_async_client(post_side_effect=None, post_return_value=None):
 # embed_texts_batch() — batch embedding via Ollama /api/embed
 # =============================================================================
 
+
 class TestEmbedTextsBatch:
 
     @pytest.mark.asyncio
@@ -67,9 +74,13 @@ class TestEmbedTextsBatch:
         vecs = [_make_embedding(768, seed=i) for i in range(3)]
         mock_resp = _mock_httpx_response(200, {"embeddings": vecs})
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=mock_resp)):
-            result, dim = await embed_texts_batch(model="nomic-embed-text", texts=["A", "B", "C"])
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=mock_resp),
+        ):
+            result, dim = await embed_texts_batch(
+                model="nomic-embed-text", texts=["A", "B", "C"]
+            )
 
         assert len(result) == 3
         for v in result:
@@ -93,9 +104,13 @@ class TestEmbedTextsBatch:
         vec = _make_embedding(768, seed=42)
         mock_resp = _mock_httpx_response(200, {"embeddings": [vec]})
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=mock_resp)):
-            result, dim = await embed_texts_batch(model="nomic-embed-text", texts=["Single"])
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=mock_resp),
+        ):
+            result, dim = await embed_texts_batch(
+                model="nomic-embed-text", texts=["Single"]
+            )
 
         assert len(result) == 1
         assert len(result[0]) == 768
@@ -108,13 +123,19 @@ class TestEmbedTextsBatch:
         # /api/embed returns 404
         batch_resp = _mock_httpx_response(404)
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=batch_resp)), \
-             patch("app.services.ollama_embeddings.embed_texts_via_ollama", new_callable=AsyncMock) as mock_seq:
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=batch_resp),
+        ), patch(
+            "app.services.ollama_embeddings.embed_texts_via_ollama",
+            new_callable=AsyncMock,
+        ) as mock_seq:
             vecs = [_make_embedding(768, seed=i) for i in range(2)]
             mock_seq.return_value = (vecs, 768)
 
-            result, dim = await embed_texts_batch(model="nomic-embed-text", texts=["A", "B"])
+            result, dim = await embed_texts_batch(
+                model="nomic-embed-text", texts=["A", "B"]
+            )
 
         assert len(result) == 2
         assert dim == 768
@@ -128,9 +149,12 @@ class TestEmbedTextsBatch:
         client = _make_async_client()
         client.post = AsyncMock(side_effect=ConnectionError("refused"))
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=client), \
-             patch("app.services.ollama_embeddings.embed_texts_via_ollama", new_callable=AsyncMock) as mock_seq:
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient", return_value=client
+        ), patch(
+            "app.services.ollama_embeddings.embed_texts_via_ollama",
+            new_callable=AsyncMock,
+        ) as mock_seq:
             vec = _make_embedding(768, seed=1)
             mock_seq.return_value = ([vec], 768)
 
@@ -147,8 +171,10 @@ class TestEmbedTextsBatch:
 
         resp_500 = _mock_httpx_response(500)
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=resp_500)):
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=resp_500),
+        ):
             with pytest.raises(httpx.HTTPStatusError):
                 await embed_texts_batch(model="nomic-embed-text", texts=["A"])
 
@@ -160,8 +186,10 @@ class TestEmbedTextsBatch:
         vecs = [_make_embedding(768, seed=i) for i in range(100)]
         mock_resp = _mock_httpx_response(200, {"embeddings": vecs})
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=mock_resp)):
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=mock_resp),
+        ):
             result, dim = await embed_texts_batch(
                 model="nomic-embed-text",
                 texts=[f"text_{i}" for i in range(100)],
@@ -180,17 +208,24 @@ class TestEmbedTextsBatch:
 
         mock_resp = _mock_httpx_response(200, {"embeddings": [vec]})
 
-        with _patch_ollama_base_url(), \
-             patch("app.services.ollama_embeddings.httpx.AsyncClient", return_value=_make_async_client(post_return_value=mock_resp)):
-            result, _ = await embed_texts_batch(model="nomic-embed-text", texts=["Hello"])
+        with _patch_ollama_base_url(), patch(
+            "app.services.ollama_embeddings.httpx.AsyncClient",
+            return_value=_make_async_client(post_return_value=mock_resp),
+        ):
+            result, _ = await embed_texts_batch(
+                model="nomic-embed-text", texts=["Hello"]
+            )
 
         assert len(result) == 1
-        assert any(v != 0.0 for v in result[0]), "Embedding vector should not be all zeros"
+        assert any(
+            v != 0.0 for v in result[0]
+        ), "Embedding vector should not be all zeros"
 
 
 # =============================================================================
 # batch_upload_and_process() — multi-file processing
 # =============================================================================
+
 
 class TestBatchUploadAndProcess:
 
@@ -199,9 +234,16 @@ class TestBatchUploadAndProcess:
     def _patch_repo(self):
         """Patch all repo calls used by batch_upload_and_process."""
         import uuid
+
         def _fake_create(**kw):
             TestBatchUploadAndProcess._call_count += 1
-            return str(uuid.uuid5(uuid.NAMESPACE_DNS, kw.get('filename', str(TestBatchUploadAndProcess._call_count))))
+            return str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_DNS,
+                    kw.get("filename", str(TestBatchUploadAndProcess._call_count)),
+                )
+            )
+
         return patch.multiple(
             "app.services.knowledgebase_service.repo",
             create_document=AsyncMock(side_effect=_fake_create),
@@ -212,9 +254,11 @@ class TestBatchUploadAndProcess:
 
     def _patch_embed(self, dim=768):
         """Patch embed_texts_batch to return proper-sized vectors."""
+
         async def fake_embed(*, model, texts):
             vecs = [_make_embedding(dim, seed=i) for i in range(len(texts))]
             return vecs, dim
+
         return patch(
             "app.services.knowledgebase_service.embed_texts_batch",
             side_effect=fake_embed,
@@ -297,10 +341,15 @@ class TestBatchUploadAndProcess:
         (tmp_path / "test.txt").write_text(content, encoding="utf-8")
 
         mock_create = AsyncMock(return_value="doc-test")
-        with patch("app.services.knowledgebase_service.repo.create_document", mock_create), \
-             patch("app.services.knowledgebase_service.repo.update_document_embedding", AsyncMock()), \
-             patch("app.services.knowledgebase_service.repo.update_chunk_embeddings", AsyncMock()), \
-             self._patch_embed():
+        with patch(
+            "app.services.knowledgebase_service.repo.create_document", mock_create
+        ), patch(
+            "app.services.knowledgebase_service.repo.update_document_embedding",
+            AsyncMock(),
+        ), patch(
+            "app.services.knowledgebase_service.repo.update_chunk_embeddings",
+            AsyncMock(),
+        ), self._patch_embed():
             result = await batch_upload_and_process(
                 file_paths=[str(tmp_path / "test.txt")], is_global=True
             )
@@ -315,6 +364,7 @@ class TestBatchUploadAndProcess:
 # Directory scanning logic (used by batch-upload endpoint)
 # =============================================================================
 
+
 class TestBatchUploadDirectoryScanning:
 
     def test_directory_scan_finds_correct_files(self, tmp_path):
@@ -326,7 +376,8 @@ class TestBatchUploadDirectoryScanning:
 
         supported = {".pdf", ".txt", ".md", ".docx"}
         found = [
-            e.name for e in os.scandir(tmp_path)
+            e.name
+            for e in os.scandir(tmp_path)
             if e.is_file() and os.path.splitext(e.name)[1].lower() in supported
         ]
         assert sorted(found) == ["doc.pdf", "notes.txt", "readme.md"]
@@ -340,7 +391,8 @@ class TestBatchUploadDirectoryScanning:
 
         # Non-recursive
         non_recursive = [
-            e.name for e in os.scandir(tmp_path)
+            e.name
+            for e in os.scandir(tmp_path)
             if e.is_file() and e.name.endswith(".txt")
         ]
         assert non_recursive == ["top.txt"]

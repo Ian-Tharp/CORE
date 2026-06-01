@@ -21,11 +21,14 @@ from app.services.audit_service import AuditService
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> AuditService:
     return AuditService()
 
 
-def _make_request(ip: str = "127.0.0.1", correlation_id: str | None = None) -> MagicMock:
+def _make_request(
+    ip: str = "127.0.0.1", correlation_id: str | None = None
+) -> MagicMock:
     """Build a minimal FastAPI Request-like mock."""
     req = MagicMock()
     req.client = MagicMock()
@@ -39,6 +42,7 @@ def _make_request(ip: str = "127.0.0.1", correlation_id: str | None = None) -> M
 # log() — core behaviour
 # ===========================================================================
 
+
 class TestAuditLog:
     @pytest.mark.asyncio
     async def test_success_returns_event_id(self):
@@ -47,7 +51,10 @@ class TestAuditLog:
         Return None always → callers can't confirm the event was recorded → test fails.
         """
         svc = _make_service()
-        with patch("app.services.audit_service.repo.record", new=AsyncMock(return_value="SENTINEL_UUID")):
+        with patch(
+            "app.services.audit_service.repo.record",
+            new=AsyncMock(return_value="SENTINEL_UUID"),
+        ):
             result = await svc.log(actor="ian", action="test.action")
         assert result == "SENTINEL_UUID"
 
@@ -58,8 +65,10 @@ class TestAuditLog:
         Remove try/except → DB outage crashes API endpoint → test fails.
         """
         svc = _make_service()
-        with patch("app.services.audit_service.repo.record",
-                   new=AsyncMock(side_effect=RuntimeError("DB down"))):
+        with patch(
+            "app.services.audit_service.repo.record",
+            new=AsyncMock(side_effect=RuntimeError("DB down")),
+        ):
             result = await svc.log(actor="ian", action="test.action")
         assert result is None
 
@@ -189,6 +198,7 @@ class TestAuditLog:
 # get_events / get_summary / prune — delegation to repo
 # ===========================================================================
 
+
 class TestAuditReadHelpers:
     @pytest.mark.asyncio
     async def test_get_events_delegates_to_repo(self):
@@ -198,8 +208,10 @@ class TestAuditReadHelpers:
         """
         svc = _make_service()
         sentinel_events = [{"event_id": "SENTINEL_EVENT"}]
-        with patch("app.services.audit_service.repo.get_events",
-                   new=AsyncMock(return_value=sentinel_events)) as spy:
+        with patch(
+            "app.services.audit_service.repo.get_events",
+            new=AsyncMock(return_value=sentinel_events),
+        ) as spy:
             result = await svc.get_events(actor="ian", limit=10)
         spy.assert_called_once_with(actor="ian", limit=10)
         assert result == sentinel_events
@@ -209,8 +221,10 @@ class TestAuditReadHelpers:
         """get_summary must forward hours to repo.get_summary."""
         svc = _make_service()
         sentinel_summary = {"total": 42}
-        with patch("app.services.audit_service.repo.get_summary",
-                   new=AsyncMock(return_value=sentinel_summary)) as spy:
+        with patch(
+            "app.services.audit_service.repo.get_summary",
+            new=AsyncMock(return_value=sentinel_summary),
+        ) as spy:
             result = await svc.get_summary(hours=48)
         spy.assert_called_once_with(hours=48)
         assert result == sentinel_summary
@@ -219,8 +233,10 @@ class TestAuditReadHelpers:
     async def test_prune_delegates_to_repo(self):
         """prune must call repo.prune_old_events with keep_days."""
         svc = _make_service()
-        with patch("app.services.audit_service.repo.prune_old_events",
-                   new=AsyncMock(return_value=5)) as spy:
+        with patch(
+            "app.services.audit_service.repo.prune_old_events",
+            new=AsyncMock(return_value=5),
+        ) as spy:
             result = await svc.prune(keep_days=30)
         spy.assert_called_once_with(keep_days=30)
         assert result == 5

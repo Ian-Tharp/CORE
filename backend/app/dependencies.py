@@ -77,7 +77,7 @@ def get_ollama_client() -> AsyncOpenAI:
     # Ollama doesn't require an API key, but the SDK expects one
     return AsyncOpenAI(
         base_url=f"{base_url}/v1",
-        api_key="ollama"  # Dummy key, Ollama doesn't check it
+        api_key="ollama",  # Dummy key, Ollama doesn't check it
     )
 
 
@@ -91,7 +91,7 @@ def get_ollama_client_sync() -> OpenAI:
     base_url = _get_ollama_base_url()
     return OpenAI(
         base_url=f"{base_url}/v1",
-        api_key="ollama"  # Dummy key, Ollama doesn't check it
+        api_key="ollama",  # Dummy key, Ollama doesn't check it
     )
 
 
@@ -367,8 +367,12 @@ async def setup_db_schema() -> None:
             )
 
             # Backfill columns if older table definitions exist
-            await conn.execute("ALTER TABLE worlds ADD COLUMN IF NOT EXISTS origin VARCHAR(32) DEFAULT 'human'")
-            await conn.execute("ALTER TABLE worlds ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'")
+            await conn.execute(
+                "ALTER TABLE worlds ADD COLUMN IF NOT EXISTS origin VARCHAR(32) DEFAULT 'human'"
+            )
+            await conn.execute(
+                "ALTER TABLE worlds ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'"
+            )
 
             # -----------------------------------------------------------------
             # Creative Studio: wiki pages and characters

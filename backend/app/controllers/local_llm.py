@@ -29,7 +29,9 @@ async def health() -> Dict[str, str]:
         return {"status": "healthy"}
     except Exception as exc:  # noqa: BLE001
         logger.error("Ollama health check failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
 
 
 @router.get("/models")
@@ -54,7 +56,9 @@ async def pull_model(payload: Dict[str, str]) -> Dict[str, Any]:
     """
     name: Optional[str] = payload.get("name") if payload else None
     if not name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="'name' is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="'name' is required"
+        )
 
     # Fast-path: if already installed, return immediately
     tags_url = _ollama_url("/api/tags")
@@ -76,5 +80,3 @@ async def pull_model(payload: Dict[str, str]) -> Dict[str, Any]:
         if resp.status_code >= 400:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
     return {"status": "ok", "name": name, "already_present": False}
-
-

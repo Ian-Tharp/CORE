@@ -38,14 +38,27 @@ async def get_conversations(
         result: List[dict] = []
         for c in convs:
             if "messages" in c and isinstance(c["messages"], int):
-                result.append({"id": c["id"], "title": c.get("title", ""), "messages": c["messages"]})
+                result.append(
+                    {
+                        "id": c["id"],
+                        "title": c.get("title", ""),
+                        "messages": c["messages"],
+                    }
+                )
             else:
-                result.append({
-                    "id": c["id"],
-                    "title": c.get("title", ""),
-                    "messages": len(c.get("messages", [])),
-                })
-        return {"conversations": result, "total": total, "page": page, "page_size": page_size}
+                result.append(
+                    {
+                        "id": c["id"],
+                        "title": c.get("title", ""),
+                        "messages": len(c.get("messages", [])),
+                    }
+                )
+        return {
+            "conversations": result,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
     except Exception:
         logger.exception("Failed to list conversations")
         return {"conversations": [], "total": 0, "page": page, "page_size": page_size}

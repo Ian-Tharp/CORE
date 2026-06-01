@@ -24,6 +24,7 @@ from app.services.title_generation_service import (
 # _clean_title — pure string transformation
 # ===========================================================================
 
+
 class TestCleanTitle:
     def test_double_quotes_stripped(self):
         """
@@ -102,6 +103,7 @@ class TestCleanTitle:
 # _fallback_title — pure fallback logic
 # ===========================================================================
 
+
 class TestFallbackTitle:
     def test_empty_message_returns_new_conversation(self):
         """
@@ -140,6 +142,7 @@ class TestFallbackTitle:
 # generate_conversation_title — LLM integration with httpx mock
 # ===========================================================================
 
+
 class TestGenerateConversationTitle:
     @pytest.mark.asyncio
     async def test_returns_cleaned_title_from_llm(self):
@@ -156,7 +159,10 @@ class TestGenerateConversationTitle:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("app.services.title_generation_service.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "app.services.title_generation_service.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await generate_conversation_title("user msg", "assistant msg")
 
         # Quotes stripped by _clean_title
@@ -175,13 +181,20 @@ class TestGenerateConversationTitle:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.post = AsyncMock(side_effect=httpx.ConnectError("down"))
 
-        with patch("app.services.title_generation_service.httpx.AsyncClient", return_value=mock_client):
-            result = await generate_conversation_title("SENTINEL_USER_MESSAGE_HERE", "assistant msg")
+        with patch(
+            "app.services.title_generation_service.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            result = await generate_conversation_title(
+                "SENTINEL_USER_MESSAGE_HERE", "assistant msg"
+            )
 
         # Fallback must not raise; must return something based on user_message
         assert isinstance(result, str)
         assert len(result) > 0
-        assert "SENTINEL_USER_MESSAGE" in result or result == "SENTINEL_USER_MESSAGE_HERE"
+        assert (
+            "SENTINEL_USER_MESSAGE" in result or result == "SENTINEL_USER_MESSAGE_HERE"
+        )
 
     @pytest.mark.asyncio
     async def test_empty_llm_response_uses_fallback(self):
@@ -198,8 +211,13 @@ class TestGenerateConversationTitle:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("app.services.title_generation_service.httpx.AsyncClient", return_value=mock_client):
-            result = await generate_conversation_title("SENTINEL_FALLBACK_MSG", "response")
+        with patch(
+            "app.services.title_generation_service.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            result = await generate_conversation_title(
+                "SENTINEL_FALLBACK_MSG", "response"
+            )
 
         assert result  # must not be empty
         assert "SENTINEL_FALLBACK" in result or len(result) > 0
@@ -221,10 +239,17 @@ class TestGenerateConversationTitle:
         mock_client.post = AsyncMock(return_value=mock_response)
 
         long_msg = "X" * 500  # 500-char message
-        with patch("app.services.title_generation_service.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "app.services.title_generation_service.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             await generate_conversation_title(long_msg, "response")
 
         call_kwargs = mock_client.post.call_args
-        prompt_body = call_kwargs[1]["json"]["prompt"] if call_kwargs[1] else call_kwargs[0][1]["prompt"]
+        prompt_body = (
+            call_kwargs[1]["json"]["prompt"]
+            if call_kwargs[1]
+            else call_kwargs[0][1]["prompt"]
+        )
         # The prompt must not contain the full 500 Xs
         assert "X" * 201 not in prompt_body

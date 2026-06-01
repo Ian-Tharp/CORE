@@ -21,17 +21,17 @@ export class WorldDetailComponent {
   }
 
   openInEditor(): void {
-    if (!this.world) return;
+    if (!this.world) {return;}
     this.router.navigate(['/command-center'], { queryParams: { projectId: this.world.id } });
   }
 
   openBoards(): void {
-    if (!this.world) return;
+    if (!this.world) {return;}
     this.router.navigate(['/creative/boards'], { queryParams: { projectId: this.world.id } });
   }
 
   openWiki(): void {
-    if (!this.world) return;
+    if (!this.world) {return;}
     this.router.navigate(['/creative/wiki'], { queryParams: { projectId: this.world.id } });
   }
 }

@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
-import { EngineService, StepResponse, StepStreamEvent, COREStreamEvent, COREState, RunResponse } from '../services/engine/engine.service';
+import { EngineService, StepResponse, StepStreamEvent, COREStreamEvent, COREState } from '../services/engine/engine.service';
 
 @Component({
   selector: 'app-engine-playground',
@@ -38,8 +38,16 @@ export class EnginePlaygroundComponent {
   public readonly steps = ['Comprehension', 'Orchestration', 'Reasoning', 'Evaluation'] as const;
   public activeStepIndex = 0;
   public durations: Record<string, number> = {};
-  public stepBusy: Record<string, boolean> = { Comprehension: false, Orchestration: false, Reasoning: false, Evaluation: false };
-  public metricsByStep: Record<string, { tokens: number; ttfb_ms: number; duration_ms: number; tps: number } | undefined> = {};
+  public stepBusy: Record<string, boolean> = {
+    Comprehension: false,
+    Orchestration: false,
+    Reasoning: false,
+    Evaluation: false
+  };
+  public metricsByStep: Record<
+  string,
+  { tokens: number; ttfb_ms: number; duration_ms: number; tps: number } | undefined
+  > = {};
 
   public readonly models = [
     'gpt-5', 'gpt-4.1', 'gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3-5'
@@ -83,8 +91,20 @@ export class EnginePlaygroundComponent {
   }
 
   private _payload() { return { message_id: crypto.randomUUID(), user_input: this.inputText }; }
-  private _markStart(step: string) { (this as any)._t0 = performance.now(); this.isBusy = true; this.stepBusy[step] = true; this.activeStepIndex = this.steps.indexOf(step as any) ?? 0; }
-  private _markEnd(step: string) { this.isBusy = false; this.stepBusy[step] = false; const t0 = (this as any)._t0 as number | undefined; if (t0) { this.durations[step] = Math.max(0, performance.now() - t0); } }
+  private _markStart(step: string) {
+    (this as any)._t0 = performance.now();
+    this.isBusy = true;
+    this.stepBusy[step] = true;
+    this.activeStepIndex = this.steps.indexOf(step as any) ?? 0;
+  }
+  private _markEnd(step: string) {
+    this.isBusy = false;
+    this.stepBusy[step] = false;
+    const t0 = (this as any)._t0 as number | undefined;
+    if (t0) {
+      this.durations[step] = Math.max(0, performance.now() - t0);
+    }
+  }
 
   public setActive(index: number) { this.activeStepIndex = index; }
   public runNext() { const step = this.steps[this.activeStepIndex] ?? this.steps[0]; this.runStep(step as any); }

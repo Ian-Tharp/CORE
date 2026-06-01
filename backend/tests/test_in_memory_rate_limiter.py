@@ -23,6 +23,7 @@ from app.core.security import RateLimiter, _hash_key
 # _hash_key
 # ===========================================================================
 
+
 class TestHashKey:
     def test_returns_64_char_hex_string(self):
         """
@@ -51,6 +52,7 @@ class TestHashKey:
 # ===========================================================================
 # RateLimiter — basic rate limiting
 # ===========================================================================
+
 
 class TestRateLimiter:
     def test_first_request_allowed(self):

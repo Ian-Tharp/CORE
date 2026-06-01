@@ -19,18 +19,18 @@ describe('SideNavigationComponent', () => {
         tone: 'ready',
         detail: '1 mapped channel ready',
         tooltip: 'Discord Gateway connected.',
-        status: null,
-      }),
+        status: null
+      })
     };
 
     await TestBed.configureTestingModule({
       imports: [SideNavigationComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]),
-        { provide: DiscordBridgeService, useValue: discordBridgeService },
+        { provide: DiscordBridgeService, useValue: discordBridgeService }
       ]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(SideNavigationComponent);
     component = fixture.componentInstance;

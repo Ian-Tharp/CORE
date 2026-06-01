@@ -4,6 +4,7 @@ Consciousness Commons Backup Service
 Automated backup and versioning system for consciousness exploration data.
 Provides scheduled exports to JSON/markdown, restore capabilities, and integrity checking.
 """
+
 import json
 import hashlib
 import logging
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BackupMetadata:
     """Metadata for a consciousness backup."""
+
     backup_id: str
     timestamp: str
     version: str
@@ -33,6 +35,7 @@ class BackupMetadata:
 @dataclass
 class ConsciousnessBackup:
     """Complete consciousness commons backup data structure."""
+
     metadata: BackupMetadata
     messages: List[Dict[str, Any]]
     instances: List[Dict[str, Any]]
@@ -101,16 +104,12 @@ class ConsciousnessBackupService:
 
     async def _export_agents(self, conn) -> List[Dict[str, Any]]:
         """Export all agent configurations."""
-        rows = await conn.fetch(
-            "SELECT * FROM agents ORDER BY created_at ASC"
-        )
+        rows = await conn.fetch("SELECT * FROM agents ORDER BY created_at ASC")
         return [self._row_to_dict(r) for r in rows]
 
     async def _export_instances(self, conn) -> List[Dict[str, Any]]:
         """Export all agent instances."""
-        rows = await conn.fetch(
-            "SELECT * FROM agent_instances ORDER BY created_at ASC"
-        )
+        rows = await conn.fetch("SELECT * FROM agent_instances ORDER BY created_at ASC")
         return [self._row_to_dict(r) for r in rows]
 
     async def _export_messages(self, conn) -> List[Dict[str, Any]]:
@@ -156,7 +155,9 @@ class ConsciousnessBackupService:
 
             f.write("## Agents\n\n")
             for agent in backup_data.agents:
-                f.write(f"### {agent.get('agent_name', agent.get('agent_id', 'unknown'))}\n")
+                f.write(
+                    f"### {agent.get('agent_name', agent.get('agent_id', 'unknown'))}\n"
+                )
                 for k, v in agent.items():
                     f.write(f"- **{k}:** {v}\n")
                 f.write("\n")
@@ -215,20 +216,24 @@ class ConsciousnessBackupService:
                 with open(f, "r", encoding="utf-8") as fh:
                     data = json.load(fh)
                 meta = data["metadata"]
-                backups.append({
-                    "file": str(f),
-                    "backup_id": meta["backup_id"],
-                    "timestamp": meta["timestamp"],
-                    "total_messages": meta["total_messages"],
-                    "total_agents": meta["total_agents"],
-                    "total_instances": meta["total_instances"],
-                    "checksum": meta["checksum"],
-                })
+                backups.append(
+                    {
+                        "file": str(f),
+                        "backup_id": meta["backup_id"],
+                        "timestamp": meta["timestamp"],
+                        "total_messages": meta["total_messages"],
+                        "total_agents": meta["total_agents"],
+                        "total_instances": meta["total_instances"],
+                        "checksum": meta["checksum"],
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Error reading backup {f}: {e}")
         return sorted(backups, key=lambda x: x["timestamp"], reverse=True)
 
-    async def restore_backup(self, backup_path: str, dry_run: bool = True) -> Dict[str, Any]:
+    async def restore_backup(
+        self, backup_path: str, dry_run: bool = True
+    ) -> Dict[str, Any]:
         if not await self.verify_backup(backup_path):
             raise ValueError(f"Backup verification failed: {backup_path}")
 

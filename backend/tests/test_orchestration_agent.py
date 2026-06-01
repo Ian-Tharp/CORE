@@ -28,6 +28,7 @@ from app.models.core_state import (
 # Helper factories
 # ---------------------------------------------------------------------------
 
+
 def _make_plan(*tools, hitl_indices=None):
     hitl_indices = hitl_indices or set()
     steps = [
@@ -56,6 +57,7 @@ def _make_eval(next_action="revise_plan", feedback="SENTINEL_FEEDBACK"):
 # ---------------------------------------------------------------------------
 # Dynamic tool description
 # ---------------------------------------------------------------------------
+
 
 class TestDynamicToolDescriptions:
     def test_prompt_includes_dynamic_tools(self):
@@ -100,6 +102,7 @@ class TestDynamicToolDescriptions:
 # ---------------------------------------------------------------------------
 # Cost estimation
 # ---------------------------------------------------------------------------
+
 
 class TestEstimatePlanCost:
     def test_step_count_matches_plan(self):
@@ -196,6 +199,7 @@ class TestEstimatePlanCost:
 # Plan revision feedback
 # ---------------------------------------------------------------------------
 
+
 class TestPlanRevisionFeedback:
     def test_revision_includes_feedback_in_llm_prompt(self):
         """
@@ -206,13 +210,19 @@ class TestPlanRevisionFeedback:
         agent = OrchestrationAgent()
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = MagicMock(
-            choices=[MagicMock(message=MagicMock(content='{"goal":"g","reasoning":"r","steps":[]}'))]
+            choices=[
+                MagicMock(
+                    message=MagicMock(content='{"goal":"g","reasoning":"r","steps":[]}')
+                )
+            ]
         )
 
         prev_plan = _make_plan(None)
 
-        with patch("app.core.agents.orchestration_agent.get_openai_client_sync",
-                   return_value=mock_client):
+        with patch(
+            "app.core.agents.orchestration_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             agent.create_plan(
                 user_input="do the thing",
                 previous_plan=prev_plan,
@@ -229,11 +239,17 @@ class TestPlanRevisionFeedback:
         agent = OrchestrationAgent()
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = MagicMock(
-            choices=[MagicMock(message=MagicMock(content='{"goal":"g","reasoning":"r","steps":[]}'))]
+            choices=[
+                MagicMock(
+                    message=MagicMock(content='{"goal":"g","reasoning":"r","steps":[]}')
+                )
+            ]
         )
 
-        with patch("app.core.agents.orchestration_agent.get_openai_client_sync",
-                   return_value=mock_client):
+        with patch(
+            "app.core.agents.orchestration_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             plan = agent.create_plan("do it", revision=5)
 
         assert plan.revision == 5
@@ -243,10 +259,12 @@ class TestPlanRevisionFeedback:
 # Loop guard (COREGraph.route_from_evaluation)
 # ---------------------------------------------------------------------------
 
+
 class TestLoopGuard:
     def _make_core_graph(self):
         """Import COREGraph without triggering LangGraph compilation."""
         from app.core.langgraph.core_graph_v2 import COREGraph
+
         return COREGraph()
 
     def _make_state(self, plan_revisions: int, next_action: str = "revise_plan"):
@@ -321,7 +339,9 @@ class TestLoopGuard:
         )
 
         mock_plan = _make_plan(None)
-        with patch.object(graph.orchestration_agent, "create_plan", return_value=mock_plan):
+        with patch.object(
+            graph.orchestration_agent, "create_plan", return_value=mock_plan
+        ):
             new_state = graph.orchestration_node(state)
 
         assert new_state.plan_revisions == 3

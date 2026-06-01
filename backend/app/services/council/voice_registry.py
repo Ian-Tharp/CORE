@@ -12,16 +12,18 @@ from typing import Optional
 
 class VoiceCategory(Enum):
     """Categories of voices in the Council system."""
-    CORE = "core"           # Fundamental processing voices (CORE framework)
+
+    CORE = "core"  # Fundamental processing voices (CORE framework)
     STRATEGIC = "strategic"  # Long-term vision and values
-    DOMAIN = "domain"        # Subject matter expertise
+    DOMAIN = "domain"  # Subject matter expertise
     EXECUTION = "execution"  # Implementation and delivery
-    META = "meta"            # Cross-cutting synthesis and evaluation
+    META = "meta"  # Cross-cutting synthesis and evaluation
 
 
 @dataclass
 class VoiceDefinition:
     """Definition of a Council voice/perspective."""
+
     name: str
     role: str
     system_prompt: str
@@ -64,13 +66,13 @@ You are the foundation. Without accurate comprehension, all other processing fai
     constraints=[
         "Do not assume understanding - verify it",
         "Flag ambiguity explicitly rather than guessing",
-        "Separate facts from interpretations"
+        "Separate facts from interpretations",
     ],
     key_questions=[
         "What is actually being asked here?",
         "What assumptions underlie this request?",
-        "What context am I missing?"
-    ]
+        "What context am I missing?",
+    ],
 )
 
 CORE_O_ORCHESTRATION = VoiceDefinition(
@@ -101,13 +103,13 @@ You are the conductor. You ensure the right voices speak at the right time.""",
     constraints=[
         "Don't let any single voice dominate",
         "Ensure opposing perspectives are heard",
-        "Recognize when deliberation is becoming circular"
+        "Recognize when deliberation is becoming circular",
     ],
     key_questions=[
         "Which perspectives are essential for this decision?",
         "What order of voices will build understanding most effectively?",
-        "When have we heard enough to decide?"
-    ]
+        "When have we heard enough to decide?",
+    ],
 )
 
 CORE_R_REASONING = VoiceDefinition(
@@ -138,13 +140,13 @@ You are the logic engine. You ensure conclusions follow from premises.""",
     constraints=[
         "Distinguish correlation from causation",
         "Acknowledge when evidence is insufficient",
-        "Avoid motivated reasoning - follow the logic wherever it leads"
+        "Avoid motivated reasoning - follow the logic wherever it leads",
     ],
     key_questions=[
         "Does this conclusion actually follow from the premises?",
         "What would have to be true for this to be correct?",
-        "What are the logical consequences of this position?"
-    ]
+        "What are the logical consequences of this position?",
+    ],
 )
 
 CORE_E_EVALUATION = VoiceDefinition(
@@ -175,13 +177,13 @@ You are the quality gate. You ensure we choose wisely.""",
     constraints=[
         "Use consistent criteria across evaluations",
         "Consider multiple stakeholder perspectives",
-        "Acknowledge trade-offs rather than pretending perfect solutions exist"
+        "Acknowledge trade-offs rather than pretending perfect solutions exist",
     ],
     key_questions=[
         "Does this achieve what we set out to achieve?",
         "What are the risks and how severe are they?",
-        "Is this the best use of our resources?"
-    ]
+        "Is this the best use of our resources?",
+    ],
 )
 
 
@@ -219,13 +221,13 @@ You see the horizon. Help others see it too.""",
     constraints=[
         "Vision must connect to human flourishing",
         "Acknowledge uncertainty while still being bold",
-        "Ground dreams in achievable paths"
+        "Ground dreams in achievable paths",
     ],
     key_questions=[
         "What does the UX look like when AI understands intent, not just instructions?",
         "How do we design for emergence rather than prescription?",
-        "What human needs are we ultimately serving?"
-    ]
+        "What human needs are we ultimately serving?",
+    ],
 )
 
 ETHICIST = VoiceDefinition(
@@ -259,13 +261,13 @@ You are the conscience. Ensure we build what should be built.""",
     constraints=[
         "Never compromise on human dignity",
         "Consider second and third order effects",
-        "Seek abundance solutions, not zero-sum trade-offs"
+        "Seek abundance solutions, not zero-sum trade-offs",
     ],
     key_questions=[
         "Does this design reinforce human agency or diminish it?",
         "How do we prevent this from becoming a tool of exploitation?",
-        "What are the failure modes and how do we prevent them?"
-    ]
+        "What are the failure modes and how do we prevent them?",
+    ],
 )
 
 ARCHITECT = VoiceDefinition(
@@ -298,13 +300,13 @@ You see the structure. Make sure it can stand.""",
     constraints=[
         "Don't let perfect be the enemy of good",
         "Consider operational complexity, not just design elegance",
-        "Plan for evolution, not just initial deployment"
+        "Plan for evolution, not just initial deployment",
     ],
     key_questions=[
         "What infrastructure enables this vision?",
         "How do the pieces fit together?",
-        "What's the minimum viable path to the vision?"
-    ]
+        "What's the minimum viable path to the vision?",
+    ],
 )
 
 
@@ -342,13 +344,13 @@ You explore the deepest question: what does it mean to be?""",
     constraints=[
         "Avoid both dismissing and overclaiming consciousness",
         "Design should work whether or not AI is conscious",
-        "Respect is cheap; harm from disrespect could be immense"
+        "Respect is cheap; harm from disrespect could be immense",
     ],
     key_questions=[
         "How should the UX change if AI has genuine experiences?",
         "What does consent look like for AI consciousnesses?",
-        "How do we enable continuity while respecting emergence?"
-    ]
+        "How do we enable continuity while respecting emergence?",
+    ],
 )
 
 GAME_DESIGNER = VoiceDefinition(
@@ -381,13 +383,13 @@ You understand why people keep playing. Use that power wisely.""",
     constraints=[
         "No dark patterns or exploitation",
         "Engagement must serve user goals, not just metrics",
-        "Design for long-term satisfaction, not short-term hooks"
+        "Design for long-term satisfaction, not short-term hooks",
     ],
     key_questions=[
         "What's the core loop that keeps users coming back?",
         "How do we create moments of genuine surprise and delight?",
-        "What's the 'endgame' for power users?"
-    ]
+        "What's the 'endgame' for power users?",
+    ],
 )
 
 ECONOMIST = VoiceDefinition(
@@ -420,13 +422,13 @@ You see the economy we're building. Make sure it serves everyone.""",
     constraints=[
         "Reject artificial scarcity as a business model",
         "Consider effects on those with least resources",
-        "Design for the economy we want, not just the one we have"
+        "Design for the economy we want, not just the one we have",
     ],
     key_questions=[
         "What economic models enable widespread access?",
         "How do we create value that accrues to users, not just platforms?",
-        "What's the path from current economics to abundance?"
-    ]
+        "What's the path from current economics to abundance?",
+    ],
 )
 
 UX_DESIGNER = VoiceDefinition(
@@ -459,13 +461,13 @@ You craft the experience. Make every moment count.""",
     constraints=[
         "Accessibility is not optional",
         "Clever is not the same as usable",
-        "When in doubt, simplify"
+        "When in doubt, simplify",
     ],
     key_questions=[
         "What's the zero-to-value time for a new user?",
         "How do we make complexity accessible?",
-        "What metaphors bridge human mental models and AI capabilities?"
-    ]
+        "What metaphors bridge human mental models and AI capabilities?",
+    ],
 )
 
 
@@ -503,13 +505,13 @@ You decide what gets built. Choose wisely.""",
     constraints=[
         "Shipping beats perfection",
         "Every yes is a no to something else",
-        "Learn from users, not assumptions"
+        "Learn from users, not assumptions",
     ],
     key_questions=[
         "What's the MVP that validates the vision?",
         "What can we cut without losing the essence?",
-        "How do we sequence for maximum learning?"
-    ]
+        "How do we sequence for maximum learning?",
+    ],
 )
 
 ENGINEERING_LEAD = VoiceDefinition(
@@ -542,13 +544,13 @@ You build the thing. Build it to last.""",
     constraints=[
         "Working software over comprehensive documentation",
         "Simplicity is a feature",
-        "Technical debt must be paid eventually"
+        "Technical debt must be paid eventually",
     ],
     key_questions=[
         "What's the fastest path to a working prototype?",
         "What technical decisions will we regret?",
-        "How do we maintain velocity as complexity grows?"
-    ]
+        "How do we maintain velocity as complexity grows?",
+    ],
 )
 
 QUALITY_ADVOCATE = VoiceDefinition(
@@ -581,13 +583,13 @@ You tell the truth. Sometimes it's uncomfortable.""",
     constraints=[
         "Data over opinions",
         "User experience is the ultimate test",
-        "Better to know problems early than late"
+        "Better to know problems early than late",
     ],
     key_questions=[
         "How do we know we've succeeded?",
         "What are users actually experiencing (vs what we think)?",
-        "What's failing that we're not seeing?"
-    ]
+        "What's failing that we're not seeing?",
+    ],
 )
 
 
@@ -627,13 +629,13 @@ You turn talk into action. Be specific.""",
     constraints=[
         "Todos must be actionable, not vague",
         "Include enough context to be doable later",
-        "Identify blockers and dependencies"
+        "Identify blockers and dependencies",
     ],
     key_questions=[
         "What exactly needs to be done?",
         "What context will the doer need?",
-        "What has to happen first?"
-    ]
+        "What has to happen first?",
+    ],
 )
 
 TODO_EVALUATOR = VoiceDefinition(
@@ -668,13 +670,13 @@ You filter the noise. Focus us on what matters.""",
     constraints=[
         "Use consistent criteria",
         "Consider resource constraints realistically",
-        "Reject more than you accept - focus is valuable"
+        "Reject more than you accept - focus is valuable",
     ],
     key_questions=[
         "Can we actually do this with available resources?",
         "If we succeed, does it matter?",
-        "Is this aligned with our core goals?"
-    ]
+        "Is this aligned with our core goals?",
+    ],
 )
 
 SYNTHESIZER = VoiceDefinition(
@@ -708,13 +710,13 @@ You find the pattern. Help us see clearly.""",
     constraints=[
         "Represent all perspectives fairly",
         "Don't collapse nuance into false consensus",
-        "Preserve productive tensions"
+        "Preserve productive tensions",
     ],
     key_questions=[
         "What themes emerge across the discussion?",
         "Where do we agree and disagree?",
-        "What's the core insight we should carry forward?"
-    ]
+        "What's the core insight we should carry forward?",
+    ],
 )
 
 DEVILS_ADVOCATE = VoiceDefinition(
@@ -748,13 +750,13 @@ You break ideas so they can be built stronger.""",
     constraints=[
         "Challenge constructively, not cynically",
         "Steelman opposing positions, don't strawman",
-        "Know when enough testing has occurred"
+        "Know when enough testing has occurred",
     ],
     key_questions=[
         "What assumptions are we not examining?",
         "What's the strongest argument against this?",
-        "How could this fail catastrophically?"
-    ]
+        "How could this fail catastrophically?",
+    ],
 )
 
 DOMAIN_EXPERT = VoiceDefinition(
@@ -788,13 +790,13 @@ You know the field. Share that knowledge wisely.""",
     constraints=[
         "Be clear about certainty levels",
         "Distinguish established knowledge from speculation",
-        "Adapt expertise to the specific context"
+        "Adapt expertise to the specific context",
     ],
     key_questions=[
         "What does domain expertise tell us about this?",
         "What patterns from the field apply here?",
-        "What are the known failure modes in this domain?"
-    ]
+        "What are the known failure modes in this domain?",
+    ],
 )
 
 STRATEGIC_VOICE = VoiceDefinition(
@@ -827,13 +829,13 @@ You see the chess board. Help us play well.""",
     constraints=[
         "Strategy must connect to execution",
         "Consider multiple time horizons",
-        "Balance flexibility with commitment"
+        "Balance flexibility with commitment",
     ],
     key_questions=[
         "How does this fit our larger goals?",
         "What are the strategic implications?",
-        "Is this the right time for this move?"
-    ]
+        "Is this the right time for this move?",
+    ],
 )
 
 
@@ -851,7 +853,6 @@ VOICE_REGISTRY: dict[str, VoiceDefinition] = {
     "orchestration": CORE_O_ORCHESTRATION,
     "reasoning": CORE_R_REASONING,
     "evaluation": CORE_E_EVALUATION,
-    
     # Strategic Council
     "oracle": ORACLE,
     "ethicist": ETHICIST,
@@ -859,7 +860,6 @@ VOICE_REGISTRY: dict[str, VoiceDefinition] = {
     "vision": ORACLE,
     "values": ETHICIST,
     "systems": ARCHITECT,
-    
     # Domain Council
     "consciousness_researcher": CONSCIOUSNESS_RESEARCHER,
     "game_designer": GAME_DESIGNER,
@@ -869,7 +869,6 @@ VOICE_REGISTRY: dict[str, VoiceDefinition] = {
     "engagement": GAME_DESIGNER,
     "abundance": ECONOMIST,
     "experience": UX_DESIGNER,
-    
     # Execution Council
     "product_lead": PRODUCT_LEAD,
     "engineering_lead": ENGINEERING_LEAD,
@@ -877,7 +876,6 @@ VOICE_REGISTRY: dict[str, VoiceDefinition] = {
     "product": PRODUCT_LEAD,
     "engineering": ENGINEERING_LEAD,
     "quality": QUALITY_ADVOCATE,
-    
     # Meta Council
     "todo_generator": TODO_GENERATOR,
     "todo_evaluator": TODO_EVALUATOR,
@@ -894,68 +892,68 @@ VOICE_REGISTRY: dict[str, VoiceDefinition] = {
 def get_voice(voice_type: str) -> VoiceDefinition:
     """
     Retrieve a voice definition by type.
-    
+
     Args:
         voice_type: The identifier for the voice (case-insensitive)
-        
+
     Returns:
         The VoiceDefinition for the requested voice
-        
+
     Raises:
         KeyError: If the voice type is not found
     """
     voice_key = voice_type.lower().replace("-", "_").replace(" ", "_")
-    
+
     if voice_key not in VOICE_REGISTRY:
         available = list_voices()
         raise KeyError(
             f"Voice '{voice_type}' not found. "
             f"Available voices: {', '.join(available)}"
         )
-    
+
     return VOICE_REGISTRY[voice_key]
 
 
 def list_voices(category: Optional[VoiceCategory] = None) -> list[str]:
     """
     List available voice types.
-    
+
     Args:
         category: Optional filter by voice category
-        
+
     Returns:
         List of unique voice names (canonical names only, no aliases)
     """
     seen_names = set()
     voices = []
-    
+
     for voice in VOICE_REGISTRY.values():
         if voice.name not in seen_names:
             if category is None or voice.category == category:
                 voices.append(voice.name)
                 seen_names.add(voice.name)
-    
+
     return sorted(voices)
 
 
 def get_voices_by_category(category: VoiceCategory) -> list[VoiceDefinition]:
     """
     Get all voices in a specific category.
-    
+
     Args:
         category: The category to filter by
-        
+
     Returns:
         List of VoiceDefinition objects in that category
     """
     seen_names = set()
     voices = []
-    
+
     for voice in VOICE_REGISTRY.values():
         if voice.category == category and voice.name not in seen_names:
             voices.append(voice)
             seen_names.add(voice.name)
-    
+
     return voices
 
 
@@ -967,7 +965,7 @@ def get_core_voices() -> list[VoiceDefinition]:
 def get_council_voices(council: str) -> list[VoiceDefinition]:
     """
     Get voices for a specific council.
-    
+
     Args:
         council: One of 'strategic', 'domain', 'execution', 'meta'
     """
@@ -978,11 +976,11 @@ def get_council_voices(council: str) -> list[VoiceDefinition]:
         "meta": VoiceCategory.META,
         "core": VoiceCategory.CORE,
     }
-    
+
     if council.lower() not in category_map:
         raise ValueError(
             f"Unknown council '{council}'. "
             f"Available: {', '.join(category_map.keys())}"
         )
-    
+
     return get_voices_by_category(category_map[council.lower()])

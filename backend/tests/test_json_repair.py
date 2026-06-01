@@ -117,7 +117,7 @@ class TestSafeJsonLoads:
         assert safe_json_loads("not json", default="fallback") == "fallback"
 
     def test_array(self):
-        assert safe_json_loads('[1, 2, 3]') == [1, 2, 3]
+        assert safe_json_loads("[1, 2, 3]") == [1, 2, 3]
 
     def test_code_fence_repair(self):
         text = '```json\n{"x": True,}\n```'

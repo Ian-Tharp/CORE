@@ -20,7 +20,7 @@ describe('CommunicationComponent', () => {
         { provide: MessageService, useValue: messageSvcMock }
       ]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(CommunicationComponent);
     component = fixture.componentInstance;

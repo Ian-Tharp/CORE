@@ -175,7 +175,9 @@ class TestTotalSizeValidation:
         chunk_size = MAX_MESSAGE_CHARS - 1
         num_chunks = MAX_TOTAL_CHARS // chunk_size
         remainder = MAX_TOTAL_CHARS % chunk_size
-        msgs = [Message(role="user", content="a" * chunk_size) for _ in range(num_chunks)]
+        msgs = [
+            Message(role="user", content="a" * chunk_size) for _ in range(num_chunks)
+        ]
         if remainder:
             msgs.append(Message(role="user", content="a" * remainder))
         _validate_total_size(msgs)
@@ -184,7 +186,9 @@ class TestTotalSizeValidation:
         # Many messages within per-message limit but exceeding total limit
         chunk_size = MAX_MESSAGE_CHARS - 1
         num_chunks = (MAX_TOTAL_CHARS // chunk_size) + 2  # guaranteed over total
-        msgs = [Message(role="user", content="a" * chunk_size) for _ in range(num_chunks)]
+        msgs = [
+            Message(role="user", content="a" * chunk_size) for _ in range(num_chunks)
+        ]
         with pytest.raises(HTTPException) as exc_info:
             _validate_total_size(msgs)
         assert exc_info.value.status_code == 413
@@ -240,7 +244,10 @@ class TestChatStreamEndpoint:
         big_content = "x" * (MAX_TOTAL_CHARS + 1)
         # We need to bypass Message validation for content length,
         # so test via the total-size path with many messages
-        msgs = [Message(role="user", content="a" * (MAX_MESSAGE_CHARS - 1)) for _ in range(12)]
+        msgs = [
+            Message(role="user", content="a" * (MAX_MESSAGE_CHARS - 1))
+            for _ in range(12)
+        ]
         req = ChatRequest(
             model="gpt-4o",
             messages=msgs,
@@ -253,7 +260,9 @@ class TestChatStreamEndpoint:
     @pytest.mark.asyncio
     @patch("app.controllers.chat.create_conversation", new_callable=AsyncMock)
     @patch("app.controllers.chat.chat_service")
-    async def test_successful_stream_returns_response(self, mock_chat_svc, mock_create_conv):
+    async def test_successful_stream_returns_response(
+        self, mock_chat_svc, mock_create_conv
+    ):
         mock_create_conv.return_value = "conv-001"
 
         async def fake_stream(**kwargs):
@@ -268,8 +277,14 @@ class TestChatStreamEndpoint:
             provider="ollama",
         )
         with patch("app.controllers.chat.append_message", new_callable=AsyncMock):
-            with patch("app.controllers.chat.get_conversation", new_callable=AsyncMock, return_value=None):
-                response = await chat_stream(req, self._make_raw_request("test-corr-id"))
+            with patch(
+                "app.controllers.chat.get_conversation",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
+                response = await chat_stream(
+                    req, self._make_raw_request("test-corr-id")
+                )
 
         assert response.status_code == 200
         assert response.headers["X-Correlation-Id"] == "test-corr-id"
@@ -278,7 +293,9 @@ class TestChatStreamEndpoint:
     @pytest.mark.asyncio
     @patch("app.controllers.chat.create_conversation", new_callable=AsyncMock)
     @patch("app.controllers.chat.chat_service")
-    async def test_existing_conversation_appends_message(self, mock_chat_svc, mock_create_conv):
+    async def test_existing_conversation_appends_message(
+        self, mock_chat_svc, mock_create_conv
+    ):
         async def fake_stream(**kwargs):
             yield 'data: {"delta": "ok"}\n\n'
 
@@ -290,8 +307,14 @@ class TestChatStreamEndpoint:
             provider="ollama",
             conversation_id="existing-conv",
         )
-        with patch("app.controllers.chat.append_message", new_callable=AsyncMock) as mock_append:
-            with patch("app.controllers.chat.get_conversation", new_callable=AsyncMock, return_value=None):
+        with patch(
+            "app.controllers.chat.append_message", new_callable=AsyncMock
+        ) as mock_append:
+            with patch(
+                "app.controllers.chat.get_conversation",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
                 response = await chat_stream(req, self._make_raw_request())
 
         assert response.headers["X-Conversation-Id"] == "existing-conv"
@@ -309,15 +332,26 @@ class TestChatStreamEndpoint:
         raw = MagicMock()
         raw.state = MagicMock(spec=[])  # no correlation_id attribute
 
-        with patch("app.controllers.chat.create_conversation", new_callable=AsyncMock, return_value="c1"):
+        with patch(
+            "app.controllers.chat.create_conversation",
+            new_callable=AsyncMock,
+            return_value="c1",
+        ):
             with patch("app.controllers.chat.chat_service") as mock_svc:
+
                 async def empty_stream(**kwargs):
                     return
                     yield  # make it a generator
 
                 mock_svc.return_value = empty_stream()
-                with patch("app.controllers.chat.append_message", new_callable=AsyncMock):
-                    with patch("app.controllers.chat.get_conversation", new_callable=AsyncMock, return_value=None):
+                with patch(
+                    "app.controllers.chat.append_message", new_callable=AsyncMock
+                ):
+                    with patch(
+                        "app.controllers.chat.get_conversation",
+                        new_callable=AsyncMock,
+                        return_value=None,
+                    ):
                         response = await chat_stream(req, raw)
 
         # Should have a valid UUID correlation id

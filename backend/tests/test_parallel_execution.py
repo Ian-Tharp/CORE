@@ -25,6 +25,7 @@ from app.models.core_state import ExecutionPlan, PlanStep, StepResult
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _step(name: str, *, tool: str = None, deps: List[str] = None) -> PlanStep:
     step = PlanStep(name=name, description=f"do {name}", tool=tool)
     if deps:
@@ -39,6 +40,7 @@ def _plan(*steps: PlanStep) -> ExecutionPlan:
 # ---------------------------------------------------------------------------
 # _build_execution_waves — topological sort
 # ---------------------------------------------------------------------------
+
 
 class TestBuildExecutionWaves:
     def _agent(self):
@@ -116,6 +118,7 @@ class TestBuildExecutionWaves:
 # Parallel execution
 # ---------------------------------------------------------------------------
 
+
 class TestParallelExecution:
     def _make_agent(self):
         agent = ReasoningAgent.__new__(ReasoningAgent)
@@ -155,9 +158,9 @@ class TestParallelExecution:
             wall_time = time.monotonic() - t_start
 
         # Serial time would be 4 × delay; parallel should be < 2 × delay
-        assert wall_time < delay * 3, (
-            f"Wall time {wall_time:.3f}s suggests sequential execution (expected < {delay*3:.3f}s)"
-        )
+        assert (
+            wall_time < delay * 3
+        ), f"Wall time {wall_time:.3f}s suggests sequential execution (expected < {delay*3:.3f}s)"
         assert len(results) == 4
 
     def test_dependent_steps_run_sequentially(self):
@@ -199,7 +202,13 @@ class TestParallelExecution:
         def _maybe_fail(step, enable_tools):
             executed_steps.append(step.name)
             if step.name == "a":
-                return StepResult(step_id=step.id, status="failure", outputs={}, error="forced fail", logs=[])
+                return StepResult(
+                    step_id=step.id,
+                    status="failure",
+                    outputs={},
+                    error="forced fail",
+                    logs=[],
+                )
             return StepResult(step_id=step.id, status="success", outputs={}, logs=[])
 
         with patch.object(agent, "_execute_step", side_effect=_maybe_fail):
@@ -225,13 +234,17 @@ class TestParallelExecution:
         def _maybe_fail(step, enable_tools):
             executed_steps.append(step.name)
             if step.name == "a":
-                return StepResult(step_id=step.id, status="failure", outputs={}, error="fail", logs=[])
+                return StepResult(
+                    step_id=step.id, status="failure", outputs={}, error="fail", logs=[]
+                )
             return StepResult(step_id=step.id, status="success", outputs={}, logs=[])
 
         with patch.object(agent, "_execute_step", side_effect=_maybe_fail):
             results = agent.execute_plan(plan, enable_tools=False)
 
-        assert "b" in executed_steps, "Independent sibling b must execute even if a fails"
+        assert (
+            "b" in executed_steps
+        ), "Independent sibling b must execute even if a fails"
         assert "c" not in executed_steps, "c must be skipped because its dep (a) failed"
         assert len(results) == 3
 
@@ -252,16 +265,18 @@ class TestParallelExecution:
             # Vary sleep so execution order differs from plan order
             idx = int(step.name.split("-")[1])
             time.sleep((4 - idx) * 0.01)
-            return StepResult(step_id=step.id, status="success", outputs={"idx": idx}, logs=[])
+            return StepResult(
+                step_id=step.id, status="success", outputs={"idx": idx}, logs=[]
+            )
 
         with patch.object(agent, "_execute_step", side_effect=_ordered_result):
             results = agent.execute_plan(plan, enable_tools=False)
 
         assert len(results) == 5
         for i, (result, step) in enumerate(zip(results, steps)):
-            assert result.step_id == step.id, (
-                f"Result at index {i} has step_id {result.step_id}, expected {step.id}"
-            )
+            assert (
+                result.step_id == step.id
+            ), f"Result at index {i} has step_id {result.step_id}, expected {step.id}"
 
     def test_start_from_step_runs_single_step(self):
         """
@@ -282,7 +297,9 @@ class TestParallelExecution:
         with patch.object(agent, "_execute_step", side_effect=_tracking_step):
             results = agent.execute_plan(plan, start_from_step=b.id, enable_tools=False)
 
-        assert executed_steps == ["b"], f"Expected only 'b' to run, got {executed_steps}"
+        assert executed_steps == [
+            "b"
+        ], f"Expected only 'b' to run, got {executed_steps}"
         assert len(results) == 1
         assert results[0].step_id == b.id
 
@@ -290,6 +307,7 @@ class TestParallelExecution:
 # ---------------------------------------------------------------------------
 # _execute_with_parallelism edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestExecuteWithParallelismEdgeCases:
     def _make_agent(self):
@@ -324,8 +342,13 @@ class TestExecuteWithParallelismEdgeCases:
         s = _step("x")
         plan = _plan(s)
 
-        with patch.object(agent, "_execute_step",
-                          return_value=StepResult(step_id=s.id, status="success", outputs={}, logs=[])):
+        with patch.object(
+            agent,
+            "_execute_step",
+            return_value=StepResult(
+                step_id=s.id, status="success", outputs={}, logs=[]
+            ),
+        ):
             agent.execute_plan(plan, enable_tools=False)
 
         assert s.status == "completed"
@@ -336,8 +359,13 @@ class TestExecuteWithParallelismEdgeCases:
         s = _step("x")
         plan = _plan(s)
 
-        with patch.object(agent, "_execute_step",
-                          return_value=StepResult(step_id=s.id, status="failure", outputs={}, error="boom", logs=[])):
+        with patch.object(
+            agent,
+            "_execute_step",
+            return_value=StepResult(
+                step_id=s.id, status="failure", outputs={}, error="boom", logs=[]
+            ),
+        ):
             agent.execute_plan(plan, enable_tools=False)
 
         assert s.status == "failed"

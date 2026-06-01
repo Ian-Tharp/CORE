@@ -17,11 +17,15 @@ from app.controllers.discord import (
 class TestDiscordControllerSendMessage:
     @patch("app.controllers.discord.discord_repository.create_delivery_event")
     @patch("app.controllers.discord.get_discord_bridge")
-    async def test_send_message_returns_message_ids_and_logs_event(self, mock_get_bridge, mock_create_event):
+    async def test_send_message_returns_message_ids_and_logs_event(
+        self, mock_get_bridge, mock_create_event
+    ):
         # Arrange
         bridge = MagicMock()
         bridge.is_connected = True
-        bridge.send_to_discord = AsyncMock(return_value=["discord-msg-1", "discord-msg-2"])
+        bridge.send_to_discord = AsyncMock(
+            return_value=["discord-msg-1", "discord-msg-2"]
+        )
         mock_get_bridge.return_value = bridge
         mock_create_event.return_value = {}
 
@@ -97,10 +101,14 @@ class TestDiscordControllerInspectionEndpoints:
         )
 
     @patch("app.controllers.discord.discord_repository.list_delivery_events")
-    @patch("app.controllers.discord.discord_repository.count_delivery_events_by_direction")
+    @patch(
+        "app.controllers.discord.discord_repository.count_delivery_events_by_direction"
+    )
     @patch("app.controllers.discord.discord_repository.count_delivery_events_by_status")
     @patch("app.controllers.discord.discord_repository.count_delivery_events")
-    @patch("app.controllers.discord.discord_repository.count_message_links_by_direction")
+    @patch(
+        "app.controllers.discord.discord_repository.count_message_links_by_direction"
+    )
     @patch("app.controllers.discord.discord_repository.count_message_links")
     @patch("app.controllers.discord.discord_repository.count_channel_mappings")
     @patch("app.controllers.discord.get_discord_bridge")
@@ -131,11 +139,23 @@ class TestDiscordControllerInspectionEndpoints:
         mock_get_bridge.return_value = bridge
         mock_count_mappings.return_value = 2
         mock_count_message_links.return_value = 12
-        mock_count_links_by_direction.return_value = {"discord_to_core": 5, "core_to_discord": 7}
+        mock_count_links_by_direction.return_value = {
+            "discord_to_core": 5,
+            "core_to_discord": 7,
+        }
         mock_count_delivery_events.return_value = 9
-        mock_count_delivery_by_status.return_value = {"success": 7, "failed": 1, "skipped": 1}
-        mock_count_delivery_by_direction.return_value = {"discord_to_core": 4, "core_to_discord": 5}
-        mock_list_delivery_events.return_value = [{"status": "failed", "error": "Bridge offline"}]
+        mock_count_delivery_by_status.return_value = {
+            "success": 7,
+            "failed": 1,
+            "skipped": 1,
+        }
+        mock_count_delivery_by_direction.return_value = {
+            "discord_to_core": 4,
+            "core_to_discord": 5,
+        }
+        mock_list_delivery_events.return_value = [
+            {"status": "failed", "error": "Bridge offline"}
+        ]
 
         # Act
         result = await get_metrics(recent_failures_limit=5)

@@ -100,7 +100,7 @@ export class WikiComponent {
 
   // Enhanced page creation and management
   create(): void {
-    if (!this.newTitle.trim()) return;
+    if (!this.newTitle.trim()) {return;}
     const local = this.data.createWiki(this.worldId || undefined, this.newTitle.trim());
     local.metadata = {
       type: this.section === 'All' ? undefined : this.section as WikiPageType,
@@ -120,7 +120,7 @@ export class WikiComponent {
 
   createFromTemplate(templateName: string): void {
     const template = this.templates[templateName as keyof typeof this.templates];
-    if (!template) return;
+    if (!template) {return;}
 
     const local = this.data.createWiki(this.worldId || undefined, templateName + ' Page');
     local.content = template.content;
@@ -139,9 +139,9 @@ export class WikiComponent {
   }
 
   save(): void {
-    if (!this.editing) return;
+    if (!this.editing) {return;}
     this.editing.updatedAt = new Date().toISOString();
-    if (!this.editing.metadata) this.editing.metadata = {};
+    if (!this.editing.metadata) {this.editing.metadata = {};}
     this.data.upsertWiki(this.editing);
     this.api.updateWiki(this.editing.id, {
       world_id: this.worldId || undefined,
@@ -213,7 +213,7 @@ export class WikiComponent {
   }
 
   duplicatePage(): void {
-    if (!this.contextPage) return;
+    if (!this.contextPage) {return;}
     const newPage = this.data.createWiki(this.worldId || undefined, `${this.contextPage.title} (Copy)`);
     newPage.content = this.contextPage.content;
     newPage.metadata = { ...this.contextPage.metadata };
@@ -228,7 +228,7 @@ export class WikiComponent {
   }
 
   editPageTitle(): void {
-    if (!this.contextPage) return;
+    if (!this.contextPage) {return;}
     this.tempTitle = this.contextPage.title;
     this.editingTitle = true;
     this.hideContextMenu();
@@ -283,7 +283,7 @@ export class WikiComponent {
   }
 
   deletePage(): void {
-    if (!this.contextPage) return;
+    if (!this.contextPage) {return;}
     if (confirm(`Delete "${this.contextPage.title}"?`)) {
       this.pages = this.pages.filter(p => p.id !== this.contextPage!.id);
       this.data.write('creative.wiki.v1', this.pages);
@@ -296,9 +296,9 @@ export class WikiComponent {
 
   // Media handling
   addTag(tag: string): void {
-    if (!this.editing || !tag.trim()) return;
-    if (!this.editing.metadata) this.editing.metadata = {};
-    if (!this.editing.metadata.tags) this.editing.metadata.tags = [];
+    if (!this.editing || !tag.trim()) {return;}
+    if (!this.editing.metadata) {this.editing.metadata = {};}
+    if (!this.editing.metadata.tags) {this.editing.metadata.tags = [];}
     if (!this.editing.metadata.tags.includes(tag.trim())) {
       this.editing.metadata.tags.push(tag.trim());
       this.save();
@@ -306,7 +306,7 @@ export class WikiComponent {
   }
 
   removeTag(tag: string): void {
-    if (!this.editing?.metadata?.tags) return;
+    if (!this.editing?.metadata?.tags) {return;}
     this.editing.metadata.tags = this.editing.metadata.tags.filter(t => t !== tag);
     this.save();
   }
@@ -341,7 +341,7 @@ export class WikiComponent {
   }
 
   uploadMedia(file: File): void {
-    if (!this.editing) return;
+    if (!this.editing) {return;}
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -349,10 +349,10 @@ export class WikiComponent {
         id: crypto.randomUUID(),
         url: reader.result as string,
         type: file.type.startsWith('image/') ? 'image' :
-              file.type.startsWith('video/') ? 'video' : 'audio'
+          file.type.startsWith('video/') ? 'video' : 'audio'
       };
 
-      if (!this.editing!.media) this.editing!.media = [];
+      if (!this.editing!.media) {this.editing!.media = [];}
       this.editing!.media.push(mediaItem);
       this.save();
     };
@@ -360,7 +360,7 @@ export class WikiComponent {
   }
 
   removeMedia(mediaId: string): void {
-    if (!this.editing?.media) return;
+    if (!this.editing?.media) {return;}
     this.editing.media = this.editing.media.filter(m => m.id !== mediaId);
     this.save();
   }
@@ -373,7 +373,7 @@ export class WikiComponent {
 
   // AI-powered features
   getContentSuggestions(): string[] {
-    if (!this.editing?.metadata?.type) return [];
+    if (!this.editing?.metadata?.type) {return [];}
 
     const suggestions: Record<WikiPageType, string[]> = {
       'Lore': [
@@ -417,7 +417,7 @@ export class WikiComponent {
   }
 
   getRecommendedTags(): string[] {
-    if (!this.editing?.metadata?.type) return [];
+    if (!this.editing?.metadata?.type) {return [];}
 
     const typeBasedTags: Record<WikiPageType, string[]> = {
       'Lore': ['history', 'culture', 'mythology', 'tradition', 'ancient', 'legend'],
@@ -434,7 +434,7 @@ export class WikiComponent {
   }
 
   getConnectionSuggestions(): WikiPage[] {
-    if (!this.editing) return [];
+    if (!this.editing) {return [];}
 
     const currentContent = this.editing.content.toLowerCase();
     const currentTags = this.editing.metadata?.tags || [];
@@ -451,7 +451,7 @@ export class WikiComponent {
   }
 
   applySuggestion(suggestion: string): void {
-    if (!this.editing) return;
+    if (!this.editing) {return;}
 
     const currentContent = this.editing.content;
     const newSection = `\n\n## ${suggestion.replace(/^(Add|Include|Detail|Describe|List|Explain|Define|Specify|Outline) /, '')}\n\n`;
@@ -465,7 +465,7 @@ export class WikiComponent {
   }
 
   connectToPage(targetPage: WikiPage): void {
-    if (!this.editing || !this.editing.metadata) return;
+    if (!this.editing || !this.editing.metadata) {return;}
 
     if (!this.editing.metadata.connections) {
       this.editing.metadata.connections = [];
@@ -475,8 +475,8 @@ export class WikiComponent {
       this.editing.metadata.connections.push(targetPage.id);
 
       // Add bidirectional connection
-      if (!targetPage.metadata) targetPage.metadata = {};
-      if (!targetPage.metadata.connections) targetPage.metadata.connections = [];
+      if (!targetPage.metadata) {targetPage.metadata = {};}
+      if (!targetPage.metadata.connections) {targetPage.metadata.connections = [];}
       if (!targetPage.metadata.connections.includes(this.editing.id)) {
         targetPage.metadata.connections.push(this.editing.id);
         this.data.upsertWiki(targetPage);
@@ -487,7 +487,7 @@ export class WikiComponent {
   }
 
   getConnectedPages(): WikiPage[] {
-    if (!this.editing?.metadata?.connections) return [];
+    if (!this.editing?.metadata?.connections) {return [];}
 
     return this.pages.filter(page =>
       this.editing!.metadata!.connections!.includes(page.id)
@@ -496,7 +496,7 @@ export class WikiComponent {
 
   // Enhanced content generation
   generateContentOutline(): void {
-    if (!this.editing?.metadata?.type) return;
+    if (!this.editing?.metadata?.type) {return;}
 
     const outlines: Record<WikiPageType, string> = {
       'Lore': `# ${this.editing.title}\n\n## Overview\n\n## Historical Context\n\n## Cultural Significance\n\n## Key Figures\n\n## Impact and Legacy\n\n## Related Events`,
@@ -528,7 +528,7 @@ export class WikiComponent {
   // Character builder
   createCharacter(): void {
     const name = this.characterName.trim();
-    if (!name) return;
+    if (!name) {return;}
     let traits: any = {};
     try {
       traits = this.characterTraits ? JSON.parse(this.characterTraits) : {};

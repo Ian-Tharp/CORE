@@ -319,7 +319,9 @@ class TestSpawnFromTemplate:
 
     @pytest.mark.asyncio
     async def test_spawn_creates_agent(self, service, spawn_request):
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ) as mock_create:
             result = await service.spawn_from_template("tmpl-researcher", spawn_request)
             assert result.agent_id == "agent-test-001"
             assert result.template_id == "tmpl-researcher"
@@ -338,13 +340,17 @@ class TestSpawnFromTemplate:
             agent_id="agent-custom-name",
             agent_name="My Custom Agent",
         )
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock):
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ):
             result = await service.spawn_from_template("tmpl-researcher", req)
             assert result.agent_name == "My Custom Agent"
 
     @pytest.mark.asyncio
     async def test_spawn_default_name_includes_template(self, service, spawn_request):
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock):
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ):
             result = await service.spawn_from_template("tmpl-researcher", spawn_request)
             assert "Researcher" in result.agent_name
 
@@ -354,7 +360,9 @@ class TestSpawnFromTemplate:
             agent_id="agent-prompt-test",
             system_prompt_append="Also focus on machine learning topics.",
         )
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ) as mock_create:
             await service.spawn_from_template("tmpl-researcher", req)
             call_args = mock_create.call_args[0][0]
             assert "machine learning" in call_args.system_prompt
@@ -365,7 +373,9 @@ class TestSpawnFromTemplate:
             agent_id="agent-personality-test",
             personality_overrides={"curiosity": 0.5, "new_trait": 0.8},
         )
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ) as mock_create:
             await service.spawn_from_template("tmpl-researcher", req)
             call_args = mock_create.call_args[0][0]
             assert call_args.personality_traits["curiosity"] == 0.5
@@ -377,7 +387,9 @@ class TestSpawnFromTemplate:
             agent_id="agent-interests-test",
             extra_interests=["quantum-computing", "biotech"],
         )
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ) as mock_create:
             await service.spawn_from_template("tmpl-researcher", req)
             call_args = mock_create.call_args[0][0]
             assert "quantum-computing" in call_args.interests
@@ -389,14 +401,18 @@ class TestSpawnFromTemplate:
             agent_id="agent-inactive-test",
             is_active=False,
         )
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ) as mock_create:
             await service.spawn_from_template("tmpl-researcher", req)
             call_args = mock_create.call_args[0][0]
             assert call_args.is_active is False
 
     @pytest.mark.asyncio
     async def test_spawn_result_has_spawned_at(self, service, spawn_request):
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock):
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ):
             result = await service.spawn_from_template("tmpl-researcher", spawn_request)
             assert result.spawned_at is not None
 
@@ -404,7 +420,9 @@ class TestSpawnFromTemplate:
     async def test_spawn_from_custom_template(self, service, create_request):
         custom = service.create_template(create_request)
         req = SpawnFromTemplateRequest(agent_id="agent-from-custom")
-        with patch("app.services.spawn_template_service.create_agent", new_callable=AsyncMock):
+        with patch(
+            "app.services.spawn_template_service.create_agent", new_callable=AsyncMock
+        ):
             result = await service.spawn_from_template(custom.id, req)
             assert result.template_id == custom.id
             assert result.role == "tester"
@@ -417,12 +435,17 @@ class TestSpawnFromTemplate:
 
 class TestSingleton:
     def test_get_service_returns_instance(self):
-        from app.services.spawn_template_service import get_spawn_template_service, _service
+        from app.services.spawn_template_service import (
+            get_spawn_template_service,
+            _service,
+        )
+
         svc = get_spawn_template_service()
         assert isinstance(svc, SpawnTemplateService)
 
     def test_get_service_returns_same_instance(self):
         from app.services.spawn_template_service import get_spawn_template_service
+
         s1 = get_spawn_template_service()
         s2 = get_spawn_template_service()
         assert s1 is s2

@@ -15,7 +15,10 @@ from app.models.core_state import ExecutionPlan, PlanStep, StepResult
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_step(name: str = "Test Step", description: str = "Do the thing", tool: str = None) -> PlanStep:
+
+def _make_step(
+    name: str = "Test Step", description: str = "Do the thing", tool: str = None
+) -> PlanStep:
     return PlanStep(name=name, description=description, tool=tool)
 
 
@@ -37,6 +40,7 @@ def _make_llm_response(content: str) -> MagicMock:
 # fetch_step_context — unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestFetchStepContext:
     def setup_method(self):
         self.agent = ReasoningAgent()
@@ -48,8 +52,9 @@ class TestFetchStepContext:
         """
         step = _make_step(name="SENTINEL_NAME", description="SENTINEL_DESC")
 
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "test-key"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -66,14 +71,19 @@ class TestFetchStepContext:
         """No API key → None, no exception."""
         with patch.dict("os.environ", {}, clear=True):
             with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls:
-                mock_cls.return_value.__enter__.return_value.post.return_value.status_code = 200
-                mock_cls.return_value.__enter__.return_value.post.return_value.json.return_value = []
+                mock_cls.return_value.__enter__.return_value.post.return_value.status_code = (
+                    200
+                )
+                mock_cls.return_value.__enter__.return_value.post.return_value.json.return_value = (
+                    []
+                )
                 result = self.agent.fetch_step_context(_make_step())
         assert result is None or isinstance(result, str)
 
     def test_returns_none_on_non_200(self):
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 500
@@ -81,8 +91,9 @@ class TestFetchStepContext:
         assert result is None
 
     def test_returns_none_on_empty_results(self):
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -92,8 +103,9 @@ class TestFetchStepContext:
 
     def test_filters_below_similarity_threshold(self):
         """Results below 0.30 similarity are excluded — context returns None."""
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -108,13 +120,18 @@ class TestFetchStepContext:
         SENTINEL TEST — title and description appear in formatted output.
         Removing formatting logic breaks this.
         """
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
             mock_http.post.return_value.json.return_value = [
-                {"title": "STEP_SENTINEL_TITLE", "similarity": 0.78, "description": "STEP_SENTINEL_DESC"},
+                {
+                    "title": "STEP_SENTINEL_TITLE",
+                    "similarity": 0.78,
+                    "description": "STEP_SENTINEL_DESC",
+                },
                 {"title": "Low", "similarity": 0.05, "description": "excluded"},
             ]
             result = self.agent.fetch_step_context(_make_step())
@@ -126,15 +143,17 @@ class TestFetchStepContext:
         assert "excluded" not in result
 
     def test_returns_none_on_network_exception(self):
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_cls.return_value.__enter__.side_effect = Exception("timeout")
             result = self.agent.fetch_step_context(_make_step())
         assert result is None
 
     def test_sends_correct_limit(self):
-        with patch("app.core.agents.reasoning_agent.httpx.Client") as mock_cls, \
-             patch.dict("os.environ", {"CORE_API_KEY": "k"}):
+        with patch(
+            "app.core.agents.reasoning_agent.httpx.Client"
+        ) as mock_cls, patch.dict("os.environ", {"CORE_API_KEY": "k"}):
             mock_http = MagicMock()
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.post.return_value.status_code = 200
@@ -147,6 +166,7 @@ class TestFetchStepContext:
 # ---------------------------------------------------------------------------
 # _execute_with_llm + RAG injection — sentinel-value tests
 # ---------------------------------------------------------------------------
+
 
 class TestExecuteWithLLMRAG:
     def setup_method(self):
@@ -163,8 +183,12 @@ class TestExecuteWithLLMRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("done")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=sentinel), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", return_value=sentinel
+        ), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent._execute_with_llm(step)
 
         mock_client.chat.completions.create.assert_called_once()
@@ -180,8 +204,10 @@ class TestExecuteWithLLMRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("done")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=None), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(self.agent, "fetch_step_context", return_value=None), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent._execute_with_llm(step)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -196,8 +222,12 @@ class TestExecuteWithLLMRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("done")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=sentinel), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", return_value=sentinel
+        ), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent._execute_with_llm(step)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -217,8 +247,12 @@ class TestExecuteWithLLMRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("done")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=None) as mock_fetch, \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", return_value=None
+        ) as mock_fetch, patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent._execute_with_llm(step)
 
         mock_fetch.assert_called_once_with(step)
@@ -227,10 +261,16 @@ class TestExecuteWithLLMRAG:
         """KB failure is non-critical — step still executes via LLM."""
         step = _make_step()
         mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = _make_llm_response("result text")
+        mock_client.chat.completions.create.return_value = _make_llm_response(
+            "result text"
+        )
 
-        with patch.object(self.agent, "fetch_step_context", side_effect=Exception("KB down")), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", side_effect=Exception("KB down")
+        ), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             output = self.agent._execute_with_llm(step)
 
         assert output["result"] == "result text"
@@ -241,8 +281,10 @@ class TestExecuteWithLLMRAG:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("done")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=None), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(self.agent, "fetch_step_context", return_value=None), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent._execute_with_llm(step)
 
         messages = mock_client.chat.completions.create.call_args[1]["messages"]
@@ -254,6 +296,7 @@ class TestExecuteWithLLMRAG:
 # ---------------------------------------------------------------------------
 # execute_plan integration — RAG triggered only for LLM steps
 # ---------------------------------------------------------------------------
+
 
 class TestExecutePlanRAGScope:
     def setup_method(self):
@@ -289,8 +332,12 @@ class TestExecutePlanRAGScope:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = _make_llm_response("ok")
 
-        with patch.object(self.agent, "fetch_step_context", return_value=None) as mock_fetch, \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", return_value=None
+        ) as mock_fetch, patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.execute_plan(plan, enable_tools=True)
 
         mock_fetch.assert_called_once_with(step)
@@ -312,8 +359,12 @@ class TestExecutePlanRAGScope:
             fetch_calls.append(step.name)
             return None
 
-        with patch.object(self.agent, "fetch_step_context", side_effect=record_fetch), \
-             patch("app.core.agents.reasoning_agent.get_openai_client_sync", return_value=mock_client):
+        with patch.object(
+            self.agent, "fetch_step_context", side_effect=record_fetch
+        ), patch(
+            "app.core.agents.reasoning_agent.get_openai_client_sync",
+            return_value=mock_client,
+        ):
             self.agent.execute_plan(plan, enable_tools=True)
 
         assert fetch_calls == ["Step A", "Step B"]

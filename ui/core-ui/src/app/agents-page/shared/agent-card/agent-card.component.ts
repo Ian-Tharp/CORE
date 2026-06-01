@@ -12,7 +12,16 @@ import { LibraryAgent } from '../../../models/agent.models';
 @Component({
   selector: 'app-agent-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule, MatChipsModule, MatTooltipModule, MatSlideToggleModule, MatMenuModule, MatDividerModule],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+    MatChipsModule,
+    MatTooltipModule,
+    MatSlideToggleModule,
+    MatMenuModule,
+    MatDividerModule
+  ],
   templateUrl: './agent-card.component.html',
   styleUrls: ['./agent-card.component.scss']
 })
@@ -41,10 +50,10 @@ export class AgentCardComponent {
    * Determine agent status based on multiple factors
    */
   public getAgentStatus(): 'running' | 'idle' | 'disabled' | 'error' | 'ready' {
-    if (!this.agent.enabled) return 'disabled';
-    if (this.agent.instances > 0) return 'running';
-    if (!this.agent.envReady) return 'error';
-    if (this.agent.lastUsed) return 'ready';
+    if (!this.agent.enabled) {return 'disabled';}
+    if (this.agent.instances > 0) {return 'running';}
+    if (!this.agent.envReady) {return 'error';}
+    if (this.agent.lastUsed) {return 'ready';}
     return 'idle';
   }
 
@@ -89,7 +98,7 @@ export class AgentCardComponent {
    * Calculate agent health percentage based on metrics
    */
   public getHealthPercentage(): number {
-    if (!this.agent.performanceMetrics) return 75; // Default
+    if (!this.agent.performanceMetrics) {return 75;} // Default
     const { reliability, responsiveness, memoryUsage, cpuUsage } = this.agent.performanceMetrics;
 
     // Weighted health calculation

@@ -24,18 +24,16 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTableModule } from '@angular/material/table';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { Subject, BehaviorSubject, takeUntil, debounceTime, distinctUntilChanged, combineLatest, map, startWith, firstValueFrom, Observable } from 'rxjs';
-import { trigger, state, style, transition, animate, stagger, query } from '@angular/animations';
+import { trigger, style, transition, animate, stagger, query } from '@angular/animations';
 
 import { KnowledgebaseService } from '../services/knowledgebase/knowledgebase.service';
 import {
   KnowledgeFile,
-  FileTag,
   KnowledgebaseFilter,
   FileSource,
   FileStatus,
-  EmbeddingStats,
   ActivityLog
 } from '../models/knowledgebase.models';
 
@@ -281,7 +279,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
         debounceTime(500),
         distinctUntilChanged()
       )
-      .subscribe(filters => {
+      .subscribe(() => {
         this.applyFilters();
       });
   }
@@ -418,7 +416,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
 
   // Bulk operations
   deleteSelected(): void {
-    if (this.selectedFiles.size === 0) return;
+    if (this.selectedFiles.size === 0) {return;}
     
     if (confirm(`Delete ${this.selectedFiles.size} selected files?`)) {
       const deletions = Array.from(this.selectedFiles).map(id =>
@@ -441,7 +439,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
       ...this.filterForm.value,
       searchQuery: this.searchControl.value || undefined,
       isGlobal: this.currentTab === 'global' ? true : 
-                this.currentTab === 'personal' ? false : undefined
+        this.currentTab === 'personal' ? false : undefined
     };
     
     this.knowledgebaseService.applyFilter(filter);
@@ -527,7 +525,7 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
     this.gridPageSize = event.pageSize;
     this.pageIndex$.next(event.pageIndex);
     this.pageSize$.next(event.pageSize);
-    try { localStorage.setItem('kb.gridPageSize', String(event.pageSize)); } catch {}
+    try { localStorage.setItem('kb.gridPageSize', String(event.pageSize)); } catch { /* ignore */ }
   }
 
   private resetGridPagination(): void {
@@ -599,11 +597,11 @@ export class KnowledgebaseComponent implements OnInit, OnDestroy {
 
   // Semantic search
   performSemanticSearch(query: string): void {
-    if (!query.trim()) return;
+    if (!query.trim()) {return;}
     
     this.isLoading = true;
     this.knowledgebaseService.semanticSearch(query, 10).subscribe({
-      next: (results) => {
+      next: () => {
         // Results will be shown in the UI
         this.isLoading = false;
       },

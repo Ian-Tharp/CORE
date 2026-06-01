@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Severity levels ────────────────────────────────────────────────────
 
+
 class Severity(str, Enum):
     INFO = "info"
     WARN = "warn"
@@ -36,6 +37,7 @@ class Severity(str, Enum):
 @dataclass
 class ConfigIssue:
     """A single configuration issue found during validation."""
+
     severity: Severity
     category: str
     message: str
@@ -43,14 +45,18 @@ class ConfigIssue:
 
 # ─── Environment variable definitions ───────────────────────────────────
 
+
 @dataclass
 class EnvVarSpec:
     """Specification for an environment variable."""
+
     name: str
     description: str
     required: bool = False
     default: Optional[str] = None
-    validator: Optional[Callable[[str], Optional[str]]] = None  # returns error msg or None
+    validator: Optional[Callable[[str], Optional[str]]] = (
+        None  # returns error msg or None
+    )
     category: str = "general"
     sensitive: bool = False  # if True, value is masked in logs
 
@@ -119,7 +125,6 @@ ENV_VARS: List[EnvVarSpec] = [
         sensitive=True,
         category="database",
     ),
-
     # ── Redis ────────────────────────────────────────────────────────
     EnvVarSpec(
         name="REDIS_HOST",
@@ -134,7 +139,6 @@ ENV_VARS: List[EnvVarSpec] = [
         validator=_validate_port,
         category="redis",
     ),
-
     # ── Ollama (local LLM) ──────────────────────────────────────────
     EnvVarSpec(
         name="OLLAMA_BASE_URL",
@@ -143,7 +147,6 @@ ENV_VARS: List[EnvVarSpec] = [
         validator=_validate_url,
         category="ollama",
     ),
-
     # ── Authentication ──────────────────────────────────────────────
     EnvVarSpec(
         name="CORE_API_KEY",
@@ -170,7 +173,6 @@ ENV_VARS: List[EnvVarSpec] = [
         validator=_validate_bool,
         category="auth",
     ),
-
     # ── Cloud API keys (optional) ───────────────────────────────────
     EnvVarSpec(
         name="OPENAI_API_KEY",
@@ -184,7 +186,6 @@ ENV_VARS: List[EnvVarSpec] = [
         sensitive=True,
         category="cloud_apis",
     ),
-
     # ── Application ─────────────────────────────────────────────────
     EnvVarSpec(
         name="CORE_ENV",
@@ -248,7 +249,9 @@ def validate_startup_config() -> List[ConfigIssue]:
                     message=f"Required env var {spec.name} is not set ({spec.description})",
                 )
                 issues.append(issue)
-                logger.error("  ✗ %s — MISSING (required): %s", spec.name, spec.description)
+                logger.error(
+                    "  ✗ %s — MISSING (required): %s", spec.name, spec.description
+                )
                 continue
 
             if value is None and spec.default is None:
@@ -266,7 +269,12 @@ def validate_startup_config() -> List[ConfigIssue]:
                         message=f"{spec.name}: {error}",
                     )
                     issues.append(issue)
-                    logger.warning("  ⚠ %s = %s — %s", spec.name, _mask_value(effective) if spec.sensitive else effective, error)
+                    logger.warning(
+                        "  ⚠ %s = %s — %s",
+                        spec.name,
+                        _mask_value(effective) if spec.sensitive else effective,
+                        error,
+                    )
                     continue
 
             # Show the effective value
@@ -282,7 +290,11 @@ def validate_startup_config() -> List[ConfigIssue]:
     logger.info("── SECURITY CHECKS ──")
 
     auth_disabled = os.getenv("CORE_AUTH_DISABLED", "").lower() in ("true", "1", "yes")
-    rate_limit_disabled = os.getenv("CORE_RATE_LIMIT_DISABLED", "").lower() in ("true", "1", "yes")
+    rate_limit_disabled = os.getenv("CORE_RATE_LIMIT_DISABLED", "").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     env = os.getenv("CORE_ENV", "development")
 
     if auth_disabled:
@@ -310,7 +322,9 @@ def validate_startup_config() -> List[ConfigIssue]:
             logger.info("  · Rate limiting disabled (dev mode)")
 
     if not os.getenv("CORE_API_KEY"):
-        logger.warning("  ⚠ No CORE_API_KEY set — auto-generated key in use (not persisted)")
+        logger.warning(
+            "  ⚠ No CORE_API_KEY set — auto-generated key in use (not persisted)"
+        )
 
     has_cloud = bool(os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
     if has_cloud:
@@ -331,7 +345,8 @@ def validate_startup_config() -> List[ConfigIssue]:
     if errors:
         logger.error(
             "  %d error(s), %d warning(s) — fix errors before production use",
-            errors, warnings,
+            errors,
+            warnings,
         )
     elif warnings:
         logger.warning(

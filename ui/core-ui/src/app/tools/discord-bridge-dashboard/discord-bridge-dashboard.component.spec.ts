@@ -27,7 +27,7 @@ describe('DiscordBridgeDashboardComponent', () => {
           bot_user: 'Vigil',
           guilds: 1,
           channel_mappings: 1,
-          bridged_core_channels: ['global_updates_channel_a8c76861'],
+          bridged_core_channels: ['global_updates_channel_a8c76861']
         },
         mappings_count: 1,
         message_links_count: 0,
@@ -35,7 +35,7 @@ describe('DiscordBridgeDashboardComponent', () => {
         delivery_events_count: 0,
         delivery_events_by_status: {},
         delivery_events_by_direction: {},
-        recent_failures: [],
+        recent_failures: []
       })),
       getMappings: jest.fn().mockReturnValue(of({
         mappings: [
@@ -47,20 +47,20 @@ describe('DiscordBridgeDashboardComponent', () => {
             core_channel_id: 'core-1',
             core_channel_name: 'Global Updates',
             require_mention: false,
-            enabled: true,
-          },
+            enabled: true
+          }
         ],
-        count: 1,
+        count: 1
       })),
       getDeliveries: jest.fn().mockReturnValue(of({ events: [], count: 0, filters: {} })),
-      getMessageLinks: jest.fn().mockReturnValue(of({ links: [], count: 0, filters: {} })),
+      getMessageLinks: jest.fn().mockReturnValue(of({ links: [], count: 0, filters: {} }))
     };
 
     await TestBed.configureTestingModule({
       imports: [DiscordBridgeDashboardComponent, NoopAnimationsModule],
       providers: [
-        { provide: DiscordBridgeService, useValue: discordBridgeService },
-      ],
+        { provide: DiscordBridgeService, useValue: discordBridgeService }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(DiscordBridgeDashboardComponent);

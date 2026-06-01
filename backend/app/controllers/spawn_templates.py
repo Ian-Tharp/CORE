@@ -45,8 +45,12 @@ async def list_templates(
     }
 
 
-@router.get("/{template_id}", status_code=status.HTTP_200_OK, response_model=SpawnTemplate)
-async def get_template(template_id: str, api_key: str = Depends(require_api_key)) -> SpawnTemplate:
+@router.get(
+    "/{template_id}", status_code=status.HTTP_200_OK, response_model=SpawnTemplate
+)
+async def get_template(
+    template_id: str, api_key: str = Depends(require_api_key)
+) -> SpawnTemplate:
     """Get a single spawn template by ID."""
     svc = get_spawn_template_service()
     tmpl = svc.get_template(template_id)
@@ -64,7 +68,9 @@ async def get_template(template_id: str, api_key: str = Depends(require_api_key)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=SpawnTemplate)
-async def create_template(req: SpawnTemplateCreate, api_key: str = Depends(require_api_key)) -> SpawnTemplate:
+async def create_template(
+    req: SpawnTemplateCreate, api_key: str = Depends(require_api_key)
+) -> SpawnTemplate:
     """Create a new custom spawn template."""
     svc = get_spawn_template_service()
     try:
@@ -76,8 +82,14 @@ async def create_template(req: SpawnTemplateCreate, api_key: str = Depends(requi
         )
 
 
-@router.patch("/{template_id}", status_code=status.HTTP_200_OK, response_model=SpawnTemplate)
-async def update_template(template_id: str, patch: SpawnTemplateUpdate, api_key: str = Depends(require_api_key)) -> SpawnTemplate:
+@router.patch(
+    "/{template_id}", status_code=status.HTTP_200_OK, response_model=SpawnTemplate
+)
+async def update_template(
+    template_id: str,
+    patch: SpawnTemplateUpdate,
+    api_key: str = Depends(require_api_key),
+) -> SpawnTemplate:
     """Partially update an existing spawn template."""
     svc = get_spawn_template_service()
     updated = svc.update_template(template_id, patch)
@@ -89,7 +101,9 @@ async def update_template(template_id: str, patch: SpawnTemplateUpdate, api_key:
     return updated
 
 
-@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete(
+    "/{template_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None
+)
 async def delete_template(template_id: str, api_key: str = Depends(require_api_key)):
     """Delete a spawn template."""
     svc = get_spawn_template_service()
@@ -112,7 +126,8 @@ async def delete_template(template_id: str, api_key: str = Depends(require_api_k
     response_model=SpawnResult,
 )
 async def spawn_from_template(
-    template_id: str, req: SpawnFromTemplateRequest,
+    template_id: str,
+    req: SpawnFromTemplateRequest,
     api_key: str = Depends(require_api_key),
 ) -> SpawnResult:
     """

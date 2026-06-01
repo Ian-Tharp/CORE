@@ -16,7 +16,9 @@ from app.repository import knowledgebase_repository as repo
 from app.services.ollama_embeddings import embed_texts_via_ollama, embed_texts_batch
 
 
-def _split_text(text: str, *, chunk_size: int = 1200, chunk_overlap: int = 200) -> List[str]:
+def _split_text(
+    text: str, *, chunk_size: int = 1200, chunk_overlap: int = 200
+) -> List[str]:
     if chunk_size <= 0:
         return [text]
     chunks: List[str] = []
@@ -48,7 +50,9 @@ def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-async def _embed_texts_local(*, model: str, texts: List[str], use_batch: bool = True) -> Tuple[List[List[float]], int]:
+async def _embed_texts_local(
+    *, model: str, texts: List[str], use_batch: bool = True
+) -> Tuple[List[List[float]], int]:
     """Embed texts locally via Ollama and return (vectors, original_dim).
 
     When use_batch is True, uses the batch /api/embed endpoint (with fallback).
@@ -147,7 +151,10 @@ async def process_uploaded_file(
     total_chars = len(text or "")
     try:
         from app.services.metrics_service import record_embedding_performance
-        record_embedding_performance("document", model, len(chunks), elapsed_ms, total_chars)
+
+        record_embedding_performance(
+            "document", model, len(chunks), elapsed_ms, total_chars
+        )
     except Exception:
         pass  # Don't fail on metrics errors
 
@@ -168,13 +175,18 @@ async def reprocess_document(
 
     # 1. Extract text with OCR fallback
     title, text = await _extract_title_and_text(storage_path, mime_type)
-    logger.info("Extracted %d chars, title=%r for %s", len(text or ""), title, document_id)
+    logger.info(
+        "Extracted %d chars, title=%r for %s", len(text or ""), title, document_id
+    )
 
     # 2. Delete old chunks
     from app.dependencies import get_db_pool
+
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        deleted = await conn.execute("DELETE FROM kb_chunks WHERE document_id = $1", document_id)
+        deleted = await conn.execute(
+            "DELETE FROM kb_chunks WHERE document_id = $1", document_id
+        )
         logger.info("Deleted old chunks for %s: %s", document_id, deleted)
 
     # 3. Update document title if extracted
@@ -203,14 +215,16 @@ async def reprocess_document(
     logger.info("Split into %d chunks for %s", len(chunks), document_id)
 
     if not chunks:
-        logger.warning("No text chunks for %s — document may be empty or image-only", document_id)
+        logger.warning(
+            "No text chunks for %s — document may be empty or image-only", document_id
+        )
         return
 
     vecs_all: List[List[float]] = []
     dims = 0
     batch_size = 64
     for start in range(0, len(chunks), batch_size):
-        batch = chunks[start:start + batch_size]
+        batch = chunks[start : start + batch_size]
         v, od = await _embed_texts_local(model=model, texts=batch)
         if v:
             vecs_all.extend(v)
@@ -228,7 +242,9 @@ async def reprocess_document(
             model=model,
             dimensions=dims or 0,
         )
-    logger.info("Reprocessing complete for %s: %d chunks embedded", document_id, len(chunks))
+    logger.info(
+        "Reprocessing complete for %s: %d chunks embedded", document_id, len(chunks)
+    )
 
 
 async def embed_document_locally(*, document_id: str, model: str) -> None:
@@ -300,7 +316,10 @@ async def _extract_text(path: str, mime_type: str) -> str:
             return ""
 
     # Basic DOCX support via python-docx if installed
-    if mime_type in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"):
+    if mime_type in (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+    ):
         try:
             import docx  # type: ignore
 
@@ -340,7 +359,9 @@ def _extract_pdf_with_pymupdf(
     if len(doc) > _PYMUPDF_MAX_OCR_PAGES:
         logger.warning(
             "PDF has %d pages; limiting OCR to first %d pages: %s",
-            len(doc), _PYMUPDF_MAX_OCR_PAGES, path,
+            len(doc),
+            _PYMUPDF_MAX_OCR_PAGES,
+            path,
         )
 
     for idx in range(num_pages):
@@ -354,7 +375,9 @@ def _extract_pdf_with_pymupdf(
                         text = ocr_text
                         logger.debug("OCR used for page %d of %s", idx, path)
                 except Exception:
-                    logger.debug("OCR failed for page %d of %s", idx, path, exc_info=True)
+                    logger.debug(
+                        "OCR failed for page %d of %s", idx, path, exc_info=True
+                    )
             pages_text.append(text)
         except Exception:
             logger.debug("pymupdf failed on page %d of %s", idx, path, exc_info=True)
@@ -371,13 +394,17 @@ def _extract_pdf_with_pymupdf(
                 title = candidate
                 break
 
-    logger.info("pymupdf extracted %d chars from %d pages: %s", len(full_text), num_pages, path)
+    logger.info(
+        "pymupdf extracted %d chars from %d pages: %s", len(full_text), num_pages, path
+    )
     return full_text, title
 
 
-async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: bool = False) -> Tuple[Optional[str], str]:
+async def _extract_title_and_text(
+    path: str, mime_type: str, *, prefer_pymupdf: bool = False
+) -> Tuple[Optional[str], str]:
     """Best-effort extraction of a human-friendly title and full text.
-    
+
     If prefer_pymupdf=True, use pymupdf first (faster, no hanging on malformed fonts).
     Falls back to pypdf only if pymupdf fails.
     """
@@ -393,7 +420,9 @@ async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: 
                     return fallback_title, text
                 logger.info("pymupdf extracted < 100 chars for %s, trying pypdf", path)
             except Exception:
-                logger.warning("pymupdf failed for %s, trying pypdf", path, exc_info=True)
+                logger.warning(
+                    "pymupdf failed for %s, trying pypdf", path, exc_info=True
+                )
 
         try:
             from pypdf import PdfReader  # type: ignore
@@ -422,7 +451,7 @@ async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: 
                 title = None
 
             if not title and first_page_text:
-                for line in (first_page_text.splitlines() or []):
+                for line in first_page_text.splitlines() or []:
                     candidate = (line or "").strip()
                     if 3 <= len(candidate) <= 140:
                         title = candidate
@@ -435,7 +464,8 @@ async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: 
                 logger.info(
                     "pypdf extracted < 100 chars from %d-page PDF, "
                     "falling back to pymupdf OCR: %s",
-                    num_pages, path,
+                    num_pages,
+                    path,
                 )
                 full_text, title = _extract_pdf_with_pymupdf(path, title)
             else:
@@ -452,7 +482,10 @@ async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: 
             pass
 
     # DOCX path
-    if mime_type in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"):
+    if mime_type in (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+    ):
         try:
             import docx  # type: ignore
 
@@ -483,7 +516,9 @@ async def _extract_title_and_text(path: str, mime_type: str, *, prefer_pymupdf: 
         return None, ""
 
 
-async def reextract_title_for_document(*, storage_path: str, mime_type: str) -> Optional[str]:
+async def reextract_title_for_document(
+    *, storage_path: str, mime_type: str
+) -> Optional[str]:
     """Re-extract a best-effort title from the stored document without re-embedding."""
     title, _ = await _extract_title_and_text(storage_path, mime_type)
     return title
@@ -512,7 +547,10 @@ async def retrieve_context(
     # SQL vector search across local vectors
     doc_filter = candidate_doc_ids if mode == "file" else None
     rows = await repo.search_chunks_by_vector(
-        query_vec=query_vec, limit=max_chunks, document_filter=doc_filter, model=local_model
+        query_vec=query_vec,
+        limit=max_chunks,
+        document_filter=doc_filter,
+        model=local_model,
     )
     return {"chunks": rows, "doc_ids": list({r.get("document_id") for r in rows})}
 
@@ -537,12 +575,12 @@ async def retrieve_context_by_instance(
         instance_name=instance_name,
         limit=max_chunks,
         document_filter=document_filter,
-        model=local_model
+        model=local_model,
     )
     return {
-        "chunks": rows, 
+        "chunks": rows,
         "doc_ids": list({r.get("document_id") for r in rows}),
-        "instance_name": instance_name
+        "instance_name": instance_name,
     }
 
 
@@ -581,13 +619,27 @@ async def batch_upload_and_process(
             if title:
                 title = title.replace("\x00", "")
             chunks = _split_text(text) if text else []
-            file_infos.append({
-                "path": fpath, "title": title, "text": text,
-                "chunks": chunks, "mime": mime, "error": None,
-            })
+            file_infos.append(
+                {
+                    "path": fpath,
+                    "title": title,
+                    "text": text,
+                    "chunks": chunks,
+                    "mime": mime,
+                    "error": None,
+                }
+            )
         except asyncio.TimeoutError:
-            logger.error("Extraction timed out after %ds: %s", extraction_timeout, fpath)
-            file_infos.append({"path": fpath, "chunks": [], "error": f"extraction timed out after {extraction_timeout}s"})
+            logger.error(
+                "Extraction timed out after %ds: %s", extraction_timeout, fpath
+            )
+            file_infos.append(
+                {
+                    "path": fpath,
+                    "chunks": [],
+                    "error": f"extraction timed out after {extraction_timeout}s",
+                }
+            )
         except Exception as exc:
             logger.error("Failed to extract %s: %s", fpath, exc)
             file_infos.append({"path": fpath, "chunks": [], "error": str(exc)})
@@ -605,10 +657,12 @@ async def batch_upload_and_process(
     all_vecs: List[List[float]] = []
     dims = 0
     batch_size = 64
-    total_batches = (len(all_chunks) + batch_size - 1) // batch_size if all_chunks else 0
+    total_batches = (
+        (len(all_chunks) + batch_size - 1) // batch_size if all_chunks else 0
+    )
     for batch_idx, start in enumerate(range(0, len(all_chunks), batch_size)):
         logger.info("Embedding batch %d of %d", batch_idx + 1, total_batches)
-        batch = all_chunks[start:start + batch_size]
+        batch = all_chunks[start : start + batch_size]
         v, od = await embed_texts_batch(model=model, texts=batch)
         if v:
             all_vecs.extend(v)
@@ -652,13 +706,17 @@ async def batch_upload_and_process(
             )
 
             # Document-level embedding
-            title_desc = f"{(info.get('title') or filename)}\n\n{(auto_desc or '')}".strip()
+            title_desc = (
+                f"{(info.get('title') or filename)}\n\n{(auto_desc or '')}".strip()
+            )
             if title_desc:
                 dvecs, dorig = await embed_texts_batch(model=model, texts=[title_desc])
                 if dvecs:
                     await repo.update_document_embedding(
-                        document_id=doc_id, embedding=dvecs[0],
-                        model=model, dimensions=dorig,
+                        document_id=doc_id,
+                        embedding=dvecs[0],
+                        model=model,
+                        dimensions=dorig,
                     )
 
             # Chunk embeddings — INSERT (not update, chunks don't exist yet)
@@ -669,8 +727,10 @@ async def batch_upload_and_process(
                     inserts.append((ci, info["chunks"][ci], all_vecs[vec_offset + ci]))
             if inserts:
                 await repo.insert_chunk_embeddings(
-                    document_id=doc_id, items=inserts,
-                    model=model, dimensions=dims or 0,
+                    document_id=doc_id,
+                    items=inserts,
+                    model=model,
+                    dimensions=dims or 0,
                 )
             vec_offset += num_chunks
 
@@ -690,7 +750,9 @@ async def batch_upload_and_process(
     }
 
 
-def build_rag_messages(original_messages: List[Dict[str, str]], *, context_chunks: List[Dict[str, any]]) -> List[Dict[str, str]]:
+def build_rag_messages(
+    original_messages: List[Dict[str, str]], *, context_chunks: List[Dict[str, any]]
+) -> List[Dict[str, str]]:
     if not context_chunks:
         return original_messages
     ctx_lines = []
@@ -714,137 +776,147 @@ def build_rag_messages(original_messages: List[Dict[str, str]], *, context_chunk
 # KNOWLEDGE ATTRIBUTION VERIFICATION
 # =============================================================================
 
+
 async def verify_knowledge_attribution(*, chunk_ids: List[str]) -> Dict[str, any]:
     """
     Verify knowledge attribution for given chunk IDs.
-    
+
     Checks if attribution metadata exists and source instance is valid.
     Returns verification report with warnings for orphaned attributions.
-    
+
     Args:
         chunk_ids: List of chunk IDs to verify attribution for
-        
+
     Returns:
         Dict with verification results and any warnings
     """
     if not chunk_ids:
         return {"verified": [], "warnings": [], "total_chunks": 0}
-    
+
     logger.info("Verifying attribution for %d chunks", len(chunk_ids))
-    
+
     # Get chunk attribution data
     chunk_attributions = await repo.get_chunk_attributions(chunk_ids)
-    
+
     verified_chunks = []
     warnings = []
-    
+
     for chunk_id in chunk_ids:
         chunk_attribution = chunk_attributions.get(chunk_id)
-        
+
         if not chunk_attribution:
-            warnings.append({
-                "type": "missing_attribution",
-                "chunk_id": chunk_id,
-                "message": f"Chunk {chunk_id} has no attribution metadata"
-            })
+            warnings.append(
+                {
+                    "type": "missing_attribution",
+                    "chunk_id": chunk_id,
+                    "message": f"Chunk {chunk_id} has no attribution metadata",
+                }
+            )
             continue
-            
+
         # Check if source instance exists and is valid
         source_instance_id = chunk_attribution.get("source_instance_id")
         if source_instance_id:
             from app.repository import instance_repository
+
             instance = await instance_repository.get_instance(source_instance_id)
-            
+
             if not instance:
-                warnings.append({
-                    "type": "orphaned_attribution",
-                    "chunk_id": chunk_id,
-                    "source_instance_id": source_instance_id,
-                    "message": f"Chunk {chunk_id} attributes to non-existent instance {source_instance_id}"
-                })
-            else:
-                verified_chunks.append({
-                    "chunk_id": chunk_id,
-                    "attribution": chunk_attribution,
-                    "source_instance": {
-                        "id": str(instance.id),
-                        "agent_id": instance.agent_id,
-                        "agent_role": instance.agent_role,
-                        "created_at": instance.created_at.isoformat()
+                warnings.append(
+                    {
+                        "type": "orphaned_attribution",
+                        "chunk_id": chunk_id,
+                        "source_instance_id": source_instance_id,
+                        "message": f"Chunk {chunk_id} attributes to non-existent instance {source_instance_id}",
                     }
-                })
+                )
+            else:
+                verified_chunks.append(
+                    {
+                        "chunk_id": chunk_id,
+                        "attribution": chunk_attribution,
+                        "source_instance": {
+                            "id": str(instance.id),
+                            "agent_id": instance.agent_id,
+                            "agent_role": instance.agent_role,
+                            "created_at": instance.created_at.isoformat(),
+                        },
+                    }
+                )
         else:
-            warnings.append({
-                "type": "missing_source_instance",
-                "chunk_id": chunk_id,
-                "message": f"Chunk {chunk_id} has attribution but no source_instance_id"
-            })
-    
+            warnings.append(
+                {
+                    "type": "missing_source_instance",
+                    "chunk_id": chunk_id,
+                    "message": f"Chunk {chunk_id} has attribution but no source_instance_id",
+                }
+            )
+
     return {
         "verified": verified_chunks,
         "warnings": warnings,
         "total_chunks": len(chunk_ids),
         "verified_count": len(verified_chunks),
-        "warning_count": len(warnings)
+        "warning_count": len(warnings),
     }
 
 
 async def verify_document_knowledge_integrity(*, document_id: str) -> Dict[str, any]:
     """
     Verify knowledge integrity for all chunks in a document.
-    
+
     Comprehensive verification of attribution metadata, instance validity,
     and knowledge graph consistency for a single document.
-    
+
     Args:
         document_id: Document ID to verify
-        
+
     Returns:
         Dict with detailed integrity report
     """
     logger.info("Verifying knowledge integrity for document %s", document_id)
-    
+
     # Get document info
     document = await repo.get_document(document_id)
     if not document:
-        return {
-            "error": f"Document {document_id} not found",
-            "verified": False
-        }
-    
+        return {"error": f"Document {document_id} not found", "verified": False}
+
     # Get all chunks for the document
     chunks = await repo.list_chunks_for_document(document_id)
     chunk_ids = [chunk["id"] for chunk in chunks]
-    
+
     if not chunk_ids:
         return {
             "document_id": document_id,
             "verified": True,
             "chunks_count": 0,
-            "message": "Document has no chunks to verify"
+            "message": "Document has no chunks to verify",
         }
-    
+
     # Verify attribution for all chunks
     attribution_report = await verify_knowledge_attribution(chunk_ids=chunk_ids)
-    
+
     # Additional document-level checks
     doc_warnings = []
-    
+
     # Check document-level attribution if it exists
     doc_attribution = await repo.get_document_attribution(document_id)
     if doc_attribution:
         source_instance_id = doc_attribution.get("source_instance_id")
         if source_instance_id:
             from app.repository import instance_repository
+
             instance = await instance_repository.get_instance(source_instance_id)
             if not instance:
-                doc_warnings.append({
-                    "type": "orphaned_document_attribution",
-                    "document_id": document_id,
-                    "source_instance_id": source_instance_id,
-                    "message": f"Document {document_id} attributes to non-existent instance {source_instance_id}"
-                })
-    
+                doc_warnings.append(
+                    {
+                        "type": "orphaned_document_attribution",
+                        "document_id": document_id,
+                        "source_instance_id": source_instance_id,
+                        "message": f"Document {document_id} attributes to non-existent instance {source_instance_id}",
+                    }
+                )
+
     return {
         "document_id": document_id,
         "document_title": document.get("title") or document.get("filename", "Unknown"),
@@ -855,61 +927,63 @@ async def verify_document_knowledge_integrity(*, document_id: str) -> Dict[str, 
         "summary": {
             "total_issues": len(attribution_report["warnings"]) + len(doc_warnings),
             "chunk_issues": len(attribution_report["warnings"]),
-            "document_issues": len(doc_warnings)
-        }
+            "document_issues": len(doc_warnings),
+        },
     }
 
 
-async def batch_verify_knowledge_attribution(*, limit: Optional[int] = None) -> Dict[str, any]:
+async def batch_verify_knowledge_attribution(
+    *, limit: Optional[int] = None
+) -> Dict[str, any]:
     """
     Batch verification of knowledge attribution across the entire knowledge base.
-    
+
     Scans all documents and chunks to identify attribution issues.
     Useful for maintenance and integrity monitoring.
-    
+
     Args:
         limit: Optional limit on number of documents to process
-        
+
     Returns:
         Dict with comprehensive attribution health report
     """
     logger.info("Starting batch knowledge attribution verification (limit: %s)", limit)
-    
+
     # Get all documents
     documents = await repo.list_documents()
     if limit:
         documents = documents[:limit]
-    
+
     total_documents = len(documents)
     verified_documents = []
     failed_verifications = []
     total_warnings = 0
-    
+
     for i, doc in enumerate(documents):
         try:
-            logger.debug("Verifying document %d/%d: %s", i + 1, total_documents, doc["id"])
-            
-            verification_result = await verify_document_knowledge_integrity(document_id=doc["id"])
-            
+            logger.debug(
+                "Verifying document %d/%d: %s", i + 1, total_documents, doc["id"]
+            )
+
+            verification_result = await verify_document_knowledge_integrity(
+                document_id=doc["id"]
+            )
+
             if verification_result.get("error"):
-                failed_verifications.append({
-                    "document_id": doc["id"],
-                    "error": verification_result["error"]
-                })
+                failed_verifications.append(
+                    {"document_id": doc["id"], "error": verification_result["error"]}
+                )
             else:
                 verified_documents.append(verification_result)
                 total_warnings += verification_result["summary"]["total_issues"]
-                
+
         except Exception as exc:
             logger.error("Failed to verify document %s: %s", doc["id"], exc)
-            failed_verifications.append({
-                "document_id": doc["id"],
-                "error": str(exc)
-            })
-    
+            failed_verifications.append({"document_id": doc["id"], "error": str(exc)})
+
     # Generate summary statistics
     healthy_documents = sum(1 for doc in verified_documents if doc["verified"])
-    
+
     return {
         "batch_verification_complete": True,
         "processed_documents": total_documents,
@@ -918,7 +992,9 @@ async def batch_verify_knowledge_attribution(*, limit: Optional[int] = None) -> 
         "healthy_documents": healthy_documents,
         "documents_with_issues": len(verified_documents) - healthy_documents,
         "total_attribution_warnings": total_warnings,
-        "health_score": healthy_documents / total_documents if total_documents > 0 else 1.0,
+        "health_score": (
+            healthy_documents / total_documents if total_documents > 0 else 1.0
+        ),
         "detailed_results": verified_documents,
-        "failures": failed_verifications
+        "failures": failed_verifications,
     }

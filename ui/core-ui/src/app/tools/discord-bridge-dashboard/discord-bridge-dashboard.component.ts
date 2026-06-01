@@ -13,7 +13,7 @@ import {
   DiscordBridgeService,
   DiscordChannelMapping,
   DiscordDeliveryEvent,
-  DiscordMessageLink,
+  DiscordMessageLink
 } from '../../services/discord-bridge/discord-bridge.service';
 
 interface ValidationChecklistItem {
@@ -30,10 +30,10 @@ interface ValidationChecklistItem {
     MatCardModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatTabsModule,
+    MatTabsModule
   ],
   templateUrl: './discord-bridge-dashboard.component.html',
-  styleUrl: './discord-bridge-dashboard.component.scss',
+  styleUrl: './discord-bridge-dashboard.component.scss'
 })
 export class DiscordBridgeDashboardComponent implements OnInit, OnDestroy {
   public loading = true;
@@ -71,36 +71,36 @@ export class DiscordBridgeDashboardComponent implements OnInit, OnDestroy {
         status: metrics?.status.connected ? 'ready' : 'attention',
         detail: metrics?.status.connected
           ? `Connected as ${metrics.status.bot_user ?? 'unknown bot'}`
-          : 'Bridge should be connected before validating Discord traffic.',
+          : 'Bridge should be connected before validating Discord traffic.'
       },
       {
         label: 'Channel mapping',
         status: (metrics?.mappings_count ?? 0) > 0 ? 'ready' : 'attention',
         detail: (metrics?.mappings_count ?? 0) > 0
           ? `${metrics?.mappings_count ?? 0} channel mapping(s) configured`
-          : 'At least one Discord channel mapping is required.',
+          : 'At least one Discord channel mapping is required.'
       },
       {
         label: 'Live Discord traffic',
         status: (metrics?.message_links_count ?? 0) > 0 ? 'ready' : 'pending',
         detail: (metrics?.message_links_count ?? 0) > 0
           ? `${metrics?.message_links_count ?? 0} linked messages recorded`
-          : 'Send a Discord message into a mapped channel to validate ingress.',
+          : 'Send a Discord message into a mapped channel to validate ingress.'
       },
       {
         label: 'Outbound reply path',
         status: (metrics?.message_links_by_direction['core_to_discord'] ?? 0) > 0 ? 'ready' : 'pending',
         detail: (metrics?.message_links_by_direction['core_to_discord'] ?? 0) > 0
           ? `${metrics?.message_links_by_direction['core_to_discord'] ?? 0} outbound link(s) recorded`
-          : 'Send a CORE-side message or trigger an agent response to validate outbound delivery.',
+          : 'Send a CORE-side message or trigger an agent response to validate outbound delivery.'
       },
       {
         label: 'Recent failures',
         status: (metrics?.recent_failures.length ?? 0) === 0 ? 'ready' : 'attention',
         detail: (metrics?.recent_failures.length ?? 0) === 0
           ? 'No recent failed bridge events'
-          : `${metrics?.recent_failures.length ?? 0} recent failure(s) need review`,
-      },
+          : `${metrics?.recent_failures.length ?? 0} recent failure(s) need review`
+      }
     ];
   }
 
@@ -163,7 +163,7 @@ export class DiscordBridgeDashboardComponent implements OnInit, OnDestroy {
     return this.lastUpdatedAt.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
+      second: '2-digit'
     });
   }
 
@@ -245,7 +245,7 @@ export class DiscordBridgeDashboardComponent implements OnInit, OnDestroy {
       metrics: this.discordBridgeService.getMetrics(),
       mappings: this.discordBridgeService.getMappings(),
       deliveries: this.discordBridgeService.getDeliveries({ limit: 20 }),
-      messageLinks: this.discordBridgeService.getMessageLinks({ limit: 20 }),
+      messageLinks: this.discordBridgeService.getMessageLinks({ limit: 20 })
     })
       .pipe(takeUntil(this._destroy$))
       .subscribe({
@@ -261,7 +261,7 @@ export class DiscordBridgeDashboardComponent implements OnInit, OnDestroy {
           console.error('Failed to load Discord bridge dashboard', error);
           this.error = 'Failed to load Discord bridge dashboard data.';
           this.loading = false;
-        },
+        }
       });
   }
 }

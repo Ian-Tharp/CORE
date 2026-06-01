@@ -15,7 +15,7 @@ from app.repository import discord_repository
 
 class DiscordChannelMapping(BaseModel):
     """Maps a Discord channel to a CORE Communication Commons channel."""
-    
+
     discord_channel_id: str
     discord_channel_name: Optional[str] = None
     discord_guild_id: Optional[str] = None
@@ -28,34 +28,36 @@ class DiscordChannelMapping(BaseModel):
 
 class DiscordConfig(BaseModel):
     """Configuration for the Discord bridge."""
-    
+
     # Bot authentication
     bot_token: str = Field(default_factory=lambda: os.getenv("DISCORD_BOT_TOKEN", ""))
-    
+
     # Feature flags
-    enabled: bool = Field(default_factory=lambda: os.getenv("DISCORD_ENABLED", "false").lower() == "true")
-    
+    enabled: bool = Field(
+        default_factory=lambda: os.getenv("DISCORD_ENABLED", "false").lower() == "true"
+    )
+
     # Channel mappings (Discord channel ID → CORE channel ID)
     channel_mappings: Dict[str, DiscordChannelMapping] = Field(default_factory=dict)
-    
+
     # User allowlist (Discord user IDs that can interact)
     # Empty list means all users allowed
     allowed_users: List[str] = Field(default_factory=list)
-    
+
     # Default CORE channel for unmapped Discord channels
     default_core_channel: Optional[str] = None
-    
+
     # Whether to create CORE channels automatically for unmapped Discord channels
     auto_create_channels: bool = True
-    
+
     # Message settings
     message_prefix: str = ""  # Prefix to add to messages from Discord
     response_prefix: str = ""  # Prefix to add to responses going to Discord
-    
+
     # Bot identity in CORE
     bot_instance_id: str = "discord_bridge"
     bot_display_name: str = "Discord Bridge"
-    
+
     # Reconnection settings
     reconnect_delay_seconds: int = 5
     max_reconnect_attempts: int = 10
@@ -63,9 +65,9 @@ class DiscordConfig(BaseModel):
 
 def get_discord_config() -> DiscordConfig:
     """Get Discord configuration from environment and defaults."""
-    
+
     config = DiscordConfig()
-    
+
     # Load channel mappings from environment if provided
     # Format: DISCORD_CHANNEL_MAP="discord_id:core_id,discord_id2:core_id2"
     channel_map_env = os.getenv("DISCORD_CHANNEL_MAP", "")
@@ -74,16 +76,17 @@ def get_discord_config() -> DiscordConfig:
             if ":" in mapping:
                 discord_id, core_id = mapping.strip().split(":", 1)
                 config.channel_mappings[discord_id] = DiscordChannelMapping(
-                    discord_channel_id=discord_id,
-                    core_channel_id=core_id
+                    discord_channel_id=discord_id, core_channel_id=core_id
                 )
-    
+
     # Load allowed users from environment
     # Format: DISCORD_ALLOWED_USERS="user_id1,user_id2"
     allowed_users_env = os.getenv("DISCORD_ALLOWED_USERS", "")
     if allowed_users_env:
-        config.allowed_users = [u.strip() for u in allowed_users_env.split(",") if u.strip()]
-    
+        config.allowed_users = [
+            u.strip() for u in allowed_users_env.split(",") if u.strip()
+        ]
+
     return config
 
 
@@ -141,7 +144,9 @@ async def persist_config(config: DiscordConfig) -> DiscordConfig:
     return config
 
 
-async def persist_channel_mapping(mapping: DiscordChannelMapping) -> DiscordChannelMapping:
+async def persist_channel_mapping(
+    mapping: DiscordChannelMapping,
+) -> DiscordChannelMapping:
     """Persist a Discord channel mapping and update the config singleton."""
     stored_mapping = await discord_repository.upsert_channel_mapping(
         discord_channel_id=mapping.discord_channel_id,

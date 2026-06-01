@@ -433,7 +433,7 @@ export class AgentMarketplaceService {
     );
   }
 
-  installAgent(agentId: string): Observable<{ success: boolean; message: string }> {
+  installAgent(_agentId: string): Observable<{ success: boolean; message: string }> {
     // Simulate installation process
     return of({ 
       success: true, 

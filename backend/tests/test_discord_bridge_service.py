@@ -27,6 +27,7 @@ from app.services.discord_bridge import BridgeStatus, DiscordBridgeService
 # Helpers
 # ===========================================================================
 
+
 def _make_config(
     enabled: bool = True,
     bot_token: str = "fake-token",
@@ -55,6 +56,7 @@ def _make_service(config: DiscordConfig | None = None) -> DiscordBridgeService:
 # ===========================================================================
 # is_connected — property
 # ===========================================================================
+
 
 class TestIsConnected:
     def test_disconnected_status_returns_false(self):
@@ -102,6 +104,7 @@ class TestIsConnected:
 # ===========================================================================
 # get_status_info — status dictionary
 # ===========================================================================
+
 
 class TestGetStatusInfo:
     def test_returns_all_required_fields(self):
@@ -162,6 +165,7 @@ class TestGetStatusInfo:
 # start() — early-exit conditions
 # ===========================================================================
 
+
 class TestStart:
     @pytest.mark.asyncio
     async def test_disabled_config_returns_false(self):
@@ -172,8 +176,10 @@ class TestStart:
         cfg = _make_config(enabled=False)
         svc = _make_service(cfg)
 
-        with patch("app.services.discord_bridge.load_config_from_store",
-                   new=AsyncMock(return_value=cfg)):
+        with patch(
+            "app.services.discord_bridge.load_config_from_store",
+            new=AsyncMock(return_value=cfg),
+        ):
             result = await svc.start()
 
         assert result is False
@@ -187,8 +193,10 @@ class TestStart:
         cfg = _make_config(enabled=True, bot_token="")
         svc = _make_service(cfg)
 
-        with patch("app.services.discord_bridge.load_config_from_store",
-                   new=AsyncMock(return_value=cfg)):
+        with patch(
+            "app.services.discord_bridge.load_config_from_store",
+            new=AsyncMock(return_value=cfg),
+        ):
             result = await svc.start()
 
         assert result is False
@@ -201,8 +209,10 @@ class TestStart:
         svc = _make_service(cfg)
         svc._running = True  # simulate already running
 
-        with patch("app.services.discord_bridge.load_config_from_store",
-                   new=AsyncMock(return_value=cfg)):
+        with patch(
+            "app.services.discord_bridge.load_config_from_store",
+            new=AsyncMock(return_value=cfg),
+        ):
             result = await svc.start()
 
         assert result is True
@@ -211,6 +221,7 @@ class TestStart:
 # ===========================================================================
 # _split_message — pure chunking logic
 # ===========================================================================
+
 
 class TestSplitMessage:
     def test_short_message_not_split(self):
@@ -285,6 +296,7 @@ class TestSplitMessage:
 # add/remove channel mappings — CRUD
 # ===========================================================================
 
+
 class TestChannelMappingCRUD:
     def test_add_mapping_stores_in_config(self):
         """
@@ -341,6 +353,7 @@ class TestChannelMappingCRUD:
 # ===========================================================================
 # send_to_discord — not connected guard
 # ===========================================================================
+
 
 class TestSendToDiscord:
     @pytest.mark.asyncio

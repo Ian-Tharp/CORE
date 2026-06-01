@@ -17,7 +17,9 @@ class WorldRecord(TypedDict):
     updated_at: str
 
 
-async def create_world(name: str, *, origin: str = "human", tags: Optional[List[str]] = None) -> str:
+async def create_world(
+    name: str, *, origin: str = "human", tags: Optional[List[str]] = None
+) -> str:
     """Create a world and return its UUID.
 
     Args:
@@ -155,7 +157,9 @@ async def get_latest_snapshot(world_id: str) -> Optional[Dict[str, Any]]:
         }
 
 
-async def list_snapshots(world_id: str, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+async def list_snapshots(
+    world_id: str, limit: int = 20, offset: int = 0
+) -> List[Dict[str, Any]]:
     """List snapshots for a world ordered by newest first."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -232,5 +236,3 @@ async def get_world_by_name(name: str) -> Optional[WorldRecord]:
             "created_at": row["created_at"].isoformat() if row["created_at"] else "",
             "updated_at": row["updated_at"].isoformat() if row["updated_at"] else "",
         }
-
-

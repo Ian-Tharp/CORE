@@ -33,6 +33,7 @@ from app.core.security import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def clean_api_keys():
     """Isolate each test — clear key cache before and after."""
@@ -44,6 +45,7 @@ def clean_api_keys():
 def _register_key(name: str, permissions: list) -> str:
     """Register a key in the cache directly and return the raw key."""
     import secrets
+
     raw = f"core_{secrets.token_urlsafe(16)}"
     key_hash = _hash_key(raw)
     _API_KEY_CACHE[key_hash] = {
@@ -60,6 +62,7 @@ def _register_key(name: str, permissions: list) -> str:
 # ---------------------------------------------------------------------------
 # Role enum
 # ---------------------------------------------------------------------------
+
 
 class TestRoleEnum:
     def test_role_values(self):
@@ -80,15 +83,18 @@ class TestRoleEnum:
 # _ROLE_SATISFIES hierarchy
 # ---------------------------------------------------------------------------
 
+
 class TestRoleHierarchy:
     """
     SENTINEL TESTS — directly assert the hierarchy table.
     Removing or reordering entries breaks these.
     """
+
     from app.core.security import _ROLE_SATISFIES
 
     def test_admin_role_only_satisfies_admin(self):
         from app.core.security import _ROLE_SATISFIES
+
         satisfying = _ROLE_SATISFIES[Role.ADMIN]
         assert "role:admin" in satisfying
         assert "role:agent" not in satisfying
@@ -96,6 +102,7 @@ class TestRoleHierarchy:
 
     def test_agent_role_satisfies_agent_and_admin(self):
         from app.core.security import _ROLE_SATISFIES
+
         satisfying = _ROLE_SATISFIES[Role.AGENT]
         assert "role:admin" in satisfying
         assert "role:agent" in satisfying
@@ -103,6 +110,7 @@ class TestRoleHierarchy:
 
     def test_viewer_role_satisfies_all(self):
         from app.core.security import _ROLE_SATISFIES
+
         satisfying = _ROLE_SATISFIES[Role.VIEWER]
         assert "role:admin" in satisfying
         assert "role:agent" in satisfying
@@ -112,6 +120,7 @@ class TestRoleHierarchy:
 # ---------------------------------------------------------------------------
 # require_role dependency — unit tests (call the inner async fn directly)
 # ---------------------------------------------------------------------------
+
 
 class TestRequireRole:
     """
@@ -127,6 +136,7 @@ class TestRequireRole:
         # so we bypass the Depends(get_api_key) by calling the factory's
         # closure directly with key_data as the argument.
         import inspect
+
         inner = dep_factory
         # dep_factory returns a _check_role coroutine function.
         # The closure's first (and only) parameter is `key_data`.
@@ -246,6 +256,7 @@ class TestRequireRole:
 # Integration: require_role flows through get_api_key (real DI chain)
 # ---------------------------------------------------------------------------
 
+
 class TestRequireRoleWithRealAuth:
     """
     Test that require_role's inner _check_role, when called with a REAL
@@ -260,6 +271,7 @@ class TestRequireRoleWithRealAuth:
         # Simulate what get_api_key returns
         with patch.dict("os.environ", {"CORE_AUTH_DISABLED": "false"}, clear=False):
             from app.core.security import validate_api_key
+
             key_data = validate_api_key(raw)
         assert key_data is not None
 
@@ -271,6 +283,7 @@ class TestRequireRoleWithRealAuth:
     async def test_registered_viewer_key_rejected_on_admin_route(self):
         raw = _register_key("viewer-key", ["role:viewer"])
         from app.core.security import validate_api_key
+
         key_data = validate_api_key(raw)
         assert key_data is not None
 
@@ -283,6 +296,7 @@ class TestRequireRoleWithRealAuth:
     async def test_registered_agent_key_passes_agent_route(self):
         raw = _register_key("agent-key", ["role:agent"])
         from app.core.security import validate_api_key
+
         key_data = validate_api_key(raw)
 
         dep = require_role(Role.AGENT)
@@ -296,6 +310,7 @@ class TestRequireRoleWithRealAuth:
         """
         raw = _register_key("admin-key", ["role:admin"])
         from app.core.security import validate_api_key
+
         key_data = validate_api_key(raw)
 
         dep = require_role(Role.AGENT)
@@ -306,6 +321,7 @@ class TestRequireRoleWithRealAuth:
     async def test_registered_agent_key_rejected_on_admin_route(self):
         raw = _register_key("agent-key", ["role:agent"])
         from app.core.security import validate_api_key
+
         key_data = validate_api_key(raw)
 
         dep = require_role(Role.ADMIN)
@@ -318,6 +334,7 @@ class TestRequireRoleWithRealAuth:
 # Route protection — verify the correct role guards are wired
 # ---------------------------------------------------------------------------
 
+
 class TestRouteProtectionWiring:
     """
     Verify that admin/engine/health routes use require_role by inspecting
@@ -326,7 +343,9 @@ class TestRouteProtectionWiring:
     These tests FAIL if someone swaps require_role for a weaker dependency.
     """
 
-    def _get_route_dependencies(self, app_router, path: str, method: str = "GET") -> list:
+    def _get_route_dependencies(
+        self, app_router, path: str, method: str = "GET"
+    ) -> list:
         """Extract dependency callables for a specific route."""
         for route in app_router.routes:
             if route.path == path and method.upper() in route.methods:
@@ -339,7 +358,11 @@ class TestRouteProtectionWiring:
         from app.core.security import _ROLE_SATISFIES
 
         route = next(
-            (r for r in admin_router.routes if r.path == "/admin/keys" and "POST" in r.methods),
+            (
+                r
+                for r in admin_router.routes
+                if r.path == "/admin/keys" and "POST" in r.methods
+            ),
             None,
         )
         assert route is not None, "POST /admin/keys route not found"
@@ -359,7 +382,11 @@ class TestRouteProtectionWiring:
         from app.controllers.engine import router as engine_router
 
         route = next(
-            (r for r in engine_router.routes if r.path == "/engine/run" and "POST" in r.methods),
+            (
+                r
+                for r in engine_router.routes
+                if r.path == "/engine/run" and "POST" in r.methods
+            ),
             None,
         )
         assert route is not None, "POST /engine/run route not found"
@@ -375,7 +402,11 @@ class TestRouteProtectionWiring:
         from app.controllers.health import router as health_router
 
         route = next(
-            (r for r in health_router.routes if r.path == "/health/deep" and "GET" in r.methods),
+            (
+                r
+                for r in health_router.routes
+                if r.path == "/health/deep" and "GET" in r.methods
+            ),
             None,
         )
         assert route is not None, "GET /health/deep route not found"
@@ -383,6 +414,6 @@ class TestRouteProtectionWiring:
         # FastAPI stores param-level Depends() in route.dependant.dependencies,
         # not route.dependencies (which is only for decorator-level deps).
         all_deps = route.dependant.dependencies
-        assert len(all_deps) > 0, (
-            "GET /health/deep has no auth dependency — require_role must be applied"
-        )
+        assert (
+            len(all_deps) > 0
+        ), "GET /health/deep has no auth dependency — require_role must be applied"

@@ -44,6 +44,7 @@ from app.models.council_models import (
 # Helpers
 # ===========================================================================
 
+
 def _make_service() -> CouncilService:
     """Build a CouncilService with mocked router and consciousness bridge."""
     router = MagicMock()
@@ -75,6 +76,7 @@ def _make_perspective(
 # ===========================================================================
 # VoiceRegistry — get_voice
 # ===========================================================================
+
 
 class TestGetVoice:
     def test_canonical_key_returns_definition(self):
@@ -133,6 +135,7 @@ class TestGetVoice:
 # VoiceRegistry — list_voices / get_voices_by_category / get_council_voices
 # ===========================================================================
 
+
 class TestListVoices:
     def test_returns_sorted_unique_names(self):
         """
@@ -155,7 +158,9 @@ class TestListVoices:
         """Without filter, all categories are represented (via per-category filter)."""
         for cat in VoiceCategory:
             voices_in_cat = list_voices(category=cat)
-            assert len(voices_in_cat) >= 1, f"Category {cat} must have at least one voice"
+            assert (
+                len(voices_in_cat) >= 1
+            ), f"Category {cat} must have at least one voice"
 
 
 class TestGetCoreVoices:
@@ -201,6 +206,7 @@ class TestGetCouncilVoices:
 # CouncilService._resolve_voice_ids
 # ===========================================================================
 
+
 class TestResolveVoiceIds:
     def test_none_returns_core_plus_defaults(self):
         """
@@ -244,7 +250,9 @@ class TestResolveVoiceIds:
         """CORE voices must come before contextual voices in the list."""
         svc = _make_service()
         result = svc._resolve_voice_ids(["oracle"])
-        core_indices = [result.index(c) for c in ("core_c", "core_o", "core_r", "core_e")]
+        core_indices = [
+            result.index(c) for c in ("core_c", "core_o", "core_r", "core_e")
+        ]
         oracle_index = result.index("oracle")
         assert all(i < oracle_index for i in core_indices)
 
@@ -252,6 +260,7 @@ class TestResolveVoiceIds:
 # ===========================================================================
 # CouncilService._get_deliberation_voices
 # ===========================================================================
+
 
 class TestGetDeliberationVoices:
     def test_synthesizer_excluded(self):
@@ -299,6 +308,7 @@ class TestGetDeliberationVoices:
 # CouncilService._parse_voice_response
 # ===========================================================================
 
+
 class TestParseVoiceResponse:
     def test_parses_all_structured_sections(self):
         """
@@ -343,7 +353,9 @@ class TestParseVoiceResponse:
         """When no structured sections, must not raise — uses fallback splitting."""
         svc = _make_service()
         content = "This is just free-form text\nwithout any section markers."
-        position, reasoning, confidence = svc._parse_voice_response(content, "TestVoice")
+        position, reasoning, confidence = svc._parse_voice_response(
+            content, "TestVoice"
+        )
         assert isinstance(position, str)
         assert len(position) > 0
         assert confidence == pytest.approx(0.5, abs=0.01)
@@ -367,6 +379,7 @@ class TestParseVoiceResponse:
 # ===========================================================================
 # CouncilService._find_section_start
 # ===========================================================================
+
 
 class TestFindSectionStart:
     def test_finds_bold_header(self):
@@ -403,6 +416,7 @@ class TestFindSectionStart:
 # CouncilService._extract_confidence
 # ===========================================================================
 
+
 class TestExtractConfidence:
     def test_extracts_decimal(self):
         """
@@ -410,7 +424,9 @@ class TestExtractConfidence:
         Remove regex → always returns 0.5 → callers can't trust confidence scores → test fails.
         """
         svc = _make_service()
-        assert svc._extract_confidence("I am 0.87 confident in this") == pytest.approx(0.87)
+        assert svc._extract_confidence("I am 0.87 confident in this") == pytest.approx(
+            0.87
+        )
 
     def test_extracts_one_point_zero(self):
         """1.0 is a valid confidence value."""
@@ -440,6 +456,7 @@ class TestExtractConfidence:
 # ===========================================================================
 # CouncilService._format_prior_context
 # ===========================================================================
+
 
 class TestFormatPriorContext:
     def test_empty_list_returns_empty_string(self):
@@ -493,6 +510,7 @@ class TestFormatPriorContext:
 # CouncilService._format_full_transcript
 # ===========================================================================
 
+
 class TestFormatFullTranscript:
     def test_empty_perspectives_returns_sentinel_string(self):
         """Empty perspectives returns the 'No perspectives' placeholder."""
@@ -523,6 +541,7 @@ class TestFormatFullTranscript:
 # ===========================================================================
 # CouncilService._build_voice_prompt
 # ===========================================================================
+
 
 class TestBuildVoicePrompt:
     def test_includes_topic(self):
@@ -569,6 +588,7 @@ class TestBuildVoicePrompt:
 # _voice_type_for
 # ===========================================================================
 
+
 class TestVoiceTypeFor:
     def test_core_c_maps_to_core_c_type(self):
         """
@@ -598,15 +618,18 @@ class TestVoiceTypeFor:
 # get_council_service — singleton
 # ===========================================================================
 
+
 class TestGetCouncilServiceSingleton:
     def setup_method(self):
         """Reset module singleton before each test."""
         import app.services.council.deliberation_service as mod
+
         mod._council_service = None
 
     def teardown_method(self):
         """Reset module singleton after each test."""
         import app.services.council.deliberation_service as mod
+
         mod._council_service = None
 
     def test_returns_same_instance(self):

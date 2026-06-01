@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALISATION
 # =============================================================================
 
+
 async def ensure_api_key_tables() -> None:
     """Create api_keys table (idempotent)."""
     pool = await get_db_pool()
@@ -56,6 +57,7 @@ async def ensure_api_key_tables() -> None:
 # =============================================================================
 # WRITE
 # =============================================================================
+
 
 async def store_key(
     *,
@@ -144,6 +146,7 @@ async def deactivate_by_name(name: str) -> bool:
 # =============================================================================
 # READ
 # =============================================================================
+
 
 async def get_by_hash(key_hash: str) -> Optional[Dict[str, Any]]:
     """

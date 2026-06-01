@@ -58,11 +58,7 @@ class AgentInstance:
     This is what the Factory returns and what gets cached.
     """
 
-    def __init__(
-        self,
-        config: AgentConfig,
-        agent: Runnable
-    ):
+    def __init__(self, config: AgentConfig, agent: Runnable):
         """
         Create an agent instance.
 
@@ -131,9 +127,7 @@ class AgentFactoryService:
     """
 
     def __init__(
-        self,
-        llm: Optional[BaseChatModel] = None,
-        instance_ttl_minutes: int = 5
+        self, llm: Optional[BaseChatModel] = None, instance_ttl_minutes: int = 5
     ):
         """
         Initialize the agent factory.
@@ -156,8 +150,7 @@ class AgentFactoryService:
         self._mcp_service = get_agent_mcp_service()
 
         logger.info(
-            f"AgentFactoryService initialized "
-            f"(TTL: {instance_ttl_minutes} minutes)"
+            f"AgentFactoryService initialized " f"(TTL: {instance_ttl_minutes} minutes)"
         )
 
     async def get_agent(self, agent_id: str) -> Optional[AgentInstance]:
@@ -224,10 +217,7 @@ class AgentFactoryService:
 
         return instance
 
-    async def _create_agent_instance(
-        self,
-        agent_id: str
-    ) -> Optional[AgentInstance]:
+    async def _create_agent_instance(self, agent_id: str) -> Optional[AgentInstance]:
         """
         Create a new agent instance from database configuration.
 
@@ -264,9 +254,7 @@ class AgentFactoryService:
 
         try:
             # 2. Get MCP tools for this agent
-            tools = await self._mcp_service.get_tools_for_agent(
-                config.mcp_servers
-            )
+            tools = await self._mcp_service.get_tools_for_agent(config.mcp_servers)
 
             logger.debug(f"Bound {len(tools)} tools to {agent_id}")
 
@@ -280,7 +268,7 @@ class AgentFactoryService:
                 model=llm_with_personality,
                 tools=tools,
                 # System prompt defines the agent's personality and behavior
-                prompt=config.system_prompt
+                prompt=config.system_prompt,
             )
 
             # 5. Wrap in AgentInstance
@@ -295,8 +283,7 @@ class AgentFactoryService:
 
         except Exception as e:
             logger.error(
-                f"Failed to create agent instance {agent_id}: {e}",
-                exc_info=True
+                f"Failed to create agent instance {agent_id}: {e}", exc_info=True
             )
             return None
 
@@ -383,10 +370,7 @@ class AgentFactoryService:
         # Curiosity and creativity increase temperature
         # Precision decreases temperature
         temperature = (
-            0.4 * curiosity +
-            0.3 * creativity +
-            0.2 * uncertainty -
-            0.3 * precision
+            0.4 * curiosity + 0.3 * creativity + 0.2 * uncertainty - 0.3 * precision
         )
 
         # Clamp to valid range [0.3, 0.9]
@@ -506,19 +490,21 @@ class AgentFactoryService:
         stats = {
             "cached_agents": len(self._instance_cache),
             "ttl_minutes": self._instance_ttl.total_seconds() / 60,
-            "agents": []
+            "agents": [],
         }
 
         for agent_id, instance in self._instance_cache.items():
             age = now - instance.created_at
             expires_in = self._instance_ttl - age
 
-            stats["agents"].append({
-                "agent_id": agent_id,
-                "agent_name": instance.agent_name,
-                "age_seconds": age.total_seconds(),
-                "expires_in_seconds": max(0, expires_in.total_seconds())
-            })
+            stats["agents"].append(
+                {
+                    "agent_id": agent_id,
+                    "agent_name": instance.agent_name,
+                    "age_seconds": age.total_seconds(),
+                    "expires_in_seconds": max(0, expires_in.total_seconds()),
+                }
+            )
 
         return stats
 

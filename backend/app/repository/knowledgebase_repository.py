@@ -95,19 +95,21 @@ async def insert_chunk_embeddings(
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         records = []
-        for (chunk_index, text, embedding) in items:
+        for chunk_index, text, embedding in items:
             vec_text = f"[{', '.join(str(x) for x in embedding)}]"
-            records.append((
-                str(uuid.uuid4()),
-                document_id,
-                chunk_index,
-                text,
-                model,
-                dimensions,
-                vec_text,
-                instance_name,
-                source_discussion,
-            ))
+            records.append(
+                (
+                    str(uuid.uuid4()),
+                    document_id,
+                    chunk_index,
+                    text,
+                    model,
+                    dimensions,
+                    vec_text,
+                    instance_name,
+                    source_discussion,
+                )
+            )
         await conn.executemany(
             """
             INSERT INTO kb_chunks (
@@ -134,7 +136,7 @@ async def update_chunk_embeddings(
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         records = []
-        for (chunk_index, embedding) in chunks:
+        for chunk_index, embedding in chunks:
             vec_text = f"[{', '.join(str(x) for x in embedding)}]"
             records.append((document_id, chunk_index, vec_text, model, dimensions))
         await conn.executemany(
@@ -149,13 +151,17 @@ async def update_chunk_embeddings(
         )
 
 
-async def list_documents(*, q: Optional[str] = None, is_global: Optional[bool] = None) -> List[Dict[str, Any]]:
+async def list_documents(
+    *, q: Optional[str] = None, is_global: Optional[bool] = None
+) -> List[Dict[str, Any]]:
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         where_clauses = []
         params: List[Any] = []
         if q:
-            where_clauses.append("(LOWER(filename) LIKE $1 OR LOWER(original_name) LIKE $1 OR LOWER(coalesce(description,'')) LIKE $1)")
+            where_clauses.append(
+                "(LOWER(filename) LIKE $1 OR LOWER(original_name) LIKE $1 OR LOWER(coalesce(description,'')) LIKE $1)"
+            )
             params.append(f"%{q.lower()}%")
         if is_global is not None:
             where_clauses.append("is_global = $%d" % (len(params) + 1))
@@ -234,7 +240,11 @@ async def list_chunks_for_documents(document_ids: List[str]) -> List[Dict[str, A
 
 
 async def search_chunks_by_vector(
-    *, query_vec: List[float], limit: int = 20, document_filter: Optional[List[str]] = None, model: Optional[str] = None
+    *,
+    query_vec: List[float],
+    limit: int = 20,
+    document_filter: Optional[List[str]] = None,
+    model: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Search chunks by vector similarity (cosine distance via HNSW index)."""
     pool = await get_db_pool()
@@ -302,6 +312,7 @@ async def update_document_title_and_description(
             *params,
         )
 
+
 async def get_document_by_hash(file_hash: str) -> Optional[Dict[str, Any]]:
     if not file_hash:
         return None
@@ -320,6 +331,7 @@ async def get_document_by_hash(file_hash: str) -> Optional[Dict[str, Any]]:
             file_hash,
         )
         return dict(row) if row else None
+
 
 async def insert_activity(
     *,
@@ -362,14 +374,13 @@ async def list_recent_activity(limit: int = 20) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
 
 
-
 async def search_chunks_by_instance(
     *,
-    query_vec: List[float], 
+    query_vec: List[float],
     instance_name: str,
     limit: int = 20,
     document_filter: Optional[List[str]] = None,
-    model: Optional[str] = None
+    model: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Search chunks by vector similarity filtered by instance name (perspective-based retrieval)."""
     pool = await get_db_pool()
@@ -378,7 +389,7 @@ async def search_chunks_by_instance(
         where = ["embedding_vec IS NOT NULL", "instance_name = $3"]
         params: List[Any] = [instance_name]
         param_offset = 4  # $1 is vec, $2 is limit, $3 is instance_name
-        
+
         if document_filter:
             where.append(f"document_id = ANY(${param_offset}::uuid[])")
             params.append(document_filter)
@@ -386,7 +397,7 @@ async def search_chunks_by_instance(
         if model:
             where.append(f"embedding_model = ${param_offset}")
             params.append(model)
-            
+
         where_sql = " WHERE " + " AND ".join(where)
         rows = await conn.fetch(
             f"""
@@ -430,19 +441,22 @@ async def list_instances() -> List[Dict[str, Any]]:
 # KNOWLEDGE ATTRIBUTION FUNCTIONS
 # =============================================================================
 
-async def get_chunk_attributions(chunk_ids: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+
+async def get_chunk_attributions(
+    chunk_ids: List[str],
+) -> Dict[str, Optional[Dict[str, Any]]]:
     """
     Get attribution metadata for multiple chunks.
-    
+
     Args:
         chunk_ids: List of chunk IDs to get attributions for
-        
+
     Returns:
         Dict mapping chunk_id -> attribution metadata (or None if no attribution)
     """
     if not chunk_ids:
         return {}
-    
+
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # For now, return empty attributions since the schema doesn't exist yet
@@ -450,7 +464,7 @@ async def get_chunk_attributions(chunk_ids: List[str]) -> Dict[str, Optional[Dic
         # When attribution schema is added, this would query something like:
         # SELECT chunk_id, source_instance_id, created_at, metadata
         # FROM kb_chunk_attributions WHERE chunk_id = ANY($1::uuid[])
-        
+
         # Placeholder implementation - returns None for all chunks
         return {chunk_id: None for chunk_id in chunk_ids}
 
@@ -458,10 +472,10 @@ async def get_chunk_attributions(chunk_ids: List[str]) -> Dict[str, Optional[Dic
 async def get_document_attribution(document_id: str) -> Optional[Dict[str, Any]]:
     """
     Get attribution metadata for a document.
-    
+
     Args:
         document_id: Document ID to get attribution for
-        
+
     Returns:
         Attribution metadata dict or None if no attribution exists
     """
@@ -475,19 +489,16 @@ async def get_document_attribution(document_id: str) -> Optional[Dict[str, Any]]
 
 
 async def create_chunk_attribution(
-    *,
-    chunk_id: str,
-    source_instance_id: str,
-    metadata: Optional[Dict[str, Any]] = None
+    *, chunk_id: str, source_instance_id: str, metadata: Optional[Dict[str, Any]] = None
 ) -> str:
     """
     Create attribution metadata for a chunk.
-    
+
     Args:
         chunk_id: ID of the chunk to attribute
         source_instance_id: ID of the instance that contributed this knowledge
         metadata: Optional metadata about the attribution
-        
+
     Returns:
         Attribution ID
     """
@@ -510,16 +521,16 @@ async def create_document_attribution(
     *,
     document_id: str,
     source_instance_id: str,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Create attribution metadata for a document.
-    
+
     Args:
         document_id: ID of the document to attribute
         source_instance_id: ID of the instance that contributed this knowledge
         metadata: Optional metadata about the attribution
-        
+
     Returns:
         Attribution ID
     """
@@ -541,10 +552,10 @@ async def create_document_attribution(
 async def list_attributions_for_instance(instance_id: str) -> List[Dict[str, Any]]:
     """
     List all knowledge attributions for a given instance.
-    
+
     Args:
         instance_id: Instance ID to get attributions for
-        
+
     Returns:
         List of attribution records
     """
@@ -556,7 +567,7 @@ async def list_attributions_for_instance(instance_id: str) -> List[Dict[str, Any
         #     SELECT 'chunk' as type, chunk_id as entity_id, created_at, metadata
         #     FROM kb_chunk_attributions WHERE source_instance_id = $1
         #     UNION ALL
-        #     SELECT 'document' as type, document_id as entity_id, created_at, metadata  
+        #     SELECT 'document' as type, document_id as entity_id, created_at, metadata
         #     FROM kb_document_attributions WHERE source_instance_id = $1
         #     ORDER BY created_at DESC
         #     """,
@@ -569,10 +580,10 @@ async def list_attributions_for_instance(instance_id: str) -> List[Dict[str, Any
 async def delete_attributions_for_instance(instance_id: str) -> int:
     """
     Delete all attribution metadata for an instance (cleanup when instance is removed).
-    
+
     Args:
         instance_id: Instance ID to clean up attributions for
-        
+
     Returns:
         Number of attributions deleted
     """
@@ -584,9 +595,8 @@ async def delete_attributions_for_instance(instance_id: str) -> int:
         #     instance_id
         # )
         # doc_deleted = await conn.execute(
-        #     "DELETE FROM kb_document_attributions WHERE source_instance_id = $1", 
+        #     "DELETE FROM kb_document_attributions WHERE source_instance_id = $1",
         #     instance_id
         # )
         # return int(chunk_deleted.split()[-1]) + int(doc_deleted.split()[-1])
         return 0
-

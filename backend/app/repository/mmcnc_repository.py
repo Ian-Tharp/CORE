@@ -33,13 +33,15 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_mmcnc_tables() -> None:
     """Create MMCNC tables if they don't exist."""
     pool = await get_db_pool()
 
     async with pool.acquire() as conn:
         # -- Macrocosms -------------------------------------------------------
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS macrocosms (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -48,10 +50,12 @@ async def ensure_mmcnc_tables() -> None:
                 communication_topology VARCHAR(50) NOT NULL DEFAULT 'mesh',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # -- Microcosms -------------------------------------------------------
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS microcosms (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 agent_id VARCHAR(255) NOT NULL,
@@ -62,10 +66,12 @@ async def ensure_mmcnc_tables() -> None:
                 tool_permissions JSONB DEFAULT '[]',
                 state VARCHAR(50) NOT NULL DEFAULT 'active'
             )
-        """)
+        """
+        )
 
         # -- Clusters ---------------------------------------------------------
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS clusters (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -78,10 +84,12 @@ async def ensure_mmcnc_tables() -> None:
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 completed_at TIMESTAMP WITH TIME ZONE
             )
-        """)
+        """
+        )
 
         # -- Creative Nodes ---------------------------------------------------
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS creative_nodes (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 content TEXT NOT NULL,
@@ -91,7 +99,8 @@ async def ensure_mmcnc_tables() -> None:
                 metadata JSONB DEFAULT '{}',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # -- Indexes ----------------------------------------------------------
         await conn.execute(
@@ -131,6 +140,7 @@ async def ensure_mmcnc_tables() -> None:
 # =============================================================================
 # MACROCOSM CRUD
 # =============================================================================
+
 
 async def create_macrocosm(macrocosm: Macrocosm) -> UUID:
     """Create a new macrocosm."""
@@ -197,9 +207,7 @@ async def update_macrocosm(macrocosm_id: UUID, updates: Dict[str, Any]) -> bool:
     params: list = []
 
     for key, value in updates.items():
-        params.append(
-            json.dumps(value) if isinstance(value, (dict, list)) else value
-        )
+        params.append(json.dumps(value) if isinstance(value, (dict, list)) else value)
         set_clauses.append(f"{key} = ${len(params)}")
 
     if not set_clauses:
@@ -227,6 +235,7 @@ async def delete_macrocosm(macrocosm_id: UUID) -> bool:
 # =============================================================================
 # MICROCOSM CRUD
 # =============================================================================
+
 
 async def create_microcosm(microcosm: Microcosm) -> UUID:
     """Create a new microcosm."""
@@ -299,7 +308,9 @@ async def list_microcosms(
 
     params.append(limit)
     params.append(offset)
-    query_parts.append(f"ORDER BY name ASC LIMIT ${len(params) - 1} OFFSET ${len(params)}")
+    query_parts.append(
+        f"ORDER BY name ASC LIMIT ${len(params) - 1} OFFSET ${len(params)}"
+    )
 
     query = " ".join(query_parts)
 
@@ -316,9 +327,7 @@ async def update_microcosm(microcosm_id: UUID, updates: Dict[str, Any]) -> bool:
     params: list = []
 
     for key, value in updates.items():
-        params.append(
-            json.dumps(value) if isinstance(value, (dict, list)) else value
-        )
+        params.append(json.dumps(value) if isinstance(value, (dict, list)) else value)
         set_clauses.append(f"{key} = ${len(params)}")
 
     if not set_clauses:
@@ -346,6 +355,7 @@ async def delete_microcosm(microcosm_id: UUID) -> bool:
 # =============================================================================
 # CLUSTER CRUD
 # =============================================================================
+
 
 async def create_cluster(cluster: Cluster) -> UUID:
     """Create a new cluster."""
@@ -416,7 +426,9 @@ async def list_clusters(
 
     params.append(limit)
     params.append(offset)
-    query_parts.append(f"ORDER BY created_at DESC LIMIT ${len(params) - 1} OFFSET ${len(params)}")
+    query_parts.append(
+        f"ORDER BY created_at DESC LIMIT ${len(params) - 1} OFFSET ${len(params)}"
+    )
 
     query = " ".join(query_parts)
 
@@ -433,9 +445,7 @@ async def update_cluster(cluster_id: UUID, updates: Dict[str, Any]) -> bool:
     params: list = []
 
     for key, value in updates.items():
-        params.append(
-            json.dumps(value) if isinstance(value, (dict, list)) else value
-        )
+        params.append(json.dumps(value) if isinstance(value, (dict, list)) else value)
         set_clauses.append(f"{key} = ${len(params)}")
 
     if not set_clauses:
@@ -463,6 +473,7 @@ async def delete_cluster(cluster_id: UUID) -> bool:
 # =============================================================================
 # CREATIVE NODE CRUD
 # =============================================================================
+
 
 async def create_node(node: CreativeNode) -> UUID:
     """Create a new creative node."""
@@ -529,7 +540,9 @@ async def list_nodes(
 
     params.append(limit)
     params.append(offset)
-    query_parts.append(f"ORDER BY created_at DESC LIMIT ${len(params) - 1} OFFSET ${len(params)}")
+    query_parts.append(
+        f"ORDER BY created_at DESC LIMIT ${len(params) - 1} OFFSET ${len(params)}"
+    )
 
     query = " ".join(query_parts)
 
@@ -546,16 +559,16 @@ async def update_node(node_id: UUID, updates: Dict[str, Any]) -> bool:
     params: list = []
 
     for key, value in updates.items():
-        params.append(
-            json.dumps(value) if isinstance(value, (dict, list)) else value
-        )
+        params.append(json.dumps(value) if isinstance(value, (dict, list)) else value)
         set_clauses.append(f"{key} = ${len(params)}")
 
     if not set_clauses:
         return False
 
     params.append(node_id)
-    query = f"UPDATE creative_nodes SET {', '.join(set_clauses)} WHERE id = ${len(params)}"
+    query = (
+        f"UPDATE creative_nodes SET {', '.join(set_clauses)} WHERE id = ${len(params)}"
+    )
 
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
@@ -576,6 +589,7 @@ async def delete_node(node_id: UUID) -> bool:
 # =============================================================================
 # HIERARCHY TRAVERSAL
 # =============================================================================
+
 
 async def get_cluster_lineage(cluster_id: UUID) -> Optional[HierarchyContext]:
     """
@@ -683,56 +697,61 @@ async def navigate(entity_id: UUID) -> Optional[HierarchyContext]:
 # ROW CONVERTERS
 # =============================================================================
 
+
 def _row_to_macrocosm(row) -> Macrocosm:
     """Convert a database row to a Macrocosm model."""
     return Macrocosm(
-        id=row['id'],
-        name=row['name'],
-        microcosm_ids=json.loads(row['microcosm_ids']) if row['microcosm_ids'] else [],
-        governance_rules=json.loads(row['governance_rules']) if row['governance_rules'] else {},
-        communication_topology=row['communication_topology'],
-        created_at=row['created_at'],
+        id=row["id"],
+        name=row["name"],
+        microcosm_ids=json.loads(row["microcosm_ids"]) if row["microcosm_ids"] else [],
+        governance_rules=(
+            json.loads(row["governance_rules"]) if row["governance_rules"] else {}
+        ),
+        communication_topology=row["communication_topology"],
+        created_at=row["created_at"],
     )
 
 
 def _row_to_microcosm(row) -> Microcosm:
     """Convert a database row to a Microcosm model."""
     return Microcosm(
-        id=row['id'],
-        agent_id=row['agent_id'],
-        name=row['name'],
-        parent_macrocosm_id=row['parent_macrocosm_id'],
-        cluster_ids=json.loads(row['cluster_ids']) if row['cluster_ids'] else [],
-        memory_namespace=row['memory_namespace'],
-        tool_permissions=json.loads(row['tool_permissions']) if row['tool_permissions'] else [],
-        state=row['state'],
+        id=row["id"],
+        agent_id=row["agent_id"],
+        name=row["name"],
+        parent_macrocosm_id=row["parent_macrocosm_id"],
+        cluster_ids=json.loads(row["cluster_ids"]) if row["cluster_ids"] else [],
+        memory_namespace=row["memory_namespace"],
+        tool_permissions=(
+            json.loads(row["tool_permissions"]) if row["tool_permissions"] else []
+        ),
+        state=row["state"],
     )
 
 
 def _row_to_cluster(row) -> Cluster:
     """Convert a database row to a Cluster model."""
     return Cluster(
-        id=row['id'],
-        name=row['name'],
-        phase=row['phase'],
-        parent_microcosm_id=row['parent_microcosm_id'],
-        node_ids=json.loads(row['node_ids']) if row['node_ids'] else [],
-        divergence_output=row['divergence_output'],
-        convergence_output=row['convergence_output'],
-        synthesis_output=row['synthesis_output'],
-        created_at=row['created_at'],
-        completed_at=row['completed_at'],
+        id=row["id"],
+        name=row["name"],
+        phase=row["phase"],
+        parent_microcosm_id=row["parent_microcosm_id"],
+        node_ids=json.loads(row["node_ids"]) if row["node_ids"] else [],
+        divergence_output=row["divergence_output"],
+        convergence_output=row["convergence_output"],
+        synthesis_output=row["synthesis_output"],
+        created_at=row["created_at"],
+        completed_at=row["completed_at"],
     )
 
 
 def _row_to_node(row) -> CreativeNode:
     """Convert a database row to a CreativeNode model."""
     return CreativeNode(
-        id=row['id'],
-        content=row['content'],
-        node_type=row['node_type'],
-        parent_cluster_id=row['parent_cluster_id'],
-        embedding=json.loads(row['embedding']) if row['embedding'] else None,
-        metadata=json.loads(row['metadata']) if row['metadata'] else {},
-        created_at=row['created_at'],
+        id=row["id"],
+        content=row["content"],
+        node_type=row["node_type"],
+        parent_cluster_id=row["parent_cluster_id"],
+        embedding=json.loads(row["embedding"]) if row["embedding"] else None,
+        metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+        created_at=row["created_at"],
     )

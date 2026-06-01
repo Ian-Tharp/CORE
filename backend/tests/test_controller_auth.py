@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_app(router) -> FastAPI:
     app = FastAPI()
     app.include_router(router)
@@ -32,9 +33,11 @@ def _make_app(router) -> FastAPI:
 # /chat/stream authentication
 # ---------------------------------------------------------------------------
 
+
 class TestChatStreamAuth:
     def _client(self):
         from app.controllers.chat import router
+
         return TestClient(_make_app(router), raise_server_exceptions=False)
 
     def _valid_body(self):
@@ -79,9 +82,11 @@ class TestChatStreamAuth:
 # /communication/* authentication
 # ---------------------------------------------------------------------------
 
+
 class TestCommunicationAuth:
     def _client(self):
         from app.controllers.communication import router
+
         return TestClient(_make_app(router), raise_server_exceptions=False)
 
     def test_get_channels_missing_key_returns_401(self):
@@ -157,9 +162,11 @@ class TestCommunicationAuth:
 # /creative/* authentication
 # ---------------------------------------------------------------------------
 
+
 class TestCreativeAuth:
     def _client(self):
         from app.controllers.creative import router
+
         return TestClient(_make_app(router), raise_server_exceptions=False)
 
     def test_create_wiki_missing_key_returns_401(self):
@@ -220,9 +227,11 @@ class TestCreativeAuth:
 # /discord/* authentication
 # ---------------------------------------------------------------------------
 
+
 class TestDiscordAuth:
     def _client(self):
         from app.controllers.discord import router
+
         return TestClient(_make_app(router), raise_server_exceptions=False)
 
     def test_status_missing_key_returns_401(self):

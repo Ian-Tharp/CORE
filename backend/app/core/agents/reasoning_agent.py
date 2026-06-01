@@ -67,6 +67,7 @@ class ReasoningAgent:
         if not api_key:
             try:
                 from app.auth import VALID_API_KEYS
+
                 api_key = next(iter(VALID_API_KEYS), None)
             except Exception:
                 pass
@@ -82,7 +83,11 @@ class ReasoningAgent:
                     headers={"X-API-Key": api_key},
                 )
             if resp.status_code != 200:
-                logger.debug("KB search returned HTTP %s for step '%s'", resp.status_code, step.name)
+                logger.debug(
+                    "KB search returned HTTP %s for step '%s'",
+                    resp.status_code,
+                    step.name,
+                )
                 return None
 
             results: list = resp.json()
@@ -94,7 +99,12 @@ class ReasoningAgent:
                 similarity = float(r.get("similarity", 0.0))
                 if similarity < _KB_MIN_SIMILARITY:
                     continue
-                title = r.get("title") or r.get("originalName") or r.get("filename") or "Document"
+                title = (
+                    r.get("title")
+                    or r.get("originalName")
+                    or r.get("filename")
+                    or "Document"
+                )
                 description = (r.get("description") or "").strip()
                 entry = f"- [{title}] (relevance: {similarity:.2f})"
                 if description:
@@ -107,7 +117,9 @@ class ReasoningAgent:
             return "Relevant knowledge base context:\n" + "\n".join(lines)
 
         except Exception as exc:
-            logger.debug("KB lookup failed for step '%s' (non-critical): %s", step.name, exc)
+            logger.debug(
+                "KB lookup failed for step '%s' (non-critical): %s", step.name, exc
+            )
             return None
 
     # ------------------------------------------------------------------
@@ -166,9 +178,12 @@ class ReasoningAgent:
         while remaining:
             # Pick all steps whose deps are satisfied
             ready = [
-                s for s in remaining
-                if all(dep not in step_by_id or dep in completed_ids
-                       for dep in s.dependencies)
+                s
+                for s in remaining
+                if all(
+                    dep not in step_by_id or dep in completed_ids
+                    for dep in s.dependencies
+                )
             ]
             if not ready:
                 # Circular dependency or unresolvable — run the rest sequentially
@@ -185,7 +200,9 @@ class ReasoningAgent:
 
         return waves
 
-    def _execute_with_parallelism(self, steps: List, enable_tools: bool) -> List[StepResult]:
+    def _execute_with_parallelism(
+        self, steps: List, enable_tools: bool
+    ) -> List[StepResult]:
         """Execute steps wave by wave; run each wave in parallel."""
         waves = self._build_execution_waves(steps)
         results_by_id: Dict[str, StepResult] = {}
@@ -195,12 +212,15 @@ class ReasoningAgent:
             runnable, skipped = [], []
             for step in wave:
                 failed_deps = [
-                    dep for dep in step.dependencies
+                    dep
+                    for dep in step.dependencies
                     if dep in results_by_id and results_by_id[dep].status == "failure"
                 ]
                 if failed_deps:
                     logger.info(
-                        "Skipping step '%s' — dependency %s failed", step.name, failed_deps[0]
+                        "Skipping step '%s' — dependency %s failed",
+                        step.name,
+                        failed_deps[0],
                     )
                     skipped.append(step)
                 else:
@@ -227,7 +247,9 @@ class ReasoningAgent:
                 results_by_id[runnable[0].id] = result
             else:
                 # Execute wave in parallel
-                logger.info("Executing wave of %d independent steps in parallel", len(runnable))
+                logger.info(
+                    "Executing wave of %d independent steps in parallel", len(runnable)
+                )
                 wave_results: Dict[str, StepResult] = {}
                 with ThreadPoolExecutor(
                     max_workers=min(len(runnable), self._MAX_PARALLEL_WORKERS)
@@ -297,7 +319,7 @@ class ReasoningAgent:
                 logs = [
                     f"Executing {step.name} with LLM",
                     f"Model: {self.model}",
-                    "LLM generation completed"
+                    "LLM generation completed",
                 ]
 
             duration = time.time() - start_time
@@ -308,7 +330,7 @@ class ReasoningAgent:
                 outputs=outputs,
                 artifacts=artifacts,
                 logs=logs,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
 
         except Exception as e:
@@ -320,7 +342,7 @@ class ReasoningAgent:
                 artifacts=[],
                 logs=[f"Error executing {step.name}: {str(e)}"],
                 error=str(e),
-                duration_seconds=duration
+                duration_seconds=duration,
             )
 
     def _execute_with_llm(self, step: PlanStep) -> dict:
@@ -338,7 +360,9 @@ class ReasoningAgent:
             try:
                 kb_context = self.fetch_step_context(step)
             except Exception as exc:
-                logger.debug("fetch_step_context raised unexpectedly (non-critical): %s", exc)
+                logger.debug(
+                    "fetch_step_context raised unexpectedly (non-critical): %s", exc
+                )
                 kb_context = None
 
             base_prompt = f"""You are executing a step in a larger plan.
@@ -352,7 +376,8 @@ Please complete this step and provide the result. Be concise and direct."""
                 prompt = base_prompt + f"\n\n{kb_context}"
                 logger.debug(
                     "Injected RAG context (%d chars) into reasoning prompt for step '%s'",
-                    len(kb_context), step.name
+                    len(kb_context),
+                    step.name,
                 )
             else:
                 prompt = base_prompt
@@ -380,7 +405,9 @@ Please complete this step and provide the result. Be concise and direct."""
             return {"result": content}
 
         except Exception as e:
-            logger.error(f"LLM execution failed for step '{step.name}': {e}", exc_info=True)
+            logger.error(
+                f"LLM execution failed for step '{step.name}': {e}", exc_info=True
+            )
             return {"result": f"Error executing with LLM: {str(e)}"}
 
     # Tool dispatch is now handled by self.tool_dispatcher (ToolDispatcher).

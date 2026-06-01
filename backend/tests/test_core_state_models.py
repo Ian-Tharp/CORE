@@ -34,6 +34,7 @@ from app.models.comprehension_models import ComprehensionInput, SourceType
 # Helpers
 # ===========================================================================
 
+
 def _make_state(**kwargs) -> COREState:
     defaults = {"user_input": "test input"}
     defaults.update(kwargs)
@@ -41,13 +42,17 @@ def _make_state(**kwargs) -> COREState:
 
 
 def _make_plan(*step_names: str) -> ExecutionPlan:
-    steps = [PlanStep(id=f"step-{i}", name=n, description=f"do {n}") for i, n in enumerate(step_names)]
+    steps = [
+        PlanStep(id=f"step-{i}", name=n, description=f"do {n}")
+        for i, n in enumerate(step_names)
+    ]
     return ExecutionPlan(goal="test goal", steps=steps)
 
 
 # ===========================================================================
 # COREState.add_execution_node
 # ===========================================================================
+
 
 class TestAddExecutionNode:
     def test_appends_to_execution_history(self):
@@ -74,7 +79,11 @@ class TestAddExecutionNode:
         state.add_execution_node("comprehension")
         state.add_execution_node("orchestration")
         state.add_execution_node("reasoning")
-        assert state.execution_history == ["comprehension", "orchestration", "reasoning"]
+        assert state.execution_history == [
+            "comprehension",
+            "orchestration",
+            "reasoning",
+        ]
 
     def test_updates_updated_at(self):
         """updated_at must be refreshed on each call."""
@@ -87,6 +96,7 @@ class TestAddExecutionNode:
 # ===========================================================================
 # COREState.add_error / add_warning
 # ===========================================================================
+
 
 class TestAddError:
     def test_appends_to_errors(self):
@@ -127,6 +137,7 @@ class TestAddWarning:
 # ===========================================================================
 # COREState.get_step
 # ===========================================================================
+
 
 class TestGetStep:
     def test_returns_none_when_no_plan(self):
@@ -169,6 +180,7 @@ class TestGetStep:
 # ===========================================================================
 # COREState.update_step_status
 # ===========================================================================
+
 
 class TestUpdateStepStatus:
     def test_updates_step_status(self):
@@ -242,6 +254,7 @@ class TestUpdateStepStatus:
 # COREState.is_complete
 # ===========================================================================
 
+
 class TestIsComplete:
     def test_false_at_start(self):
         """Initial state (current_node='START', no completed_at) must be incomplete."""
@@ -277,10 +290,13 @@ class TestIsComplete:
 # PersonalityTraits.validate_trait_values
 # ===========================================================================
 
+
 class TestPersonalityTraitsValidator:
     def test_valid_traits_accepted(self):
         """Trait values in [0.0, 1.0] must be accepted without error."""
-        traits = PersonalityTraits(traits={"curiosity": 0.9, "precision": 0.5, "creativity": 0.0})
+        traits = PersonalityTraits(
+            traits={"curiosity": 0.9, "precision": 0.5, "creativity": 0.0}
+        )
         assert traits.traits["curiosity"] == pytest.approx(0.9)
 
     def test_above_1_rejected(self):
@@ -316,6 +332,7 @@ class TestPersonalityTraitsValidator:
 # ComprehensionInput.content_must_not_be_empty
 # ===========================================================================
 
+
 class TestComprehensionInputValidator:
     def test_valid_content_accepted(self):
         """Non-empty content must be accepted and stripped."""
@@ -343,5 +360,7 @@ class TestComprehensionInputValidator:
 
     def test_content_stripped_on_accept(self):
         """Leading/trailing whitespace must be stripped from accepted content."""
-        inp = ComprehensionInput(content="\t  SENTINEL_CONTENT  \n", source_type=SourceType.AGENT)
+        inp = ComprehensionInput(
+            content="\t  SENTINEL_CONTENT  \n", source_type=SourceType.AGENT
+        )
         assert inp.content == "SENTINEL_CONTENT"

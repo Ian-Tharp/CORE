@@ -168,7 +168,10 @@ class TestPersistChannelMapping:
         # Assert
         assert persisted.discord_channel_id == "123"
         assert persisted.discord_guild_name == "CORE Guild"
-        assert discord_config_module.get_config().channel_mappings["123"].discord_guild_id == "456"
+        assert (
+            discord_config_module.get_config().channel_mappings["123"].discord_guild_id
+            == "456"
+        )
 
 
 class TestGetDiscordConfig:
@@ -193,8 +196,11 @@ class TestGetDiscordConfig:
         SENTINEL — DISCORD_CHANNEL_MAP must be parsed into channel_mappings.
         Remove env parsing → no channel mappings loaded at startup → test fails.
         """
-        with patch.dict(os.environ, {"DISCORD_CHANNEL_MAP": "123:core-ch-1,456:core-ch-2"},
-                        clear=False):
+        with patch.dict(
+            os.environ,
+            {"DISCORD_CHANNEL_MAP": "123:core-ch-1,456:core-ch-2"},
+            clear=False,
+        ):
             cfg = discord_config_module.get_discord_config()
         assert "123" in cfg.channel_mappings
         assert "456" in cfg.channel_mappings
@@ -205,8 +211,9 @@ class TestGetDiscordConfig:
         SENTINEL — malformed entry without ':' must be silently skipped.
         Crash on split → one bad entry breaks all channel mappings → test fails.
         """
-        with patch.dict(os.environ, {"DISCORD_CHANNEL_MAP": "no-colon,valid:ch"},
-                        clear=False):
+        with patch.dict(
+            os.environ, {"DISCORD_CHANNEL_MAP": "no-colon,valid:ch"}, clear=False
+        ):
             cfg = discord_config_module.get_discord_config()
         assert "no-colon" not in cfg.channel_mappings
         assert "valid" in cfg.channel_mappings
@@ -216,16 +223,18 @@ class TestGetDiscordConfig:
         SENTINEL — DISCORD_ALLOWED_USERS must be split into a list.
         Skip parsing → allowlist always empty → all users can interact → test fails.
         """
-        with patch.dict(os.environ, {"DISCORD_ALLOWED_USERS": "user1,user2"},
-                        clear=False):
+        with patch.dict(
+            os.environ, {"DISCORD_ALLOWED_USERS": "user1,user2"}, clear=False
+        ):
             cfg = discord_config_module.get_discord_config()
         assert "user1" in cfg.allowed_users
         assert "user2" in cfg.allowed_users
 
     def test_allowed_users_whitespace_stripped(self):
         """Whitespace around user IDs must be stripped."""
-        with patch.dict(os.environ, {"DISCORD_ALLOWED_USERS": " user1 , user2 "},
-                        clear=False):
+        with patch.dict(
+            os.environ, {"DISCORD_ALLOWED_USERS": " user1 , user2 "}, clear=False
+        ):
             cfg = discord_config_module.get_discord_config()
         assert "user1" in cfg.allowed_users
         assert " user1 " not in cfg.allowed_users

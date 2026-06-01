@@ -39,6 +39,7 @@ from app.core.security import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def clean_api_keys():
     """Clear the in-memory key cache before and after each test."""
@@ -56,6 +57,7 @@ def rate_limiter():
 # ===================================================================
 # API Key Generation (Sync - cache only)
 # ===================================================================
+
 
 class TestGenerateApiKeySync:
     def test_returns_string_starting_with_core_prefix(self):
@@ -97,13 +99,16 @@ class TestGenerateApiKeySync:
 # API Key Generation (Async - with DB persistence)
 # ===================================================================
 
+
 class TestGenerateApiKeyAsync:
     @pytest.mark.asyncio
     async def test_returns_string_starting_with_core_prefix(self):
         with patch("app.core.security.api_key_repository", create=True) as mock_repo:
             mock_mod = MagicMock()
             mock_mod.store_key = AsyncMock(return_value="fake-id")
-            with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
+            with patch.dict(
+                "sys.modules", {"app.repository.api_key_repository": mock_mod}
+            ):
                 with patch("app.repository.api_key_repository", mock_mod):
                     key = await generate_api_key("test-async")
                     assert key.startswith("core_")
@@ -123,6 +128,7 @@ class TestGenerateApiKeyAsync:
 # ===================================================================
 # API Key Validation
 # ===================================================================
+
 
 class TestValidateApiKey:
     def test_valid_key_returns_metadata(self):
@@ -169,6 +175,7 @@ class TestValidateApiKey:
 # ===================================================================
 # API Key Revocation (now async)
 # ===================================================================
+
 
 class TestRevokeApiKey:
     @pytest.mark.asyncio
@@ -217,6 +224,7 @@ class TestRevokeApiKey:
 # List API Keys
 # ===================================================================
 
+
 class TestListApiKeys:
     def test_empty_list(self):
         assert list_api_keys() == []
@@ -250,6 +258,7 @@ class TestListApiKeys:
 # Hash Key
 # ===================================================================
 
+
 class TestHashKey:
     def test_deterministic(self):
         assert _hash_key("abc") == _hash_key("abc")
@@ -266,6 +275,7 @@ class TestHashKey:
 # ===================================================================
 # Rate Limiter
 # ===================================================================
+
 
 class TestRateLimiter:
     def test_allows_within_limit(self, rate_limiter):
@@ -312,6 +322,7 @@ class TestRateLimiter:
 # FastAPI Dependency: get_api_key
 # ===================================================================
 
+
 class TestGetApiKeyDependency:
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"CORE_AUTH_DISABLED": "true"})
@@ -325,6 +336,7 @@ class TestGetApiKeyDependency:
     async def test_no_key_raises_401(self):
         os.environ.pop("CORE_AUTH_DISABLED", None)
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await get_api_key(api_key_header=None, api_key_query=None)
         assert exc_info.value.status_code == 401
@@ -333,6 +345,7 @@ class TestGetApiKeyDependency:
     async def test_invalid_key_raises_401(self):
         os.environ.pop("CORE_AUTH_DISABLED", None)
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await get_api_key(api_key_header="bad-key", api_key_query=None)
         assert exc_info.value.status_code == 401
@@ -364,6 +377,7 @@ class TestGetApiKeyDependency:
 # FastAPI Dependency: check_rate_limit
 # ===================================================================
 
+
 class TestCheckRateLimitDependency:
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"CORE_RATE_LIMIT_DISABLED": "true"})
@@ -394,6 +408,7 @@ class TestCheckRateLimitDependency:
 # Permission Decorator
 # ===================================================================
 
+
 class TestRequirePermission:
     @pytest.mark.asyncio
     async def test_wildcard_permission_allows(self):
@@ -420,6 +435,7 @@ class TestRequirePermission:
             return "ok"
 
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await protected(api_key={"permissions": ["read:only"]})
         assert exc_info.value.status_code == 403
@@ -431,6 +447,7 @@ class TestRequirePermission:
             return "ok"
 
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await protected(api_key=None)
         assert exc_info.value.status_code == 401
@@ -439,6 +456,7 @@ class TestRequirePermission:
 # ===================================================================
 # Master Key Helper
 # ===================================================================
+
 
 class TestGetMasterApiKey:
     @patch.dict(os.environ, {"CORE_API_KEY": "my-master"})
@@ -453,6 +471,7 @@ class TestGetMasterApiKey:
 # ===================================================================
 # Init Security
 # ===================================================================
+
 
 class TestInitSecurity:
     @patch.dict(os.environ, {"CORE_ENV": "development"})
@@ -478,6 +497,7 @@ class TestInitSecurity:
 # ===================================================================
 # Load Keys From DB
 # ===================================================================
+
 
 class TestLoadKeysFromDb:
     @pytest.mark.asyncio
@@ -517,7 +537,9 @@ class TestLoadKeysFromDb:
         """If DB is down, cache stays empty but no crash."""
         generate_api_key_sync("pre-existing")
         mock_mod = MagicMock()
-        mock_mod.list_all_active = AsyncMock(side_effect=Exception("Connection refused"))
+        mock_mod.list_all_active = AsyncMock(
+            side_effect=Exception("Connection refused")
+        )
         with patch.dict("sys.modules", {"app.repository.api_key_repository": mock_mod}):
             with patch("app.repository.api_key_repository", mock_mod):
                 await load_keys_from_db()
@@ -528,6 +550,7 @@ class TestLoadKeysFromDb:
 # API Key Repository Unit Tests
 # ===================================================================
 
+
 class TestApiKeyRepository:
     """Tests for the repository module itself (mocked DB)."""
 
@@ -535,18 +558,23 @@ class TestApiKeyRepository:
     async def test_ensure_tables_calls_execute(self):
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
-        mock_conn.transaction = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(), __aexit__=AsyncMock()
-        ))
+        mock_conn.transaction = MagicMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock())
+        )
 
         mock_pool = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock()
-        ))
+        mock_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()
+            )
+        )
 
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(return_value=mock_pool),
+        ):
             from app.repository import api_key_repository
+
             await api_key_repository.ensure_api_key_tables()
             assert mock_conn.execute.call_count >= 1
 
@@ -556,13 +584,18 @@ class TestApiKeyRepository:
         mock_conn.execute = AsyncMock()
 
         mock_pool = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock()
-        ))
+        mock_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()
+            )
+        )
 
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(return_value=mock_pool),
+        ):
             from app.repository import api_key_repository
+
             result = await api_key_repository.store_key(
                 key_hash="testhash",
                 name="test-store",
@@ -578,13 +611,18 @@ class TestApiKeyRepository:
         mock_conn.fetchrow = AsyncMock(return_value=None)
 
         mock_pool = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock()
-        ))
+        mock_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()
+            )
+        )
 
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(return_value=mock_pool),
+        ):
             from app.repository import api_key_repository
+
             result = await api_key_repository.get_by_hash("nonexistent")
             assert result is None
 
@@ -594,13 +632,18 @@ class TestApiKeyRepository:
         mock_conn.execute = AsyncMock(return_value="UPDATE 1")
 
         mock_pool = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock()
-        ))
+        mock_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()
+            )
+        )
 
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(return_value=mock_pool),
+        ):
             from app.repository import api_key_repository
+
             result = await api_key_repository.deactivate_by_name("some-key")
             assert result is True
 
@@ -610,26 +653,39 @@ class TestApiKeyRepository:
         mock_conn.execute = AsyncMock(return_value="UPDATE 0")
 
         mock_pool = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock()
-        ))
+        mock_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()
+            )
+        )
 
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(return_value=mock_pool),
+        ):
             from app.repository import api_key_repository
+
             result = await api_key_repository.deactivate_by_name("ghost")
             assert result is False
 
     @pytest.mark.asyncio
     async def test_list_all_active_returns_empty_on_error(self):
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(side_effect=Exception("DB down"))):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(side_effect=Exception("DB down")),
+        ):
             from app.repository import api_key_repository
+
             result = await api_key_repository.list_all_active()
             assert result == []
 
     @pytest.mark.asyncio
     async def test_update_last_used_no_crash_on_error(self):
-        with patch("app.repository.api_key_repository.get_db_pool", AsyncMock(side_effect=Exception("DB down"))):
+        with patch(
+            "app.repository.api_key_repository.get_db_pool",
+            AsyncMock(side_effect=Exception("DB down")),
+        ):
             from app.repository import api_key_repository
+
             # Should not raise
             await api_key_repository.update_last_used("somehash")

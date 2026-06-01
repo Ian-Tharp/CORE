@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, interval } from 'rxjs';
-import { map, switchMap, startWith } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+import { Observable, interval } from 'rxjs';
+import { map, startWith } from 'rxjs/operators';
 import { InstancePresence } from '../models/communication.models';
 
 @Injectable({
@@ -35,9 +35,9 @@ export class PresenceService {
 
   updatePresence(status?: string, activity?: string, phase?: number): Observable<any> {
     const body: any = {};
-    if (status) body.status = status;
-    if (activity !== undefined) body.activity = activity;
-    if (phase !== undefined) body.phase = phase;
+    if (status) {body.status = status;}
+    if (activity !== undefined) {body.activity = activity;}
+    if (phase !== undefined) {body.phase = phase;}
 
     return this.http.patch(
       `${this.apiUrl}/presence/${this.currentInstanceId}`,

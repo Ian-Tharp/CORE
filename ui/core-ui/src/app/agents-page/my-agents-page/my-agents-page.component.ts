@@ -16,7 +16,18 @@ import { Observable, Subject, combineLatest, startWith, switchMap, takeUntil } f
 @Component({
   selector: 'app-my-agents-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatButtonToggleModule, MatDividerModule, MatChipsModule, AgentFilterBarComponent, AgentGridComponent, AgentDetailDrawerComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatIconModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatDividerModule,
+    MatChipsModule,
+    AgentFilterBarComponent,
+    AgentGridComponent,
+    AgentDetailDrawerComponent
+  ],
   templateUrl: './my-agents-page.component.html',
   styleUrls: ['./my-agents-page.component.scss']
 })
@@ -60,7 +71,13 @@ export class MyAgentsPageComponent implements OnDestroy {
   public onCloseDetails(): void { this.selected = null; }
 
   public onFavorite(agent: LibraryAgent): void { this.library.toggleFavorite(agent.id); }
-  public onEnabled(agent: LibraryAgent): void { agent.enabled ? this.library.disableAgent(agent.id) : this.library.enableAgent(agent.id); }
+  public onEnabled(agent: LibraryAgent): void {
+    if (agent.enabled) {
+      this.library.disableAgent(agent.id);
+    } else {
+      this.library.enableAgent(agent.id);
+    }
+  }
   public onDuplicate(agent: LibraryAgent): void { this.library.duplicateAgent(agent.id).subscribe(); }
   public onDelete(agent: LibraryAgent): void { this.library.deleteAgent(agent.id).subscribe(); }
   public onExport(agent: LibraryAgent): void { this.library.exportAgent(agent.id).subscribe(); }
@@ -78,10 +95,30 @@ export class MyAgentsPageComponent implements OnDestroy {
     this._filter$.next(this.currentFilter);
   }
 
-  public removeFavoriteFilter(): void { if (this.currentFilter.favoritesOnly) { this.currentFilter = { ...this.currentFilter, favoritesOnly: false }; this._filter$.next(this.currentFilter); } }
-  public removeEnabledFilter(): void { if (this.currentFilter.enabledOnly) { this.currentFilter = { ...this.currentFilter, enabledOnly: false }; this._filter$.next(this.currentFilter); } }
-  public removeDraftsFilter(): void { if (this.currentFilter.draftsOnly) { this.currentFilter = { ...this.currentFilter, draftsOnly: false }; this._filter$.next(this.currentFilter); } }
-  public removeRecentFilter(): void { if (this.currentFilter.recentlyUsed) { this.currentFilter = { ...this.currentFilter, recentlyUsed: false }; this._filter$.next(this.currentFilter); } }
+  public removeFavoriteFilter(): void {
+    if (this.currentFilter.favoritesOnly) {
+      this.currentFilter = { ...this.currentFilter, favoritesOnly: false };
+      this._filter$.next(this.currentFilter);
+    }
+  }
+  public removeEnabledFilter(): void {
+    if (this.currentFilter.enabledOnly) {
+      this.currentFilter = { ...this.currentFilter, enabledOnly: false };
+      this._filter$.next(this.currentFilter);
+    }
+  }
+  public removeDraftsFilter(): void {
+    if (this.currentFilter.draftsOnly) {
+      this.currentFilter = { ...this.currentFilter, draftsOnly: false };
+      this._filter$.next(this.currentFilter);
+    }
+  }
+  public removeRecentFilter(): void {
+    if (this.currentFilter.recentlyUsed) {
+      this.currentFilter = { ...this.currentFilter, recentlyUsed: false };
+      this._filter$.next(this.currentFilter);
+    }
+  }
 
   @HostListener('window:keydown', ['$event'])
   public onKeydown(event: KeyboardEvent): void {
@@ -90,7 +127,7 @@ export class MyAgentsPageComponent implements OnDestroy {
       this.filterBar?.focusSearch();
       return;
     }
-    if (!this.selected) return;
+    if (!this.selected) {return;}
     if (event.key.toLowerCase() === 'f') { event.preventDefault(); this.onFavorite(this.selected); }
     if (event.key.toLowerCase() === 'e') { event.preventDefault(); this.onEnabled(this.selected); }
   }

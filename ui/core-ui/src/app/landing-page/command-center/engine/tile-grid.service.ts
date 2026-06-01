@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { Subject } from 'rxjs';
 import type { EngineService } from './engine.service';
@@ -132,7 +132,7 @@ export class TileGridService {
   }
 
   createTileGrid(rawConfig: TileGridConfig): void {
-    if (!this.engine) throw new Error('Engine not initialized');
+    if (!this.engine) {throw new Error('Engine not initialized');}
 
     // Normalize config — guards against legacy API responses that use `radius` instead of
     // `cellRadius`, and against null/NaN/0 values that produce NaN positions in ShapeGeometry.
@@ -147,7 +147,7 @@ export class TileGridService {
       cellRadius: resolvedRadius,
       gridWidth: rawConfig.gridWidth || 50,
       gridHeight: rawConfig.gridHeight || 50,
-      elevation: typeof rawConfig.elevation === 'number' && isFinite(rawConfig.elevation) ? rawConfig.elevation : 0.1,
+      elevation: typeof rawConfig.elevation === 'number' && isFinite(rawConfig.elevation) ? rawConfig.elevation : 0.1
     };
 
     // Dispose existing
@@ -201,7 +201,7 @@ export class TileGridService {
       const angle = (Math.PI * 2 / 8) * i + (Math.PI / 8); // flat-top orientation
       const px = r * Math.cos(angle);
       const pz = r * Math.sin(angle);
-      if (i === 0) octagon.moveTo(px, pz); else octagon.lineTo(px, pz);
+      if (i === 0) {octagon.moveTo(px, pz);} else {octagon.lineTo(px, pz);}
     }
     octagon.closePath();
     const geometry = new THREE.ShapeGeometry(octagon);
@@ -256,10 +256,10 @@ export class TileGridService {
       this.resourceStates.set(i, 'none');
       this.updateDisplayColor(i);
       
-      if (tile.worldX < minX) minX = tile.worldX;
-      if (tile.worldX > maxX) maxX = tile.worldX;
-      if (tile.worldZ < minZ) minZ = tile.worldZ;
-      if (tile.worldZ > maxZ) maxZ = tile.worldZ;
+      if (tile.worldX < minX) {minX = tile.worldX;}
+      if (tile.worldX > maxX) {maxX = tile.worldX;}
+      if (tile.worldZ < minZ) {minZ = tile.worldZ;}
+      if (tile.worldZ > maxZ) {maxZ = tile.worldZ;}
     }
     mesh.instanceMatrix.needsUpdate = true;
     this.colorAttribute.needsUpdate = true;
@@ -387,13 +387,13 @@ export class TileGridService {
   }
 
   private updateDisplayColor(index: number): void {
-    if (!this.colorAttribute) return;
+    if (!this.colorAttribute) {return;}
     const terrain = this.terrainStates.get(index) ?? 'plain';
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
     // Better color scheme with good visibility and contrast
-    let terrainColor = new THREE.Color();
+    const terrainColor = new THREE.Color();
     switch (terrain) {
       case 'water': terrainColor.setHex(0x2196F3); break; // Bright blue
       case 'mountain': terrainColor.setHex(0x795548); break; // Brown mountain
@@ -403,7 +403,7 @@ export class TileGridService {
     let c = terrainColor;
     
     if (this.biomeVisible && biome !== 'none') {
-      let biomeTint = new THREE.Color();
+      const biomeTint = new THREE.Color();
       switch (biome) {
         case 'forest': biomeTint.setHex(0x2E7D32); break; // Dark green
         case 'desert': biomeTint.setHex(0xFF8F00); break; // Orange  
@@ -441,17 +441,17 @@ export class TileGridService {
   }
 
   private onClick(hits: THREE.Intersection[]): void {
-    if (!this.instancedMesh || hits.length === 0) return;
+    if (!this.instancedMesh || hits.length === 0) {return;}
     this.applyPaintFromHits(hits);
   }
 
   private onContext(hits: THREE.Intersection[]): void {
-    if (this.editMode) return;
-    if (!this.instancedMesh || hits.length === 0) return;
+    if (this.editMode) {return;}
+    if (!this.instancedMesh || hits.length === 0) {return;}
     const hit = hits.find((h) => h.object === this.instancedMesh);
-    if (!hit) return;
+    if (!hit) {return;}
     const index = (hit.instanceId ?? -1) as number;
-    if (index < 0) return;
+    if (index < 0) {return;}
     const tile = this.tiles[index];
     const screen = this.engine?.worldToCanvas(hit.point.clone()) ?? null;
     if (screen && this.contextHandler) {
@@ -467,7 +467,7 @@ export class TileGridService {
   }
 
   private onHover(hits: THREE.Intersection[]): void {
-    if (!this.instancedMesh) return;
+    if (!this.instancedMesh) {return;}
     const hit = hits.find((h) => h.object === this.instancedMesh);
     const newIndex = hit && (hit.instanceId ?? -1) >= 0 ? (hit.instanceId as number) : -1;
     
@@ -492,7 +492,7 @@ export class TileGridService {
           colorArray[idx + 1] = highlight.g;
           colorArray[idx + 2] = highlight.b;
         }
-        if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+        if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
         
         const tile = this.tiles[this.hoveredIndex];
         this.hovered$.next({
@@ -517,10 +517,10 @@ export class TileGridService {
         }
       } else {
         this.hovered$.next(null);
-        if (this.hoverOutline) this.hoverOutline.visible = false;
-        if (this.hoverFill) this.hoverFill.visible = false;
+        if (this.hoverOutline) {this.hoverOutline.visible = false;}
+        if (this.hoverFill) {this.hoverFill.visible = false;}
       }
-      if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+      if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
     }
     
     // Paint while dragging
@@ -536,9 +536,9 @@ export class TileGridService {
   }
 
   private applyPaintFromHits(hits: THREE.Intersection[]): void {
-    if (!this.instancedMesh) return;
+    if (!this.instancedMesh) {return;}
     const hit = hits.find((h) => h.object === this.instancedMesh);
-    if (!hit || (hit.instanceId ?? -1) < 0) return;
+    if (!hit || (hit.instanceId ?? -1) < 0) {return;}
     const centerIndex = hit.instanceId as number;
     const center = this.tiles[centerIndex];
     
@@ -549,13 +549,12 @@ export class TileGridService {
         } else if (this.activeLayer === 'biome') {
           this.biomeStates.set(i, this.biomeTool);
         } else {
-          if (this.resourceTool === 'erase') this.resourceStates.set(i, 'none');
-          else this.resourceStates.set(i, this.resourceTool);
+          if (this.resourceTool === 'erase') {this.resourceStates.set(i, 'none');} else {this.resourceStates.set(i, this.resourceTool);}
         }
         this.updateDisplayColor(i);
       }
     }
-    if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
     
     // Update hover info during painting
     if (this.hoveredIndex >= 0) {
@@ -581,17 +580,15 @@ export class TileGridService {
   setResourceTool(tool: ResourceState | 'erase'): void { this.resourceTool = tool; }
   
   setLayerVisibility(layer: 'terrain' | 'biome' | 'resources', visible: boolean): void {
-    if (layer === 'terrain') this.terrainVisible = visible;
-    else if (layer === 'biome') this.biomeVisible = visible; 
-    else this.resourcesVisible = visible;
+    if (layer === 'terrain') {this.terrainVisible = visible;} else if (layer === 'biome') {this.biomeVisible = visible;} else {this.resourcesVisible = visible;}
     
-    for (let i = 0; i < this.tiles.length; i++) this.updateDisplayColor(i);
-    if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+    for (let i = 0; i < this.tiles.length; i++) {this.updateDisplayColor(i);}
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
   }
 
   setOutlinesVisible(visible: boolean): void {
     this.outlinesVisible = visible;
-    if (this.outlineMesh) this.outlineMesh.visible = visible;
+    if (this.outlineMesh) {this.outlineMesh.visible = visible;}
   }
 
   setBrushRadius(radius: number): void {
@@ -628,9 +625,9 @@ export class TileGridService {
       const t = this.terrainStates.get(i) ?? 'plain';
       const b = this.biomeStates.get(i) ?? 'none';
       const r = this.resourceStates.get(i) ?? 'none';
-      if (t !== 'plain') terrain.push({ index: i, state: t });
-      if (b !== 'none') biome.push({ index: i, state: b });
-      if (r !== 'none') resources.push({ index: i, state: r });
+      if (t !== 'plain') {terrain.push({ index: i, state: t });}
+      if (b !== 'none') {biome.push({ index: i, state: b });}
+      if (r !== 'none') {resources.push({ index: i, state: r });}
     }
     
     return { name, config: this.currentConfig!, layers: { terrain, biome, resources } } as any;
@@ -648,23 +645,22 @@ export class TileGridService {
     this.createTileGrid(payload.config);
     
     if (payload.layers) {
-      for (const t of payload.layers.terrain) this.terrainStates.set(t.index, t.state);
-      for (const b of payload.layers.biome) this.biomeStates.set(b.index, b.state);
-      for (const r of payload.layers.resources) this.resourceStates.set(r.index, r.state);
-      for (let i = 0; i < this.tiles.length; i++) this.updateDisplayColor(i);
+      for (const t of payload.layers.terrain) {this.terrainStates.set(t.index, t.state);}
+      for (const b of payload.layers.biome) {this.biomeStates.set(b.index, b.state);}
+      for (const r of payload.layers.resources) {this.resourceStates.set(r.index, r.state);}
+      for (let i = 0; i < this.tiles.length; i++) {this.updateDisplayColor(i);}
     } else if (payload.tiles) {
       // Backward compatibility
       for (const t of payload.tiles) {
-        if (t.state === 'life') this.biomeStates.set(t.index, 'forest');
-        else if (t.state === 'resource') this.resourceStates.set(t.index, 'node');
+        if (t.state === 'life') {this.biomeStates.set(t.index, 'forest');} else if (t.state === 'resource') {this.resourceStates.set(t.index, 'node');}
       }
-      for (let i = 0; i < this.tiles.length; i++) this.updateDisplayColor(i);
+      for (let i = 0; i < this.tiles.length; i++) {this.updateDisplayColor(i);}
     }
-    if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
   }
 
   randomize(): void {
-    if (!this.instancedMesh) return;
+    if (!this.instancedMesh) {return;}
     const rand = this.rng ?? Math.random;
     
     for (let i = 0; i < this.tiles.length; i++) {
@@ -685,7 +681,7 @@ export class TileGridService {
       
       this.updateDisplayColor(i);
     }
-    if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
   }
 
   getCurrentConfig(): TileGridConfig | undefined { 
@@ -693,18 +689,18 @@ export class TileGridService {
   }
 
   clear(): void {
-    if (!this.instancedMesh) return;
+    if (!this.instancedMesh) {return;}
     for (let i = 0; i < this.tiles.length; i++) {
       this.terrainStates.set(i, 'plain');
       this.biomeStates.set(i, 'none');
       this.resourceStates.set(i, 'none');
       this.updateDisplayColor(i);
     }
-    if (this.colorAttribute) this.colorAttribute.needsUpdate = true;
+    if (this.colorAttribute) {this.colorAttribute.needsUpdate = true;}
   }
 
   private selectFromHits(hits: THREE.Intersection[]): void {
-    if (!this.instancedMesh) return;
+    if (!this.instancedMesh) {return;}
     const hit = hits.find((h) => h.object === this.instancedMesh);
     if (!hit || (hit.instanceId ?? -1) < 0) {
       this.selected$.next(null);
@@ -722,7 +718,7 @@ export class TileGridService {
       worldZ: tile.worldZ,
       terrain: this.terrainStates.get(index) ?? 'plain',
       biome: this.biomeStates.get(index) ?? 'none',
-      resource: this.resourceStates.get(index) ?? 'none',
+      resource: this.resourceStates.get(index) ?? 'none'
     };
     this.selected$.next(payload);
 
@@ -746,7 +742,7 @@ export class TileGridService {
   }
 
   updateConnections(connections: WorldConnection[]): void {
-    if (!this.engine) return;
+    if (!this.engine) {return;}
 
     // Remove existing connection lines
     if (this.connectionLinesGroup) {
@@ -760,7 +756,7 @@ export class TileGridService {
       this.connectionLinesGroup = undefined;
     }
 
-    if (connections.length === 0) return;
+    if (connections.length === 0) {return;}
 
     // Create new group for connection lines
     this.connectionLinesGroup = new THREE.Group();
@@ -769,7 +765,7 @@ export class TileGridService {
     for (const conn of connections) {
       const fromTile = this.tiles[conn.fromTileIndex];
       const toTile = this.tiles[conn.toTileIndex];
-      if (!fromTile || !toTile) continue;
+      if (!fromTile || !toTile) {continue;}
 
       const line = this.createConnectionLine(
         fromTile.worldX, fromTile.worldZ,
@@ -788,7 +784,7 @@ export class TileGridService {
     x1: number, z1: number,
     x2: number, z2: number,
     type: ConnectionType,
-    bidirectional: boolean
+    _bidirectional: boolean
   ): THREE.Line {
     const style = CONNECTION_STYLES[type];
     const color = new THREE.Color(style.color);
@@ -844,7 +840,7 @@ export class TileGridService {
 
   getTileWorldPosition(index: number): { x: number; z: number } | null {
     const tile = this.tiles[index];
-    if (!tile) return null;
+    if (!tile) {return null;}
     return { x: tile.worldX, z: tile.worldZ };
   }
 }

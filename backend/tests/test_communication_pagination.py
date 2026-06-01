@@ -26,6 +26,7 @@ import app.repository.communication_repository as comm_repo_module
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_db_pool_mock(conn_mock):
     """
     Build a mock asyncpg-style pool where pool.acquire() works as an async
@@ -50,6 +51,7 @@ def _make_db_pool_mock(conn_mock):
 # Repository-level unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestCountChannels:
     """Unit tests for the new count_channels repository function."""
 
@@ -63,7 +65,10 @@ class TestCountChannels:
         mock_conn.fetchrow.return_value = {"total": 42}
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             result = await comm_repo_module.count_channels("instance-abc")
 
         assert result == 42
@@ -76,14 +81,17 @@ class TestCountChannels:
         mock_conn.fetchrow.return_value = {"total": 7}
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await comm_repo_module.count_channels("SENTINEL_INSTANCE")
 
         call_args = mock_conn.fetchrow.call_args[0]
         # The instance_id must appear as a positional argument after the SQL string
-        assert "SENTINEL_INSTANCE" in call_args, (
-            "instance_id not forwarded to count query"
-        )
+        assert (
+            "SENTINEL_INSTANCE" in call_args
+        ), "instance_id not forwarded to count query"
 
     @pytest.mark.asyncio
     async def test_count_channels_returns_zero_on_none(self):
@@ -92,7 +100,10 @@ class TestCountChannels:
         mock_conn.fetchrow.return_value = None
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             result = await comm_repo_module.count_channels("i")
 
         assert result == 0
@@ -105,7 +116,10 @@ class TestCountMessages:
         mock_conn.fetchrow.return_value = {"total": 15}
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             result = await comm_repo_module.count_messages("chan-1")
 
         assert result == 15
@@ -120,7 +134,10 @@ class TestCountMessages:
         mock_conn.fetchrow.return_value = {"total": 3}
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await comm_repo_module.count_messages("chan-1", thread_id="thread-99")
 
         sql = mock_conn.fetchrow.call_args[0][0]
@@ -140,7 +157,10 @@ class TestListChannelsPagination:
         mock_conn.fetch.return_value = []
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await comm_repo_module.list_channels("inst-1", limit=10, offset=20)
 
         call_args = mock_conn.fetch.call_args[0]
@@ -155,7 +175,10 @@ class TestListChannelsPagination:
         mock_conn.fetch.return_value = []
         mock_pool = _make_db_pool_mock(mock_conn)
 
-        with patch("app.repository.communication_repository.get_db_pool", new=AsyncMock(return_value=mock_pool)):
+        with patch(
+            "app.repository.communication_repository.get_db_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             await comm_repo_module.list_channels("inst-1")
 
         call_args = mock_conn.fetch.call_args[0]
@@ -166,6 +189,7 @@ class TestListChannelsPagination:
 # ---------------------------------------------------------------------------
 # Controller-level tests: channels endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestGetChannelsEndpoint:
     """Tests for GET /communication/channels with pagination."""
@@ -188,6 +212,7 @@ class TestGetChannelsEndpoint:
             self._setup_mocks(channels, 42, mock_repo)
 
             from fastapi import FastAPI
+
             app = FastAPI()
             app.include_router(comm_router)
             client = TestClient(app)
@@ -211,6 +236,7 @@ class TestGetChannelsEndpoint:
             self._setup_mocks([], 0, mock_repo)
 
             from fastapi import FastAPI
+
             app = FastAPI()
             app.include_router(comm_router)
             client = TestClient(app)
@@ -237,6 +263,7 @@ class TestGetChannelsEndpoint:
             self._setup_mocks([], 0, mock_repo)
 
             from fastapi import FastAPI
+
             app = FastAPI()
             app.include_router(comm_router)
             client = TestClient(app)
@@ -253,11 +280,13 @@ class TestGetChannelsEndpoint:
         SENTINEL TEST — verifies pagination math at repository level.
         offset=3 with limit=3 on a 9-item list should return items 4-6 (0-indexed 3-5).
         """
-        all_channels = [{"channel_id": f"ch-{i}", "name": f"Channel {i}"} for i in range(9)]
+        all_channels = [
+            {"channel_id": f"ch-{i}", "name": f"Channel {i}"} for i in range(9)
+        ]
 
         # Simulate repository slicing with offset
         def _mock_list(instance_id, limit=50, offset=0):
-            return all_channels[offset: offset + limit]
+            return all_channels[offset : offset + limit]
 
         page1 = _mock_list("inst", limit=3, offset=0)
         page2 = _mock_list("inst", limit=3, offset=3)
@@ -270,7 +299,7 @@ class TestGetChannelsEndpoint:
     def test_get_channels_last_page_partial(self):
         """Partial last page must return only remaining items."""
         all_channels = [{"channel_id": f"ch-{i}"} for i in range(5)]
-        page = all_channels[4:4 + 10]
+        page = all_channels[4 : 4 + 10]
         assert len(page) == 1
         assert page[0]["channel_id"] == "ch-4"
 
@@ -278,6 +307,7 @@ class TestGetChannelsEndpoint:
 # ---------------------------------------------------------------------------
 # Controller-level tests: messages endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestGetMessagesEndpoint:
     """Tests for GET /communication/channels/{id}/messages — total in response."""
@@ -298,6 +328,7 @@ class TestGetMessagesEndpoint:
             mock_repo.get_message_reactions = AsyncMock(return_value=[])
 
             from fastapi import FastAPI
+
             app = FastAPI()
             app.include_router(comm_router)
             client = TestClient(app)
@@ -326,6 +357,7 @@ class TestGetMessagesEndpoint:
             mock_repo.get_message_reactions = AsyncMock(return_value=[])
 
             from fastapi import FastAPI
+
             app = FastAPI()
             app.include_router(comm_router)
             client = TestClient(app)
@@ -349,7 +381,7 @@ class TestGetMessagesEndpoint:
 
         def _slice(channel_id, page=1, page_size=50, thread_id=None):
             offset = (page - 1) * page_size
-            return all_msgs[offset: offset + page_size]
+            return all_msgs[offset : offset + page_size]
 
         page1 = _slice("ch", page=1, page_size=3)
         page2 = _slice("ch", page=2, page_size=3)

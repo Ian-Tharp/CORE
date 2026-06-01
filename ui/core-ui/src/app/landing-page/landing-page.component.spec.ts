@@ -42,9 +42,9 @@ describe('LandingPageComponent', () => {
         storage_available_gb: 768,
         network_sent_gb: 1,
         network_recv_gb: 2,
-        processes_count: 100,
+        processes_count: 100
       })),
-      getNetworkActivityPercentage: jest.fn().mockReturnValue(5),
+      getNetworkActivityPercentage: jest.fn().mockReturnValue(5)
     };
 
     instanceService = {
@@ -53,7 +53,7 @@ describe('LandingPageComponent', () => {
         status: 'healthy',
         services: {},
         uptime: { seconds: 1, formatted: '1s' },
-        timestamp: '2026-02-09T00:00:00Z',
+        timestamp: '2026-02-09T00:00:00Z'
       })),
       getRecentActivities: jest.fn().mockReturnValue(of([])),
       getTaskSummary: jest.fn().mockReturnValue(of({
@@ -62,16 +62,16 @@ describe('LandingPageComponent', () => {
         running: 0,
         completed: 0,
         failed: 0,
-        last_update: '2026-02-09T00:00:00Z',
+        last_update: '2026-02-09T00:00:00Z'
       })),
       startInstancePolling: jest.fn().mockReturnValue(of([])),
       startSystemHealthPolling: jest.fn().mockReturnValue(of({
         status: 'healthy',
         services: {},
         uptime: { seconds: 1, formatted: '1s' },
-        timestamp: '2026-02-09T00:00:00Z',
+        timestamp: '2026-02-09T00:00:00Z'
       })),
-      activities$: of([]),
+      activities$: of([])
     };
 
     discordBridgeService = {
@@ -80,12 +80,12 @@ describe('LandingPageComponent', () => {
         tone: 'ready',
         detail: '1 mapped channel ready',
         tooltip: 'Discord Gateway connected.',
-        status: null,
-      }),
+        status: null
+      })
     };
 
     agentLibraryService = {
-      getAgents: jest.fn().mockReturnValue(of([])),
+      getAgents: jest.fn().mockReturnValue(of([]))
     };
 
     await TestBed.configureTestingModule({
@@ -96,7 +96,7 @@ describe('LandingPageComponent', () => {
         { provide: InstanceService, useValue: instanceService },
         { provide: MatSnackBar, useValue: { open: jest.fn() } },
         { provide: DiscordBridgeService, useValue: discordBridgeService },
-        { provide: AgentLibraryService, useValue: agentLibraryService },
+        { provide: AgentLibraryService, useValue: agentLibraryService }
       ]
     })
       .compileComponents();

@@ -38,16 +38,16 @@ class ConnectionManager:
 
         # channel_id -> Set of instance_ids subscribed
         self.channel_subscribers: Dict[str, Set[str]] = defaultdict(set)
-        
+
         # Typing indicators: channel_id -> {instance_id: expiry_time}
         self.typing_indicators: Dict[str, Dict[str, datetime]] = defaultdict(dict)
-        
+
         # Read receipts: message_id -> {instance_id: read_time}
         self.read_receipts: Dict[str, Dict[str, datetime]] = defaultdict(dict)
-        
+
         # Connection metadata: instance_id -> metadata
         self.connection_metadata: Dict[str, Dict] = {}
-        
+
         # Heartbeat tracking
         self.last_heartbeat: Dict[str, datetime] = {}
 
@@ -63,8 +63,8 @@ class ConnectionManager:
             {
                 "type": "connection",
                 "instance_id": instance_id,
-                "message": "Connected to Communication Commons"
-            }
+                "message": "Connected to Communication Commons",
+            },
         )
 
     def disconnect(self, instance_id: str):
@@ -100,7 +100,9 @@ class ConnectionManager:
     async def broadcast_to_channel(self, channel_id: str, message: dict):
         """Broadcast message to all subscribers of a channel."""
         subscribers = self.channel_subscribers.get(channel_id, set())
-        logger.debug(f"Broadcasting to channel {channel_id}: {len(subscribers)} subscribers")
+        logger.debug(
+            f"Broadcasting to channel {channel_id}: {len(subscribers)} subscribers"
+        )
 
         disconnected = []
         for instance_id in subscribers:
@@ -134,105 +136,122 @@ class ConnectionManager:
         for instance_id in disconnected:
             self.disconnect(instance_id)
 
-    async def broadcast_presence_update(self, instance_id: str, status: str, activity: str | None = None, phase: int | None = None):
+    async def broadcast_presence_update(
+        self,
+        instance_id: str,
+        status: str,
+        activity: str | None = None,
+        phase: int | None = None,
+    ):
         """Broadcast presence update to all connected instances."""
         message = {
             "type": "presence",
             "instance_id": instance_id,
             "status": status,
             "activity": activity,
-            "phase": phase
+            "phase": phase,
         }
         await self.broadcast_to_all(message)
 
     # =========================================================================
     # Typing Indicators
     # =========================================================================
-    
+
     async def start_typing(self, instance_id: str, channel_id: str):
         """
         Indicate that an instance started typing in a channel.
-        
+
         Typing indicators auto-expire after 5 seconds.
         """
         expiry = datetime.utcnow()
         self.typing_indicators[channel_id][instance_id] = expiry
-        
+
         # Broadcast typing start to channel subscribers
-        await self.broadcast_to_channel(channel_id, {
-            "type": "typing_start",
-            "instance_id": instance_id,
-            "channel_id": channel_id,
-            "timestamp": expiry.isoformat()
-        })
-        
+        await self.broadcast_to_channel(
+            channel_id,
+            {
+                "type": "typing_start",
+                "instance_id": instance_id,
+                "channel_id": channel_id,
+                "timestamp": expiry.isoformat(),
+            },
+        )
+
         logger.debug(f"{instance_id} started typing in {channel_id}")
-    
+
     async def stop_typing(self, instance_id: str, channel_id: str):
         """
         Indicate that an instance stopped typing.
         """
         if channel_id in self.typing_indicators:
             self.typing_indicators[channel_id].pop(instance_id, None)
-        
-        await self.broadcast_to_channel(channel_id, {
-            "type": "typing_stop",
-            "instance_id": instance_id,
-            "channel_id": channel_id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
-        
+
+        await self.broadcast_to_channel(
+            channel_id,
+            {
+                "type": "typing_stop",
+                "instance_id": instance_id,
+                "channel_id": channel_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
         logger.debug(f"{instance_id} stopped typing in {channel_id}")
-    
+
     def get_typing_users(self, channel_id: str) -> list:
         """
         Get list of users currently typing in a channel.
-        
+
         Automatically cleans up expired typing indicators.
         """
         now = datetime.utcnow()
         typing_users = []
         expired = []
-        
-        for instance_id, started_at in self.typing_indicators.get(channel_id, {}).items():
+
+        for instance_id, started_at in self.typing_indicators.get(
+            channel_id, {}
+        ).items():
             # Typing indicator expires after 5 seconds
             if (now - started_at).total_seconds() < 5:
                 typing_users.append(instance_id)
             else:
                 expired.append(instance_id)
-        
+
         # Clean up expired
         for instance_id in expired:
             self.typing_indicators[channel_id].pop(instance_id, None)
-        
+
         return typing_users
 
     # =========================================================================
     # Read Receipts
     # =========================================================================
-    
+
     async def mark_read(self, instance_id: str, message_id: str, channel_id: str):
         """
         Mark a message as read by an instance.
         """
         read_time = datetime.utcnow()
         self.read_receipts[message_id][instance_id] = read_time
-        
+
         # Broadcast read receipt to channel
-        await self.broadcast_to_channel(channel_id, {
-            "type": "read_receipt",
-            "instance_id": instance_id,
-            "message_id": message_id,
-            "channel_id": channel_id,
-            "read_at": read_time.isoformat()
-        })
-        
+        await self.broadcast_to_channel(
+            channel_id,
+            {
+                "type": "read_receipt",
+                "instance_id": instance_id,
+                "message_id": message_id,
+                "channel_id": channel_id,
+                "read_at": read_time.isoformat(),
+            },
+        )
+
         logger.debug(f"{instance_id} read message {message_id}")
-    
+
     def get_read_receipts(self, message_id: str) -> Dict[str, str]:
         """
         Get all read receipts for a message.
-        
+
         Returns:
             Dict mapping instance_id to ISO timestamp
         """
@@ -244,65 +263,70 @@ class ConnectionManager:
     # =========================================================================
     # Heartbeat Management
     # =========================================================================
-    
+
     async def heartbeat(self, instance_id: str):
         """
         Record a heartbeat from an instance.
-        
+
         Used to track connection health and detect stale connections.
         """
         self.last_heartbeat[instance_id] = datetime.utcnow()
-    
+
     def is_connection_alive(self, instance_id: str, max_age_seconds: int = 60) -> bool:
         """
         Check if a connection is alive based on last heartbeat.
         """
         if instance_id not in self.last_heartbeat:
             return instance_id in self.active_connections
-        
+
         age = (datetime.utcnow() - self.last_heartbeat[instance_id]).total_seconds()
         return age < max_age_seconds
-    
+
     async def cleanup_stale_connections(self, max_age_seconds: int = 60):
         """
         Disconnect instances that haven't sent a heartbeat recently.
         """
         stale = [
-            instance_id for instance_id in self.active_connections
+            instance_id
+            for instance_id in self.active_connections
             if not self.is_connection_alive(instance_id, max_age_seconds)
         ]
-        
+
         for instance_id in stale:
             logger.info(f"Cleaning up stale connection: {instance_id}")
             self.disconnect(instance_id)
             await self.broadcast_presence_update(instance_id, "offline")
-        
+
         return len(stale)
 
     # =========================================================================
     # Connection Metadata
     # =========================================================================
-    
+
     def set_metadata(self, instance_id: str, metadata: Dict):
         """Set metadata for a connection."""
         self.connection_metadata[instance_id] = {
             **self.connection_metadata.get(instance_id, {}),
             **metadata,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.utcnow().isoformat(),
         }
-    
+
     def get_metadata(self, instance_id: str) -> Optional[Dict]:
         """Get metadata for a connection."""
         return self.connection_metadata.get(instance_id)
-    
+
     def get_connection_stats(self) -> Dict:
         """Get connection statistics."""
         return {
             "active_connections": len(self.active_connections),
             "channels_with_subscribers": len(self.channel_subscribers),
-            "total_subscriptions": sum(len(s) for s in self.channel_subscribers.values()),
+            "total_subscriptions": sum(
+                len(s) for s in self.channel_subscribers.values()
+            ),
             "connections_with_metadata": len(self.connection_metadata),
-            "typing_indicators_active": sum(len(t) for t in self.typing_indicators.values())
+            "typing_indicators_active": sum(
+                len(t) for t in self.typing_indicators.values()
+            ),
         }
 
 

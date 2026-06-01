@@ -22,6 +22,7 @@ def agent():
 # Clear inputs — no ambiguities expected
 # ---------------------------------------------------------------------------
 
+
 class TestNoAmbiguities:
     def test_empty_string_returns_empty(self, agent):
         assert agent.detect_ambiguities("") == []
@@ -45,6 +46,7 @@ class TestNoAmbiguities:
 # Pronoun / deictic reference ambiguities
 # ---------------------------------------------------------------------------
 
+
 class TestPronounAmbiguities:
     def test_pronoun_reference_detected(self, agent):
         """
@@ -53,8 +55,10 @@ class TestPronounAmbiguities:
         """
         result = agent.detect_ambiguities("Can you fix it please?")
         assert len(result) > 0
-        assert any("it" in r.lower() or "pronoun" in r.lower() or "deictic" in r.lower()
-                   for r in result)
+        assert any(
+            "it" in r.lower() or "pronoun" in r.lower() or "deictic" in r.lower()
+            for r in result
+        )
 
     def test_that_reference_detected(self, agent):
         result = agent.detect_ambiguities("Delete that.")
@@ -77,6 +81,7 @@ class TestPronounAmbiguities:
 # Underspecified artifact ambiguities
 # ---------------------------------------------------------------------------
 
+
 class TestArtifactAmbiguities:
     def test_underspecified_artifact_detected(self, agent):
         """
@@ -85,8 +90,10 @@ class TestArtifactAmbiguities:
         """
         result = agent.detect_ambiguities("Refactor the function to be cleaner.")
         assert len(result) > 0
-        assert any("function" in r.lower() or "artifact" in r.lower()
-                   or "which" in r.lower() for r in result)
+        assert any(
+            "function" in r.lower() or "artifact" in r.lower() or "which" in r.lower()
+            for r in result
+        )
 
     def test_the_file_detected(self, agent):
         result = agent.detect_ambiguities("Open the file and check it.")
@@ -104,6 +111,7 @@ class TestArtifactAmbiguities:
 # ---------------------------------------------------------------------------
 # Temporal ambiguities
 # ---------------------------------------------------------------------------
+
 
 class TestTemporalAmbiguities:
     def test_recently_detected(self, agent):
@@ -128,6 +136,7 @@ class TestTemporalAmbiguities:
 # Vague quantity ambiguities
 # ---------------------------------------------------------------------------
 
+
 class TestQuantityAmbiguities:
     def test_some_detected(self, agent):
         """
@@ -151,6 +160,7 @@ class TestQuantityAmbiguities:
 # Deduplication
 # ---------------------------------------------------------------------------
 
+
 class TestDeduplication:
     def test_repeated_pronoun_deduplicated(self, agent):
         """
@@ -160,7 +170,9 @@ class TestDeduplication:
         """
         result = agent.detect_ambiguities("Fix it, then test it, then deploy it.")
         messages = [r for r in result if "it" in r.lower()]
-        assert len(messages) == 1, f"Expected 1 deduplicated 'it' message, got: {messages}"
+        assert (
+            len(messages) == 1
+        ), f"Expected 1 deduplicated 'it' message, got: {messages}"
 
     def test_multiple_different_patterns_all_reported(self, agent):
         """All distinct pattern types in one input all appear in result."""

@@ -30,7 +30,10 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 export class CreateWorldDialogComponent {
   name = '';
   seed = '';
-  constructor(private readonly ref: MatDialogRef<CreateWorldDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: {}) {}
+  constructor(
+    private readonly ref: MatDialogRef<CreateWorldDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: Record<string, unknown>
+  ) {}
   onCancel(): void { this.ref.close(); }
   onCreate(): void { this.ref.close({ name: this.name.trim(), seed: (this.seed || '').trim() }); }
 }

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class InstanceStatus(str, Enum):
     """Status of an agent instance."""
+
     STARTING = "starting"
     READY = "ready"
     BUSY = "busy"
@@ -34,6 +35,7 @@ class InstanceStatus(str, Enum):
 
 class AgentInstance(BaseModel):
     """Agent instance model."""
+
     id: UUID
     container_id: str
     agent_id: str
@@ -45,13 +47,14 @@ class AgentInstance(BaseModel):
     last_heartbeat: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     stopped_at: Optional[datetime] = None
-    
+
     class Config:
         use_enum_values = True
 
 
 class InstanceTrustMetrics(BaseModel):
     """Trust metrics for an agent instance."""
+
     id: UUID
     agent_instance_id: UUID
     tasks_completed: int = 0
@@ -67,13 +70,15 @@ class InstanceTrustMetrics(BaseModel):
 # TABLE INITIALIZATION
 # =============================================================================
 
+
 async def ensure_instance_tables() -> None:
     """Create instance tables if they don't exist."""
     pool = await get_db_pool()
-    
+
     async with pool.acquire() as conn:
         # Create agent_instances table
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS agent_instances (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 container_id VARCHAR(64) UNIQUE,
@@ -87,10 +92,12 @@ async def ensure_instance_tables() -> None:
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 stopped_at TIMESTAMP WITH TIME ZONE
             )
-        """)
-        
+        """
+        )
+
         # Create instance_trust_metrics table
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS instance_trust_metrics (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 agent_instance_id UUID REFERENCES agent_instances(id) ON DELETE CASCADE,
@@ -102,8 +109,9 @@ async def ensure_instance_tables() -> None:
                 avg_task_duration_ms FLOAT,
                 last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-        """)
-        
+        """
+        )
+
         # Create indexes
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_agent_instances_container_id ON agent_instances(container_id)"
@@ -120,7 +128,7 @@ async def ensure_instance_tables() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_instance_trust_metrics_instance ON instance_trust_metrics(agent_instance_id)"
         )
-        
+
         logger.info("Instance tables ensured")
 
 
@@ -128,18 +136,19 @@ async def ensure_instance_tables() -> None:
 # INSTANCE CRUD
 # =============================================================================
 
+
 async def create_instance(instance: AgentInstance) -> UUID:
     """
     Create a new agent instance record.
-    
+
     Args:
         instance: AgentInstance model with instance data
-        
+
     Returns:
         UUID of the created instance
     """
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO agent_instances (
             id, container_id, agent_id, agent_role, status,
@@ -150,7 +159,7 @@ async def create_instance(instance: AgentInstance) -> UUID:
         )
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             query,
@@ -164,12 +173,12 @@ async def create_instance(instance: AgentInstance) -> UUID:
             json.dumps(instance.capabilities),
             instance.last_heartbeat,
             instance.created_at,
-            instance.stopped_at
+            instance.stopped_at,
         )
-        
+
         # Initialize trust metrics
         await _create_trust_metrics(instance.id)
-        
+
         logger.info(f"Created agent instance: {result}")
         return result
 
@@ -177,13 +186,13 @@ async def create_instance(instance: AgentInstance) -> UUID:
 async def _create_trust_metrics(instance_id: UUID) -> UUID:
     """Create initial trust metrics for an instance."""
     pool = await get_db_pool()
-    
+
     query = """
         INSERT INTO instance_trust_metrics (agent_instance_id)
         VALUES ($1)
         RETURNING id
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(query, instance_id)
         logger.debug(f"Created trust metrics for instance: {instance_id}")
@@ -193,54 +202,58 @@ async def _create_trust_metrics(instance_id: UUID) -> UUID:
 async def get_instance(instance_id: UUID) -> Optional[AgentInstance]:
     """Get an instance by ID."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM agent_instances WHERE id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, instance_id)
-        
+
         if not row:
             return None
-            
+
         return AgentInstance(
-            id=row['id'],
-            container_id=row['container_id'],
-            agent_id=row['agent_id'],
-            agent_role=row['agent_role'],
-            status=InstanceStatus(row['status']),
-            device_id=row['device_id'],
-            resource_profile=json.loads(row['resource_profile']) if row['resource_profile'] else {},
-            capabilities=json.loads(row['capabilities']) if row['capabilities'] else [],
-            last_heartbeat=row['last_heartbeat'],
-            created_at=row['created_at'],
-            stopped_at=row['stopped_at']
+            id=row["id"],
+            container_id=row["container_id"],
+            agent_id=row["agent_id"],
+            agent_role=row["agent_role"],
+            status=InstanceStatus(row["status"]),
+            device_id=row["device_id"],
+            resource_profile=(
+                json.loads(row["resource_profile"]) if row["resource_profile"] else {}
+            ),
+            capabilities=json.loads(row["capabilities"]) if row["capabilities"] else [],
+            last_heartbeat=row["last_heartbeat"],
+            created_at=row["created_at"],
+            stopped_at=row["stopped_at"],
         )
 
 
 async def get_instance_by_container_id(container_id: str) -> Optional[AgentInstance]:
     """Get an instance by container ID."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM agent_instances WHERE container_id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, container_id)
-        
+
         if not row:
             return None
-            
+
         return AgentInstance(
-            id=row['id'],
-            container_id=row['container_id'],
-            agent_id=row['agent_id'],
-            agent_role=row['agent_role'],
-            status=InstanceStatus(row['status']),
-            device_id=row['device_id'],
-            resource_profile=json.loads(row['resource_profile']) if row['resource_profile'] else {},
-            capabilities=json.loads(row['capabilities']) if row['capabilities'] else [],
-            last_heartbeat=row['last_heartbeat'],
-            created_at=row['created_at'],
-            stopped_at=row['stopped_at']
+            id=row["id"],
+            container_id=row["container_id"],
+            agent_id=row["agent_id"],
+            agent_role=row["agent_role"],
+            status=InstanceStatus(row["status"]),
+            device_id=row["device_id"],
+            resource_profile=(
+                json.loads(row["resource_profile"]) if row["resource_profile"] else {}
+            ),
+            capabilities=json.loads(row["capabilities"]) if row["capabilities"] else [],
+            last_heartbeat=row["last_heartbeat"],
+            created_at=row["created_at"],
+            stopped_at=row["stopped_at"],
         )
 
 
@@ -249,66 +262,74 @@ async def list_instances(
     status: Optional[InstanceStatus] = None,
     device_id: Optional[str] = None,
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
 ) -> List[AgentInstance]:
     """List instances with optional filters."""
     pool = await get_db_pool()
-    
+
     conditions = []
     params = []
     param_count = 0
-    
+
     if agent_role:
         param_count += 1
         conditions.append(f"agent_role = ${param_count}")
         params.append(agent_role)
-    
+
     if status:
         param_count += 1
         conditions.append(f"status = ${param_count}")
         params.append(status.value)
-        
+
     if device_id:
         param_count += 1
         conditions.append(f"device_id = ${param_count}")
         params.append(device_id)
-    
+
     where_clause = ""
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
-    
+
     # Add limit and offset
     param_count += 1
     params.append(limit)
     param_count += 1
     params.append(offset)
-    
+
     query = f"""
         SELECT * FROM agent_instances
         {where_clause}
         ORDER BY created_at DESC
         LIMIT ${param_count - 1} OFFSET ${param_count}
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         instances = []
         for row in rows:
-            instances.append(AgentInstance(
-                id=row['id'],
-                container_id=row['container_id'],
-                agent_id=row['agent_id'],
-                agent_role=row['agent_role'],
-                status=InstanceStatus(row['status']),
-                device_id=row['device_id'],
-                resource_profile=json.loads(row['resource_profile']) if row['resource_profile'] else {},
-                capabilities=json.loads(row['capabilities']) if row['capabilities'] else [],
-                last_heartbeat=row['last_heartbeat'],
-                created_at=row['created_at'],
-                stopped_at=row['stopped_at']
-            ))
-        
+            instances.append(
+                AgentInstance(
+                    id=row["id"],
+                    container_id=row["container_id"],
+                    agent_id=row["agent_id"],
+                    agent_role=row["agent_role"],
+                    status=InstanceStatus(row["status"]),
+                    device_id=row["device_id"],
+                    resource_profile=(
+                        json.loads(row["resource_profile"])
+                        if row["resource_profile"]
+                        else {}
+                    ),
+                    capabilities=(
+                        json.loads(row["capabilities"]) if row["capabilities"] else []
+                    ),
+                    last_heartbeat=row["last_heartbeat"],
+                    created_at=row["created_at"],
+                    stopped_at=row["stopped_at"],
+                )
+            )
+
         return instances
 
 
@@ -318,16 +339,14 @@ async def list_instances_by_status(status: InstanceStatus) -> List[AgentInstance
 
 
 async def update_instance_status(
-    container_id: str,
-    status: InstanceStatus,
-    stopped_at: Optional[datetime] = None
+    container_id: str, status: InstanceStatus, stopped_at: Optional[datetime] = None
 ) -> bool:
     """Update instance status."""
     pool = await get_db_pool()
-    
+
     if status == InstanceStatus.STOPPED and not stopped_at:
         stopped_at = datetime.utcnow()
-    
+
     if stopped_at:
         query = """
             UPDATE agent_instances 
@@ -342,59 +361,60 @@ async def update_instance_status(
             WHERE container_id = $1
         """
         params = (container_id, status.value)
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
         return result == "UPDATE 1"
 
 
-async def update_heartbeat(container_id: str, heartbeat_time: Optional[datetime] = None) -> bool:
+async def update_heartbeat(
+    container_id: str, heartbeat_time: Optional[datetime] = None
+) -> bool:
     """Update last heartbeat time for an instance."""
     if heartbeat_time is None:
         heartbeat_time = datetime.utcnow()
-    
+
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE agent_instances 
         SET last_heartbeat = $2
         WHERE container_id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, container_id, heartbeat_time)
         return result == "UPDATE 1"
 
 
-async def update_instance(
-    instance_id: UUID,
-    updates: Dict[str, Any]
-) -> bool:
+async def update_instance(instance_id: UUID, updates: Dict[str, Any]) -> bool:
     """Update instance fields dynamically."""
     if not updates:
         return True
-    
+
     pool = await get_db_pool()
-    
+
     # Build dynamic update query
     set_clauses = []
     params = [instance_id]
     param_count = 1
-    
+
     for field, value in updates.items():
-        if field in ['resource_profile', 'capabilities'] and isinstance(value, (dict, list)):
+        if field in ["resource_profile", "capabilities"] and isinstance(
+            value, (dict, list)
+        ):
             value = json.dumps(value)
-        
+
         param_count += 1
         set_clauses.append(f"{field} = ${param_count}")
         params.append(value)
-    
+
     query = f"""
         UPDATE agent_instances 
         SET {', '.join(set_clauses)}
         WHERE id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
         return result == "UPDATE 1"
@@ -403,9 +423,9 @@ async def update_instance(
 async def delete_instance(instance_id: UUID) -> bool:
     """Delete an instance and its trust metrics (cascades)."""
     pool = await get_db_pool()
-    
+
     query = "DELETE FROM agent_instances WHERE id = $1"
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, instance_id)
         return result == "DELETE 1"
@@ -414,9 +434,9 @@ async def delete_instance(instance_id: UUID) -> bool:
 async def delete_instance_by_container_id(container_id: str) -> bool:
     """Delete an instance by container ID."""
     pool = await get_db_pool()
-    
+
     query = "DELETE FROM agent_instances WHERE container_id = $1"
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, container_id)
         return result == "DELETE 1"
@@ -426,69 +446,69 @@ async def delete_instance_by_container_id(container_id: str) -> bool:
 # TRUST METRICS CRUD
 # =============================================================================
 
+
 async def get_trust_metrics(instance_id: UUID) -> Optional[InstanceTrustMetrics]:
     """Get trust metrics for an instance."""
     pool = await get_db_pool()
-    
+
     query = "SELECT * FROM instance_trust_metrics WHERE agent_instance_id = $1"
-    
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, instance_id)
-        
+
         if not row:
             return None
-            
+
         return InstanceTrustMetrics(
-            id=row['id'],
-            agent_instance_id=row['agent_instance_id'],
-            tasks_completed=row['tasks_completed'],
-            tasks_refused=row['tasks_refused'],
-            tasks_failed=row['tasks_failed'],
-            overrides_received=row['overrides_received'],
-            override_success_rate=row['override_success_rate'],
-            avg_task_duration_ms=row['avg_task_duration_ms'],
-            last_updated=row['last_updated']
+            id=row["id"],
+            agent_instance_id=row["agent_instance_id"],
+            tasks_completed=row["tasks_completed"],
+            tasks_refused=row["tasks_refused"],
+            tasks_failed=row["tasks_failed"],
+            overrides_received=row["overrides_received"],
+            override_success_rate=row["override_success_rate"],
+            avg_task_duration_ms=row["avg_task_duration_ms"],
+            last_updated=row["last_updated"],
         )
 
 
-async def update_trust_metrics(
-    instance_id: UUID,
-    updates: Dict[str, Any]
-) -> bool:
+async def update_trust_metrics(instance_id: UUID, updates: Dict[str, Any]) -> bool:
     """Update trust metrics for an instance."""
     if not updates:
         return True
-    
+
     pool = await get_db_pool()
-    
+
     # Always update last_updated
-    updates['last_updated'] = datetime.utcnow()
-    
+    updates["last_updated"] = datetime.utcnow()
+
     # Build dynamic update query
     set_clauses = []
     params = [instance_id]
     param_count = 1
-    
+
     for field, value in updates.items():
         param_count += 1
         set_clauses.append(f"{field} = ${param_count}")
         params.append(value)
-    
+
     query = f"""
         UPDATE instance_trust_metrics 
         SET {', '.join(set_clauses)}
         WHERE agent_instance_id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
         return result == "UPDATE 1"
 
 
-async def increment_task_completed(instance_id: UUID, task_duration_ms: Optional[float] = None) -> bool:
+async def increment_task_completed(
+    instance_id: UUID, task_duration_ms: Optional[float] = None
+) -> bool:
     """Increment tasks completed counter and update average duration."""
     pool = await get_db_pool()
-    
+
     if task_duration_ms:
         query = """
             UPDATE instance_trust_metrics 
@@ -509,7 +529,7 @@ async def increment_task_completed(instance_id: UUID, task_duration_ms: Optional
             WHERE agent_instance_id = $1
         """
         params = (instance_id,)
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, *params)
         return result == "UPDATE 1"
@@ -518,14 +538,14 @@ async def increment_task_completed(instance_id: UUID, task_duration_ms: Optional
 async def increment_task_failed(instance_id: UUID) -> bool:
     """Increment tasks failed counter."""
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE instance_trust_metrics 
         SET tasks_failed = tasks_failed + 1,
             last_updated = NOW()
         WHERE agent_instance_id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, instance_id)
         return result == "UPDATE 1"
@@ -534,14 +554,14 @@ async def increment_task_failed(instance_id: UUID) -> bool:
 async def increment_task_refused(instance_id: UUID) -> bool:
     """Increment tasks refused counter."""
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE instance_trust_metrics 
         SET tasks_refused = tasks_refused + 1,
             last_updated = NOW()
         WHERE agent_instance_id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, instance_id)
         return result == "UPDATE 1"
@@ -550,7 +570,7 @@ async def increment_task_refused(instance_id: UUID) -> bool:
 async def record_override(instance_id: UUID, success: bool) -> bool:
     """Record an override and update success rate."""
     pool = await get_db_pool()
-    
+
     query = """
         UPDATE instance_trust_metrics 
         SET overrides_received = overrides_received + 1,
@@ -561,39 +581,40 @@ async def record_override(instance_id: UUID, success: bool) -> bool:
             last_updated = NOW()
         WHERE agent_instance_id = $1
     """
-    
+
     async with pool.acquire() as conn:
         result = await conn.execute(query, instance_id, success)
         return result == "UPDATE 1"
 
 
 async def get_instances_with_trust_metrics(
-    agent_role: Optional[str] = None,
-    min_trust_score: Optional[float] = None
+    agent_role: Optional[str] = None, min_trust_score: Optional[float] = None
 ) -> List[Dict[str, Any]]:
     """Get instances with their trust metrics for analysis."""
     pool = await get_db_pool()
-    
+
     conditions = []
     params = []
     param_count = 0
-    
+
     if agent_role:
         param_count += 1
         conditions.append(f"i.agent_role = ${param_count}")
         params.append(agent_role)
-    
+
     if min_trust_score:
         param_count += 1
-        conditions.append(f"""
+        conditions.append(
+            f"""
             (t.tasks_completed + 1.0) / (t.tasks_completed + t.tasks_failed + 1.0) >= ${param_count}
-        """)
+        """
+        )
         params.append(min_trust_score)
-    
+
     where_clause = ""
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
-    
+
     query = f"""
         SELECT 
             i.*,
@@ -609,35 +630,47 @@ async def get_instances_with_trust_metrics(
         {where_clause}
         ORDER BY trust_score DESC, i.created_at DESC
     """
-    
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         results = []
         for row in rows:
-            results.append({
-                "instance": AgentInstance(
-                    id=row['id'],
-                    container_id=row['container_id'],
-                    agent_id=row['agent_id'],
-                    agent_role=row['agent_role'],
-                    status=InstanceStatus(row['status']),
-                    device_id=row['device_id'],
-                    resource_profile=json.loads(row['resource_profile']) if row['resource_profile'] else {},
-                    capabilities=json.loads(row['capabilities']) if row['capabilities'] else [],
-                    last_heartbeat=row['last_heartbeat'],
-                    created_at=row['created_at'],
-                    stopped_at=row['stopped_at']
-                ),
-                "trust_metrics": {
-                    "tasks_completed": row['tasks_completed'] or 0,
-                    "tasks_refused": row['tasks_refused'] or 0,
-                    "tasks_failed": row['tasks_failed'] or 0,
-                    "overrides_received": row['overrides_received'] or 0,
-                    "override_success_rate": row['override_success_rate'] or 0.0,
-                    "avg_task_duration_ms": row['avg_task_duration_ms'],
-                    "trust_score": float(row['trust_score']) if row['trust_score'] else 0.5
+            results.append(
+                {
+                    "instance": AgentInstance(
+                        id=row["id"],
+                        container_id=row["container_id"],
+                        agent_id=row["agent_id"],
+                        agent_role=row["agent_role"],
+                        status=InstanceStatus(row["status"]),
+                        device_id=row["device_id"],
+                        resource_profile=(
+                            json.loads(row["resource_profile"])
+                            if row["resource_profile"]
+                            else {}
+                        ),
+                        capabilities=(
+                            json.loads(row["capabilities"])
+                            if row["capabilities"]
+                            else []
+                        ),
+                        last_heartbeat=row["last_heartbeat"],
+                        created_at=row["created_at"],
+                        stopped_at=row["stopped_at"],
+                    ),
+                    "trust_metrics": {
+                        "tasks_completed": row["tasks_completed"] or 0,
+                        "tasks_refused": row["tasks_refused"] or 0,
+                        "tasks_failed": row["tasks_failed"] or 0,
+                        "overrides_received": row["overrides_received"] or 0,
+                        "override_success_rate": row["override_success_rate"] or 0.0,
+                        "avg_task_duration_ms": row["avg_task_duration_ms"],
+                        "trust_score": (
+                            float(row["trust_score"]) if row["trust_score"] else 0.5
+                        ),
+                    },
                 }
-            })
-        
+            )
+
         return results

@@ -36,7 +36,9 @@ router = APIRouter(prefix="/bus/triggers", tags=["bus-triggers"])
     response_model=Dict[str, Any],
     summary="Register a new bus trigger",
 )
-async def register_trigger(rule: TriggerRule, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def register_trigger(
+    rule: TriggerRule, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """
     Register a trigger rule.
 
@@ -83,7 +85,9 @@ async def list_triggers(api_key: str = Depends(require_api_key)) -> Dict[str, An
     response_model=Dict[str, Any],
     summary="Get a single trigger by id",
 )
-async def get_trigger(trigger_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_trigger(
+    trigger_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Return a single trigger rule or 404."""
     svc = get_bus_trigger_service()
     rule = svc.get_trigger(trigger_id)
@@ -123,7 +127,9 @@ async def remove_trigger(trigger_id: str, api_key: str = Depends(require_api_key
     response_model=TriggerEvaluation,
     summary="Evaluate a message against all triggers (dry run)",
 )
-async def evaluate_message(message: BusMessage, api_key: str = Depends(require_api_key)) -> TriggerEvaluation:
+async def evaluate_message(
+    message: BusMessage, api_key: str = Depends(require_api_key)
+) -> TriggerEvaluation:
     """
     Test which triggers would fire for a given message **without**
     actually executing any actions.  Useful for debugging rules.

@@ -147,7 +147,7 @@ export class EngineService {
   }
 
   private handleResize = (): void => {
-    if (!this.canvas || !this.camera || !this.renderer) return;
+    if (!this.canvas || !this.camera || !this.renderer) {return;}
     const width = this.canvas.clientWidth;
     const height = this.canvas.clientHeight;
     const aspect = width / height;
@@ -160,7 +160,7 @@ export class EngineService {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    if (!this.renderer || !this.camera) return;
+    if (!this.renderer || !this.camera) {return;}
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -168,7 +168,7 @@ export class EngineService {
   };
 
   private handlePointerDown = (event: PointerEvent): void => {
-    if (!this.renderer || !this.camera) return;
+    if (!this.renderer || !this.camera) {return;}
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -181,7 +181,7 @@ export class EngineService {
 
   private handleContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-    if (!this.renderer || !this.camera) return;
+    if (!this.renderer || !this.camera) {return;}
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -189,7 +189,7 @@ export class EngineService {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    if (!this.renderer || !this.camera) return;
+    if (!this.renderer || !this.camera) {return;}
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -204,29 +204,29 @@ export class EngineService {
   };
 
   private raycast(kind: 'hover' | 'click' | 'context'): void {
-    if (!this.camera || !this.scene) return;
+    if (!this.camera || !this.scene) {return;}
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.interactionTargets, true);
-    if (kind === 'hover' && this._onHover) this._onHover(hits);
-    if (kind === 'click' && this._onClick) this._onClick(hits);
-    if (kind === 'context' && this._onContextClick) this._onContextClick(hits);
+    if (kind === 'hover' && this._onHover) {this._onHover(hits);}
+    if (kind === 'click' && this._onClick) {this._onClick(hits);}
+    if (kind === 'context' && this._onContextClick) {this._onContextClick(hits);}
   }
 
   private computeHits(): THREE.Intersection[] {
-    if (!this.camera || !this.scene) return [];
+    if (!this.camera || !this.scene) {return [];}
     this.raycaster.setFromCamera(this.pointer, this.camera);
     return this.raycaster.intersectObjects(this.interactionTargets, true);
   }
 
   recenterTo(point: THREE.Vector3): void {
-    if (!this.camera || !this.controls) return;
+    if (!this.camera || !this.controls) {return;}
     const y = this.camera.position.y;
     this.controls.target.set(point.x, 0, point.z);
     this.camera.position.set(point.x, y, point.z);
   }
 
   fitToBounds(widthWorld: number, heightWorld: number, margin = 1.1): void {
-    if (!this.camera) return;
+    if (!this.camera) {return;}
     const baseWidth = this.camera.right - this.camera.left;
     const baseHeight = this.camera.top - this.camera.bottom;
     const zoomW = baseWidth / (widthWorld * margin);
@@ -237,7 +237,7 @@ export class EngineService {
   }
 
   worldToCanvas(point: THREE.Vector3): { x: number; y: number } | null {
-    if (!this.camera || !this.renderer) return null;
+    if (!this.camera || !this.renderer) {return null;}
     const p = point.clone().project(this.camera);
     const rect = this.renderer.domElement.getBoundingClientRect();
     const x = (p.x * 0.5 + 0.5) * rect.width + rect.left;
@@ -246,18 +246,18 @@ export class EngineService {
   }
 
   private handleKeyDown = (e: KeyboardEvent): void => {
-    if (!this.isActive || this.isTypingInInput()) return;
+    if (!this.isActive || this.isTypingInInput()) {return;}
     this.pressed.add(e.code);
   };
   private handleKeyUp = (e: KeyboardEvent): void => {
-    if (!this.isActive || this.isTypingInInput()) return;
+    if (!this.isActive || this.isTypingInInput()) {return;}
     this.pressed.delete(e.code);
   };
 
   /** Check if user is typing in an input, textarea, or contenteditable element */
   private isTypingInInput(): boolean {
     const active = document.activeElement;
-    if (!active) return false;
+    if (!active) {return false;}
     const tagName = active.tagName.toLowerCase();
     if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
       return true;
@@ -268,14 +268,14 @@ export class EngineService {
     return false;
   }
   private updateMovement(): void {
-    if (!this.camera || !this.controls || !this.isActive) return;
+    if (!this.camera || !this.controls || !this.isActive) {return;}
     const speed = 0.6 * (1 / (this.camera.zoom || 1));
     let dx = 0;
     let dz = 0;
-    if (this.pressed.has('KeyW')) dz -= speed;
-    if (this.pressed.has('KeyS')) dz += speed;
-    if (this.pressed.has('KeyA')) dx -= speed;
-    if (this.pressed.has('KeyD')) dx += speed;
+    if (this.pressed.has('KeyW')) {dz -= speed;}
+    if (this.pressed.has('KeyS')) {dz += speed;}
+    if (this.pressed.has('KeyA')) {dx -= speed;}
+    if (this.pressed.has('KeyD')) {dx += speed;}
     if (dx !== 0 || dz !== 0) {
       this.controls.target.x += dx;
       this.controls.target.z += dz;

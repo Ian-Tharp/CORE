@@ -59,13 +59,17 @@ def _patch_repo():
         mock_repo.create_subscription = AsyncMock()
         mock_repo.delete_subscription = AsyncMock(return_value=True)
         mock_repo.get_subscriptions_for_agent = AsyncMock(return_value=[])
-        mock_repo.register_external_agent = AsyncMock(return_value={"agent_id": "ext-1"})
+        mock_repo.register_external_agent = AsyncMock(
+            return_value={"agent_id": "ext-1"}
+        )
         mock_repo.deregister_external_agent = AsyncMock(return_value=True)
         mock_repo.list_external_agents = AsyncMock(return_value=[])
         mock_repo.count_messages = AsyncMock(return_value=42)
         mock_repo.count_messages_by_type = AsyncMock(return_value={"broadcast": 10})
         mock_repo.count_messages_by_priority = AsyncMock(return_value={"normal": 30})
-        mock_repo.count_receipts_by_status = AsyncMock(return_value={"delivered": 35, "failed": 2})
+        mock_repo.count_receipts_by_status = AsyncMock(
+            return_value={"delivered": 35, "failed": 2}
+        )
         mock_repo.count_subscriptions = AsyncMock(return_value=5)
         mock_repo.count_external_agents = AsyncMock(return_value=1)
         mock_repo.count_offline_queued = AsyncMock(return_value=3)
@@ -126,9 +130,16 @@ class TestPublish:
 
     @pytest.mark.asyncio
     async def test_includes_subscription_matches(self, _patch_repo, _patch_ws):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "sub-agent", "message_types": ["task_request"], "topics": [], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "sub-agent",
+                    "message_types": ["task_request"],
+                    "topics": [],
+                    "scope": None,
+                },
+            ]
+        )
         _patch_ws.send_message = AsyncMock(return_value=True)
         msg = _msg(recipients=[])
         await bus_service.publish(msg)
@@ -145,8 +156,19 @@ class TestPublish:
 
     @pytest.mark.asyncio
     async def test_all_failed_returns_failed_status(self, _patch_repo):
-        _patch_repo.get_external_agent = AsyncMock(return_value={"webhook_url": "http://x", "webhook_max_retries": 0, "webhook_retry_backoff_base_ms": 100, "webhook_timeout_ms": 1000})
-        with patch("app.services.bus_service.deliver_to_external", new_callable=AsyncMock, return_value=False):
+        _patch_repo.get_external_agent = AsyncMock(
+            return_value={
+                "webhook_url": "http://x",
+                "webhook_max_retries": 0,
+                "webhook_retry_backoff_base_ms": 100,
+                "webhook_timeout_ms": 1000,
+            }
+        )
+        with patch(
+            "app.services.bus_service.deliver_to_external",
+            new_callable=AsyncMock,
+            return_value=False,
+        ):
             msg = _msg()
             receipt = await bus_service.publish(msg)
             assert receipt.status == DeliveryStatus.FAILED
@@ -173,7 +195,9 @@ class TestPublish:
 class TestBroadcast:
     @pytest.mark.asyncio
     async def test_creates_message_and_publishes(self, _patch_repo):
-        req = BroadcastRequest(sender_id="broadcaster", topic="alerts", payload={"level": "warn"})
+        req = BroadcastRequest(
+            sender_id="broadcaster", topic="alerts", payload={"level": "warn"}
+        )
         receipt = await bus_service.broadcast(req)
         _patch_repo.store_message.assert_called_once()
         call_kw = _patch_repo.store_message.call_args[1]
@@ -208,10 +232,24 @@ class TestSubscriptions:
 
     @pytest.mark.asyncio
     async def test_get_subscriptions_parses_rows(self, _patch_repo):
-        _patch_repo.get_subscriptions_for_agent = AsyncMock(return_value=[
-            {"subscription_id": "s1", "agent_id": "a1", "message_types": ["broadcast"], "topics": ["news"], "scope": None},
-            {"subscription_id": "s2", "agent_id": "a1", "message_types": [], "topics": [], "scope": {"macrocosm_id": "m1"}},
-        ])
+        _patch_repo.get_subscriptions_for_agent = AsyncMock(
+            return_value=[
+                {
+                    "subscription_id": "s1",
+                    "agent_id": "a1",
+                    "message_types": ["broadcast"],
+                    "topics": ["news"],
+                    "scope": None,
+                },
+                {
+                    "subscription_id": "s2",
+                    "agent_id": "a1",
+                    "message_types": [],
+                    "topics": [],
+                    "scope": {"macrocosm_id": "m1"},
+                },
+            ]
+        )
         subs = await bus_service.get_subscriptions("a1")
         assert len(subs) == 2
         assert subs[1].scope.macrocosm_id == "m1"
@@ -240,13 +278,15 @@ class TestDeliverExternal:
 
     @pytest.mark.asyncio
     async def test_successful_webhook(self, _patch_repo):
-        _patch_repo.get_external_agent = AsyncMock(return_value={
-            "webhook_url": "https://example.com/hook",
-            "webhook_secret": None,
-            "webhook_max_retries": 0,
-            "webhook_retry_backoff_base_ms": 100,
-            "webhook_timeout_ms": 5000,
-        })
+        _patch_repo.get_external_agent = AsyncMock(
+            return_value={
+                "webhook_url": "https://example.com/hook",
+                "webhook_secret": None,
+                "webhook_max_retries": 0,
+                "webhook_retry_backoff_base_ms": 100,
+                "webhook_timeout_ms": 5000,
+            }
+        )
         mock_resp = MagicMock(status_code=200)
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
@@ -260,13 +300,15 @@ class TestDeliverExternal:
 
     @pytest.mark.asyncio
     async def test_hmac_signature_added_when_secret(self, _patch_repo):
-        _patch_repo.get_external_agent = AsyncMock(return_value={
-            "webhook_url": "https://example.com/hook",
-            "webhook_secret": "my-secret",
-            "webhook_max_retries": 0,
-            "webhook_retry_backoff_base_ms": 100,
-            "webhook_timeout_ms": 5000,
-        })
+        _patch_repo.get_external_agent = AsyncMock(
+            return_value={
+                "webhook_url": "https://example.com/hook",
+                "webhook_secret": "my-secret",
+                "webhook_max_retries": 0,
+                "webhook_retry_backoff_base_ms": 100,
+                "webhook_timeout_ms": 5000,
+            }
+        )
         mock_resp = MagicMock(status_code=200)
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
@@ -302,11 +344,19 @@ class TestQueueForOffline:
 class TestDeliverRouting:
     @pytest.mark.asyncio
     async def test_routes_to_external_first(self, _patch_repo):
-        _patch_repo.get_external_agent = AsyncMock(return_value={
-            "webhook_url": "https://x.com", "webhook_max_retries": 0,
-            "webhook_retry_backoff_base_ms": 100, "webhook_timeout_ms": 1000,
-        })
-        with patch("app.services.bus_service.deliver_to_external", new_callable=AsyncMock, return_value=True) as mock_ext:
+        _patch_repo.get_external_agent = AsyncMock(
+            return_value={
+                "webhook_url": "https://x.com",
+                "webhook_max_retries": 0,
+                "webhook_retry_backoff_base_ms": 100,
+                "webhook_timeout_ms": 1000,
+            }
+        )
+        with patch(
+            "app.services.bus_service.deliver_to_external",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as mock_ext:
             receipt = await bus_service._deliver("ext-agent", _msg())
             assert receipt.status == DeliveryStatus.DELIVERED
             mock_ext.assert_called_once()
@@ -410,46 +460,86 @@ class TestParseMentions:
 class TestResolveSubscriptionTargets:
     @pytest.mark.asyncio
     async def test_type_match(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "listener", "message_types": ["task_request"], "topics": [], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "listener",
+                    "message_types": ["task_request"],
+                    "topics": [],
+                    "scope": None,
+                },
+            ]
+        )
         msg = _msg(message_type=MessageType.TASK_REQUEST)
         result = await bus_service._resolve_subscription_targets(msg)
         assert "listener" in result
 
     @pytest.mark.asyncio
     async def test_type_mismatch_excluded(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "listener", "message_types": ["heartbeat"], "topics": [], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "listener",
+                    "message_types": ["heartbeat"],
+                    "topics": [],
+                    "scope": None,
+                },
+            ]
+        )
         msg = _msg(message_type=MessageType.TASK_REQUEST)
         result = await bus_service._resolve_subscription_targets(msg)
         assert "listener" not in result
 
     @pytest.mark.asyncio
     async def test_topic_match(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "listener", "message_types": [], "topics": ["research"], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "listener",
+                    "message_types": [],
+                    "topics": ["research"],
+                    "scope": None,
+                },
+            ]
+        )
         msg = _msg(topic="research")
         result = await bus_service._resolve_subscription_targets(msg)
         assert "listener" in result
 
     @pytest.mark.asyncio
     async def test_sender_excluded_from_own_subscriptions(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "agent-sender", "message_types": [], "topics": [], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "agent-sender",
+                    "message_types": [],
+                    "topics": [],
+                    "scope": None,
+                },
+            ]
+        )
         msg = _msg(sender_id="agent-sender")
         result = await bus_service._resolve_subscription_targets(msg)
         assert "agent-sender" not in result
 
     @pytest.mark.asyncio
     async def test_scope_filtering(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "scoped", "message_types": [], "topics": [], "scope": {"macrocosm_id": "m1"}},
-            {"agent_id": "wrong-scope", "message_types": [], "topics": [], "scope": {"macrocosm_id": "m2"}},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "scoped",
+                    "message_types": [],
+                    "topics": [],
+                    "scope": {"macrocosm_id": "m1"},
+                },
+                {
+                    "agent_id": "wrong-scope",
+                    "message_types": [],
+                    "topics": [],
+                    "scope": {"macrocosm_id": "m2"},
+                },
+            ]
+        )
         msg = _msg(scope=BusScope(macrocosm_id="m1"))
         # Need to set scope on the message object
         msg.scope = BusScope(macrocosm_id="m1")
@@ -459,9 +549,16 @@ class TestResolveSubscriptionTargets:
 
     @pytest.mark.asyncio
     async def test_empty_types_and_topics_matches_all(self, _patch_repo):
-        _patch_repo.get_all_subscriptions = AsyncMock(return_value=[
-            {"agent_id": "wildcard", "message_types": [], "topics": [], "scope": None},
-        ])
+        _patch_repo.get_all_subscriptions = AsyncMock(
+            return_value=[
+                {
+                    "agent_id": "wildcard",
+                    "message_types": [],
+                    "topics": [],
+                    "scope": None,
+                },
+            ]
+        )
         msg = _msg()
         result = await bus_service._resolve_subscription_targets(msg)
         assert "wildcard" in result
@@ -539,19 +636,21 @@ class TestRequestResponse:
     @pytest.mark.asyncio
     async def test_finds_correlated_reply(self, _patch_repo):
         msg = _msg(correlation_id="corr-1")
-        _patch_repo.get_messages_by_correlation = AsyncMock(return_value=[
-            {
-                "message_id": "reply-1",
-                "sender_id": "responder",
-                "recipients": ["agent-sender"],
-                "message_type": "task_result",
-                "topic": None,
-                "payload": {"answer": 42},
-                "priority": "normal",
-                "correlation_id": "corr-1",
-                "reply_to": msg.id,
-            }
-        ])
+        _patch_repo.get_messages_by_correlation = AsyncMock(
+            return_value=[
+                {
+                    "message_id": "reply-1",
+                    "sender_id": "responder",
+                    "recipients": ["agent-sender"],
+                    "message_type": "task_result",
+                    "topic": None,
+                    "payload": {"answer": 42},
+                    "priority": "normal",
+                    "correlation_id": "corr-1",
+                    "reply_to": msg.id,
+                }
+            ]
+        )
         result = await bus_service.request_response(msg, timeout_ms=500)
         assert result is not None
         assert result.sender_id == "responder"

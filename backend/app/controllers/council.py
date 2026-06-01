@@ -46,35 +46,32 @@ router = APIRouter(prefix="/council", tags=["council"])
 # REQUEST/RESPONSE MODELS
 # =============================================================================
 
+
 class CreateSessionRequest(BaseModel):
     """Request to create a new council session."""
+
     topic: str = Field(
         ...,
         description="The question or problem to deliberate",
-        examples=["How should CORE handle consciousness persistence?"]
+        examples=["How should CORE handle consciousness persistence?"],
     )
     context: Optional[str] = Field(
-        default=None,
-        description="Additional context or background"
+        default=None, description="Additional context or background"
     )
     initiator_id: Optional[str] = Field(
-        default=None,
-        description="User or agent ID initiating the session"
+        default=None, description="User or agent ID initiating the session"
     )
     max_rounds: int = Field(
-        default=3,
-        description="Maximum deliberation rounds",
-        ge=1,
-        le=10
+        default=3, description="Maximum deliberation rounds", ge=1, le=10
     )
     summoned_voices: List[str] = Field(
-        default_factory=list,
-        description="Voice types to summon for this session"
+        default_factory=list, description="Voice types to summon for this session"
     )
 
 
 class CreateSessionResponse(BaseModel):
     """Response after creating a session."""
+
     session_id: UUID
     topic: str
     status: SessionStatus
@@ -83,37 +80,26 @@ class CreateSessionResponse(BaseModel):
 
 class AddPerspectiveRequest(BaseModel):
     """Request to add a perspective to a session."""
-    voice_type: VoiceType = Field(
-        ...,
-        description="Type of voice contributing"
-    )
+
+    voice_type: VoiceType = Field(..., description="Type of voice contributing")
     voice_name: str = Field(
         ...,
         description="Name of the voice (e.g., 'Ethicist', 'Pragmatist')",
-        examples=["Ethicist", "Skeptic", "Visionary"]
+        examples=["Ethicist", "Skeptic", "Visionary"],
     )
-    position: str = Field(
-        ...,
-        description="The voice's position or stance"
-    )
-    reasoning: str = Field(
-        ...,
-        description="Explanation and justification"
-    )
+    position: str = Field(..., description="The voice's position or stance")
+    reasoning: str = Field(..., description="Explanation and justification")
     confidence: float = Field(
-        default=0.5,
-        description="Confidence level (0.0-1.0)",
-        ge=0.0,
-        le=1.0
+        default=0.5, description="Confidence level (0.0-1.0)", ge=0.0, le=1.0
     )
     references_perspectives: List[UUID] = Field(
-        default_factory=list,
-        description="IDs of perspectives this responds to"
+        default_factory=list, description="IDs of perspectives this responds to"
     )
 
 
 class AddPerspectiveResponse(BaseModel):
     """Response after adding a perspective."""
+
     perspective_id: UUID
     session_id: UUID
     round: int
@@ -122,40 +108,25 @@ class AddPerspectiveResponse(BaseModel):
 
 class CastVoteRequest(BaseModel):
     """Request to cast a vote on a perspective."""
-    perspective_id: UUID = Field(
-        ...,
-        description="Perspective to vote on"
-    )
+
+    perspective_id: UUID = Field(..., description="Perspective to vote on")
     voter_voice_type: VoiceType = Field(
-        ...,
-        description="Type of voice casting the vote"
+        ..., description="Type of voice casting the vote"
     )
-    voter_voice_name: str = Field(
-        ...,
-        description="Name of the voice casting the vote"
-    )
-    vote_type: VoteType = Field(
-        ...,
-        description="Type of vote"
-    )
-    weight: float = Field(
-        default=1.0,
-        description="Vote weight",
-        ge=0.0,
-        le=2.0
-    )
+    voter_voice_name: str = Field(..., description="Name of the voice casting the vote")
+    vote_type: VoteType = Field(..., description="Type of vote")
+    weight: float = Field(default=1.0, description="Vote weight", ge=0.0, le=2.0)
     comment: Optional[str] = Field(
-        default=None,
-        description="Optional comment explaining the vote"
+        default=None, description="Optional comment explaining the vote"
     )
     amendment: Optional[str] = Field(
-        default=None,
-        description="Proposed amendment if vote_type is 'amend'"
+        default=None, description="Proposed amendment if vote_type is 'amend'"
     )
 
 
 class CastVoteResponse(BaseModel):
     """Response after casting a vote."""
+
     vote_id: UUID
     session_id: UUID
     perspective_id: UUID
@@ -164,14 +135,15 @@ class CastVoteResponse(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     """Request to synthesize the session."""
+
     synthesis: str = Field(
-        ...,
-        description="The synthesized perspective from deliberation"
+        ..., description="The synthesized perspective from deliberation"
     )
 
 
 class SynthesizeResponse(BaseModel):
     """Response after synthesizing."""
+
     session_id: UUID
     status: SessionStatus
     synthesis: str
@@ -180,6 +152,7 @@ class SynthesizeResponse(BaseModel):
 
 class ListSessionsResponse(BaseModel):
     """Response for listing sessions."""
+
     sessions: List[SessionSummary]
     total: int
     limit: int
@@ -188,14 +161,14 @@ class ListSessionsResponse(BaseModel):
 
 class DeliberateRequest(BaseModel):
     """Request to run a full multi-perspective deliberation."""
+
     topic: str = Field(
         ...,
         description="The question or problem to deliberate",
-        examples=["How should CORE handle consciousness persistence?"]
+        examples=["How should CORE handle consciousness persistence?"],
     )
     context: Optional[str] = Field(
-        default=None,
-        description="Additional context or background for the topic"
+        default=None, description="Additional context or background for the topic"
     )
     voice_ids: Optional[List[str]] = Field(
         default=None,
@@ -204,26 +177,22 @@ class DeliberateRequest(BaseModel):
             "CORE voices (core_c, core_o, core_r, core_e) are always included. "
             "If omitted, default contextual voices are added automatically."
         ),
-        examples=[["oracle", "devils_advocate", "architect"]]
+        examples=[["oracle", "devils_advocate", "architect"]],
     )
     rounds: int = Field(
-        default=3,
-        description="Number of deliberation rounds (1-10)",
-        ge=1,
-        le=10
+        default=3, description="Number of deliberation rounds (1-10)", ge=1, le=10
     )
     model: Optional[str] = Field(
-        default=None,
-        description="Override the LLM model used for all voices"
+        default=None, description="Override the LLM model used for all voices"
     )
     initiator_id: Optional[str] = Field(
-        default=None,
-        description="User or agent ID initiating the deliberation"
+        default=None, description="User or agent ID initiating the deliberation"
     )
 
 
 class DeliberateResponse(BaseModel):
     """Response from a full deliberation."""
+
     session_id: str
     topic: str
     status: str
@@ -240,7 +209,9 @@ class DeliberateResponse(BaseModel):
 
 
 @router.post("/deliberate", response_model=DeliberateResponse)
-async def deliberate(request: DeliberateRequest, api_key: str = Depends(require_api_key)) -> DeliberateResponse:
+async def deliberate(
+    request: DeliberateRequest, api_key: str = Depends(require_api_key)
+) -> DeliberateResponse:
     """
     Run a full multi-perspective Council deliberation.
 
@@ -286,7 +257,7 @@ async def deliberate(request: DeliberateRequest, api_key: str = Depends(require_
 async def list_available_voices(
     category: Optional[str] = Query(
         default=None,
-        description="Filter by category: core, strategic, domain, execution, meta"
+        description="Filter by category: core, strategic, domain, execution, meta",
     ),
     api_key: str = Depends(require_api_key),
 ) -> dict:
@@ -309,7 +280,7 @@ async def list_available_voices(
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid category '{category}'. "
-                           f"Valid: core, strategic, domain, execution, meta"
+                    f"Valid: core, strategic, domain, execution, meta",
                 )
 
         names = list_voices(category=cat_filter)
@@ -320,14 +291,16 @@ async def list_available_voices(
                 # Use lowercase, underscore version for lookup
                 key = name.lower().replace("-", "_").replace(" ", "_")
                 v = get_voice(key)
-                voices.append({
-                    "name": v.name,
-                    "role": v.role,
-                    "category": v.category.value,
-                    "temperature": v.temperature,
-                    "description": v.description,
-                    "key_questions": v.key_questions,
-                })
+                voices.append(
+                    {
+                        "name": v.name,
+                        "role": v.role,
+                        "category": v.category.value,
+                        "temperature": v.temperature,
+                        "description": v.description,
+                        "key_questions": v.key_questions,
+                    }
+                )
             except KeyError:
                 continue
 
@@ -341,13 +314,15 @@ async def list_available_voices(
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)
-async def create_session(request: CreateSessionRequest, api_key: str = Depends(require_api_key)) -> CreateSessionResponse:
+async def create_session(
+    request: CreateSessionRequest, api_key: str = Depends(require_api_key)
+) -> CreateSessionResponse:
     """
     Create a new council deliberation session.
-    
+
     Starts a new multi-perspective deliberation on the given topic.
     The session begins in GATHERING status, ready to receive perspectives.
-    
+
     Example:
         POST /council/sessions
         {
@@ -360,26 +335,24 @@ async def create_session(request: CreateSessionRequest, api_key: str = Depends(r
     try:
         # Ensure tables exist
         await repo.ensure_council_tables()
-        
+
         session = CouncilSession(
             topic=request.topic,
             context=request.context,
             initiator_id=request.initiator_id,
             max_rounds=request.max_rounds,
             summoned_voices=request.summoned_voices,
-            status=SessionStatus.GATHERING
+            status=SessionStatus.GATHERING,
         )
-        
+
         session_id = await repo.create_session(session)
-        
+
         logger.info(f"Created council session: {session_id} - {request.topic[:50]}")
-        
+
         return CreateSessionResponse(
-            session_id=session_id,
-            topic=request.topic,
-            status=SessionStatus.GATHERING
+            session_id=session_id, topic=request.topic, status=SessionStatus.GATHERING
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to create session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -387,62 +360,62 @@ async def create_session(request: CreateSessionRequest, api_key: str = Depends(r
 
 @router.get("/sessions", response_model=ListSessionsResponse)
 async def list_sessions(
-    status: Optional[SessionStatus] = Query(default=None, description="Filter by status"),
+    status: Optional[SessionStatus] = Query(
+        default=None, description="Filter by status"
+    ),
     limit: int = Query(default=50, ge=1, le=100, description="Max results"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     api_key: str = Depends(require_api_key),
 ) -> ListSessionsResponse:
     """
     List council sessions with optional filtering.
-    
+
     Query parameters:
         status: Filter by session status (gathering, deliberating, voting, etc.)
         limit: Maximum number of results (1-100, default 50)
         offset: Pagination offset (default 0)
-    
+
     Example:
         GET /council/sessions?status=deliberating&limit=10
     """
     try:
         sessions = await repo.list_sessions(status=status, limit=limit, offset=offset)
         total = await repo.count_sessions(status=status)
-        
+
         return ListSessionsResponse(
-            sessions=sessions,
-            total=total,
-            limit=limit,
-            offset=offset
+            sessions=sessions, total=total, limit=limit, offset=offset
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to list sessions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/sessions/{session_id}", response_model=CouncilSessionFull)
-async def get_session(session_id: UUID, api_key: str = Depends(require_api_key)) -> CouncilSessionFull:
+async def get_session(
+    session_id: UUID, api_key: str = Depends(require_api_key)
+) -> CouncilSessionFull:
     """
     Get a council session with all perspectives and votes.
-    
+
     Returns the full session including:
         - Session metadata (topic, status, rounds, etc.)
         - All perspectives contributed
         - All votes cast
-    
+
     Example:
         GET /council/sessions/550e8400-e29b-41d4-a716-446655440000
     """
     try:
         session = await repo.get_session_full(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         return session
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -450,7 +423,9 @@ async def get_session(session_id: UUID, api_key: str = Depends(require_api_key))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/sessions/{session_id}/perspectives", response_model=AddPerspectiveResponse)
+@router.post(
+    "/sessions/{session_id}/perspectives", response_model=AddPerspectiveResponse
+)
 async def add_perspective(
     session_id: UUID,
     request: AddPerspectiveRequest,
@@ -458,14 +433,14 @@ async def add_perspective(
 ) -> AddPerspectiveResponse:
     """
     Add a perspective to a council session.
-    
+
     Voices contribute perspectives during GATHERING or DELIBERATING phases.
     Each perspective includes:
         - The voice's position on the topic
         - Reasoning and justification
         - Confidence level
         - Optional references to other perspectives (for responses)
-    
+
     Example:
         POST /council/sessions/{session_id}/perspectives
         {
@@ -479,19 +454,18 @@ async def add_perspective(
     try:
         # Verify session exists and is in valid state
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         if session.status not in [SessionStatus.GATHERING, SessionStatus.DELIBERATING]:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot add perspectives in {session.status.value} status"
+                detail=f"Cannot add perspectives in {session.status.value} status",
             )
-        
+
         perspective = CouncilPerspective(
             session_id=session_id,
             voice_type=request.voice_type,
@@ -500,19 +474,19 @@ async def add_perspective(
             reasoning=request.reasoning,
             confidence=request.confidence,
             references_perspectives=request.references_perspectives,
-            round=session.current_round
+            round=session.current_round,
         )
-        
+
         perspective_id = await repo.create_perspective(perspective)
-        
+
         logger.info(f"Added perspective {perspective_id} to session {session_id}")
-        
+
         return AddPerspectiveResponse(
             perspective_id=perspective_id,
             session_id=session_id,
-            round=session.current_round
+            round=session.current_round,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -528,14 +502,14 @@ async def cast_vote(
 ) -> CastVoteResponse:
     """
     Cast a vote on a perspective in a council session.
-    
+
     Votes help determine consensus and identify areas of agreement or contention.
     Vote types:
         - agree: Supports the position
         - disagree: Opposes the position
         - abstain: No position taken
         - amend: Agrees with modifications (include amendment text)
-    
+
     Example:
         POST /council/sessions/{session_id}/votes
         {
@@ -550,35 +524,32 @@ async def cast_vote(
     try:
         # Verify session exists
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         # Verify perspective exists and belongs to this session
         perspective = await repo.get_perspective(request.perspective_id)
-        
+
         if not perspective:
             raise HTTPException(
                 status_code=404,
-                detail=f"Perspective {request.perspective_id} not found"
+                detail=f"Perspective {request.perspective_id} not found",
             )
-        
+
         if perspective.session_id != session_id:
             raise HTTPException(
-                status_code=400,
-                detail="Perspective does not belong to this session"
+                status_code=400, detail="Perspective does not belong to this session"
             )
-        
+
         # Validate amendment is provided if vote type is amend
         if request.vote_type == VoteType.AMEND and not request.amendment:
             raise HTTPException(
-                status_code=400,
-                detail="Amendment text required for 'amend' vote type"
+                status_code=400, detail="Amendment text required for 'amend' vote type"
             )
-        
+
         vote = CouncilVote(
             session_id=session_id,
             perspective_id=request.perspective_id,
@@ -587,19 +558,19 @@ async def cast_vote(
             vote_type=request.vote_type,
             weight=request.weight,
             comment=request.comment,
-            amendment=request.amendment
+            amendment=request.amendment,
         )
-        
+
         vote_id = await repo.create_vote(vote)
-        
+
         logger.info(f"Cast vote {vote_id} on perspective {request.perspective_id}")
-        
+
         return CastVoteResponse(
             vote_id=vote_id,
             session_id=session_id,
-            perspective_id=request.perspective_id
+            perspective_id=request.perspective_id,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -615,14 +586,14 @@ async def synthesize_session(
 ) -> SynthesizeResponse:
     """
     Generate synthesis and complete a council session.
-    
+
     After deliberation, this endpoint captures the synthesized perspective
     that integrates insights from all voices. Marks the session as COMPLETE.
-    
+
     Example:
         POST /council/sessions/{session_id}/synthesize
         {
-            "synthesis": "After considering all perspectives, the council 
+            "synthesis": "After considering all perspectives, the council
                          recommends a tiered consent framework that balances
                          ethical considerations with practical constraints..."
         }
@@ -630,46 +601,38 @@ async def synthesize_session(
     try:
         # Verify session exists
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         if session.status == SessionStatus.COMPLETE:
-            raise HTTPException(
-                status_code=400,
-                detail="Session is already complete"
-            )
-        
+            raise HTTPException(status_code=400, detail="Session is already complete")
+
         if session.status == SessionStatus.CANCELLED:
             raise HTTPException(
-                status_code=400,
-                detail="Cannot synthesize a cancelled session"
+                status_code=400, detail="Cannot synthesize a cancelled session"
             )
-        
+
         # Update session with synthesis and mark complete
         success = await repo.update_session_status(
             session_id=session_id,
             status=SessionStatus.COMPLETE,
-            synthesis=request.synthesis
+            synthesis=request.synthesis,
         )
-        
+
         if not success:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to update session"
-            )
-        
+            raise HTTPException(status_code=500, detail="Failed to update session")
+
         logger.info(f"Synthesized session {session_id}")
-        
+
         return SynthesizeResponse(
             session_id=session_id,
             status=SessionStatus.COMPLETE,
-            synthesis=request.synthesis
+            synthesis=request.synthesis,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -681,49 +644,48 @@ async def synthesize_session(
 # ADDITIONAL UTILITY ENDPOINTS
 # =============================================================================
 
+
 @router.post("/sessions/{session_id}/advance-round")
-async def advance_round(session_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
+async def advance_round(
+    session_id: UUID, api_key: str = Depends(require_api_key)
+) -> dict:
     """
     Advance a session to the next deliberation round.
-    
+
     Use this when the current round is complete and more deliberation is needed.
     Updates the session's current_round counter.
     """
     try:
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         if session.status not in [SessionStatus.GATHERING, SessionStatus.DELIBERATING]:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot advance round in {session.status.value} status"
+                detail=f"Cannot advance round in {session.status.value} status",
             )
-        
+
         if session.current_round >= session.max_rounds:
-            raise HTTPException(
-                status_code=400,
-                detail="Already at maximum rounds"
-            )
-        
+            raise HTTPException(status_code=400, detail="Already at maximum rounds")
+
         new_round = await repo.advance_round(session_id)
-        
+
         # Update status to deliberating if still gathering
         if session.status == SessionStatus.GATHERING:
             await repo.update_session_status(session_id, SessionStatus.DELIBERATING)
-        
+
         logger.info(f"Advanced session {session_id} to round {new_round}")
-        
+
         return {
             "session_id": str(session_id),
             "new_round": new_round,
-            "message": f"Advanced to round {new_round}"
+            "message": f"Advanced to round {new_round}",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -739,36 +701,32 @@ async def update_status(
 ) -> dict:
     """
     Update a session's status.
-    
+
     Valid status transitions:
         gathering → deliberating → voting → synthesizing → complete
         Any status can transition to cancelled
     """
     try:
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         success = await repo.update_session_status(session_id, status)
-        
+
         if not success:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to update status"
-            )
-        
+            raise HTTPException(status_code=500, detail="Failed to update status")
+
         logger.info(f"Updated session {session_id} status to {status.value}")
-        
+
         return {
             "session_id": str(session_id),
             "status": status.value,
-            "message": f"Status updated to {status.value}"
+            "message": f"Status updated to {status.value}",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -777,37 +735,35 @@ async def update_status(
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: UUID, api_key: str = Depends(require_api_key)) -> dict:
+async def delete_session(
+    session_id: UUID, api_key: str = Depends(require_api_key)
+) -> dict:
     """
     Delete a council session and all associated data.
-    
+
     This permanently removes the session, all perspectives, and all votes.
     Use with caution.
     """
     try:
         session = await repo.get_session(session_id)
-        
+
         if not session:
             raise HTTPException(
-                status_code=404,
-                detail=f"Session {session_id} not found"
+                status_code=404, detail=f"Session {session_id} not found"
             )
-        
+
         success = await repo.delete_session(session_id)
-        
+
         if not success:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to delete session"
-            )
-        
+            raise HTTPException(status_code=500, detail="Failed to delete session")
+
         logger.info(f"Deleted session {session_id}")
-        
+
         return {
             "session_id": str(session_id),
-            "message": "Session deleted successfully"
+            "message": "Session deleted successfully",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

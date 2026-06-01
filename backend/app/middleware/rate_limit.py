@@ -52,10 +52,7 @@ class RateLimiter:
             self.last_update[key] = now
             return
         elapsed = now - self.last_update[key]
-        self.tokens[key] = min(
-            self.burst_size,
-            self.tokens[key] + elapsed * self.rate
-        )
+        self.tokens[key] = min(self.burst_size, self.tokens[key] + elapsed * self.rate)
         self.last_update[key] = now
 
     def allow(self, key: str, cost: float = 1.0) -> bool:
@@ -209,7 +206,10 @@ class RedisRateLimiter:
             instance._script_sha = await client.script_load(_TOKEN_BUCKET_LUA)
             logger.info(
                 "RedisRateLimiter connected (host=%s:%s, prefix=%s, rpm=%d)",
-                host, port, key_prefix, requests_per_minute,
+                host,
+                port,
+                key_prefix,
+                requests_per_minute,
             )
         except Exception as exc:
             logger.warning(
@@ -246,7 +246,9 @@ class RedisRateLimiter:
             allowed = int(result[0])
             return allowed == 1
         except Exception as exc:
-            logger.warning("Redis rate-limit call failed (%s); falling back to memory", exc)
+            logger.warning(
+                "Redis rate-limit call failed (%s); falling back to memory", exc
+            )
             self._redis_healthy = False
             return self._fallback.allow(key, cost)
 
@@ -307,9 +309,13 @@ class RedisRateLimiter:
 
 
 # Default rate limiters for different endpoint types (in-memory; upgraded at startup)
-engine_limiter = RateLimiter(requests_per_minute=10, burst_size=5)  # Expensive operations
-api_limiter = RateLimiter(requests_per_minute=60, burst_size=30)    # Standard API calls
-public_limiter = RateLimiter(requests_per_minute=120, burst_size=60) # Health checks etc
+engine_limiter = RateLimiter(
+    requests_per_minute=10, burst_size=5
+)  # Expensive operations
+api_limiter = RateLimiter(requests_per_minute=60, burst_size=30)  # Standard API calls
+public_limiter = RateLimiter(
+    requests_per_minute=120, burst_size=60
+)  # Health checks etc
 
 
 async def upgrade_limiters_to_redis() -> None:
@@ -320,13 +326,19 @@ async def upgrade_limiters_to_redis() -> None:
     global engine_limiter, api_limiter, public_limiter
     try:
         engine_limiter = await RedisRateLimiter.create(
-            requests_per_minute=10, burst_size=5, key_prefix="rl:engine",
+            requests_per_minute=10,
+            burst_size=5,
+            key_prefix="rl:engine",
         )
         api_limiter = await RedisRateLimiter.create(
-            requests_per_minute=60, burst_size=30, key_prefix="rl:api",
+            requests_per_minute=60,
+            burst_size=30,
+            key_prefix="rl:api",
         )
         public_limiter = await RedisRateLimiter.create(
-            requests_per_minute=120, burst_size=60, key_prefix="rl:public",
+            requests_per_minute=120,
+            burst_size=60,
+            key_prefix="rl:public",
         )
         logger.info("Rate limiters upgraded to Redis backend")
     except Exception as exc:
@@ -350,7 +362,7 @@ async def check_rate_limit(
     request: Request,
     limiter,
     key_func: Callable[[Request], str] = get_client_ip,
-    cost: float = 1.0
+    cost: float = 1.0,
 ) -> None:
     """
     Check rate limit and raise HTTPException if exceeded.
@@ -377,7 +389,7 @@ async def check_rate_limit(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded. Retry after {retry_after:.1f} seconds.",
-                headers={"Retry-After": str(int(retry_after) + 1)}
+                headers={"Retry-After": str(int(retry_after) + 1)},
             )
     else:
         if not limiter.allow(key, cost):
@@ -386,14 +398,12 @@ async def check_rate_limit(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded. Retry after {retry_after:.1f} seconds.",
-                headers={"Retry-After": str(int(retry_after) + 1)}
+                headers={"Retry-After": str(int(retry_after) + 1)},
             )
 
 
 def rate_limit(
-    limiter,
-    key_func: Callable[[Request], str] = get_client_ip,
-    cost: float = 1.0
+    limiter, key_func: Callable[[Request], str] = get_client_ip, cost: float = 1.0
 ):
     """
     Decorator for rate limiting endpoints.
@@ -406,6 +416,7 @@ def rate_limit(
         async def expensive_operation(request: Request):
             ...
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, request: Request = None, **kwargs):
@@ -422,5 +433,7 @@ def rate_limit(
             if request is not None:
                 kwargs["request"] = request
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator

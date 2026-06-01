@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _serialize(obj: Any) -> str:
     """JSON-serialize with fallback for datetimes / UUIDs."""
     return json.dumps(obj, default=str)
@@ -46,6 +47,7 @@ def _row_to_dict(row) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Run CRUD
 # ---------------------------------------------------------------------------
+
 
 async def create_run(
     *,
@@ -201,6 +203,7 @@ async def list_runs(
 # Event log
 # ---------------------------------------------------------------------------
 
+
 async def log_event(
     run_id: str,
     event_type: str,
@@ -248,17 +251,31 @@ async def get_run_events(run_id: str, *, limit: int = 200) -> List[Dict[str, Any
 # Stats & cleanup (used by admin controller)
 # ---------------------------------------------------------------------------
 
+
 async def get_run_stats() -> Dict[str, Any]:
     """Aggregate statistics for the admin dashboard."""
     pool = await get_db_pool()
     try:
         async with pool.acquire() as conn:
             total = await conn.fetchval("SELECT COUNT(*) FROM core_runs") or 0
-            completed = await conn.fetchval("SELECT COUNT(*) FROM core_runs WHERE status = 'completed'") or 0
-            failed = await conn.fetchval("SELECT COUNT(*) FROM core_runs WHERE status = 'failed'") or 0
-            recent = await conn.fetchval(
-                "SELECT COUNT(*) FROM core_runs WHERE created_at > NOW() - INTERVAL '1 hour'"
-            ) or 0
+            completed = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM core_runs WHERE status = 'completed'"
+                )
+                or 0
+            )
+            failed = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM core_runs WHERE status = 'failed'"
+                )
+                or 0
+            )
+            recent = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM core_runs WHERE created_at > NOW() - INTERVAL '1 hour'"
+                )
+                or 0
+            )
         return {
             "total_runs": total,
             "completed_runs": completed,

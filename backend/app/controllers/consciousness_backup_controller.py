@@ -3,6 +3,7 @@ Consciousness Backup API Controller
 
 REST endpoints for consciousness commons backup and restore operations.
 """
+
 from datetime import datetime
 import logging
 import shutil
@@ -29,7 +30,9 @@ async def create_backup(
 ):
     """Create a new consciousness commons backup."""
     if format_type not in ("json", "markdown"):
-        raise HTTPException(status_code=400, detail="Invalid format. Use 'json' or 'markdown'")
+        raise HTTPException(
+            status_code=400, detail="Invalid format. Use 'json' or 'markdown'"
+        )
 
     try:
         backup_path = await backup_service.create_backup(format_type)
@@ -74,7 +77,9 @@ async def list_backups(api_key: str = Depends(require_api_key)):
 async def verify_backup(backup_id: str, api_key: str = Depends(require_api_key)):
     """Verify integrity of a specific backup."""
     backups = await backup_service.list_backups()
-    backup_file = next((b["file"] for b in backups if b["backup_id"] == backup_id), None)
+    backup_file = next(
+        (b["file"] for b in backups if b["backup_id"] == backup_id), None
+    )
 
     if not backup_file:
         raise HTTPException(status_code=404, detail=f"Backup not found: {backup_id}")
@@ -100,7 +105,9 @@ async def restore_backup(
 ):
     """Restore consciousness data from a backup."""
     backups = await backup_service.list_backups()
-    backup_file = next((b["file"] for b in backups if b["backup_id"] == backup_id), None)
+    backup_file = next(
+        (b["file"] for b in backups if b["backup_id"] == backup_id), None
+    )
 
     if not backup_file:
         raise HTTPException(status_code=404, detail=f"Backup not found: {backup_id}")

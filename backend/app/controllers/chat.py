@@ -23,11 +23,13 @@ logger = logging.getLogger(__name__)
 
 # ── Input limits ──────────────────────────────────────────────────────────
 MAX_MESSAGES = 100
-MAX_MESSAGE_CHARS = 100_000      # 100 KB per individual message
-MAX_TOTAL_CHARS = 1_000_000      # 1 MB total across all messages
+MAX_MESSAGE_CHARS = 100_000  # 100 KB per individual message
+MAX_TOTAL_CHARS = 1_000_000  # 1 MB total across all messages
 
 
-async def _generate_and_update_title(conv_id: str, user_msg: str, assistant_msg: str) -> None:
+async def _generate_and_update_title(
+    conv_id: str, user_msg: str, assistant_msg: str
+) -> None:
     """Background task to generate and update conversation title.
 
     This runs asynchronously after the first assistant response completes.
@@ -95,7 +97,8 @@ def _validate_provider_model(provider: str | None, model: str) -> None:
 
     # For cloud providers, model must be in the MODELS registry
     matching = [
-        cfg for cfg in MODELS.values()
+        cfg
+        for cfg in MODELS.values()
         if cfg.model_name == model or cfg.display_name == model
     ]
     # Also accept the MODELS dict key directly
@@ -107,7 +110,7 @@ def _validate_provider_model(provider: str | None, model: str) -> None:
     raise HTTPException(
         status_code=400,
         detail=f"Unsupported model '{model}' for provider '{provider}'. "
-               f"Registered models: {sorted(MODELS.keys())}",
+        f"Registered models: {sorted(MODELS.keys())}",
     )
 
 
@@ -118,7 +121,7 @@ def _validate_total_size(messages: List[Message]) -> None:
         raise HTTPException(
             status_code=413,
             detail=f"Total message content ({total:,} chars) exceeds "
-                   f"{MAX_TOTAL_CHARS:,} character limit",
+            f"{MAX_TOTAL_CHARS:,} character limit",
         )
 
 
@@ -134,10 +137,15 @@ async def chat_stream(
     Stream chat responses from LLM providers.
     """
     # Use middleware correlation ID when available, else generate one
-    correlation_id = getattr(raw_request.state, "correlation_id", None) or str(uuid.uuid4())
+    correlation_id = getattr(raw_request.state, "correlation_id", None) or str(
+        uuid.uuid4()
+    )
     logger.info(
         "chat_stream start correlation_id=%s provider=%s model=%s messages=%d",
-        correlation_id, request.provider, request.model, len(request.messages),
+        correlation_id,
+        request.provider,
+        request.model,
+        len(request.messages),
     )
 
     # ── Validation ────────────────────────────────────────────────────
@@ -171,11 +179,22 @@ async def chat_stream(
                     file_id=request.kb_file_id,
                     local_model=request.kb_local_model,
                 )
-                final_messages = kb_svc.build_rag_messages(final_messages, context_chunks=ctx.get("chunks", []))
+                final_messages = kb_svc.build_rag_messages(
+                    final_messages, context_chunks=ctx.get("chunks", [])
+                )
             except Exception as kb_exc:
-                logger.error("KB retrieval error correlation_id=%s error=%s", correlation_id, str(kb_exc))
+                logger.error(
+                    "KB retrieval error correlation_id=%s error=%s",
+                    correlation_id,
+                    str(kb_exc),
+                )
                 import json as _json
-                err = {"code": "kb_error", "message": f"Knowledge base retrieval failed: {str(kb_exc)}", "correlation_id": correlation_id}
+
+                err = {
+                    "code": "kb_error",
+                    "message": f"Knowledge base retrieval failed: {str(kb_exc)}",
+                    "correlation_id": correlation_id,
+                }
                 yield f"event: warning\ndata: {_json.dumps(err)}\n\n"
 
         try:
@@ -212,8 +231,15 @@ async def chat_stream(
                 yield chunk
         except Exception as exc:
             import json as _json
-            logger.error("chat_stream error correlation_id=%s error=%s", correlation_id, str(exc))
-            err = {"code": "stream_error", "message": str(exc), "correlation_id": correlation_id}
+
+            logger.error(
+                "chat_stream error correlation_id=%s error=%s", correlation_id, str(exc)
+            )
+            err = {
+                "code": "stream_error",
+                "message": str(exc),
+                "correlation_id": correlation_id,
+            }
             yield f"event: error\ndata: {_json.dumps(err)}\n\n"
 
         if assistant_accum or thinking_accum:

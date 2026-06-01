@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, interval, switchMap, startWith, catchError, of } from 'rxjs';
-import { map } from 'rxjs/operators';
 
 export interface SystemResources {
   cpu_usage: number;

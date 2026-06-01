@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule, NgFor } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { CreativeDataService, Board } from '../services/creative-data.service';
@@ -23,7 +23,7 @@ export class CreativeBoardsComponent {
   }
   refresh(): void { this.boards = this.data.listBoards(this.worldId || undefined); }
   createBoard(): void {
-    if (!this.newTitle.trim()) return;
+    if (!this.newTitle.trim()) {return;}
     this.data.createBoard({ title: this.newTitle.trim(), worldId: this.worldId || undefined });
     this.newTitle = ''; this.refresh();
   }

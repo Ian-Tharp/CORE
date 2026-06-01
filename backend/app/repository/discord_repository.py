@@ -433,7 +433,9 @@ async def get_primary_message_link_for_core_message(
         return _row_to_dict(row) if row else None
 
 
-async def list_message_links_for_core_message(core_message_id: str) -> List[Dict[str, Any]]:
+async def list_message_links_for_core_message(
+    core_message_id: str,
+) -> List[Dict[str, Any]]:
     """List all Discord link rows for a CORE message."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:

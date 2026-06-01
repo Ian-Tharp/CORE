@@ -2,8 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Observable, combineLatest } from 'rxjs';
-import { map, startWith } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 import { KnowledgebaseService } from '../services/knowledgebase/knowledgebase.service';
 import {
@@ -125,7 +124,7 @@ export class AttributionBrowserComponent implements OnInit {
   }
 
   truncateText(text: string, maxLength: number = 200): string {
-    if (text.length <= maxLength) return text;
+    if (text.length <= maxLength) {return text;}
     return text.substring(0, maxLength) + '...';
   }
 

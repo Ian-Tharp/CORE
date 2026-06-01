@@ -30,7 +30,7 @@ export class MarketplaceComponent {
   refresh(): void {
     this.worlds.listWorlds(60, 0).pipe(
       switchMap((list) => {
-        if (!list || list.length === 0) return of([] as RemoteWorldCardModel[]);
+        if (!list || list.length === 0) {return of([] as RemoteWorldCardModel[]);}
         const streams = list.map((w) => this.worlds.getLatestSnapshot(w.id).pipe(
           catchError(() => of(null)),
           map((snap) => ({ id: w.id, name: w.name, updated_at: w.updated_at, preview: (snap as any)?.preview ?? null, origin: (w as any).origin || 'human' } as RemoteWorldCardModel))
@@ -51,13 +51,13 @@ export class MarketplaceComponent {
   onCreate(): void {
     const ref = this.dialog.open(CreateWorldDialogComponent, { panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((res?: { name: string; seed?: string }) => {
-      if (!res?.name) return;
+      if (!res?.name) {return;}
       this.router.navigate(['/command-center'], { queryParams: { name: res.name, seed: res.seed || '' } });
     });
   }
 
   onDeleteWorld(id: string): void {
-    if (!confirm('Delete this world and all snapshots?')) return;
+    if (!confirm('Delete this world and all snapshots?')) {return;}
     this.worlds.deleteWorld(id).subscribe({ next: () => this.refresh() });
   }
 }

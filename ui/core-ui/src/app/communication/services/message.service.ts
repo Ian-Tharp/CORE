@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, BehaviorSubject } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { Message } from '../models/communication.models';
 import { AppConfigService } from '../../services/config/app-config.service';
@@ -53,8 +53,8 @@ export class MessageService {
       message_type: messageType,
       metadata
     };
-    if (parentMessageId) body.parent_message_id = parentMessageId;
-    if (threadId) body.thread_id = threadId;
+    if (parentMessageId) {body.parent_message_id = parentMessageId;}
+    if (threadId) {body.thread_id = threadId;}
 
     return this.http.post<Message>(
       `${this.apiUrl}/channels/${channelId}/messages`,

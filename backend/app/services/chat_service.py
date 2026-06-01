@@ -86,7 +86,7 @@ async def chat_service(
     if len(messages) > MAX_MESSAGES:
         system_msgs = [m for m in messages if m.get("role") == "system"]
         other_msgs = [m for m in messages if m.get("role") != "system"]
-        messages = system_msgs + other_msgs[-(MAX_MESSAGES - len(system_msgs)):]
+        messages = system_msgs + other_msgs[-(MAX_MESSAGES - len(system_msgs)) :]
         logger.debug("Truncated messages to %d (limit=%d)", len(messages), MAX_MESSAGES)
 
     attempt = 0
@@ -95,7 +95,13 @@ async def chat_service(
     while attempt <= MAX_RETRIES:
         if attempt > 0:
             delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
-            logger.info("Retrying provider '%s' (attempt %d/%d) after %.1fs", canonical, attempt, MAX_RETRIES, delay)
+            logger.info(
+                "Retrying provider '%s' (attempt %d/%d) after %.1fs",
+                canonical,
+                attempt,
+                MAX_RETRIES,
+                delay,
+            )
             await asyncio.sleep(delay)
 
         try:
@@ -125,7 +131,10 @@ async def chat_service(
             elapsed_ms = (time.monotonic() - start_time) * 1000
             logger.info(
                 "Provider '%s' stream complete: model=%s chunks=%d latency_ms=%.1f",
-                canonical, model, chunks_yielded, elapsed_ms,
+                canonical,
+                model,
+                chunks_yielded,
+                elapsed_ms,
             )
             breaker.record_success()
             return
@@ -138,17 +147,27 @@ async def chat_service(
             attempt += 1
             logger.warning(
                 "Provider '%s' error (attempt %d/%d): %s",
-                canonical, attempt, MAX_RETRIES + 1, exc,
+                canonical,
+                attempt,
+                MAX_RETRIES + 1,
+                exc,
             )
 
     # All retries exhausted — record failure and yield error SSE
     if last_exc is not None:
         breaker.record_failure()
-        logger.error("Provider '%s' failed after %d attempts: %s", canonical, MAX_RETRIES + 1, last_exc)
+        logger.error(
+            "Provider '%s' failed after %d attempts: %s",
+            canonical,
+            MAX_RETRIES + 1,
+            last_exc,
+        )
         yield f"event: error\ndata: {json.dumps({'error': str(last_exc), 'code': 'provider_error'})}\n\n"
 
 
-async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+async def _stream_from_ollama(
+    *, model: str, messages: List[Dict[str, str]]
+) -> AsyncGenerator[str, None]:
     """Stream chat completions from an Ollama server and emit SSE-formatted chunks.
 
     This uses Ollama's native REST API `/api/chat` with streaming enabled and
@@ -215,7 +234,9 @@ async def _stream_from_ollama(*, model: str, messages: List[Dict[str, str]]) -> 
                     except asyncio.TimeoutError:
                         # No response in 5 seconds - send heartbeat
                         heartbeat_seconds += 5
-                        logger.debug("Sending heartbeat after %ds of silence", heartbeat_seconds)
+                        logger.debug(
+                            "Sending heartbeat after %ds of silence", heartbeat_seconds
+                        )
                         yield f"event: heartbeat\ndata: {json.dumps({'elapsed': heartbeat_seconds, 'message': f'Generating response... ({heartbeat_seconds}s)'})}\n\n"
                     except StopAsyncIteration:
                         # Stream ended

@@ -17,6 +17,7 @@ from app.core.middleware import RequestMetrics
 # RequestMetrics.to_prometheus() — unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestToPrometheus:
     def _metrics_with_requests(self) -> RequestMetrics:
         """Build a metrics instance with two known requests recorded."""
@@ -101,6 +102,7 @@ class TestToPrometheus:
 # ---------------------------------------------------------------------------
 # GET /metrics endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestMetricsEndpoint:
     def _make_client(self):

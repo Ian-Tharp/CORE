@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject, BehaviorSubject, timer, interval, Subscription } from 'rxjs';
+import { Observable, Subject, BehaviorSubject, interval, Subscription } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { retryWhen, tap, delayWhen, takeUntil, filter } from 'rxjs/operators';
+import { tap, takeUntil, filter } from 'rxjs/operators';
 import { AppConfigService } from '../../services/config/app-config.service';
 
 export interface WebSocketMessage {

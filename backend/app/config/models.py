@@ -6,7 +6,7 @@ Supports local (Ollama) and cloud (OpenAI, Anthropic) providers.
 
 Usage:
     from app.config.models import get_model_config, ModelProvider
-    
+
     config = get_model_config("gpt-4")
     # or
     config = get_model_config(ModelProvider.OLLAMA, "gpt-oss:20b")
@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 class ModelProvider(str, Enum):
     """Supported model providers."""
+
     OLLAMA = "ollama"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
@@ -28,48 +29,48 @@ class ModelProvider(str, Enum):
 
 class ModelConfig(BaseModel):
     """Configuration for a specific model."""
-    
+
     provider: ModelProvider
     model_name: str
     display_name: str
-    
+
     # Connection settings
     base_url: Optional[str] = None
     api_key_env: Optional[str] = None  # Environment variable name for API key
-    
+
     # Model parameters
     default_temperature: float = 0.7
     max_tokens: int = 4096
     supports_streaming: bool = True
     supports_tools: bool = True
     supports_vision: bool = False
-    
+
     # Performance hints
     avg_tokens_per_second: Optional[float] = None  # For estimation
     cost_per_1k_input: Optional[float] = None
     cost_per_1k_output: Optional[float] = None
-    
+
     # Recommended use cases
     recommended_for: list[str] = Field(default_factory=list)
-    
+
     def get_api_key(self) -> Optional[str]:
         """Get API key from environment."""
         if self.api_key_env:
             return os.getenv(self.api_key_env)
         return None
-    
+
     def get_base_url(self) -> str:
         """Get base URL for API calls."""
         if self.base_url:
             return self.base_url
-        
+
         if self.provider == ModelProvider.OLLAMA:
             return os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         elif self.provider == ModelProvider.OPENAI:
             return "https://api.openai.com/v1"
         elif self.provider == ModelProvider.ANTHROPIC:
             return "https://api.anthropic.com"
-        
+
         return ""
 
 
@@ -120,7 +121,6 @@ MODELS: Dict[str, ModelConfig] = {
         supports_tools=False,
         recommended_for=["embeddings", "semantic_search"],
     ),
-    
     # OpenAI models
     "gpt-4o": ModelConfig(
         provider=ModelProvider.OPENAI,
@@ -144,7 +144,6 @@ MODELS: Dict[str, ModelConfig] = {
         cost_per_1k_output=0.0006,
         recommended_for=["simple_tasks", "high_volume", "cost_sensitive"],
     ),
-    
     # Anthropic models
     "claude-3-5-sonnet": ModelConfig(
         provider=ModelProvider.ANTHROPIC,
@@ -218,9 +217,9 @@ def is_model_available(model_name: str) -> bool:
     config = get_model_config(model_name)
     if not config:
         return False
-    
+
     # Check if API key is available for cloud models
     if config.provider in [ModelProvider.OPENAI, ModelProvider.ANTHROPIC]:
         return config.get_api_key() is not None
-    
+
     return True

@@ -13,15 +13,21 @@ from uuid import UUID, uuid4
 
 # --- Core State Schema ---
 
+
 class UserIntent(BaseModel):
     """Result of comprehension analysis."""
+
     type: Literal["task", "conversation", "question", "clarification"]
     description: str
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in intent classification")
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="Confidence in intent classification"
+    )
     requires_tools: bool = False
     tools_needed: List[str] = Field(default_factory=list)
     context_retrieved: Optional[str] = None
-    ambiguities: List[str] = Field(default_factory=list, description="Things that need clarification")
+    ambiguities: List[str] = Field(
+        default_factory=list, description="Things that need clarification"
+    )
     task_category: Optional[str] = Field(
         default=None,
         description=(
@@ -34,12 +40,15 @@ class UserIntent(BaseModel):
 
 class PlanStep(BaseModel):
     """A single step in the execution plan."""
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     description: str
     tool: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
-    dependencies: List[str] = Field(default_factory=list, description="Step IDs this depends on")
+    dependencies: List[str] = Field(
+        default_factory=list, description="Step IDs this depends on"
+    )
     requires_hitl: bool = False  # Human-in-the-loop checkpoint
     retry_policy: Dict[str, Any] = Field(
         default_factory=lambda: {"max_attempts": 3, "backoff_seconds": 1}
@@ -51,6 +60,7 @@ class PlanStep(BaseModel):
 
 class ExecutionPlan(BaseModel):
     """The orchestrated plan for accomplishing the task."""
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     goal: str
     steps: List[PlanStep]
@@ -62,10 +72,13 @@ class ExecutionPlan(BaseModel):
 
 class StepResult(BaseModel):
     """Result of executing a plan step."""
+
     step_id: str
     status: Literal["success", "failure", "partial"]
     outputs: Dict[str, Any] = Field(default_factory=dict)
-    artifacts: List[str] = Field(default_factory=list, description="Paths to generated files/data")
+    artifacts: List[str] = Field(
+        default_factory=list, description="Paths to generated files/data"
+    )
     logs: List[str] = Field(default_factory=list)
     error: Optional[str] = None
     attempt: int = 1
@@ -74,18 +87,22 @@ class StepResult(BaseModel):
 
 class EvaluationResult(BaseModel):
     """Result of evaluating the execution outcomes."""
+
     overall_status: Literal["success", "failure", "needs_revision", "needs_retry"]
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence in the outcome")
     meets_requirements: bool
     quality_score: float = Field(ge=0.0, le=1.0, description="Quality of the output")
     feedback: str = Field(default="", description="Detailed evaluation feedback")
-    next_action: Literal["finalize", "retry_step", "revise_plan", "ask_user"] = "finalize"
+    next_action: Literal["finalize", "retry_step", "revise_plan", "ask_user"] = (
+        "finalize"
+    )
     retry_step_id: Optional[str] = None
     revision_suggestions: List[str] = Field(default_factory=list)
 
 
 class ConversationMessage(BaseModel):
     """A message in the conversation flow."""
+
     role: Literal["user", "assistant", "system"]
     content: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
@@ -98,6 +115,7 @@ class COREState(BaseModel):
 
     This state is shared across all nodes and represents the current execution context.
     """
+
     # Unique identifiers
     run_id: str = Field(default_factory=lambda: str(uuid4()))
     conversation_id: Optional[str] = None
@@ -119,7 +137,9 @@ class COREState(BaseModel):
 
     # Evaluation outputs
     eval_result: Optional[EvaluationResult] = None
-    plan_revisions: int = Field(default=0, description="Number of plan revisions attempted this run")
+    plan_revisions: int = Field(
+        default=0, description="Number of plan revisions attempted this run"
+    )
 
     # Conversation outputs
     response: Optional[str] = None
@@ -127,7 +147,9 @@ class COREState(BaseModel):
 
     # Execution metadata
     current_node: str = "START"
-    execution_history: List[str] = Field(default_factory=list, description="Nodes visited in order")
+    execution_history: List[str] = Field(
+        default_factory=list, description="Nodes visited in order"
+    )
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
@@ -175,7 +197,7 @@ class COREState(BaseModel):
     def update_step_status(
         self,
         step_id: str,
-        status: Literal["pending", "running", "completed", "failed", "skipped"]
+        status: Literal["pending", "running", "completed", "failed", "skipped"],
     ) -> None:
         """Update a step's status."""
         step = self.get_step(step_id)

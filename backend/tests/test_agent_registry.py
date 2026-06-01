@@ -29,6 +29,7 @@ from app.repository.instance_repository import AgentInstance, InstanceStatus
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_instance(**overrides) -> AgentInstance:
     defaults = dict(
         id=uuid4(),
@@ -65,6 +66,7 @@ def _make_heartbeat(**overrides) -> AgentHeartbeatData:
 # Registration
 # ---------------------------------------------------------------------------
 
+
 class TestRegistration:
     """Agent registration lifecycle."""
 
@@ -74,8 +76,12 @@ class TestRegistration:
 
     @pytest.fixture(autouse=True)
     def _patch_repo(self):
-        with patch("app.services.agent_registry.get_instance_by_container_id", new_callable=AsyncMock) as get, \
-             patch("app.services.agent_registry.update_instance", new_callable=AsyncMock) as upd:
+        with patch(
+            "app.services.agent_registry.get_instance_by_container_id",
+            new_callable=AsyncMock,
+        ) as get, patch(
+            "app.services.agent_registry.update_instance", new_callable=AsyncMock
+        ) as upd:
             self.mock_get_instance = get
             self.mock_update_instance = upd
             yield
@@ -115,7 +121,9 @@ class TestRegistration:
         self.mock_get_instance.return_value = None
 
         with pytest.raises(ValueError, match="not found"):
-            await registry.register_agent(_make_registration(container_id="nonexistent"))
+            await registry.register_agent(
+                _make_registration(container_id="nonexistent")
+            )
 
     @pytest.mark.asyncio
     async def test_register_updates_database(self, registry):
@@ -132,6 +140,7 @@ class TestRegistration:
 # ---------------------------------------------------------------------------
 # Tools by role
 # ---------------------------------------------------------------------------
+
 
 class TestToolsForRole:
     def test_known_roles_return_specific_tools(self):
@@ -152,6 +161,7 @@ class TestToolsForRole:
 # Heartbeat
 # ---------------------------------------------------------------------------
 
+
 class TestHeartbeat:
     @pytest.fixture
     def registry(self):
@@ -171,7 +181,9 @@ class TestHeartbeat:
 
     @pytest.fixture(autouse=True)
     def _patch_repo(self):
-        with patch("app.services.agent_registry.update_heartbeat", new_callable=AsyncMock) as hb:
+        with patch(
+            "app.services.agent_registry.update_heartbeat", new_callable=AsyncMock
+        ) as hb:
             self.mock_update_heartbeat = hb
             yield
 
@@ -205,7 +217,9 @@ class TestHeartbeat:
 
     @pytest.mark.asyncio
     async def test_heartbeat_updates_status(self, registry):
-        await registry.handle_heartbeat("agent-1", _make_heartbeat(status="busy", current_task="t99"))
+        await registry.handle_heartbeat(
+            "agent-1", _make_heartbeat(status="busy", current_task="t99")
+        )
         assert registry.active_agents["agent-1"]["current_status"] == "busy"
         assert registry.active_agents["agent-1"]["current_task"] == "t99"
 
@@ -213,6 +227,7 @@ class TestHeartbeat:
 # ---------------------------------------------------------------------------
 # Task completion & refusal
 # ---------------------------------------------------------------------------
+
 
 class TestTaskLifecycle:
     @pytest.fixture
@@ -228,15 +243,21 @@ class TestTaskLifecycle:
 
     @pytest.fixture(autouse=True)
     def _patch_repo(self):
-        with patch("app.services.agent_registry.increment_task_completed", new_callable=AsyncMock) as comp, \
-             patch("app.services.agent_registry.increment_task_refused", new_callable=AsyncMock) as ref:
+        with patch(
+            "app.services.agent_registry.increment_task_completed",
+            new_callable=AsyncMock,
+        ) as comp, patch(
+            "app.services.agent_registry.increment_task_refused", new_callable=AsyncMock
+        ) as ref:
             self.mock_completed = comp
             self.mock_refused = ref
             yield
 
     @pytest.mark.asyncio
     async def test_task_completion_clears_current_task(self, registry):
-        completion = TaskCompletion(task_id="t1", result={"answer": "42"}, duration_ms=500)
+        completion = TaskCompletion(
+            task_id="t1", result={"answer": "42"}, duration_ms=500
+        )
         await registry.handle_task_completion("agent-1", completion)
         assert registry.active_agents["agent-1"]["current_task"] is None
 
@@ -249,7 +270,9 @@ class TestTaskLifecycle:
     @pytest.mark.asyncio
     async def test_task_completion_unknown_agent(self, registry):
         with pytest.raises(ValueError):
-            await registry.handle_task_completion("ghost", TaskCompletion(task_id="t1", result={}, duration_ms=0))
+            await registry.handle_task_completion(
+                "ghost", TaskCompletion(task_id="t1", result={}, duration_ms=0)
+            )
 
     @pytest.mark.asyncio
     async def test_task_refusal_records_metrics(self, registry):
@@ -260,12 +283,15 @@ class TestTaskLifecycle:
     @pytest.mark.asyncio
     async def test_task_refusal_unknown_agent(self, registry):
         with pytest.raises(ValueError):
-            await registry.handle_task_refusal("ghost", TaskRefusal(task_id="t1", reason="no"))
+            await registry.handle_task_refusal(
+                "ghost", TaskRefusal(task_id="t1", reason="no")
+            )
 
 
 # ---------------------------------------------------------------------------
 # Task assignment
 # ---------------------------------------------------------------------------
+
 
 class TestTaskAssignment:
     @pytest.fixture
@@ -290,13 +316,16 @@ class TestTaskAssignment:
     @pytest.mark.asyncio
     async def test_assign_multiple_tasks(self, registry):
         for i in range(3):
-            await registry.assign_task("agent-1", TaskAssignment(task_id=f"t{i}", task_type="x", payload={}))
+            await registry.assign_task(
+                "agent-1", TaskAssignment(task_id=f"t{i}", task_type="x", payload={})
+            )
         assert len(registry.pending_tasks["agent-1"]) == 3
 
 
 # ---------------------------------------------------------------------------
 # Deregistration
 # ---------------------------------------------------------------------------
+
 
 class TestDeregistration:
     @pytest.fixture
@@ -313,7 +342,9 @@ class TestDeregistration:
 
     @pytest.fixture(autouse=True)
     def _patch_repo(self):
-        with patch("app.services.agent_registry.update_instance_status", new_callable=AsyncMock):
+        with patch(
+            "app.services.agent_registry.update_instance_status", new_callable=AsyncMock
+        ):
             yield
 
     @pytest.mark.asyncio
@@ -338,6 +369,7 @@ class TestDeregistration:
 # Stale agent detection
 # ---------------------------------------------------------------------------
 
+
 class TestStaleAgentDetection:
     @pytest.fixture
     def registry(self):
@@ -345,9 +377,14 @@ class TestStaleAgentDetection:
 
     @pytest.fixture(autouse=True)
     def _patch_repo(self):
-        with patch("app.services.agent_registry.update_instance_status", new_callable=AsyncMock), \
-             patch("app.services.agent_registry.get_instance_by_container_id", new_callable=AsyncMock) as get, \
-             patch("app.services.agent_registry.instance_manager") as im:
+        with patch(
+            "app.services.agent_registry.update_instance_status", new_callable=AsyncMock
+        ), patch(
+            "app.services.agent_registry.get_instance_by_container_id",
+            new_callable=AsyncMock,
+        ) as get, patch(
+            "app.services.agent_registry.instance_manager"
+        ) as im:
             self.mock_get = get
             self.mock_instance_manager = im
             im.restart_instance = AsyncMock()
@@ -412,14 +449,27 @@ class TestStaleAgentDetection:
 # Query helpers
 # ---------------------------------------------------------------------------
 
+
 class TestQueryHelpers:
     @pytest.fixture
     def registry(self):
         reg = AgentRegistry()
         reg.active_agents = {
-            "r1": {"role": "researcher", "last_heartbeat": datetime.now(timezone.utc), "current_status": "ready"},
-            "r2": {"role": "researcher", "last_heartbeat": datetime.now(timezone.utc) - timedelta(minutes=5), "current_status": "ready"},
-            "w1": {"role": "writer", "last_heartbeat": datetime.now(timezone.utc), "current_status": "busy"},
+            "r1": {
+                "role": "researcher",
+                "last_heartbeat": datetime.now(timezone.utc),
+                "current_status": "ready",
+            },
+            "r2": {
+                "role": "researcher",
+                "last_heartbeat": datetime.now(timezone.utc) - timedelta(minutes=5),
+                "current_status": "ready",
+            },
+            "w1": {
+                "role": "writer",
+                "last_heartbeat": datetime.now(timezone.utc),
+                "current_status": "busy",
+            },
         }
         return reg
 
@@ -446,6 +496,7 @@ class TestQueryHelpers:
 # ---------------------------------------------------------------------------
 # Shutdown
 # ---------------------------------------------------------------------------
+
 
 class TestShutdown:
     @pytest.mark.asyncio

@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 # ── Voice-type mapping ───────────────────────────────────────────────────────
 # Maps voice registry keys to the VoiceType enum used by the data models.
 _CATEGORY_TO_VOICE_TYPE: Dict[VoiceCategory, VoiceType] = {
-    VoiceCategory.CORE: VoiceType.CORE_C,       # overridden per-voice below
+    VoiceCategory.CORE: VoiceType.CORE_C,  # overridden per-voice below
     VoiceCategory.STRATEGIC: VoiceType.STRATEGIC,
     VoiceCategory.DOMAIN: VoiceType.DOMAIN,
     VoiceCategory.EXECUTION: VoiceType.EXECUTION,
@@ -70,10 +70,10 @@ def _voice_type_for(voice: VoiceDefinition) -> VoiceType:
 # ── Default contextual voices ────────────────────────────────────────────────
 # These are always included alongside the 4 CORE voices unless overridden.
 DEFAULT_CONTEXTUAL_VOICE_IDS = [
-    "devils_advocate",   # Skeptic / challenger
-    "oracle",            # Visionary
-    "product_lead",      # Pragmatist
-    "synthesizer",       # Final synthesis perspective
+    "devils_advocate",  # Skeptic / challenger
+    "oracle",  # Visionary
+    "product_lead",  # Pragmatist
+    "synthesizer",  # Final synthesis perspective
 ]
 
 
@@ -155,7 +155,10 @@ class CouncilService:
 
         logger.info(
             "Council session %s created – topic='%s' voices=%s rounds=%d",
-            session_id, topic[:80], resolved_voice_ids, rounds,
+            session_id,
+            topic[:80],
+            resolved_voice_ids,
+            rounds,
         )
 
         return {
@@ -196,13 +199,15 @@ class CouncilService:
                 continue
             seen_names.add(v.name)
 
-            voices.append({
-                "id": vid,
-                "name": v.name,
-                "role": v.role,
-                "category": v.category.value,
-                "temperature": v.temperature,
-            })
+            voices.append(
+                {
+                    "id": vid,
+                    "name": v.name,
+                    "role": v.role,
+                    "category": v.category.value,
+                    "temperature": v.temperature,
+                }
+            )
 
         logger.info("Session %s: summoned %d voices", session_id, len(voices))
         return voices
@@ -247,8 +252,14 @@ class CouncilService:
         sem = asyncio.Semaphore(self.max_concurrent)
         tasks = [
             self._run_voice(
-                sem, session_id, round_num, vid, voice,
-                session.topic, session.context, prior_context,
+                sem,
+                session_id,
+                round_num,
+                vid,
+                voice,
+                session.topic,
+                session.context,
+                prior_context,
             )
             for vid, voice in voices
         ]
@@ -268,7 +279,10 @@ class CouncilService:
 
         logger.info(
             "Session %s round %d complete – %d/%d perspectives",
-            session_id, round_num, len(perspectives), len(voices),
+            session_id,
+            round_num,
+            len(perspectives),
+            len(voices),
         )
         return perspectives
 
@@ -361,12 +375,20 @@ class CouncilService:
             # Step 0: Check for consciousness context
             consciousness_context = None
             try:
-                if await self.consciousness_bridge.should_include_consciousness_voice(topic):
-                    consciousness_context = await self.consciousness_bridge.get_consciousness_context(topic)
+                if await self.consciousness_bridge.should_include_consciousness_voice(
+                    topic
+                ):
+                    consciousness_context = (
+                        await self.consciousness_bridge.get_consciousness_context(topic)
+                    )
                     if consciousness_context.get("available"):
                         # Prepend consciousness context to the deliberation context
                         cc_summary = consciousness_context["summary"]
-                        context = f"{cc_summary}\n\n---\n\n{context}" if context else cc_summary
+                        context = (
+                            f"{cc_summary}\n\n---\n\n{context}"
+                            if context
+                            else cc_summary
+                        )
                         logger.info(
                             "Injected consciousness context (%d entries) into deliberation on: %s",
                             consciousness_context.get("entry_count", 0),
@@ -590,9 +612,7 @@ class CouncilService:
             parts.append(
                 "This is round {r}. Build on, respond to, or challenge "
                 "the perspectives shared so far. Show how your thinking "
-                "has evolved based on what others have contributed.".format(
-                    r=round_num
-                )
+                "has evolved based on what others have contributed.".format(r=round_num)
             )
 
         return "\n".join(parts)
@@ -636,9 +656,7 @@ class CouncilService:
 
     # ── Context Formatting ───────────────────────────────────────────────
 
-    def _format_prior_context(
-        self, perspectives: List[CouncilPerspective]
-    ) -> str:
+    def _format_prior_context(self, perspectives: List[CouncilPerspective]) -> str:
         """Format prior perspectives as context for the next round."""
         if not perspectives:
             return ""
@@ -733,12 +751,18 @@ class CouncilService:
             reasoning = "\n".join(lines[mid:]).strip()
 
         # Clean up markdown bold markers from section headers
-        for prefix in ["**POSITION:**", "**REASONING:**", "**CONFIDENCE:**",
-                        "POSITION:", "REASONING:", "CONFIDENCE:"]:
+        for prefix in [
+            "**POSITION:**",
+            "**REASONING:**",
+            "**CONFIDENCE:**",
+            "POSITION:",
+            "REASONING:",
+            "CONFIDENCE:",
+        ]:
             if position.startswith(prefix):
-                position = position[len(prefix):].strip()
+                position = position[len(prefix) :].strip()
             if reasoning.startswith(prefix):
-                reasoning = reasoning[len(prefix):].strip()
+                reasoning = reasoning[len(prefix) :].strip()
 
         if not position:
             position = content[:500].strip()
@@ -759,6 +783,7 @@ class CouncilService:
     def _extract_confidence(self, text: str) -> float:
         """Extract a float confidence value from text."""
         import re
+
         match = re.search(r"(0\.\d+|1\.0|1\.00?)", text)
         if match:
             try:

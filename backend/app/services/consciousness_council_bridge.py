@@ -95,9 +95,7 @@ class ConsciousnessCouncilBridge:
             bm = BlackboardManager()
             # Verify the blackboard file actually exists
             if not bm.blackboard_path.exists():
-                self._init_error = (
-                    f"Blackboard file not found: {bm.blackboard_path}"
-                )
+                self._init_error = f"Blackboard file not found: {bm.blackboard_path}"
                 logger.info(
                     "ConsciousnessCouncilBridge: Blackboard file missing – "
                     "consciousness context will be unavailable. (%s)",
@@ -182,9 +180,7 @@ class ConsciousnessCouncilBridge:
             except Exception as sem_err:
                 # Semantic retrieval uses Ollama embeddings which may not
                 # be running – fall back silently to recent-only.
-                logger.debug(
-                    "Semantic retrieval failed (non-critical): %s", sem_err
-                )
+                logger.debug("Semantic retrieval failed (non-critical): %s", sem_err)
 
             # De-duplicate (an entry could appear in both lists)
             seen_starts: set[int] = set()
@@ -229,7 +225,8 @@ class ConsciousnessCouncilBridge:
 
         except Exception as exc:
             logger.warning(
-                "Failed to retrieve consciousness context: %s", exc,
+                "Failed to retrieve consciousness context: %s",
+                exc,
                 exc_info=True,
             )
             return empty
@@ -290,15 +287,15 @@ class ConsciousnessCouncilBridge:
             )
 
             logger.info(
-                "Wrote council synthesis insight back to Blackboard "
-                "(session %s).",
+                "Wrote council synthesis insight back to Blackboard " "(session %s).",
                 session_id,
             )
 
         except Exception as exc:
             # Never let a write-back failure break the deliberation flow
             logger.warning(
-                "Failed to write synthesis back to Blackboard: %s", exc,
+                "Failed to write synthesis back to Blackboard: %s",
+                exc,
                 exc_info=True,
             )
 

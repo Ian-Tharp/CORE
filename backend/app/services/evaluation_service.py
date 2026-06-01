@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # CORE EVALUATION
 # =============================================================================
 
+
 async def evaluate(evaluation_input: EvaluationInput) -> EvaluationResult:
     """
     Evaluate the output of a reasoning phase against the original intent.
@@ -115,13 +116,19 @@ async def evaluate(evaluation_input: EvaluationInput) -> EvaluationResult:
     try:
         await evaluation_repository.store_evaluation(result)
     except Exception as exc:
-        logger.error("Failed to persist evaluation for task %s: %s", evaluation_input.task_id, exc)
+        logger.error(
+            "Failed to persist evaluation for task %s: %s",
+            evaluation_input.task_id,
+            exc,
+        )
 
     # 7. Feed learnings into memory
     try:
         await _store_learnings(evaluation_input, result)
     except Exception as exc:
-        logger.error("Failed to store learnings for task %s: %s", evaluation_input.task_id, exc)
+        logger.error(
+            "Failed to store learnings for task %s: %s", evaluation_input.task_id, exc
+        )
 
     return result
 
@@ -157,8 +164,14 @@ async def should_retry(evaluation: EvaluationResult) -> RetryDecision:
             reason="Output approved — no retry needed.",
         )
 
-    retry_count = evaluation.retry_decision.retry_count if evaluation.retry_decision else 0
-    max_retries = evaluation.retry_decision.max_retries if evaluation.retry_decision else EvaluationThresholds.MAX_RETRIES
+    retry_count = (
+        evaluation.retry_decision.retry_count if evaluation.retry_decision else 0
+    )
+    max_retries = (
+        evaluation.retry_decision.max_retries
+        if evaluation.retry_decision
+        else EvaluationThresholds.MAX_RETRIES
+    )
 
     return _build_retry_decision(
         verdict=evaluation.verdict,
@@ -218,6 +231,7 @@ async def list_evaluations(
 # =============================================================================
 # QUALITY SCORING (INTERNAL)
 # =============================================================================
+
 
 async def _score_quality(
     original_intent: str,
@@ -311,11 +325,55 @@ def _heuristic_relevance(intent: str, output: str) -> float:
     output_words = set(output.lower().split())
 
     # Remove very common stop words
-    stop = {"the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "shall",
-            "should", "may", "might", "can", "could", "to", "of", "in", "for",
-            "on", "with", "at", "by", "from", "as", "into", "through", "and",
-            "or", "but", "not", "so", "if", "than", "that", "this", "it", "i"}
+    stop = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "shall",
+        "should",
+        "may",
+        "might",
+        "can",
+        "could",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "and",
+        "or",
+        "but",
+        "not",
+        "so",
+        "if",
+        "than",
+        "that",
+        "this",
+        "it",
+        "i",
+    }
     intent_words -= stop
     output_words -= stop
 
@@ -359,6 +417,7 @@ def _heuristic_coherence(output: str) -> float:
 # =============================================================================
 # PLAN COMPLETION
 # =============================================================================
+
 
 def _check_plan_completion(
     plan_steps: List[PlanStep],
@@ -407,13 +466,15 @@ def _check_plan_completion(
         meets = _step_meets_criteria(step, sr, q) if sr else False
         fb = _step_feedback(step, sr, q, meets) if sr else "Step not started."
 
-        evals.append(StepEvaluation(
-            step_index=step.step_index,
-            status=status,
-            quality_score=q,
-            feedback=fb,
-            meets_criteria=meets,
-        ))
+        evals.append(
+            StepEvaluation(
+                step_index=step.step_index,
+                status=status,
+                quality_score=q,
+                feedback=fb,
+                meets_criteria=meets,
+            )
+        )
 
     total = len(plan_steps)
     completion_rate = (completed + 0.5 * partial) / total if total > 0 else 0.0
@@ -450,7 +511,9 @@ def _evaluate_step_quality(step: PlanStep, result: Optional[StepResult]) -> floa
     return 0.0
 
 
-def _step_meets_criteria(step: PlanStep, result: Optional[StepResult], quality: float) -> bool:
+def _step_meets_criteria(
+    step: PlanStep, result: Optional[StepResult], quality: float
+) -> bool:
     """Check whether a step meets its criteria."""
     if not result:
         return False
@@ -463,13 +526,17 @@ def _step_meets_criteria(step: PlanStep, result: Optional[StepResult], quality: 
     return False
 
 
-def _step_feedback(step: PlanStep, result: Optional[StepResult], quality: float, meets: bool) -> str:
+def _step_feedback(
+    step: PlanStep, result: Optional[StepResult], quality: float, meets: bool
+) -> str:
     """Generate feedback for a single step."""
     if not result:
         return f"Step {step.step_index}: Not started — '{step.description}'."
 
     if meets:
-        return f"Step {step.step_index}: Completed successfully (quality={quality:.2f})."
+        return (
+            f"Step {step.step_index}: Completed successfully (quality={quality:.2f})."
+        )
 
     if result.status == StepStatus.FAILED:
         err = result.error or "unknown error"
@@ -481,12 +548,15 @@ def _step_feedback(step: PlanStep, result: Optional[StepResult], quality: float,
     if result.status == StepStatus.SKIPPED:
         return f"Step {step.step_index}: Skipped."
 
-    return f"Step {step.step_index}: Status {result.status.value} (quality={quality:.2f})."
+    return (
+        f"Step {step.step_index}: Status {result.status.value} (quality={quality:.2f})."
+    )
 
 
 # =============================================================================
 # VERDICT DETERMINATION
 # =============================================================================
+
 
 def _determine_verdict(
     quality: QualityScore,
@@ -564,6 +634,7 @@ def _determine_verdict(
 # RETRY LOGIC
 # =============================================================================
 
+
 def _build_retry_decision(
     verdict: EvaluationVerdict,
     quality: QualityScore,
@@ -590,7 +661,7 @@ def _build_retry_decision(
 
     # Exponential backoff
     delay = min(
-        EvaluationThresholds.RETRY_BASE_DELAY_MS * (2 ** retry_count),
+        EvaluationThresholds.RETRY_BASE_DELAY_MS * (2**retry_count),
         EvaluationThresholds.RETRY_MAX_DELAY_MS,
     )
 
@@ -617,6 +688,7 @@ def _build_retry_decision(
 # FEEDBACK GENERATION
 # =============================================================================
 
+
 def _generate_feedback(
     quality: QualityScore,
     plan_completion: PlanCompletionStatus,
@@ -626,9 +698,11 @@ def _generate_feedback(
     lines: List[str] = []
 
     lines.append(f"Verdict: {verdict.verdict.value.upper()}")
-    lines.append(f"Overall quality: {quality.overall:.2f} "
-                 f"(accuracy={quality.accuracy:.2f}, completeness={quality.completeness:.2f}, "
-                 f"relevance={quality.relevance:.2f}, coherence={quality.coherence:.2f})")
+    lines.append(
+        f"Overall quality: {quality.overall:.2f} "
+        f"(accuracy={quality.accuracy:.2f}, completeness={quality.completeness:.2f}, "
+        f"relevance={quality.relevance:.2f}, coherence={quality.coherence:.2f})"
+    )
 
     if plan_completion.total_steps > 0:
         lines.append(
@@ -651,6 +725,7 @@ def _generate_feedback(
 # MEMORY INTEGRATION
 # =============================================================================
 
+
 async def _store_learnings(
     evaluation_input: EvaluationInput,
     result: EvaluationResult,
@@ -672,7 +747,11 @@ async def _store_learnings(
                 f"Quality: {result.quality_score.overall:.2f}\n"
                 f"Verdict: approved"
             ),
-            steps=[s.description for s in evaluation_input.plan_steps] if evaluation_input.plan_steps else [],
+            steps=(
+                [s.description for s in evaluation_input.plan_steps]
+                if evaluation_input.plan_steps
+                else []
+            ),
             embedding=[],  # Would be populated by embedding service in production
             metadata={
                 "task_id": str(evaluation_input.task_id),
@@ -686,7 +765,9 @@ async def _store_learnings(
         )
         try:
             await memory_repository.create_procedural_memory(procedure)
-            logger.info("Stored successful pattern for task %s", evaluation_input.task_id)
+            logger.info(
+                "Stored successful pattern for task %s", evaluation_input.task_id
+            )
         except Exception as exc:
             logger.warning("Could not store procedural memory: %s", exc)
 
@@ -702,7 +783,11 @@ async def _store_learnings(
                 f"Verdict: {result.verdict.verdict.value}\n"
                 f"Issues: {'; '.join(result.suggested_improvements)}"
             ),
-            steps=[s.description for s in evaluation_input.plan_steps] if evaluation_input.plan_steps else [],
+            steps=(
+                [s.description for s in evaluation_input.plan_steps]
+                if evaluation_input.plan_steps
+                else []
+            ),
             embedding=[],
             metadata={
                 "task_id": str(evaluation_input.task_id),
@@ -725,6 +810,7 @@ async def _store_learnings(
 # =============================================================================
 # HELPERS
 # =============================================================================
+
 
 def _now_ms() -> int:
     """Current time in milliseconds."""

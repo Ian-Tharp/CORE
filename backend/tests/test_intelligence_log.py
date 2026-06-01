@@ -33,6 +33,7 @@ from app.models.core_state import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_intent(type_: str = "task", category: str = None) -> UserIntent:
     return UserIntent(
         type=type_,
@@ -66,17 +67,28 @@ def _full_state() -> COREState:
     state = COREState(user_input="build a login page", session_id="sess-test")
     state.intent = _make_intent("task", "code")
     state.plan = _make_plan("step-a", "step-b", "step-c")
-    state.step_results = [_make_result("success"), _make_result("success"), _make_result("failure")]
+    state.step_results = [
+        _make_result("success"),
+        _make_result("success"),
+        _make_result("failure"),
+    ]
     state.eval_result = _make_eval("needs_retry", 0.6)
     state.plan_revisions = 1
     state.response = "Done."
-    state.execution_history = ["comprehension", "orchestration", "reasoning", "evaluation", "conversation"]
+    state.execution_history = [
+        "comprehension",
+        "orchestration",
+        "reasoning",
+        "evaluation",
+        "conversation",
+    ]
     return state
 
 
 # ---------------------------------------------------------------------------
 # record_pipeline_run — schema
 # ---------------------------------------------------------------------------
+
 
 class TestRecordPipelineRunSchema:
     def test_returns_dict(self):
@@ -100,12 +112,25 @@ class TestRecordPipelineRunSchema:
         Remove any key → downstream consumers break → test fails.
         """
         required_keys = {
-            "event", "session_id", "user_input_len",
-            "intent_type", "task_category", "intent_confidence",
-            "plan_goal", "plan_step_count", "plan_revisions",
-            "steps_succeeded", "steps_failed",
-            "eval_status", "eval_quality", "eval_confidence", "eval_next_action",
-            "response_len", "nodes_visited", "errors_count", "timestamp",
+            "event",
+            "session_id",
+            "user_input_len",
+            "intent_type",
+            "task_category",
+            "intent_confidence",
+            "plan_goal",
+            "plan_step_count",
+            "plan_revisions",
+            "steps_succeeded",
+            "steps_failed",
+            "eval_status",
+            "eval_quality",
+            "eval_confidence",
+            "eval_next_action",
+            "response_len",
+            "nodes_visited",
+            "errors_count",
+            "timestamp",
         }
         state = COREState(user_input="hi")
         entry = record_pipeline_run(state)
@@ -115,6 +140,7 @@ class TestRecordPipelineRunSchema:
     def test_timestamp_is_iso_format(self):
         """timestamp must be parseable ISO-8601."""
         from datetime import datetime
+
         state = COREState(user_input="hi")
         entry = record_pipeline_run(state)
         # Should not raise
@@ -125,6 +151,7 @@ class TestRecordPipelineRunSchema:
 # ---------------------------------------------------------------------------
 # record_pipeline_run — field values
 # ---------------------------------------------------------------------------
+
 
 class TestRecordPipelineRunValues:
     def test_intent_fields_populated(self):
@@ -231,6 +258,7 @@ class TestRecordPipelineRunValues:
 # record_pipeline_run — logger emission
 # ---------------------------------------------------------------------------
 
+
 class TestIntelligenceLogEmission:
     def test_entry_emitted_via_intelligence_logger(self):
         """
@@ -288,6 +316,7 @@ class TestIntelligenceLogEmission:
 # conversation_node integration
 # ---------------------------------------------------------------------------
 
+
 class TestConversationNodeEmitsIntelligenceLog:
     """
     SENTINEL TEST — conversation_node must call record_pipeline_run().
@@ -316,8 +345,10 @@ class TestConversationNodeEmitsIntelligenceLog:
         state = COREState(user_input="test resilience")
         state.intent = _make_intent("conversation")
 
-        with patch("app.core.langgraph.core_graph_v2.record_pipeline_run",
-                   side_effect=RuntimeError("log exploded")):
+        with patch(
+            "app.core.langgraph.core_graph_v2.record_pipeline_run",
+            side_effect=RuntimeError("log exploded"),
+        ):
             # Must not raise
             result = graph.conversation_node(state)
 

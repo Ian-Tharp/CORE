@@ -49,12 +49,17 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   terrainTool: TerrainState = 'plain';
   biomeTool: BiomeState = 'forest';
   resourceTool: ResourceState | 'erase' = 'node';
-  layerVisibility: { terrain: boolean; biome: boolean; resources: boolean } = { terrain: true, biome: true, resources: true };
+  layerVisibility: { terrain: boolean; biome: boolean; resources: boolean } =
+    { terrain: true, biome: true, resources: true };
   brush = 1;
   outlinesVisible = false;
   connectionsVisible = true;
-  hoveredInfo: { index: number; x: number; y: number; worldX: number; worldY: number; worldZ: number; terrain: string; biome: string; resource: string } | null = null;
-  contextMenu: { visible: boolean; x: number; y: number; index: number | null; gridX?: number; gridY?: number } = { visible: false, x: 0, y: 0, index: null };
+  hoveredInfo: {
+    index: number; x: number; y: number; worldX: number; worldY: number;
+    worldZ: number; terrain: string; biome: string; resource: string
+  } | null = null;
+  contextMenu: { visible: boolean; x: number; y: number; index: number | null; gridX?: number; gridY?: number } =
+    { visible: false, x: 0, y: 0, index: null };
   isEditMode = true;
   selectedInfo: SelectedTileInfo | null = null;
 
@@ -84,7 +89,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       }
     });
     this.tileGrid.onTileContext((ctx) => {
-      this.contextMenu = { visible: true, x: ctx.screen.x, y: ctx.screen.y, index: ctx.index, gridX: ctx.x, gridY: ctx.y };
+      this.contextMenu = {
+        visible: true, x: ctx.screen.x, y: ctx.screen.y, index: ctx.index, gridX: ctx.x, gridY: ctx.y
+      };
     });
     this.tileGrid.createTileGrid(this.gridConfig);
     this.engine.start();
@@ -125,7 +132,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       } else {
         const name = params.get('name');
         const seed = params.get('seed');
-        if (name) this.projectName = name;
+        if (name) {this.projectName = name;}
         if (seed) { this.seed = seed; this.onApplySeed(); }
       }
     }
@@ -136,8 +143,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   // Convert legacy hex world config to tile grid config
-  private convertToGridConfig(config: any): { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number } {
-    if (config.cellRadius) return config; // Already converted
+  private convertToGridConfig(
+    config: any
+  ): { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number } {
+    if (config.cellRadius) {return config;} // Already converted
     return {
       cellRadius: config.radius || 1,
       gridWidth: config.gridWidth || 50,
@@ -156,7 +165,11 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
     // Smart save: update existing world if we have an ID, otherwise create new
     this._capturePreview((preview) => {
-      this.worlds.saveWorld(snap.name, { config: snap.config as any, layers: (snap as any).layers, preview }, this.currentWorldId ?? undefined).subscribe({
+      this.worlds.saveWorld(
+        snap.name,
+        { config: snap.config as any, layers: (snap as any).layers, preview },
+        this.currentWorldId ?? undefined
+      ).subscribe({
         next: (result) => {
           this.isSaving = false;
           this.currentWorldId = result.worldId; // Track the world ID for future saves
@@ -224,7 +237,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     const snap = this.tileGrid.snapshot(this.projectName);
     const dialogRef = this.dialog.open(SaveWorldDialogComponent, { data: { defaultName: snap.name }, panelClass: 'glass-dialog' });
     dialogRef.afterClosed().subscribe((name?: string) => {
-      if (!name) return;
+      if (!name) {return;}
 
       // Check if a world with this name already exists
       this.isSaving = true;
@@ -244,7 +257,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
           this.projects.save({ name, config: snap.config, layers: (snap as any).layers });
 
           this._capturePreview((preview) => {
-            this.worlds.saveFromHexSnapshot(name, { config: snap.config as any, layers: (snap as any).layers, preview }).subscribe({
+            this.worlds.saveFromHexSnapshot(
+              name,
+              { config: snap.config as any, layers: (snap as any).layers, preview }
+            ).subscribe({
               next: (result) => {
                 this.isSaving = false;
                 this.currentWorldId = result.worldId; // Track the new world ID
@@ -264,7 +280,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
           this.projects.save({ name, config: snap.config, layers: (snap as any).layers });
 
           this._capturePreview((preview) => {
-            this.worlds.saveFromHexSnapshot(name, { config: snap.config as any, layers: (snap as any).layers, preview }).subscribe({
+            this.worlds.saveFromHexSnapshot(
+              name,
+              { config: snap.config as any, layers: (snap as any).layers, preview }
+            ).subscribe({
               next: (result) => {
                 this.isSaving = false;
                 this.currentWorldId = result.worldId;
@@ -296,7 +315,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   public onOpenWorlds(): void {
     const ref = this.dialog.open(WorldsDialogComponent, { data: { limit: 50 }, panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((world?: { id: string; name: string }) => {
-      if (!world) return;
+      if (!world) {return;}
       this.worlds.getLatestSnapshot(world.id).subscribe({
         next: (snap) => {
           this.projectName = world.name;
@@ -368,7 +387,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.isEditMode = !this.isEditMode;
     this.tileGrid.setEditMode(this.isEditMode);
     // Hide context menu when entering edit mode
-    if (this.isEditMode) this.contextMenu.visible = false;
+    if (this.isEditMode) {this.contextMenu.visible = false;}
   }
 
   private _syncGridStateToService(): void {
@@ -387,7 +406,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onKeyDown(e: KeyboardEvent): void {
     // Skip if user is typing in an input field
-    if (this.isTypingInInput()) return;
+    if (this.isTypingInInput()) {return;}
 
     if (e.key === 'h' || e.key === 'H') {
       this.tileGrid.setOutlinesVisible(!(this as any)._outlinesVisibleInternal);
@@ -410,7 +429,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   /** Check if user is typing in an input, textarea, or contenteditable element */
   private isTypingInInput(): boolean {
     const active = document.activeElement;
-    if (!active) return false;
+    if (!active) {return false;}
     const tagName = active.tagName.toLowerCase();
     return tagName === 'input' || tagName === 'textarea' || tagName === 'select' ||
       (active.hasAttribute('contenteditable') && active.getAttribute('contenteditable') !== 'false');

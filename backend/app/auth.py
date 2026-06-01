@@ -6,7 +6,7 @@ This is a lightweight auth layer - for production, consider OAuth2/JWT.
 
 Usage in controllers:
     from app.auth import require_api_key
-    
+
     @router.post("/engine/run")
     async def run_core(request: RunRequest, api_key: str = Depends(require_api_key)):
         ...
@@ -26,10 +26,13 @@ API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 # Valid API keys (in production, store in database or secrets manager)
 VALID_API_KEYS = set(
-    filter(None, [
-        os.getenv("CORE_API_KEY"),
-        os.getenv("CORE_API_KEY_2"),
-    ])
+    filter(
+        None,
+        [
+            os.getenv("CORE_API_KEY"),
+            os.getenv("CORE_API_KEY_2"),
+        ],
+    )
 )
 
 # If no keys configured via env, generate one for local dev
@@ -54,12 +57,10 @@ async def verify_api_key(api_key: Optional[str]) -> bool:
     return api_key in VALID_API_KEYS
 
 
-async def require_api_key(
-    api_key: Optional[str] = Security(API_KEY_HEADER)
-) -> str:
+async def require_api_key(api_key: Optional[str] = Security(API_KEY_HEADER)) -> str:
     """
     Dependency that requires a valid API key.
-    
+
     Raises HTTPException 401 if key is missing or invalid.
     Returns the API key if valid.
     """
@@ -70,7 +71,7 @@ async def require_api_key(
             detail="API key required. Pass X-API-Key header.",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     if api_key not in VALID_API_KEYS:
         logger.warning(f"Invalid API key attempted: {api_key[:8]}...")
         raise HTTPException(
@@ -78,16 +79,16 @@ async def require_api_key(
             detail="Invalid API key",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     return api_key
 
 
 async def optional_api_key(
-    api_key: Optional[str] = Security(API_KEY_HEADER)
+    api_key: Optional[str] = Security(API_KEY_HEADER),
 ) -> Optional[str]:
     """
     Dependency that accepts but doesn't require an API key.
-    
+
     Useful for endpoints that work differently for authenticated vs anonymous users.
     Returns the API key if provided and valid, None otherwise.
     """

@@ -30,12 +30,14 @@ from app.core.health import (
 # _load_mcp_config
 # ---------------------------------------------------------------------------
 
+
 class TestLoadMcpConfig:
     def test_returns_empty_dict_when_no_file(self):
         """When no .mcp.json exists anywhere, returns empty mcpServers dict."""
         # Patch Path.is_file so no candidate is found
-        with patch.dict(os.environ, {}, clear=False), \
-             patch("app.core.health.Path") as mock_path_cls:
+        with patch.dict(os.environ, {}, clear=False), patch(
+            "app.core.health.Path"
+        ) as mock_path_cls:
             # Make every Path(...).is_file() return False
             instance = MagicMock()
             instance.is_file.return_value = False
@@ -84,6 +86,7 @@ class TestLoadMcpConfig:
 # check_mcp_servers
 # ---------------------------------------------------------------------------
 
+
 class TestCheckMcpServers:
     @pytest.mark.asyncio
     async def test_no_servers_returns_healthy(self, tmp_path):
@@ -113,8 +116,10 @@ class TestCheckMcpServers:
         cfg_file.write_text(json.dumps(cfg_data))
 
         import shutil as _shutil
-        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), \
-             patch("app.core.health.shutil.which", return_value="/usr/bin/python"):
+
+        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), patch(
+            "app.core.health.shutil.which", return_value="/usr/bin/python"
+        ):
             result = await check_mcp_servers()
 
         assert result.status == HealthStatus.HEALTHY
@@ -134,8 +139,9 @@ class TestCheckMcpServers:
         cfg_file = tmp_path / ".mcp.json"
         cfg_file.write_text(json.dumps(cfg_data))
 
-        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), \
-             patch("app.core.health.shutil.which", return_value=None):
+        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), patch(
+            "app.core.health.shutil.which", return_value=None
+        ):
             result = await check_mcp_servers()
 
         assert result.status == HealthStatus.DEGRADED
@@ -161,8 +167,9 @@ class TestCheckMcpServers:
         def _which(cmd):
             return "/usr/bin/python" if cmd == "python" else None
 
-        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), \
-             patch("app.core.health.shutil.which", side_effect=_which):
+        with patch.dict(os.environ, {"CORE_MCP_CONFIG": str(cfg_file)}), patch(
+            "app.core.health.shutil.which", side_effect=_which
+        ):
             result = await check_mcp_servers()
 
         assert result.status == HealthStatus.DEGRADED
@@ -198,7 +205,10 @@ class TestCheckMcpServers:
         """Absolute path that does NOT exist must be reported as command_not_found."""
         cfg_data = {
             "mcpServers": {
-                "ghost": {"command": str(tmp_path / "ghost-binary.exe"), "type": "stdio"},
+                "ghost": {
+                    "command": str(tmp_path / "ghost-binary.exe"),
+                    "type": "stdio",
+                },
             }
         }
         cfg_file = tmp_path / ".mcp.json"
@@ -226,7 +236,9 @@ class TestCheckMcpServers:
         If an unexpected error occurs, check_mcp_servers must return DEGRADED, not raise.
         Let exceptions propagate → asyncio.gather captures as Exception → health breaks → test fails.
         """
-        with patch("app.core.health._load_mcp_config", side_effect=RuntimeError("disk error")):
+        with patch(
+            "app.core.health._load_mcp_config", side_effect=RuntimeError("disk error")
+        ):
             result = await check_mcp_servers()
         assert result.status == HealthStatus.DEGRADED
 
@@ -235,9 +247,12 @@ class TestCheckMcpServers:
 # Integration: check_mcp_servers in get_full_health()
 # ---------------------------------------------------------------------------
 
+
 class TestMcpServersInFullHealth:
     def _ok_check(self, name: str):
-        return AsyncMock(return_value=HealthCheck(name=name, status=HealthStatus.HEALTHY))
+        return AsyncMock(
+            return_value=HealthCheck(name=name, status=HealthStatus.HEALTHY)
+        )
 
     @pytest.mark.asyncio
     async def test_mcp_check_included_in_full_health(self):
@@ -251,13 +266,17 @@ class TestMcpServersInFullHealth:
             return_value=HealthCheck(name="mcp_servers", status=HealthStatus.HEALTHY)
         )
 
-        with patch("app.core.health.check_database", self._ok_check("database")), \
-             patch("app.core.health.check_ollama", self._ok_check("ollama")), \
-             patch("app.core.health.check_redis", self._ok_check("redis")), \
-             patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
-             patch("app.core.health.check_engine_state", self._ok_check("engine")), \
-             patch("app.core.health.check_mcp_servers", mcp_spy), \
-             patch("app.core.health.asyncio.create_task"):
+        with patch("app.core.health.check_database", self._ok_check("database")), patch(
+            "app.core.health.check_ollama", self._ok_check("ollama")
+        ), patch("app.core.health.check_redis", self._ok_check("redis")), patch(
+            "app.core.health.check_websocket_manager", self._ok_check("ws")
+        ), patch(
+            "app.core.health.check_engine_state", self._ok_check("engine")
+        ), patch(
+            "app.core.health.check_mcp_servers", mcp_spy
+        ), patch(
+            "app.core.health.asyncio.create_task"
+        ):
 
             await health_mod.get_full_health()
 
@@ -271,20 +290,28 @@ class TestMcpServersInFullHealth:
         """
         from app.core import health as health_mod
 
-        with patch("app.core.health.check_database", self._ok_check("database")), \
-             patch("app.core.health.check_ollama", self._ok_check("ollama")), \
-             patch("app.core.health.check_redis", self._ok_check("redis")), \
-             patch("app.core.health.check_websocket_manager", self._ok_check("ws")), \
-             patch("app.core.health.check_engine_state", self._ok_check("engine")), \
-             patch("app.core.health.check_mcp_servers",
-                   AsyncMock(return_value=HealthCheck(
-                       name="mcp_servers", status=HealthStatus.DEGRADED,
-                       message="1 server missing"
-                   ))), \
-             patch("app.core.health.asyncio.create_task"):
+        with patch("app.core.health.check_database", self._ok_check("database")), patch(
+            "app.core.health.check_ollama", self._ok_check("ollama")
+        ), patch("app.core.health.check_redis", self._ok_check("redis")), patch(
+            "app.core.health.check_websocket_manager", self._ok_check("ws")
+        ), patch(
+            "app.core.health.check_engine_state", self._ok_check("engine")
+        ), patch(
+            "app.core.health.check_mcp_servers",
+            AsyncMock(
+                return_value=HealthCheck(
+                    name="mcp_servers",
+                    status=HealthStatus.DEGRADED,
+                    message="1 server missing",
+                )
+            ),
+        ), patch(
+            "app.core.health.asyncio.create_task"
+        ):
 
             result = await health_mod.get_full_health()
 
-        assert result["status"] in ("degraded", "unhealthy"), (
-            f"Expected degraded overall status, got {result['status']!r}"
-        )
+        assert result["status"] in (
+            "degraded",
+            "unhealthy",
+        ), f"Expected degraded overall status, got {result['status']!r}"

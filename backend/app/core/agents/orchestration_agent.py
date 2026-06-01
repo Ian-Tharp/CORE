@@ -50,6 +50,7 @@ class OrchestrationAgent:
         """
         try:
             from app.core.tools.dispatcher import ToolDispatcher
+
             return ToolDispatcher().available_tools
         except Exception:
             return ["file_operations", "git", "web_research", "database"]
@@ -142,8 +143,7 @@ Guidelines:
 
         tool_step_count = sum(tool_counts.values())
         estimated_tokens = (
-            llm_steps * _TOKENS_PER_LLM_STEP
-            + tool_step_count * _TOKENS_PER_TOOL_STEP
+            llm_steps * _TOKENS_PER_LLM_STEP + tool_step_count * _TOKENS_PER_TOOL_STEP
         )
 
         # Risk: high if any high-risk tools used + HITL required, medium if one condition, low otherwise
@@ -171,7 +171,7 @@ Guidelines:
         intent: Optional[UserIntent] = None,
         previous_plan: Optional[ExecutionPlan] = None,
         evaluation_feedback: Optional[str] = None,
-        revision: int = 1
+        revision: int = 1,
     ) -> ExecutionPlan:
         """
         Create or revise an execution plan.
@@ -208,7 +208,9 @@ Guidelines:
         messages.append({"role": "user", "content": user_message})
 
         try:
-            logger.info(f"Orchestration creating plan for: '{user_input}' with model={self.model}")
+            logger.info(
+                f"Orchestration creating plan for: '{user_input}' with model={self.model}"
+            )
             response = client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -222,17 +224,21 @@ Guidelines:
                 raise ValueError("Empty response from LLM")
 
             logger.info(f"Orchestration LLM response: {content}")
-            
+
             # Extract and repair JSON from response (handles code fences, trailing commas, etc.)
             extracted = extract_json_object(content)
             if extracted:
-                logger.info(f"Orchestration: Extracted JSON object: {extracted[:200]}...")
+                logger.info(
+                    f"Orchestration: Extracted JSON object: {extracted[:200]}..."
+                )
             else:
                 extracted = content
-            
+
             data = safe_json_loads(extracted)
             if data is None:
-                raise ValueError(f"Could not parse JSON from response: {content[:200]}...")
+                raise ValueError(
+                    f"Could not parse JSON from response: {content[:200]}..."
+                )
 
             # Build ExecutionPlan
             steps = []
@@ -251,7 +257,7 @@ Guidelines:
                 goal=data.get("goal", user_input),
                 steps=steps,
                 reasoning=data.get("reasoning", ""),
-                revision=revision
+                revision=revision,
             )
 
         except Exception as e:
@@ -264,9 +270,9 @@ Guidelines:
                         description=f"Error in orchestration: {str(e)}. Attempting direct execution.",
                         tool=None,
                         params={},
-                        requires_hitl=False
+                        requires_hitl=False,
                     )
                 ],
                 reasoning="Fallback plan due to orchestration error",
-                revision=revision
+                revision=revision,
             )

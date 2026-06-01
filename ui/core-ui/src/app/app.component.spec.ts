@@ -19,16 +19,16 @@ describe('AppComponent', () => {
         tone: 'ready',
         detail: '1 mapped channel ready',
         tooltip: 'Discord Gateway connected.',
-        status: null,
+        status: null
       }),
-      startStatusPolling: jest.fn(),
+      startStatusPolling: jest.fn()
     };
 
     await TestBed.configureTestingModule({
       imports: [AppComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]),
-        { provide: DiscordBridgeService, useValue: discordBridgeService },
+        { provide: DiscordBridgeService, useValue: discordBridgeService }
       ]
     }).compileComponents();
   });

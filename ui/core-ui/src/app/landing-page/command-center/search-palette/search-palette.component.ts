@@ -2,9 +2,9 @@ import { Component, EventEmitter, HostListener, OnInit, Output, inject } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TileMetadataService } from '../engine/tile-metadata.service';
-import { TileGridService, TerrainState, BiomeState, ResourceState } from '../engine/tile-grid.service';
-import { TileWorldMetadata, WorldConnection, CONNECTION_STYLES } from '../engine/tile-metadata.model';
-import { CreativeDataService, WikiPage } from '../../../creative-design-product/services/creative-data.service';
+import { TileGridService, TerrainState, BiomeState } from '../engine/tile-grid.service';
+import { TileWorldMetadata } from '../engine/tile-metadata.model';
+import { CreativeDataService } from '../../../creative-design-product/services/creative-data.service';
 
 export interface SearchResult {
   type: 'world' | 'wiki' | 'connection' | 'tag';
@@ -61,7 +61,7 @@ export class SearchPaletteComponent implements OnInit {
       return;
     }
 
-    if (!this.isOpen) return;
+    if (!this.isOpen) {return;}
 
     // Escape to close
     if (event.key === 'Escape') {
@@ -161,7 +161,7 @@ export class SearchPaletteComponent implements OnInit {
 
     for (const meta of allMetadata) {
       // Apply filters
-      if (!this.matchesFilters(meta)) continue;
+      if (!this.matchesFilters(meta)) {continue;}
 
       // Apply text query
       if (query) {
@@ -170,7 +170,7 @@ export class SearchPaletteComponent implements OnInit {
         const tagMatch = meta.tags?.some(t => t.toLowerCase().includes(query));
         const noteMatch = meta.quickNotes?.some(n => n.content.toLowerCase().includes(query));
 
-        if (!nameMatch && !descMatch && !tagMatch && !noteMatch) continue;
+        if (!nameMatch && !descMatch && !tagMatch && !noteMatch) {continue;}
       }
 
       results.push(this.worldToResult(meta));
@@ -183,8 +183,8 @@ export class SearchPaletteComponent implements OnInit {
     const noteCount = meta.quickNotes?.length || 0;
     const connCount = meta.connectionIds?.length || 0;
     let subtitle = `Tile (${meta.tileIndex})`;
-    if (noteCount > 0) subtitle += ` • ${noteCount} notes`;
-    if (connCount > 0) subtitle += ` • ${connCount} connections`;
+    if (noteCount > 0) {subtitle += ` • ${noteCount} notes`;}
+    if (connCount > 0) {subtitle += ` • ${connCount} connections`;}
 
     return {
       type: 'world',
@@ -196,7 +196,7 @@ export class SearchPaletteComponent implements OnInit {
   }
 
   private searchWiki(query: string): SearchResult[] {
-    if (!query) return [];
+    if (!query) {return [];}
 
     const results: SearchResult[] = [];
     const allWiki = this.creativeData.listWiki();
@@ -243,11 +243,11 @@ export class SearchPaletteComponent implements OnInit {
       const hasContent = meta.name || meta.description ||
         (meta.quickNotes && meta.quickNotes.length > 0) ||
         (meta.pinnedItems && meta.pinnedItems.length > 0);
-      if (!hasContent) return false;
+      if (!hasContent) {return false;}
     }
 
     if (this.filters.hasConnections) {
-      if (!meta.connectionIds || meta.connectionIds.length === 0) return false;
+      if (!meta.connectionIds || meta.connectionIds.length === 0) {return false;}
     }
 
     // Terrain and biome filters would require cross-referencing with TileGridService

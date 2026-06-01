@@ -33,7 +33,15 @@ export class WorldsService {
     return this.http.post<{ id: string; name: string }>(`${this.apiUrl}/worlds`, { name, config, origin, tags });
   }
 
-  createSnapshot(worldId: string, payload: { config: HexWorldConfigDto; layers?: LayersDto; tiles?: Array<{ index: number; state: string }>; preview?: string }): Observable<{ id: string; world_id: string }> {
+  createSnapshot(
+    worldId: string,
+    payload: {
+      config: HexWorldConfigDto;
+      layers?: LayersDto;
+      tiles?: Array<{ index: number; state: string }>;
+      preview?: string;
+    }
+  ): Observable<{ id: string; world_id: string }> {
     return this.http.post<{ id: string; world_id: string }>(`${this.apiUrl}/worlds/${worldId}/snapshots`, payload);
   }
 
@@ -45,7 +53,14 @@ export class WorldsService {
     return this.http.get<Array<{ id: string; name: string; updated_at: string }>>(`${this.apiUrl}/worlds`, { params: { limit, offset } as any });
   }
 
-  saveFromHexSnapshot(name: string, hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string }): Observable<{ worldId: string; snapshotId: string }> {
+  saveFromHexSnapshot(
+    name: string,
+    hexSnapshot: {
+      config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number };
+      layers?: LayersDto;
+      preview?: string;
+    }
+  ): Observable<{ worldId: string; snapshotId: string }> {
     // Convert frontend TileGridConfig (cellRadius) to backend HexWorldConfigDto (radius)
     const config: HexWorldConfigDto = {
       radius: 'cellRadius' in hexSnapshot.config ? hexSnapshot.config.cellRadius : hexSnapshot.config.radius,
@@ -54,7 +69,10 @@ export class WorldsService {
       elevation: hexSnapshot.config.elevation
     };
     return this.createWorld(name, config, 'human').pipe(
-      switchMap((world) => this.createSnapshot(world.id, { config, layers: hexSnapshot.layers, preview: hexSnapshot.preview }).pipe(
+      switchMap((world) => this.createSnapshot(
+        world.id,
+        { config, layers: hexSnapshot.layers, preview: hexSnapshot.preview }
+      ).pipe(
         map((snap) => ({ worldId: world.id, snapshotId: snap.id }))
       ))
     );
@@ -92,7 +110,11 @@ export class WorldsService {
   updateExistingWorld(
     worldId: string,
     name: string,
-    hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string }
+    hexSnapshot: {
+      config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number };
+      layers?: LayersDto;
+      preview?: string;
+    }
   ): Observable<{ worldId: string; snapshotId: string }> {
     const config: HexWorldConfigDto = {
       radius: 'cellRadius' in hexSnapshot.config ? hexSnapshot.config.cellRadius : hexSnapshot.config.radius,
@@ -112,7 +134,11 @@ export class WorldsService {
    */
   saveWorld(
     name: string,
-    hexSnapshot: { config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number }; layers?: LayersDto; preview?: string },
+    hexSnapshot: {
+      config: HexWorldConfigDto | { cellRadius: number; gridWidth: number; gridHeight: number; elevation: number };
+      layers?: LayersDto;
+      preview?: string;
+    },
     existingWorldId?: string
   ): Observable<{ worldId: string; snapshotId: string; isNew: boolean }> {
     if (existingWorldId) {

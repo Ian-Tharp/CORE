@@ -34,6 +34,7 @@ from langchain_core.tools import BaseTool
 
 try:
     from langchain_mcp_adapters.client import MultiServerMCPClient
+
     _HAS_MCP_ADAPTERS = True
 except ImportError:
     _HAS_MCP_ADAPTERS = False
@@ -95,8 +96,7 @@ class AgentMCPService:
         logger.info("AgentMCPService initialized")
 
     async def get_tools_for_agent(
-        self,
-        mcp_configs: List[MCPServerConfig]
+        self, mcp_configs: List[MCPServerConfig]
     ) -> List[BaseTool]:
         """
         Get filtered LangChain tools for an agent.
@@ -135,8 +135,7 @@ class AgentMCPService:
             try:
                 # Get all tools from this server (cached or fresh)
                 server_tools = await self._get_server_tools(
-                    server_id=server_id,
-                    config=mcp_config.config
+                    server_id=server_id, config=mcp_config.config
                 )
 
                 # Filter to only allowed tools; if none specified, include all
@@ -144,8 +143,7 @@ class AgentMCPService:
                     filtered_tools = server_tools
                 else:
                     filtered_tools = [
-                        tool for tool in server_tools
-                        if tool.name in allowed_tools
+                        tool for tool in server_tools if tool.name in allowed_tools
                     ]
 
                 all_tools.extend(filtered_tools)
@@ -157,8 +155,7 @@ class AgentMCPService:
 
             except Exception as e:
                 logger.error(
-                    f"Failed to get tools from {server_id}: {e}",
-                    exc_info=True
+                    f"Failed to get tools from {server_id}: {e}", exc_info=True
                 )
                 # Continue with other servers
 
@@ -170,9 +167,7 @@ class AgentMCPService:
         return all_tools
 
     async def _get_server_tools(
-        self,
-        server_id: str,
-        config: Dict[str, Any]
+        self, server_id: str, config: Dict[str, Any]
     ) -> List[BaseTool]:
         """
         Get all tools from a specific MCP server.
@@ -202,7 +197,10 @@ class AgentMCPService:
 
             # Check if npx is available (required for stdio MCP servers)
             import shutil
-            if server_config.get("transport") == "stdio" and not shutil.which(server_config.get("command", "npx")):
+
+            if server_config.get("transport") == "stdio" and not shutil.which(
+                server_config.get("command", "npx")
+            ):
                 logger.warning(
                     f"Command '{server_config.get('command', 'npx')}' not found. "
                     f"MCP server {server_id} will not be available. "
@@ -214,17 +212,13 @@ class AgentMCPService:
                 return []
 
             # Create client with this server
-            client = MultiServerMCPClient({
-                server_id: server_config
-            })
+            client = MultiServerMCPClient({server_id: server_config})
 
             # Get tools from client
             tools = await client.get_tools()
 
             # Update cache
-            self._tool_cache[server_id] = {
-                tool.name: tool for tool in tools
-            }
+            self._tool_cache[server_id] = {tool.name: tool for tool in tools}
             self._last_cache_update[server_id] = datetime.utcnow()
 
             logger.info(f"Discovered {len(tools)} tools from {server_id}")
@@ -237,9 +231,7 @@ class AgentMCPService:
             return []
 
     def _get_server_config(
-        self,
-        server_id: str,
-        agent_config: Dict[str, Any]
+        self, server_id: str, agent_config: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Get MultiServerMCPClient configuration for a server.
@@ -271,37 +263,35 @@ class AgentMCPService:
             # Obsidian MCP server (stdio transport via uvx)
             "mcp-obsidian": {
                 "command": "uvx",
-                "args": [
-                    "mcp-obsidian"
-                ],
+                "args": ["mcp-obsidian"],
                 # Pass secrets/paths via environment only
                 "env": {
                     # Read at runtime from process env; fallback to agent_config for overrides
-                    "OBSIDIAN_API_KEY": agent_config.get("OBSIDIAN_API_KEY") or __import__("os").getenv("OBSIDIAN_API_KEY", ""),
-                    "OBSIDIAN_VAULT_PATH": agent_config.get("vault_path") or __import__("os").getenv("OBSIDIAN_VAULT_PATH", "")
+                    "OBSIDIAN_API_KEY": agent_config.get("OBSIDIAN_API_KEY")
+                    or __import__("os").getenv("OBSIDIAN_API_KEY", ""),
+                    "OBSIDIAN_VAULT_PATH": agent_config.get("vault_path")
+                    or __import__("os").getenv("OBSIDIAN_VAULT_PATH", ""),
                 },
-                "transport": "stdio"
+                "transport": "stdio",
             },
-
             # Memory MCP server (stdio transport)
             "memory": {
                 "command": "npx",
-                "args": [
-                    "-y",
-                    "@modelcontextprotocol/server-memory"
-                ],
-                "transport": "stdio"
+                "args": ["-y", "@modelcontextprotocol/server-memory"],
+                "transport": "stdio",
             },
-
             # Filesystem MCP server (stdio transport)
             "filesystem": {
                 "command": "npx",
                 "args": [
                     "-y",
                     "@modelcontextprotocol/server-filesystem",
-                    agent_config.get("allowed_directories", "/mnt/c/Users/Owner/Desktop/Projects/CORE")
+                    agent_config.get(
+                        "allowed_directories",
+                        "/mnt/c/Users/Owner/Desktop/Projects/CORE",
+                    ),
                 ],
-                "transport": "stdio"
+                "transport": "stdio",
             },
         }
 
@@ -309,13 +299,15 @@ class AgentMCPService:
 
         if not config:
             # Fallback: try to construct from agent config
-            logger.warning(
-                f"Unknown server_id '{server_id}', using agent config"
-            )
+            logger.warning(f"Unknown server_id '{server_id}', using agent config")
             config = agent_config
 
         # Remove any empty env vars to avoid passing blank secrets
-        if isinstance(config, dict) and "env" in config and isinstance(config["env"], dict):
+        if (
+            isinstance(config, dict)
+            and "env" in config
+            and isinstance(config["env"], dict)
+        ):
             config["env"] = {k: v for k, v in config["env"].items() if v}
 
         return config
@@ -390,8 +382,8 @@ class AgentMCPService:
                     "obsidian_get_file_contents",
                     "obsidian_patch_content",
                     "obsidian_list_files_in_vault",
-                    "obsidian_simple_search"
-                ]
+                    "obsidian_simple_search",
+                ],
             },
             {
                 "server_id": "memory",
@@ -403,20 +395,16 @@ class AgentMCPService:
                     "search_nodes",
                     "create_entities",
                     "create_relations",
-                    "add_observations"
-                ]
+                    "add_observations",
+                ],
             },
             {
                 "server_id": "filesystem",
                 "name": "Filesystem",
                 "description": "Read and write files",
                 "transport": "stdio",
-                "available_tools": [
-                    "read_file",
-                    "write_file",
-                    "list_directory"
-                ]
-            }
+                "available_tools": ["read_file", "write_file", "list_directory"],
+            },
         ]
 
         logger.debug(f"Listed {len(common_servers)} available servers")

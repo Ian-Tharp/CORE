@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # TABLE INITIALISATION
 # =============================================================================
 
+
 async def ensure_audit_tables() -> None:
     """Create audit log tables (idempotent)."""
     pool = await get_db_pool()
@@ -67,6 +68,7 @@ async def ensure_audit_tables() -> None:
 # =============================================================================
 # WRITE
 # =============================================================================
+
 
 async def record(
     *,
@@ -125,6 +127,7 @@ async def record(
 # =============================================================================
 # READ
 # =============================================================================
+
 
 async def get_events(
     *,
@@ -309,7 +312,13 @@ async def get_summary(hours: int = 24) -> Dict[str, Any]:
             }
     except Exception as exc:
         logger.error("Failed to generate audit summary: %s", exc)
-        return {"period_hours": hours, "total_events": 0, "by_action": {}, "by_actor": {}, "by_outcome": {}}
+        return {
+            "period_hours": hours,
+            "total_events": 0,
+            "by_action": {},
+            "by_actor": {},
+            "by_outcome": {},
+        }
 
 
 async def prune_old_events(keep_days: int = 90) -> int:
@@ -328,7 +337,9 @@ async def prune_old_events(keep_days: int = 90) -> int:
             )
             deleted = int(result.split()[-1])
             if deleted:
-                logger.info("Pruned %d audit events older than %d days", deleted, keep_days)
+                logger.info(
+                    "Pruned %d audit events older than %d days", deleted, keep_days
+                )
             return deleted
     except Exception as exc:
         logger.error("Failed to prune audit events: %s", exc)

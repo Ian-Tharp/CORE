@@ -26,7 +26,12 @@ from functools import wraps
 import jwt as _pyjwt
 
 from fastapi import Depends, HTTPException, Security, Request, status
-from fastapi.security import APIKeyHeader, APIKeyQuery, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import (
+    APIKeyHeader,
+    APIKeyQuery,
+    HTTPBearer,
+    HTTPAuthorizationCredentials,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,7 +47,9 @@ _API_KEY_CACHE: Dict[str, Dict[str, Any]] = {}
 _db_loaded: bool = False
 
 # Rate limiting storage
-_RATE_LIMIT_BUCKETS: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "window_start": time.time()})
+_RATE_LIMIT_BUCKETS: Dict[str, Dict[str, Any]] = defaultdict(
+    lambda: {"count": 0, "window_start": time.time()}
+)
 
 
 def _get_master_api_key() -> Optional[str]:
@@ -63,6 +70,7 @@ async def load_keys_from_db() -> None:
     global _db_loaded
     try:
         from app.repository import api_key_repository
+
         keys = await api_key_repository.list_all_active()
         _API_KEY_CACHE.clear()
         for key_data in keys:
@@ -77,10 +85,15 @@ async def load_keys_from_db() -> None:
         _db_loaded = True
         logger.info("Loaded %d API keys from database into cache", len(_API_KEY_CACHE))
     except Exception as exc:
-        logger.warning("Could not load API keys from database (falling back to memory-only): %s", exc)
+        logger.warning(
+            "Could not load API keys from database (falling back to memory-only): %s",
+            exc,
+        )
 
 
-async def generate_api_key(name: str, description: str = "", permissions: list = None) -> str:
+async def generate_api_key(
+    name: str, description: str = "", permissions: list = None
+) -> str:
     """
     Generate a new API key and persist it to the database.
 
@@ -109,6 +122,7 @@ async def generate_api_key(name: str, description: str = "", permissions: list =
     # Persist to database (best-effort; cache is authoritative for this request)
     try:
         from app.repository import api_key_repository
+
         await api_key_repository.store_key(
             key_hash=key_hash,
             name=name,
@@ -122,7 +136,9 @@ async def generate_api_key(name: str, description: str = "", permissions: list =
     return raw_key
 
 
-def generate_api_key_sync(name: str, description: str = "", permissions: list = None) -> str:
+def generate_api_key_sync(
+    name: str, description: str = "", permissions: list = None
+) -> str:
     """
     Synchronous API key generation (cache-only, no DB persistence).
 
@@ -177,6 +193,7 @@ def validate_api_key(key: str) -> Optional[Dict[str, Any]]:
         try:
             loop = asyncio.get_running_loop()
             from app.repository import api_key_repository
+
             loop.create_task(api_key_repository.update_last_used(key_hash))
         except RuntimeError:
             pass  # No running loop (e.g. in tests)
@@ -206,6 +223,7 @@ async def revoke_api_key(name: str) -> bool:
     # Also deactivate in database
     try:
         from app.repository import api_key_repository
+
         db_revoked = await api_key_repository.deactivate_by_name(name)
         if db_revoked and not found:
             found = True
@@ -235,6 +253,7 @@ def list_api_keys() -> list:
 # =============================================================================
 # Rate Limiting
 # =============================================================================
+
 
 class RateLimiter:
     """
@@ -320,15 +339,21 @@ class RedisRateLimiter:
         self.redis_url = redis_url
         self.rpm = requests_per_minute
         self.rph = requests_per_hour
-        self._fallback = RateLimiter(requests_per_minute=rpm, requests_per_hour=rph) \
-            if False else RateLimiter(requests_per_minute=requests_per_minute,
-                                     requests_per_hour=requests_per_hour)
+        self._fallback = (
+            RateLimiter(requests_per_minute=rpm, requests_per_hour=rph)
+            if False
+            else RateLimiter(
+                requests_per_minute=requests_per_minute,
+                requests_per_hour=requests_per_hour,
+            )
+        )
         self._client: Optional[Any] = None  # redis.asyncio.Redis
 
     async def _get_client(self) -> Any:
         """Return (or create) the Redis client."""
         if self._client is None:
             import redis.asyncio as aioredis
+
             self._client = aioredis.from_url(self.redis_url, decode_responses=True)
         return self._client
 
@@ -374,7 +399,9 @@ class RedisRateLimiter:
             }
 
         except Exception as exc:
-            logger.warning("Redis rate limiter unavailable, using in-memory fallback: %s", exc)
+            logger.warning(
+                "Redis rate limiter unavailable, using in-memory fallback: %s", exc
+            )
             result = self._fallback.check_rate_limit(client_id)
             result["backend"] = "memory_fallback"
             return result
@@ -382,12 +409,15 @@ class RedisRateLimiter:
 
 # Global rate limiter — uses Redis if REDIS_URL env var is set, otherwise in-memory
 _redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-_rate_limiter: Any = RedisRateLimiter(redis_url=_redis_url) if os.getenv("REDIS_URL") else RateLimiter()
+_rate_limiter: Any = (
+    RedisRateLimiter(redis_url=_redis_url) if os.getenv("REDIS_URL") else RateLimiter()
+)
 
 
 # =============================================================================
 # FastAPI Dependencies
 # =============================================================================
+
 
 async def get_api_key(
     api_key_header: str = Security(API_KEY_HEADER),
@@ -465,6 +495,7 @@ def require_permission(permission: str):
         async def list_keys(api_key: dict = Depends(get_api_key)):
             ...
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, api_key: dict = None, **kwargs):
@@ -490,12 +521,14 @@ def require_permission(permission: str):
             return await func(*args, api_key=api_key, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 # =============================================================================
 # Role-Based Access Control (RBAC)
 # =============================================================================
+
 
 class Role(str, Enum):
     """
@@ -525,8 +558,8 @@ _ROLE_PERMISSION = {
 # Roles that satisfy a given minimum role requirement (inclusive hierarchy)
 _ROLE_SATISFIES: Dict[Role, set] = {
     Role.VIEWER: {"role:admin", "role:agent", "role:viewer"},
-    Role.AGENT:  {"role:admin", "role:agent"},
-    Role.ADMIN:  {"role:admin"},
+    Role.AGENT: {"role:admin", "role:agent"},
+    Role.ADMIN: {"role:admin"},
 }
 
 
@@ -552,7 +585,9 @@ def require_role(minimum_role: Role) -> Callable:
     """
     satisfying_perms = _ROLE_SATISFIES[minimum_role]
 
-    async def _check_role(key_data: Dict[str, Any] = Depends(get_api_key)) -> Dict[str, Any]:
+    async def _check_role(
+        key_data: Dict[str, Any] = Depends(get_api_key),
+    ) -> Dict[str, Any]:
         permissions = key_data.get("permissions", [])
 
         # Wildcard grants all roles
@@ -727,6 +762,7 @@ def require_jwt_role(minimum_role: "Role") -> Callable:
 # =============================================================================
 # Initialization
 # =============================================================================
+
 
 def init_security():
     """

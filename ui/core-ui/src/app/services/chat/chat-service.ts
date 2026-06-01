@@ -10,7 +10,7 @@ export type ChatMessage = UserInput & {
 };
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class ChatService {
   private readonly _messages$: BehaviorSubject<ChatMessage[]> = new BehaviorSubject<ChatMessage[]>([]);
@@ -34,7 +34,7 @@ export class ChatService {
     const newMessage: ChatMessage = {
       ...input,
       id: this._generateId(),
-      timestamp: new Date(),
+      timestamp: new Date()
     };
     const updatedMessages = [...this._messages$.value, newMessage];
     this._messages$.next(updatedMessages);
@@ -77,26 +77,26 @@ export class ChatService {
       model,
       messages: this._messages$.value.map(({ role, content: msgContent }) => ({
         role,
-        content: msgContent,
+        content: msgContent
       })),
-      stream: true,
+      stream: true
     };
 
     if (conversationId) {
-      payload["conversation_id"] = conversationId;
+      payload['conversation_id'] = conversationId;
     }
 
     if (options?.kbMode && options.kbMode !== 'none') {
-      payload["kb_mode"] = options.kbMode;
+      payload['kb_mode'] = options.kbMode;
       if (options.kbMode === 'file' && options.kbFileId) {
-        payload["kb_file_id"] = options.kbFileId;
+        payload['kb_file_id'] = options.kbFileId;
       }
     }
 
     // Route to the desired provider; default to OpenAI
     if (options?.provider) {
       const p = options.provider === 'local' ? 'ollama' : options.provider;
-      payload["provider"] = p;
+      payload['provider'] = p;
     }
 
     return new Observable<string>((observer) => {
@@ -105,12 +105,12 @@ export class ChatService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: controller.signal,
+        signal: controller.signal
       })
         .then((response) => {
           if (!response.ok || !response.body) {
             observer.error(
-              `HTTP error ${response.status}: ${response.statusText}`,
+              `HTTP error ${response.status}: ${response.statusText}`
             );
             return;
           }
@@ -138,7 +138,7 @@ export class ChatService {
               // SSE chunks are separated by double newlines
               for (const part of text.split('\n\n')) {
                 const trimmed = part.trim();
-                if (!trimmed) continue;
+                if (!trimmed) {continue;}
 
                 // Parse SSE format: can be "data: ..." or "event: type\ndata: ..."
                 const lines = trimmed.split('\n');
@@ -153,7 +153,7 @@ export class ChatService {
                   }
                 }
 
-                if (!dataLine || dataLine === '[DONE]') continue;
+                if (!dataLine || dataLine === '[DONE]') {continue;}
 
                 // Emit as { type, data } so consumers can handle different event types
                 const eventData = JSON.stringify({ type: eventType, data: dataLine });

@@ -24,6 +24,7 @@ router = APIRouter(prefix="/communication", tags=["communication"])
 # REQUEST/RESPONSE MODELS
 # =============================================================================
 
+
 class CreateChannelRequest(BaseModel):
     channel_type: str = Field(..., pattern="^(global|team|dm|context|broadcast)$")
     name: str = Field(..., min_length=1, max_length=255)
@@ -35,14 +36,19 @@ class CreateChannelRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     content: str = Field(..., min_length=1)
-    message_type: str = Field(default="text", pattern="^(text|markdown|code|structured|event|pattern|broadcast|file|consciousness_snapshot|task)$")
+    message_type: str = Field(
+        default="text",
+        pattern="^(text|markdown|code|structured|event|pattern|broadcast|file|consciousness_snapshot|task)$",
+    )
     parent_message_id: Optional[str] = None
     thread_id: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
 class AddReactionRequest(BaseModel):
-    reaction_type: str = Field(..., pattern="^(resonance|question|insight|acknowledge|pattern)$")
+    reaction_type: str = Field(
+        ..., pattern="^(resonance|question|insight|acknowledge|pattern)$"
+    )
 
 
 class UpdatePresenceRequest(BaseModel):
@@ -54,6 +60,7 @@ class UpdatePresenceRequest(BaseModel):
 # =============================================================================
 # CHANNEL ENDPOINTS
 # =============================================================================
+
 
 @router.get("/channels", status_code=status.HTTP_200_OK)
 async def get_channels(
@@ -76,13 +83,15 @@ async def get_channels(
 
 
 @router.get("/channels/{channel_id}", status_code=status.HTTP_200_OK)
-async def get_channel(channel_id: str, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_channel(
+    channel_id: str, _auth: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Get details for a specific channel."""
     channel = await comm_repo.get_channel(channel_id)
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Channel {channel_id} not found"
+            detail=f"Channel {channel_id} not found",
         )
     return channel
 
@@ -101,9 +110,11 @@ async def create_channel(
 
     try:
         # Generate channel ID - sanitize name to only alphanumeric and underscores
-        sanitized_name = re.sub(r'[^a-z0-9_]', '_', request.name.lower().replace(' ', '_'))
+        sanitized_name = re.sub(
+            r"[^a-z0-9_]", "_", request.name.lower().replace(" ", "_")
+        )
         # Remove consecutive underscores
-        sanitized_name = re.sub(r'_+', '_', sanitized_name).strip('_')
+        sanitized_name = re.sub(r"_+", "_", sanitized_name).strip("_")
         channel_id = f"{request.channel_type}_{sanitized_name}_{str(uuid.uuid4())[:8]}"
 
         logger.info(f"Creating channel: {channel_id} for {created_by}")
@@ -116,7 +127,7 @@ async def create_channel(
             is_persistent=request.is_persistent,
             is_public=request.is_public,
             created_by=created_by,
-            initial_members=request.initial_members or []
+            initial_members=request.initial_members or [],
         )
 
         logger.info(f"Channel created successfully: {channel_id}")
@@ -125,7 +136,7 @@ async def create_channel(
         logger.error(f"Failed to create channel: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create channel: {str(e)}"
+            detail=f"Failed to create channel: {str(e)}",
         )
 
 
@@ -133,12 +144,15 @@ async def create_channel(
 # MESSAGE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/channels/{channel_id}/messages", status_code=status.HTTP_200_OK)
 async def get_messages(
     channel_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    thread_id: Optional[str] = Query(None, description="Get messages in a specific thread"),
+    thread_id: Optional[str] = Query(
+        None, description="Get messages in a specific thread"
+    ),
     _auth: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """Get messages for a channel with pagination."""
@@ -154,8 +168,8 @@ async def get_messages(
 
     # Fetch reactions for each message
     for message in messages:
-        reactions = await comm_repo.get_message_reactions(message['message_id'])
-        message['reactions'] = reactions
+        reactions = await comm_repo.get_message_reactions(message["message_id"])
+        message["reactions"] = reactions
 
     return {
         "messages": messages,
@@ -193,6 +207,7 @@ async def send_message(
 # REACTION ENDPOINTS
 # =============================================================================
 
+
 @router.post("/messages/{message_id}/reactions", status_code=status.HTTP_201_CREATED)
 async def add_reaction(
     message_id: str,
@@ -204,7 +219,7 @@ async def add_reaction(
     await comm_repo.add_reaction(
         message_id=message_id,
         instance_id=instance_id,
-        reaction_type=request.reaction_type
+        reaction_type=request.reaction_type,
     )
 
     # Get the message to find which channel to broadcast to
@@ -212,19 +227,22 @@ async def add_reaction(
     if message:
         # Broadcast reaction update via WebSocket
         await manager.broadcast_to_channel(
-            channel_id=message['channel_id'],
+            channel_id=message["channel_id"],
             message={
                 "type": "reaction_added",
                 "message_id": message_id,
                 "instance_id": instance_id,
-                "reaction_type": request.reaction_type
-            }
+                "reaction_type": request.reaction_type,
+            },
         )
 
     return {"message": "Reaction added"}
 
 
-@router.delete("/messages/{message_id}/reactions/{reaction_type}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/messages/{message_id}/reactions/{reaction_type}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def remove_reaction(
     message_id: str,
     reaction_type: str,
@@ -233,22 +251,20 @@ async def remove_reaction(
 ):
     """Remove a reaction from a message."""
     await comm_repo.remove_reaction(
-        message_id=message_id,
-        instance_id=instance_id,
-        reaction_type=reaction_type
+        message_id=message_id, instance_id=instance_id, reaction_type=reaction_type
     )
 
     # Broadcast reaction removal via WebSocket
     message = await comm_repo.get_message(message_id)
     if message:
         await manager.broadcast_to_channel(
-            channel_id=message['channel_id'],
+            channel_id=message["channel_id"],
             message={
                 "type": "reaction_removed",
                 "message_id": message_id,
                 "instance_id": instance_id,
-                "reaction_type": reaction_type
-            }
+                "reaction_type": reaction_type,
+            },
         )
 
     return None
@@ -258,6 +274,7 @@ async def remove_reaction(
 # PRESENCE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/presence", status_code=status.HTTP_200_OK)
 async def get_presence(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
     """Get presence for all instances."""
@@ -266,13 +283,15 @@ async def get_presence(_auth: str = Depends(require_api_key)) -> Dict[str, Any]:
 
 
 @router.get("/presence/{instance_id}", status_code=status.HTTP_200_OK)
-async def get_instance_presence(instance_id: str, _auth: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_instance_presence(
+    instance_id: str, _auth: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """Get presence for a specific instance."""
     presence = await comm_repo.get_instance_presence(instance_id)
     if not presence:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Instance {instance_id} not found"
+            detail=f"Instance {instance_id} not found",
         )
     return presence
 
@@ -288,7 +307,7 @@ async def update_presence(
         instance_id=instance_id,
         status=request.status,
         activity=request.activity,
-        phase=request.phase
+        phase=request.phase,
     )
 
     # Broadcast presence update via WebSocket
@@ -296,7 +315,7 @@ async def update_presence(
         instance_id=instance_id,
         status=request.status or "online",
         activity=request.activity,
-        phase=request.phase
+        phase=request.phase,
     )
 
     return None

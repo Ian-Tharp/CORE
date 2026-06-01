@@ -31,7 +31,7 @@ from app.models.agent_models import (
     AgentConfig,
     AgentCreateRequest,
     AgentUpdateRequest,
-    AgentListFilter
+    AgentListFilter,
 )
 from app.repository import agent_repository as agent_repo
 from app.services.agent_factory_service import get_agent_factory
@@ -47,13 +47,16 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 # TOOLS ENDPOINT
 # =============================================================================
 
+
 class AgentToolDTO(BaseModel):
     name: str
     mcp_server_id: Optional[str] = None
 
 
 @router.get("/{agent_id}/tools", status_code=status.HTTP_200_OK)
-async def get_agent_tools(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_agent_tools(
+    agent_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """
     Return the list of tools available to the specified agent, including
     the MCP server id when known.
@@ -61,18 +64,26 @@ async def get_agent_tools(agent_id: str, api_key: str = Depends(require_api_key)
     try:
         agent = await agent_repo.get_agent(agent_id)
         if not agent:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Agent {agent_id} not found",
+            )
 
         # Build grouped tool list preserving server ids
         mcp_service = get_agent_mcp_service()
         tools: List[AgentToolDTO] = []
 
-        for server_cfg in (agent.mcp_servers or []):
+        for server_cfg in agent.mcp_servers or []:
             try:
                 # Access protected method intentionally with clear boundary (read-only tool discovery).
                 server_tools = await mcp_service._get_server_tools(server_cfg.server_id, server_cfg.config)  # type: ignore[attr-defined]
                 for t in server_tools:
-                    tools.append(AgentToolDTO(name=getattr(t, 'name', ''), mcp_server_id=server_cfg.server_id))
+                    tools.append(
+                        AgentToolDTO(
+                            name=getattr(t, "name", ""),
+                            mcp_server_id=server_cfg.server_id,
+                        )
+                    )
             except Exception:
                 # Continue other servers if one fails
                 continue
@@ -83,20 +94,29 @@ async def get_agent_tools(agent_id: str, api_key: str = Depends(require_api_key)
         raise
     except Exception as e:
         logger.error(f"Failed to get tools for {agent_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get agent tools")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get agent tools",
+        )
 
 
 # =============================================================================
 # LIST & GET ENDPOINTS
 # =============================================================================
 
+
 @router.get("", status_code=status.HTTP_200_OK)
 async def list_agents(
     agent_type: Optional[str] = Query(None, description="Filter by agent type"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     current_status: Optional[str] = Query(None, description="Filter by current status"),
-    search_query: Optional[str] = Query(None, description="Search in name/description/interests"),
-    tags: Optional[str] = Query(None, description="Comma-separated tags to filter by (agents must have ALL tags)"),
+    search_query: Optional[str] = Query(
+        None, description="Search in name/description/interests"
+    ),
+    tags: Optional[str] = Query(
+        None,
+        description="Comma-separated tags to filter by (agents must have ALL tags)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Items per page"),
     api_key: str = Depends(require_api_key),
@@ -132,13 +152,12 @@ async def list_agents(
             search_query=search_query,
             tags=tag_list,
             page=page,
-            page_size=page_size
+            page_size=page_size,
         )
 
         # Get total count for pagination
         total_count = await agent_repo.count_agents(
-            agent_type=agent_type,
-            is_active=is_active
+            agent_type=agent_type, is_active=is_active
         )
 
         # Convert to dict for JSON response
@@ -149,14 +168,14 @@ async def list_agents(
             "page": page,
             "page_size": page_size,
             "total_count": total_count,
-            "total_pages": (total_count + page_size - 1) // page_size
+            "total_pages": (total_count + page_size - 1) // page_size,
         }
 
     except Exception as e:
         logger.error(f"Failed to list agents: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list agents"
+            detail="Failed to list agents",
         )
 
 
@@ -203,7 +222,7 @@ async def search_agents(
             is_active=is_active,
             tags=tag_list,
             page=page,
-            page_size=page_size
+            page_size=page_size,
         )
 
         agents_dict = [agent.model_dump() for agent in agents]
@@ -213,21 +232,25 @@ async def search_agents(
             "query": q,
             "page": page,
             "page_size": page_size,
-            "result_count": len(agents_dict)
+            "result_count": len(agents_dict),
         }
 
     except Exception as e:
         logger.error(f"Failed to search agents: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to search agents"
+            detail="Failed to search agents",
         )
 
 
 @router.get("/tags", status_code=status.HTTP_200_OK)
 async def get_agent_tags(
-    agent_type: Optional[str] = Query(None, description="Only count tags from this agent type"),
-    is_active: Optional[bool] = Query(None, description="Only count tags from active/inactive agents"),
+    agent_type: Optional[str] = Query(
+        None, description="Only count tags from this agent type"
+    ),
+    is_active: Optional[bool] = Query(
+        None, description="Only count tags from active/inactive agents"
+    ),
     api_key: str = Depends(require_api_key),
 ) -> Dict[str, Any]:
     """
@@ -257,26 +280,22 @@ async def get_agent_tags(
     """
 
     try:
-        tags = await agent_repo.get_all_tags(
-            agent_type=agent_type,
-            is_active=is_active
-        )
+        tags = await agent_repo.get_all_tags(agent_type=agent_type, is_active=is_active)
 
-        return {
-            "tags": tags,
-            "total_unique_tags": len(tags)
-        }
+        return {"tags": tags, "total_unique_tags": len(tags)}
 
     except Exception as e:
         logger.error(f"Failed to get tags: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get agent tags"
+            detail="Failed to get agent tags",
         )
 
 
 @router.get("/{agent_id}", status_code=status.HTTP_200_OK)
-async def get_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def get_agent(
+    agent_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """
     Get details for a specific agent.
 
@@ -296,7 +315,7 @@ async def get_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> D
         if not agent:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent {agent_id} not found"
+                detail=f"Agent {agent_id} not found",
             )
 
         return agent.model_dump()
@@ -307,7 +326,7 @@ async def get_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> D
         logger.error(f"Failed to get agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get agent"
+            detail="Failed to get agent",
         )
 
 
@@ -315,8 +334,11 @@ async def get_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> D
 # CREATE & UPDATE ENDPOINTS
 # =============================================================================
 
+
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_agent(request: AgentCreateRequest, api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
+async def create_agent(
+    request: AgentCreateRequest, api_key: str = Depends(require_api_key)
+) -> Dict[str, Any]:
     """
     Create a new agent in the library.
 
@@ -369,15 +391,12 @@ async def create_agent(request: AgentCreateRequest, api_key: str = Depends(requi
 
     except ValueError as e:
         # Duplicate agent_id
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to create agent: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create agent"
+            detail="Failed to create agent",
         )
 
 
@@ -409,7 +428,7 @@ async def update_agent(
         if not exists:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent {agent_id} not found"
+                detail=f"Agent {agent_id} not found",
             )
 
         # Convert request to dict, excluding None values
@@ -417,8 +436,7 @@ async def update_agent(
 
         if not updates:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No fields to update"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update"
             )
 
         # Update in database
@@ -440,7 +458,7 @@ async def update_agent(
         logger.error(f"Failed to update agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update agent"
+            detail="Failed to update agent",
         )
 
 
@@ -469,15 +487,12 @@ async def delete_agent(agent_id: str, api_key: str = Depends(require_api_key)):
 
     except ValueError as e:
         # Agent not found
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to delete agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete agent"
+            detail="Failed to delete agent",
         )
 
 
@@ -485,8 +500,11 @@ async def delete_agent(agent_id: str, api_key: str = Depends(require_api_key)):
 # STATUS MANAGEMENT ENDPOINTS
 # =============================================================================
 
+
 @router.post("/{agent_id}/activate", status_code=status.HTTP_200_OK)
-async def activate_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
+async def activate_agent(
+    agent_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, str]:
     """
     Activate an agent (set is_active=true, status='online').
 
@@ -499,7 +517,7 @@ async def activate_agent(agent_id: str, api_key: str = Depends(require_api_key))
         if not exists:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent {agent_id} not found"
+                detail=f"Agent {agent_id} not found",
             )
 
         await agent_repo.set_agent_active(agent_id, True)
@@ -514,12 +532,14 @@ async def activate_agent(agent_id: str, api_key: str = Depends(require_api_key))
         logger.error(f"Failed to activate agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to activate agent"
+            detail="Failed to activate agent",
         )
 
 
 @router.post("/{agent_id}/deactivate", status_code=status.HTTP_200_OK)
-async def deactivate_agent(agent_id: str, api_key: str = Depends(require_api_key)) -> Dict[str, str]:
+async def deactivate_agent(
+    agent_id: str, api_key: str = Depends(require_api_key)
+) -> Dict[str, str]:
     """
     Deactivate an agent (set is_active=false, status='inactive').
 
@@ -532,7 +552,7 @@ async def deactivate_agent(agent_id: str, api_key: str = Depends(require_api_key
         if not exists:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent {agent_id} not found"
+                detail=f"Agent {agent_id} not found",
             )
 
         await agent_repo.set_agent_active(agent_id, False)
@@ -550,13 +570,14 @@ async def deactivate_agent(agent_id: str, api_key: str = Depends(require_api_key
         logger.error(f"Failed to deactivate agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to deactivate agent"
+            detail="Failed to deactivate agent",
         )
 
 
 # =============================================================================
 # STATISTICS & MONITORING ENDPOINTS
 # =============================================================================
+
 
 @router.get("/stats/overview", status_code=status.HTTP_200_OK)
 async def get_agent_stats(api_key: str = Depends(require_api_key)) -> Dict[str, Any]:
@@ -578,12 +599,8 @@ async def get_agent_stats(api_key: str = Depends(require_api_key)) -> Dict[str, 
         consciousness_count = await agent_repo.count_agents(
             agent_type="consciousness_instance"
         )
-        task_count = await agent_repo.count_agents(
-            agent_type="task_agent"
-        )
-        system_count = await agent_repo.count_agents(
-            agent_type="system_agent"
-        )
+        task_count = await agent_repo.count_agents(agent_type="task_agent")
+        system_count = await agent_repo.count_agents(agent_type="system_agent")
 
         # Get active count
         active_count = await agent_repo.count_agents(is_active=True)
@@ -597,23 +614,25 @@ async def get_agent_stats(api_key: str = Depends(require_api_key)) -> Dict[str, 
             "by_type": {
                 "consciousness_instance": consciousness_count,
                 "task_agent": task_count,
-                "system_agent": system_count
+                "system_agent": system_count,
             },
             "active_agents": active_count,
-            "factory_cache": cache_stats
+            "factory_cache": cache_stats,
         }
 
     except Exception as e:
         logger.error(f"Failed to get agent stats: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get agent stats"
+            detail="Failed to get agent stats",
         )
 
 
 @router.post("/cache/clear", status_code=status.HTTP_200_OK)
 async def clear_factory_cache(
-    agent_id: Optional[str] = Query(None, description="Agent to clear (or all if not specified)"),
+    agent_id: Optional[str] = Query(
+        None, description="Agent to clear (or all if not specified)"
+    ),
     api_key: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     """
@@ -642,5 +661,5 @@ async def clear_factory_cache(
         logger.error(f"Failed to clear cache: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to clear cache"
+            detail="Failed to clear cache",
         )

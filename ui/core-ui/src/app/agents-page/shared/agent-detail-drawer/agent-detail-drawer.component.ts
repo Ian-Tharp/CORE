@@ -26,7 +26,7 @@ export class AgentDetailDrawerComponent {
   public onBackdrop(): void { this.closed.emit(); }
 
   @HostListener('window:keydown.escape')
-  public onEsc(): void { if (this.open) this.closed.emit(); }
+  public onEsc(): void { if (this.open) {this.closed.emit();} }
 }
 
 
