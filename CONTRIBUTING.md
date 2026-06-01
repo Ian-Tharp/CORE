@@ -72,6 +72,18 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 **Python (backend):** Format with `black`, type hints encouraged
 **TypeScript (frontend):** Follow Angular style guide, use `npm run lint`
 
+## Design & UX (frontend)
+
+CORE's interface follows a shared design philosophy — read
+[**UX & Design Principles**](./docs/design/ux-design-principles.md) before adding
+or restyling a view. In short: design **tokens are the single source of truth**,
+accessibility **AA is the floor** (AAA where it aids comprehension — the neon
+energy is decoration, not load-bearing text), **motion is reduced-motion safe**,
+and new views should feel like the **command deck**.
+
+PRs that touch the UI are reviewed against the **"before you ship a view"**
+checklist in that doc, which is mirrored in the [pull request template](./.github/PULL_REQUEST_TEMPLATE.md).
+
 ## Architecture
 
 See [docs/](./docs/) for architecture documentation, ADRs, and design docs.
