@@ -34,11 +34,11 @@ $core-bg-surface:     #0a1628;   // Cards / panels
 $core-bg-surface-2:   #0f1f38;   // Elevated cards
 $core-bg-surface-3:   #162542;   // Hover state / highest
 
-// Text hierarchy
-$core-text-primary:   #e8e8e8;   // Primary text (off-white)
-$core-text-secondary: #8892b0;   // Muted secondary
+// Text hierarchy — tuned for WCAG contrast on the deep-navy panels.
+$core-text-primary:   #e8e8e8;   // Primary text (off-white) — ~15:1, AAA
+$core-text-secondary: #9aa6c6;   // Muted secondary — raised from #8892b0 to clear AAA (~7:1)
 $core-text-accent:    #00ffc8;   // Accent highlights (same as energy)
-$core-text-dim:       #4a5568;   // Disabled/placeholder
+$core-text-dim:       #6b7793;   // Disabled/placeholder/decorative — raised to ~AA; not for body text
 
 // Border tokens
 $core-border-subtle:  rgba(0, 255, 200, 0.12);   // Default card border

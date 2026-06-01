@@ -181,14 +181,15 @@
       display: inline-flex;
       align-items: center;
       gap: var(--spacing-xs);
-      color: var(--core-text-dim);
+      // text-secondary (not the under-contrast text-dim) + a readable size.
+      color: var(--core-text-secondary);
       font-family: var(--font-mono);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
 
       &-icon {
-        font-size: 0.85rem;
-        width: 0.85rem;
-        height: 0.85rem;
+        font-size: 1rem;
+        width: 1rem;
+        height: 1rem;
       }
     }
 
