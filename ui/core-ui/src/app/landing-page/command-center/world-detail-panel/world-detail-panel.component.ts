@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
@@ -6,6 +6,7 @@ import { TileMetadataService } from '../engine/tile-metadata.service';
 import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
 import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
 import { CreativeService, WikiPageDto } from '../../../services/creative/creative.service';
+import { WorldsService } from '../../../services/worlds/worlds.service';
 
 export interface SelectedTileInfo {
   index: number;
@@ -26,7 +27,7 @@ export interface SelectedTileInfo {
   templateUrl: './world-detail-panel.component.html',
   styleUrl: './world-detail-panel.component.scss'
 })
-export class WorldDetailPanelComponent implements OnInit, OnDestroy {
+export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   @Input() selectedTile: SelectedTileInfo | null = null;
   /** The backend world this panel belongs to; wiki pages are scoped to it. */
   @Input() worldId: string | null = null;
@@ -37,6 +38,10 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   metadata: TileWorldMetadata | null = null;
   linkedWikiPages: WikiPageDto[] = [];
   linkedBoards: Board[] = [];
+
+  // World-scoped knowledge (ingested wiki lore).
+  knowledgeCount = 0;
+  isIngesting = false;
   tileConnections: WorldConnection[] = [];
 
   // Edit states
@@ -64,7 +69,8 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
   constructor(
     private metadataService: TileMetadataService,
     private creativeData: CreativeDataService,
-    private creativeService: CreativeService
+    private creativeService: CreativeService,
+    private worldsService: WorldsService
   ) {}
 
   ngOnInit(): void {
@@ -82,12 +88,43 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  ngOnChanges(): void {
-    if (this.selectedTile) {
-      this.metadataService.setSelectedTile(this.selectedTile.index);
-    } else {
-      this.metadataService.setSelectedTile(null);
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedTile']) {
+      if (this.selectedTile) {
+        this.metadataService.setSelectedTile(this.selectedTile.index);
+      } else {
+        this.metadataService.setSelectedTile(null);
+      }
     }
+    if (changes['worldId'] && this.worldId) {
+      this.loadKnowledgeCount();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // World Knowledge (ingested wiki lore)
+  // ─────────────────────────────────────────────────────────────
+
+  private loadKnowledgeCount(): void {
+    if (!this.worldId) { this.knowledgeCount = 0; return; }
+    this.worldsService.listKnowledge(this.worldId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (docs) => { this.knowledgeCount = docs?.length ?? 0; },
+        error: () => { this.knowledgeCount = 0; }
+      });
+  }
+
+  /** Ingest the world's wiki pages into the knowledgebase (world-scoped, RAG). */
+  ingestKnowledge(): void {
+    if (!this.worldId || this.isIngesting) { return; }
+    this.isIngesting = true;
+    this.worldsService.ingestWiki(this.worldId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => { this.isIngesting = false; this.loadKnowledgeCount(); },
+        error: (err) => { this.isIngesting = false; console.error('Wiki ingest failed:', err); }
+      });
   }
 
   private loadLinkedContent(): void {

@@ -149,6 +149,22 @@ async def get_world_metadata(world_id: str) -> Dict[str, Any]:
     return snapshot or {}
 
 
+@router.post("/{world_id}/knowledge/ingest-wiki")
+async def ingest_world_wiki(world_id: str) -> Dict[str, int]:
+    """Ingest this world's wiki pages into the knowledgebase (world-scoped, RAG)."""
+    from app.services import knowledgebase_service as kb
+
+    return await kb.ingest_world_wiki(world_id)
+
+
+@router.get("/{world_id}/knowledge", response_model=List[Dict[str, Any]])
+async def list_world_knowledge(world_id: str) -> List[Dict[str, Any]]:
+    """List the knowledge documents linked to this world."""
+    from app.repository import knowledgebase_repository as kb_repo
+
+    return await kb_repo.list_documents_by_world(world_id)
+
+
 @router.get("/by-name/{name}")
 async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""

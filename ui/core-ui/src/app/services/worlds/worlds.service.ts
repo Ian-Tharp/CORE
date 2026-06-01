@@ -59,6 +59,18 @@ export class WorldsService {
     return this.http.get<any>(`${this.apiUrl}/worlds/${worldId}/metadata`);
   }
 
+  /** Ingest this world's wiki pages into the knowledgebase (world-scoped, RAG). */
+  ingestWiki(worldId: string): Observable<{ ingested: number; skipped: number; total: number }> {
+    return this.http.post<{ ingested: number; skipped: number; total: number }>(
+      `${this.apiUrl}/worlds/${worldId}/knowledge/ingest-wiki`, {}
+    );
+  }
+
+  /** List the knowledge documents linked to this world. */
+  listKnowledge(worldId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/worlds/${worldId}/knowledge`);
+  }
+
   listWorlds(limit = 10, offset = 0): Observable<Array<{ id: string; name: string; updated_at: string }>> {
     return this.http.get<Array<{ id: string; name: string; updated_at: string }>>(`${this.apiUrl}/worlds`, { params: { limit, offset } as any });
   }

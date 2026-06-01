@@ -24,6 +24,7 @@ async def create_document(
     file_hash: Optional[str] = None,
     instance_name: Optional[str] = None,
     source_discussion: Optional[str] = None,
+    world_id: Optional[str] = None,
 ) -> str:
     doc_id = str(uuid.uuid4())
     pool = await get_db_pool()
@@ -32,8 +33,8 @@ async def create_document(
             """
             INSERT INTO kb_documents (
                 id, filename, original_name, size, mime_type, description, is_global, source, status,
-                storage_path, title, file_hash, instance_name, instance_timestamp, source_discussion
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, $14)
+                storage_path, title, file_hash, instance_name, instance_timestamp, source_discussion, world_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, $14, $15)
             """,
             doc_id,
             filename,
@@ -49,8 +50,36 @@ async def create_document(
             file_hash,
             instance_name,
             source_discussion,
+            world_id,
         )
     return doc_id
+
+
+async def list_documents_by_world(world_id: str) -> List[Dict[str, Any]]:
+    """List KB documents linked to a world (its ingested knowledge)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, original_name, title, description, source, status, upload_date
+            FROM kb_documents
+            WHERE world_id = $1
+            ORDER BY upload_date DESC
+            """,
+            world_id,
+        )
+    return [
+        {
+            "id": str(r["id"]),
+            "title": r["title"] or r["original_name"],
+            "original_name": r["original_name"],
+            "description": r["description"],
+            "source": r["source"],
+            "status": r["status"],
+            "upload_date": r["upload_date"].isoformat() if r["upload_date"] else "",
+        }
+        for r in rows
+    ]
 
 
 async def update_document_embedding(

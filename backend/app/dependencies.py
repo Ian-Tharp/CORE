@@ -521,6 +521,15 @@ async def setup_db_schema() -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_kb_documents_file_hash ON kb_documents(file_hash) WHERE file_hash IS NOT NULL"
             )
 
+            # World-scoped knowledge: link KB documents to a world so a world's
+            # wiki lore can be ingested and listed as its own knowledge.
+            await conn.execute(
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS world_id UUID"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_world_id ON kb_documents(world_id)"
+            )
+
             # Activity log for knowledgebase operations (uploads, deletes, processing, etc.)
             await conn.execute(
                 """

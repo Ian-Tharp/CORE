@@ -239,6 +239,19 @@
         }
       </section>
 
+      <!-- World Knowledge (ingested wiki lore for RAG) -->
+      <section class="info-section">
+        <label class="section-label">Knowledge</label>
+        <button class="btn-small" (click)="ingestKnowledge()" [disabled]="isIngesting || !worldId">
+          {{ isIngesting ? 'Ingesting…' : '+ Ingest Wiki → Knowledge' }}
+        </button>
+        @if (knowledgeCount) {
+          <span class="knowledge-count">{{ knowledgeCount }} document{{ knowledgeCount === 1 ? '' : 's' }} in knowledge</span>
+        } @else if (!worldId) {
+          <span class="knowledge-hint">Save this world first to enable knowledge.</span>
+        }
+      </section>
+
       <section class="info-section">
         <label class="section-label">Mood Boards</label>
         <button class="btn-small" (click)="createBoard()">+ Create Board</button>

@@ -161,6 +161,75 @@ async def process_uploaded_file(
     return doc_id
 
 
+async def ingest_world_wiki(
+    world_id: str, *, local_model: Optional[str] = None
+) -> Dict[str, int]:
+    """Ingest a world's wiki pages into the knowledgebase as world-scoped docs.
+
+    Each wiki page becomes a kb_documents row (source='wiki', world_id set) whose
+    content is chunked and embedded for RAG. Pages already ingested (deduped by a
+    ``wiki:<page_id>`` file_hash) are skipped, so this is safe to re-run. Embedding
+    is best-effort: a document is still created/listed even if embedding fails.
+    """
+    from app.repository import creative_repository
+
+    pages = await creative_repository.list_wiki_pages(world_id)
+    model = local_model or os.getenv("EMBEDDING_MODEL") or "nomic-embed-text"
+    ingested = 0
+    skipped = 0
+
+    for page in pages:
+        page_id = page.get("id")
+        file_hash = f"wiki:{page_id}"
+        if await repo.get_document_by_hash(file_hash):
+            skipped += 1
+            continue
+
+        title = page.get("title") or "Wiki page"
+        content = page.get("content") or ""
+        doc_id = await repo.create_document(
+            filename=f"wiki-{page_id}.md",
+            original_name=title,
+            size=len(content.encode("utf-8")),
+            mime_type="text/markdown",
+            storage_path=f"wiki://{page_id}",
+            description=(content.strip()[:200] or None),
+            is_global=False,
+            source="wiki",
+            title=title,
+            file_hash=file_hash,
+            world_id=world_id,
+        )
+
+        # Best-effort chunk + embed — never let an embedding failure drop the doc.
+        try:
+            chunks = _split_text(content)
+            vecs_all: List[List[float]] = []
+            dims = 0
+            for start in range(0, len(chunks), 64):
+                v, od = await _embed_texts_local(
+                    model=model, texts=chunks[start : start + 64]
+                )
+                if v:
+                    vecs_all.extend(v)
+                    if od and not dims:
+                        dims = od
+            items = [
+                (i, chunks[i], vecs_all[i])
+                for i in range(min(len(chunks), len(vecs_all)))
+            ]
+            if items:
+                await repo.insert_chunk_embeddings(
+                    document_id=doc_id, items=items, model=model, dimensions=dims or 0
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Wiki embed failed for page %s: %s", page_id, exc)
+
+        ingested += 1
+
+    return {"ingested": ingested, "skipped": skipped, "total": len(pages)}
+
+
 async def reprocess_document(
     *,
     document_id: str,
