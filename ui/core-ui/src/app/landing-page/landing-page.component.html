@@ -226,7 +226,7 @@
                 <div class="health-panel__services">
                   @for (entry of systemHealth.services | keyvalue; track entry.key) {
                     <div class="service-row" [class]="entry.value.status">
-                      <span class="service-row__name">{{ entry.key }}</span>
+                      <span class="service-row__name">{{ healthServiceLabel(entry.key) }}</span>
                       <span class="service-row__state">{{ entry.value.status }}</span>
                     </div>
                   }

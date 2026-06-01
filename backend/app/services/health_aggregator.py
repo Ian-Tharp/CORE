@@ -179,8 +179,17 @@ async def check_redis() -> ServiceHealth:
 
 
 async def check_ollama() -> ServiceHealth:
-    """Check Ollama LLM service health."""
-    from app.dependencies import get_ollama_client
+    """Check the active local LLM provider (Ollama or LM Studio).
+
+    The shared local client (`get_ollama_client`) is provider-aware and points at
+    whichever local provider `CORE_LOCAL_PROVIDER` selects, so this check reports
+    the one that is actually in use and names it accordingly.
+    """
+    from app.dependencies import get_ollama_client, get_local_provider
+
+    is_lmstudio = get_local_provider() == "lmstudio"
+    name = "lmstudio" if is_lmstudio else "ollama"
+    label = "LM Studio" if is_lmstudio else "Ollama"
 
     start = time.time()
     try:
@@ -194,11 +203,12 @@ async def check_ollama() -> ServiceHealth:
         status = HealthStatus.HEALTHY if model_names else HealthStatus.DEGRADED
 
         return ServiceHealth(
-            name="ollama",
+            name=name,
             status=status,
             latency_ms=latency,
-            message=f"Ollama connected, {len(model_names)} models",
+            message=f"{label} connected, {len(model_names)} models",
             details={
+                "provider": name,
                 "model_count": len(model_names),
                 "available_models": model_names[:5],  # First 5
                 "has_models": len(model_names) > 0,
@@ -206,9 +216,9 @@ async def check_ollama() -> ServiceHealth:
         )
     except Exception as e:
         latency = (time.time() - start) * 1000
-        logger.error(f"Ollama health check failed: {e}")
+        logger.error(f"{label} health check failed: {e}")
         return ServiceHealth(
-            name="ollama",
+            name=name,
             status=HealthStatus.UNHEALTHY,
             latency_ms=latency,
             message=f"Connection failed: {str(e)[:100]}",

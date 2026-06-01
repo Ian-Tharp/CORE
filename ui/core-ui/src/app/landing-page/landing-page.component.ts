@@ -490,6 +490,25 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Friendly display label for a System Health service key. Special-cases the
+   * names that don't title-case cleanly (e.g. the local LLM provider, acronyms);
+   * everything else falls back to a humanised key ("task_queue" -> "Task queue").
+   */
+  private static readonly HEALTH_SERVICE_LABELS: Record<string, string> = {
+    lmstudio: 'LM Studio',
+    ollama: 'Ollama',
+    task_queue: 'Task Queue',
+    vector_db: 'Vector DB',
+    websocket: 'WebSocket',
+  };
+
+  healthServiceLabel(key: string): string {
+    return (
+      LandingPageComponent.HEALTH_SERVICE_LABELS[key] ?? key.replace(/_/g, ' ')
+    );
+  }
+
+  /**
    * Get readable agent status
    */
   getAgentStatusText(status: string): string {

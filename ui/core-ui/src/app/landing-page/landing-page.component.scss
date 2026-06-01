@@ -283,7 +283,13 @@
     justify-content: flex-start;
     gap: var(--spacing-lg);
     padding-top: var(--spacing-md);
-    overflow-y: auto;
+    // The center column is the fixed hero stack (reactor → pipeline → vitals →
+    // command rail), sized to fit the deck. Its animated stages are already
+    // clipped to their own boxes, so clip (don't scroll) here: this prevents the
+    // looping background animations from nudging the column into a spurious
+    // scrollbar. Narrow viewports scroll via the parent grid (height: auto).
+    overflow: clip;
+    scrollbar-gutter: auto;
     animation: deck-reveal-up 0.7s 0.08s ease-out both;
   }
 
