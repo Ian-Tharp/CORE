@@ -44,6 +44,8 @@ describe('CommandCenterComponent', () => {
     setConnectionsVisible: jest.fn(),
     setBrushRadius: jest.fn(),
     setRandomSeed: jest.fn(),
+    triggerSeedBloom: jest.fn(),
+    returnToOverview: jest.fn(),
     randomize: jest.fn(),
     clear: jest.fn(),
     getTileWorldPosition: jest.fn()
@@ -62,6 +64,8 @@ describe('CommandCenterComponent', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     await TestBed.configureTestingModule({
       imports: [CommandCenterComponent],
       providers: [
@@ -82,6 +86,32 @@ describe('CommandCenterComponent', () => {
   });
 
   it('should create', () => {
+    // Arrange
+    // Act
+    // Assert
     expect(component).toBeTruthy();
+  });
+
+  it('should apply a seed and trigger the grid bloom animation', () => {
+    // Arrange
+    component.seed = 'verdant-spiral';
+
+    // Act
+    component.onApplySeed();
+
+    // Assert
+    expect(tileGridMock.setRandomSeed).toHaveBeenCalledWith('verdant-spiral');
+    expect(tileGridMock.triggerSeedBloom).toHaveBeenCalled();
+  });
+
+  it('should randomize the grid through the tile grid service', () => {
+    // Arrange
+    expect(tileGridMock.randomize).not.toHaveBeenCalled();
+
+    // Act
+    component.onRandomize();
+
+    // Assert
+    expect(tileGridMock.randomize).toHaveBeenCalled();
   });
 });

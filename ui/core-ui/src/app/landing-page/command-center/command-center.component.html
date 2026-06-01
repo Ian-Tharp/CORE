@@ -270,6 +270,15 @@
       />
     </aside>
   }
+
+  <!-- World stepper: Next/Back through the universe of worlds -->
+  @if (!isEditMode) {
+    <div class="world-stepper" role="group" aria-label="Step through worlds">
+      <button type="button" class="world-stepper__btn" (click)="stepWorld(-1)" title="Previous world" aria-label="Previous world">‹</button>
+      <span class="world-stepper__label">{{ worldStepLabel }}</span>
+      <button type="button" class="world-stepper__btn" (click)="stepWorld(1)" title="Next world" aria-label="Next world">›</button>
+    </div>
+  }
 </section>
 
 <app-search-palette

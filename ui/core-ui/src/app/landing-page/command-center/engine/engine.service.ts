@@ -1,14 +1,28 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 
 @Injectable({ providedIn: 'root' })
 export class EngineService {
+  private readonly ngZone = inject(NgZone);
   private renderer?: THREE.WebGLRenderer;
   private scene?: THREE.Scene;
   private camera?: THREE.OrthographicCamera;
   private controls?: MapControls;
   private animationHandle = 0;
+  private animationClock = new THREE.Clock();
+  private readonly animationUpdaters = new Set<(deltaMs: number, elapsedMs: number) => void>();
+  private cameraTween?: {
+    startPosition: THREE.Vector3;
+    endPosition: THREE.Vector3;
+    startTarget: THREE.Vector3;
+    endTarget: THREE.Vector3;
+    startZoom: number;
+    endZoom: number;
+    startMs: number;
+    durationMs: number;
+  };
+  private overviewCamera?: { position: THREE.Vector3; target: THREE.Vector3; zoom: number };
   private canvas?: HTMLCanvasElement;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -30,11 +44,11 @@ export class EngineService {
 
     const { clientWidth: width, clientHeight: height } = canvas;
     const aspect = width / height;
-    const viewHeight = 60; // world units visible vertically
+    const viewHeight = 58; // world units visible vertically
     const halfH = viewHeight / 2;
     const halfW = halfH * aspect;
     this.camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 2000);
-    this.camera.position.set(0, 100, 0);
+    this.camera.position.set(0, 68, 86);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -59,12 +73,12 @@ export class EngineService {
     this.controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE; // free for context handling
     this.controls.target.set(0, 0, 0);
 
-    const hemi = new THREE.HemisphereLight(0xbfdfff, 0x1b2727, 1.2);
+    const hemi = new THREE.HemisphereLight(0xdffcff, 0x082322, 1.35);
     this.scene.add(hemi);
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambient = new THREE.AmbientLight(0x9fffea, 0.72);
     this.scene.add(ambient);
-    const dir = new THREE.DirectionalLight(0xe8fff7, 1.6);
-    dir.position.set(60, 180, 80);
+    const dir = new THREE.DirectionalLight(0xe8fff7, 1.85);
+    dir.position.set(72, 160, 96);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
     dir.shadow.camera.near = 0.5;
@@ -116,18 +130,31 @@ export class EngineService {
   onContextClick(callback: (intersections: THREE.Intersection[]) => void): void {
     this._onContextClick = callback;
   }
+  onBeforeRender(callback: (deltaMs: number, elapsedMs: number) => void): () => void {
+    this.animationUpdaters.add(callback);
+    return () => this.animationUpdaters.delete(callback);
+  }
   private _onHover?: (intersections: THREE.Intersection[]) => void;
   private _onClick?: (intersections: THREE.Intersection[]) => void;
   private _onContextClick?: (intersections: THREE.Intersection[]) => void;
 
   start(): void {
-    const tick = () => {
-      this.animationHandle = requestAnimationFrame(tick);
-      this.updateMovement();
-      this.controls?.update();
-      this.renderer?.render(this.scene!, this.camera!);
-    };
-    tick();
+    this.animationClock = new THREE.Clock();
+    this.ngZone.runOutsideAngular(() => {
+      const tick = () => {
+        this.animationHandle = requestAnimationFrame(tick);
+        const deltaMs = this.animationClock.getDelta() * 1000;
+        const elapsedMs = this.animationClock.elapsedTime * 1000;
+        this.updateMovement();
+        this.updateCameraTween();
+        this.controls?.update();
+        for (const updater of this.animationUpdaters) {
+          updater(deltaMs, elapsedMs);
+        }
+        this.renderer?.render(this.scene!, this.camera!);
+      };
+      tick();
+    });
   }
 
   dispose(): void {
@@ -220,9 +247,9 @@ export class EngineService {
 
   recenterTo(point: THREE.Vector3): void {
     if (!this.camera || !this.controls) {return;}
-    const y = this.camera.position.y;
+    const offset = this.camera.position.clone().sub(this.controls.target);
     this.controls.target.set(point.x, 0, point.z);
-    this.camera.position.set(point.x, y, point.z);
+    this.camera.position.copy(this.controls.target).add(offset);
   }
 
   fitToBounds(widthWorld: number, heightWorld: number, margin = 1.1): void {
@@ -234,6 +261,32 @@ export class EngineService {
     const zoom = Math.min(zoomW, zoomH);
     this.camera.zoom = Math.max(this.controls?.minZoom ?? 0.1, Math.min(zoom, this.controls?.maxZoom ?? 10));
     this.camera.updateProjectionMatrix();
+    if (this.controls) {
+      this.overviewCamera = {
+        position: this.camera.position.clone(),
+        target: this.controls.target.clone(),
+        zoom: this.camera.zoom
+      };
+    }
+  }
+
+  focusOn(point: THREE.Vector3, zoom = 4.2): void {
+    if (!this.camera || !this.controls) {return;}
+    const currentOffset = this.camera.position.clone().sub(this.controls.target);
+    const offset = currentOffset.lengthSq() > 0
+      ? currentOffset.normalize().multiplyScalar(24)
+      : new THREE.Vector3(0, 16, 24);
+    this.animateCameraTo(point.clone().add(offset), point, zoom, 650);
+  }
+
+  returnToOverview(): void {
+    if (!this.camera || !this.controls || !this.overviewCamera) {return;}
+    this.animateCameraTo(
+      this.overviewCamera.position.clone(),
+      this.overviewCamera.target.clone(),
+      this.overviewCamera.zoom,
+      650
+    );
   }
 
   worldToCanvas(point: THREE.Vector3): { x: number; y: number } | null {
@@ -281,6 +334,33 @@ export class EngineService {
       this.controls.target.z += dz;
       this.camera.position.x += dx;
       this.camera.position.z += dz;
+    }
+  }
+
+  private animateCameraTo(position: THREE.Vector3, target: THREE.Vector3, zoom: number, durationMs: number): void {
+    if (!this.camera || !this.controls) {return;}
+    this.cameraTween = {
+      startPosition: this.camera.position.clone(),
+      endPosition: position,
+      startTarget: this.controls.target.clone(),
+      endTarget: target,
+      startZoom: this.camera.zoom,
+      endZoom: Math.max(this.controls.minZoom, Math.min(zoom, this.controls.maxZoom)),
+      startMs: performance.now(),
+      durationMs
+    };
+  }
+
+  private updateCameraTween(): void {
+    if (!this.camera || !this.controls || !this.cameraTween) {return;}
+    const progress = Math.min(1, (performance.now() - this.cameraTween.startMs) / this.cameraTween.durationMs);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    this.camera.position.lerpVectors(this.cameraTween.startPosition, this.cameraTween.endPosition, eased);
+    this.controls.target.lerpVectors(this.cameraTween.startTarget, this.cameraTween.endTarget, eased);
+    this.camera.zoom = THREE.MathUtils.lerp(this.cameraTween.startZoom, this.cameraTween.endZoom, eased);
+    this.camera.updateProjectionMatrix();
+    if (progress >= 1) {
+      this.cameraTween = undefined;
     }
   }
 

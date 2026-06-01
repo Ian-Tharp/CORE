@@ -60,7 +60,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   } | null = null;
   contextMenu: { visible: boolean; x: number; y: number; index: number | null; gridX?: number; gridY?: number } =
     { visible: false, x: 0, y: 0, index: null };
-  isEditMode = true;
+  isEditMode = false;
   selectedInfo: SelectedTileInfo | null = null;
 
   // World detail panel
@@ -343,6 +343,19 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Step the highlighted world forward (+1) or back (-1) through the universe. */
+  public stepWorld(delta: number): void {
+    this.tileGrid.stepSelection(delta);
+  }
+
+  /** Label for the world stepper, e.g. "World 7 / 441" or "441 worlds". */
+  public get worldStepLabel(): string {
+    const total = this.tileGrid.getWorldCount();
+    if (!total) { return ''; }
+    const idx = this.tileGrid.getSelectedIndex();
+    return idx >= 0 ? `World ${idx + 1} / ${total}` : `${total} worlds`;
+  }
+
   public onOpenWorlds(): void {
     const ref = this.dialog.open(WorldsDialogComponent, { data: { limit: 50 }, panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((world?: { id: string; name: string }) => {
@@ -450,6 +463,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
     if (e.key === 'h' || e.key === 'H') {
       this.onToggleOutlines(!this.outlinesVisible);
+    } else if (e.key === 'Escape') {
+      this.tileGrid.returnToOverview();
+      this.contextMenu.visible = false;
     } else if (e.key === '+' || e.key === '=') {
       this.brush = Math.min(6, this.brush + 1);
       this.onBrushChange(this.brush);
