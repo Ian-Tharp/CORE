@@ -1,15 +1,15 @@
 """
 Embedding Service
 
-Generates embeddings using the local Ollama instance for vector similarity search.
-Supports both single and batch embedding generation.
+Generates embeddings using the active local provider (Ollama or LM Studio) for
+vector similarity search. Supports both single and batch embedding generation.
 """
 
 import asyncio
 import logging
+import os
 from typing import List, Optional, Dict, Any
 
-import httpx
 from openai import AsyncOpenAI
 
 from app.dependencies import get_ollama_client
@@ -19,15 +19,18 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     """
-    Service for generating embeddings using Ollama.
+    Service for generating embeddings via the active local provider.
 
-    Uses nomic-embed-text or similar models for generating
+    Uses nomic-embed-text (or the model named by ``EMBEDDING_MODEL``) to generate
     embeddings that work with pgvector similarity search.
     """
 
     def __init__(self):
         self.client: Optional[AsyncOpenAI] = None
-        self.model_name: str = "nomic-embed-text"  # Default embedding model
+        # EMBEDDING_MODEL lets each machine name its provider's embedding model
+        # (e.g. LM Studio's "text-embedding-nomic-embed-text-v1.5").
+        self.model_name: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+        self._model_explicit: bool = bool(os.getenv("EMBEDDING_MODEL"))
         self.dimensions: int = 768  # Default dimensions for nomic-embed-text
         self._model_cache: Dict[str, Dict[str, Any]] = {}
 
@@ -36,29 +39,37 @@ class EmbeddingService:
         try:
             self.client = get_ollama_client()
 
-            # Check if embedding model is available
-            available_models = await self._list_available_models()
-
-            if self.model_name in available_models:
-                logger.info(f"Using embedding model: {self.model_name}")
+            if self._model_explicit:
+                # Trust the explicitly-configured model (EMBEDDING_MODEL).
+                logger.info(f"Using configured embedding model: {self.model_name}")
             else:
-                # Try alternative models
-                alternatives = ["mxbai-embed-large", "all-minilm", "nomic-embed-text"]
-                for alt_model in alternatives:
-                    if alt_model in available_models:
-                        self.model_name = alt_model
-                        logger.info(
-                            f"Using alternative embedding model: {self.model_name}"
-                        )
-                        break
+                # Discover an embedding model from the active provider.
+                available_models = await self._list_available_models()
+
+                if self.model_name in available_models:
+                    logger.info(f"Using embedding model: {self.model_name}")
                 else:
-                    logger.warning(
-                        f"No embedding models found. Available: {available_models}"
-                    )
-                    # Will fall back to using first available model
-                    if available_models:
-                        self.model_name = available_models[0]
-                        logger.info(f"Falling back to: {self.model_name}")
+                    # Try alternative models
+                    alternatives = [
+                        "mxbai-embed-large",
+                        "all-minilm",
+                        "nomic-embed-text",
+                    ]
+                    for alt_model in alternatives:
+                        if alt_model in available_models:
+                            self.model_name = alt_model
+                            logger.info(
+                                f"Using alternative embedding model: {self.model_name}"
+                            )
+                            break
+                    else:
+                        logger.warning(
+                            f"No embedding models found. Available: {available_models}"
+                        )
+                        # Fall back to the first available model, if any.
+                        if available_models:
+                            self.model_name = available_models[0]
+                            logger.info(f"Falling back to: {self.model_name}")
 
             # Get model dimensions
             await self._get_model_info()
@@ -70,19 +81,16 @@ class EmbeddingService:
             raise
 
     async def _list_available_models(self) -> List[str]:
-        """List available models from Ollama."""
+        """List available model ids from the active local provider.
+
+        Uses the OpenAI-compatible ``/v1/models`` endpoint (works for both Ollama
+        and LM Studio) and strips any Ollama ``:tag`` suffix.
+        """
         try:
-            # Use httpx to directly query Ollama API
-            async with httpx.AsyncClient() as client:
-                response = await client.get("http://ollama:11434/api/tags")
-                if response.status_code == 200:
-                    data = response.json()
-                    return [
-                        model["name"].split(":")[0] for model in data.get("models", [])
-                    ]
-                else:
-                    logger.warning("Could not fetch available models from Ollama")
-                    return []
+            if not self.client:
+                return []
+            models = await self.client.models.list()
+            return [m.id.split(":")[0] for m in models.data] if models.data else []
         except Exception as e:
             logger.error(f"Error listing available models: {e}")
             return []

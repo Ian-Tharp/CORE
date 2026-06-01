@@ -63,34 +63,59 @@ def _get_ollama_base_url() -> str:
     return os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 
 
+def get_local_provider() -> str:
+    """The active local LLM provider: ``ollama`` (default) or ``lmstudio``.
+
+    Driven by ``CORE_LOCAL_PROVIDER`` so a machine can run entirely on LM Studio
+    instead of Ollama with no code changes — set it in that machine's (gitignored)
+    .env. Defaults to ``ollama`` so other machines are unaffected.
+    """
+    return os.getenv("CORE_LOCAL_PROVIDER", "ollama").strip().lower()
+
+
+def get_local_chat_model() -> str:
+    """Default chat-model id for direct local-client callers that bypass the
+    model router. Resolves per active provider so the same call works whether the
+    machine runs Ollama or LM Studio."""
+    if get_local_provider() == "lmstudio":
+        # Prefer the explicit default; else the first registered LM Studio id.
+        first = os.getenv("LMSTUDIO_MODELS", "").split(",")[0].strip()
+        return os.getenv("CORE_DEFAULT_MODEL") or first or "local-model"
+    return os.getenv("CORE_LOCAL_CHAT_MODEL", "llama3.2")
+
+
 @lru_cache()
 def get_ollama_client() -> AsyncOpenAI:
-    """
-    Create and return an OpenAI-compatible async client for Ollama.
+    """OpenAI-compatible async client for the active LOCAL provider.
 
-    Ollama implements the OpenAI API, so we can use the OpenAI SDK
-    by pointing it to the Ollama base URL.
-
-    This is the local-first, privacy-preserving option for CORE.
+    Defaults to Ollama; switches to LM Studio when ``CORE_LOCAL_PROVIDER=lmstudio``.
+    Both implement the OpenAI API, so the same SDK client works for either. The
+    name is kept for backwards compatibility with existing call sites.
     """
-    base_url = _get_ollama_base_url()
-    # Ollama doesn't require an API key, but the SDK expects one
+    if get_local_provider() == "lmstudio":
+        return AsyncOpenAI(
+            base_url=os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
+            api_key=os.getenv("LMSTUDIO_API_KEY", "lm-studio"),
+        )
     return AsyncOpenAI(
-        base_url=f"{base_url}/v1",
+        base_url=f"{_get_ollama_base_url()}/v1",
         api_key="ollama",  # Dummy key, Ollama doesn't check it
     )
 
 
 @lru_cache()
 def get_ollama_client_sync() -> OpenAI:
-    """
-    Create and return a synchronous OpenAI-compatible client for Ollama.
+    """Synchronous OpenAI-compatible client for the active LOCAL provider.
 
-    Use this for synchronous agent methods that are called from asyncio.to_thread().
+    Use this for synchronous agent methods called from asyncio.to_thread().
     """
-    base_url = _get_ollama_base_url()
+    if get_local_provider() == "lmstudio":
+        return OpenAI(
+            base_url=os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
+            api_key=os.getenv("LMSTUDIO_API_KEY", "lm-studio"),
+        )
     return OpenAI(
-        base_url=f"{base_url}/v1",
+        base_url=f"{_get_ollama_base_url()}/v1",
         api_key="ollama",  # Dummy key, Ollama doesn't check it
     )
 

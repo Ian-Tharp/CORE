@@ -235,13 +235,13 @@ class ComprehensionService:
     ) -> Dict[str, Any]:
         """Call LLM for intent analysis."""
         try:
-            from app.dependencies import get_ollama_client
+            from app.dependencies import get_ollama_client, get_local_chat_model
 
             client = get_ollama_client()
             user_prompt = f"Source type: {source_type}\n\nInput:\n{content}"
 
             response = await client.chat.completions.create(
-                model="llama3.2",
+                model=get_local_chat_model(),
                 messages=[
                     {"role": "system", "content": INTENT_PARSE_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},

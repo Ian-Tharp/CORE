@@ -39,8 +39,9 @@ Set these env vars (e.g. in `backend/.env`, or your shell, or override in compos
 | `LMSTUDIO_BASE_URL` | Server URL. Defaults to `http://localhost:1234/v1`; the dockerized backend defaults to `http://host.docker.internal:1234/v1`. | |
 | `LMSTUDIO_API_KEY` | Any non-empty string. | `lm-studio` |
 | `LMSTUDIO_CONTEXT_WINDOW` | Context window registered for the models. | `8192` |
-| `CORE_LOCAL_PROVIDER` | `ollama` (default) or `lmstudio` — which local provider auto-selection prefers. | `lmstudio` |
-| `CORE_DEFAULT_MODEL` | Make a specific model the default. Set to an LM Studio model id to use it by default. | `qwen2.5-7b-instruct` |
+| `CORE_LOCAL_PROVIDER` | `ollama` (default) or `lmstudio`. Switches the **entire** local layer — completions, the comprehension intent model, embeddings, and model auto-selection — to that provider, so a machine can run with **no Ollama at all**. | `lmstudio` |
+| `CORE_DEFAULT_MODEL` | Make a specific model the default. Set to an LM Studio model id to use it by default. | `google/gemma-4-e4b` |
+| `EMBEDDING_MODEL` | Embedding model id for the knowledgebase / RAG. Set to LM Studio's embedding model when running LM Studio (else it defaults to `nomic-embed-text` for Ollama). | `text-embedding-nomic-embed-text-v1.5` |
 
 > LM Studio stays **dormant** until you set `LMSTUDIO_MODELS` — by default nothing is
 > registered and Ollama remains the local provider, so this change is zero-impact
@@ -63,8 +64,19 @@ The model router will now prefer your LM Studio model for local inference (per
   an `AsyncOpenAI` client at `LMSTUDIO_BASE_URL`.
 - `LMSTUDIO_MODELS` is parsed at startup by `_register_env_lmstudio_models()` and each
   id is added to the `MODELS` registry (zero cost, `BALANCED` tier).
-- `select_model(..., prefer_local=True)` treats Ollama **and** LM Studio as local and
-  biases toward `CORE_LOCAL_PROVIDER`.
+- `select_model(..., prefer_local=True)` treats Ollama **and** LM Studio as local,
+  biases toward `CORE_LOCAL_PROVIDER`, and **excludes the inactive local provider's
+  models** so an LM Studio box never auto-picks an Ollama model.
+- `CORE_LOCAL_PROVIDER` also repoints the shared local client (`get_ollama_client` /
+  `get_ollama_client_sync` in `app/dependencies.py`), the comprehension intent model
+  (`get_local_chat_model`), and the embedding service — so when set to `lmstudio` the
+  inactive Ollama provider is never contacted (no `ollama` container required).
+
+## Running with no Ollama
+Set `CORE_LOCAL_PROVIDER=lmstudio` + `LMSTUDIO_MODELS` + `EMBEDDING_MODEL` and the
+backend needs no Ollama service at all. (The `ollama` service in the compose files is
+still defined; on a LM-Studio-only machine you can simply not start it — the backend
+won't reach for it.)
 
 ## Sources
 - [LM Studio — OpenAI compatibility endpoints](https://lmstudio.ai/docs/developer/openai-compat)

@@ -66,3 +66,16 @@ class TestLocalProviderPreference:
         router = mr.ModelRouter()
         chosen = router.select_model(task_type="creative", prefer_local=True)
         assert mr.MODELS[chosen].provider == mr.ModelProvider.OLLAMA
+
+    def test_select_model_excludes_inactive_local_provider(self, monkeypatch):
+        # On an LM Studio box, Ollama models must never be auto-selected.
+        monkeypatch.setenv("LMSTUDIO_MODELS", "lmstudio-only-test")
+        monkeypatch.setenv("CORE_LOCAL_PROVIDER", "lmstudio")
+        try:
+            mr._register_env_lmstudio_models()
+            router = mr.ModelRouter()
+            for task in ("simple", "creative", "reasoning", "complex"):
+                chosen = router.select_model(task_type=task, prefer_local=True)
+                assert mr.MODELS[chosen].provider != mr.ModelProvider.OLLAMA
+        finally:
+            mr.MODELS.pop("lmstudio-only-test", None)

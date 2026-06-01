@@ -300,6 +300,15 @@ class ModelRouter:
 
         target_tier = tier_mapping.get(task_type, ModelTier.BALANCED)
 
+        # The configured local provider. The *other* local provider's models are
+        # excluded from auto-selection — it may not be running on this machine
+        # (e.g. an LM Studio box shouldn't auto-pick an Ollama model).
+        preferred_local = os.getenv("CORE_LOCAL_PROVIDER", "ollama").strip().lower()
+        _other_local = {
+            "ollama": ModelProvider.LMSTUDIO,
+            "lmstudio": ModelProvider.OLLAMA,
+        }.get(preferred_local)
+
         # Filter candidates
         candidates = []
         for model in MODELS.values():
@@ -310,14 +319,13 @@ class ModelRouter:
                 continue
             if max_cost_per_1k and model.cost_per_1k_output > max_cost_per_1k:
                 continue
+            if _other_local is not None and model.provider == _other_local:
+                continue
 
             candidates.append(model)
 
         if not candidates:
             return self.default_model
-
-        # Among local providers, prefer the one configured as primary.
-        preferred_local = os.getenv("CORE_LOCAL_PROVIDER", "ollama").strip().lower()
 
         # Sort by preference
         def score_model(m: ModelConfig) -> tuple:
