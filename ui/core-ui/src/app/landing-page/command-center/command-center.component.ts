@@ -10,7 +10,7 @@ import { WorldsService } from '../../services/worlds/worlds.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SaveWorldDialogComponent } from './save-world-dialog/save-world-dialog.component';
 import { WorldsDialogComponent } from './worlds-dialog/worlds-dialog.component';
-import { UniversePickerDialogComponent, UniversePickerResult } from './universe-picker-dialog/universe-picker-dialog.component';
+import { UniverseSelectComponent, UniverseSelectResult } from './universe-select/universe-select.component';
 import { WorldDetailPanelComponent, SelectedTileInfo } from './world-detail-panel/world-detail-panel.component';
 import { SearchPaletteComponent, SearchResult } from './search-palette/search-palette.component';
 import { UiNotifyService } from '../../shared/services/ui-notify.service';
@@ -18,7 +18,7 @@ import { ConnectionType } from './engine/tile-metadata.model';
 
 @Component({
   selector: 'app-command-center',
-  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent],
+  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent, UniverseSelectComponent],
   templateUrl: './command-center.component.html',
   styleUrl: './command-center.component.scss'
 })
@@ -86,6 +86,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
+
+  /** Full-screen universe entry gate — shown on entry until a world is chosen
+   *  (or a new one started). The editor builds behind it but stays hidden. */
+  showUniverseSelect = false;
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
@@ -166,11 +170,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         if (name) {this.projectName = name;}
         if (seed) { this.seed = seed; this.onApplySeed(); }
         if (!name && !seed) {
-          // No deep-link target → greet with the universe picker on entry so the
-          // user chooses "New Universe" vs. a saved one before exploring.
-          // Deferred to a microtask so opening the dialog can't mutate view-bound
-          // state during the first-render CD pass (NG0100).
-          Promise.resolve().then(() => this.openUniversePicker());
+          // No deep-link target → show the full-screen universe gate. The editor
+          // is built behind it but stays hidden until the user picks a world or
+          // starts a new one. Deferred to a microtask to avoid NG0100.
+          Promise.resolve().then(() => { this.showUniverseSelect = true; });
         }
       }
     }
@@ -195,23 +198,17 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** First-load gateway: chart a new universe or descend into a saved one. */
-  private openUniversePicker(): void {
-    const ref = this.dialog.open(UniversePickerDialogComponent, {
-      data: { limit: 50 },
-      panelClass: 'glass-dialog',
-      disableClose: true
-    });
-    ref.afterClosed().subscribe((res?: UniversePickerResult) => {
-      if (res?.action === 'load') {
-        this.loadWorldById(res.world.id, res.world.name);
-      } else {
-        // Chart a New Universe → keep the fresh default grid; the next save
-        // creates a brand-new world (currentWorldId stays null).
-        this.currentWorldId = null;
-        this._triggerViewportScan();
-      }
-    });
+  /** Handle the user's choice from the full-screen universe gate. */
+  onUniverseChosen(res: UniverseSelectResult): void {
+    this.showUniverseSelect = false;
+    if (res.action === 'load') {
+      this.loadWorldById(res.world.id, res.world.name);
+    } else {
+      // Chart a New Universe → keep the fresh default grid; the next save
+      // creates a brand-new world (currentWorldId stays null).
+      this.currentWorldId = null;
+      this._triggerViewportScan();
+    }
   }
 
   ngOnDestroy(): void {

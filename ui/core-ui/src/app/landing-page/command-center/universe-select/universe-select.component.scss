@@ -1,40 +1,82 @@
-// First-load universe picker — solarpunk × LCARS, token-only (deck as reference).
-.picker {
-  width: min(34rem, 90vw);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
-  background: color-mix(in srgb, var(--core-bg-base) 90%, transparent);
-  box-shadow: 0 0 2.5rem color-mix(in srgb, var(--core-energy) 14%, transparent);
-  animation: picker-in 0.32s ease-out both;
+// Full-screen universe entry gate — covers the whole viewport until a choice is
+// made. Opaque deep-space backdrop so the editor never shows through.
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: block;
 }
 
-.picker__head { display: flex; flex-direction: column; gap: 0.25rem; }
+.gate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 90% at 50% 30%, color-mix(in srgb, var(--core-energy) 8%, transparent), transparent 60%),
+    var(--core-bg-base, #03060d);
+  animation: gate-in 0.35s ease-out both;
 
-.picker__eyebrow {
+  &__stars {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.7), transparent),
+      radial-gradient(1px 1px at 70% 60%, rgba(255, 255, 255, 0.5), transparent),
+      radial-gradient(1px 1px at 40% 80%, rgba(255, 255, 255, 0.6), transparent),
+      radial-gradient(1px 1px at 85% 20%, rgba(255, 255, 255, 0.45), transparent),
+      radial-gradient(1px 1px at 55% 45%, rgba(255, 255, 255, 0.5), transparent);
+    opacity: 0.5;
+  }
+
+  &__glow {
+    position: absolute;
+    left: 50%;
+    top: 28%;
+    width: 36rem;
+    height: 36rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    background: radial-gradient(circle, color-mix(in srgb, var(--core-energy) 16%, transparent), transparent 65%);
+    filter: blur(8px);
+  }
+
+  &__panel {
+    position: relative;
+    z-index: 1;
+    width: min(36rem, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 24%, transparent);
+    background: color-mix(in srgb, var(--core-bg-base) 82%, transparent);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 3rem color-mix(in srgb, var(--core-energy) 16%, transparent);
+  }
+}
+
+.gate-head { display: flex; flex-direction: column; gap: 0.3rem; }
+.gate-eyebrow {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--core-energy) 80%, transparent);
 }
-
-.picker__title {
+.gate-title {
   margin: 0;
-  font-size: var(--font-size-2xl, 1.6rem);
+  font-size: var(--font-size-3xl, 2rem);
   font-weight: 600;
   color: var(--core-text-primary);
-  text-shadow: 0 0 0.6rem color-mix(in srgb, var(--core-energy) 30%, transparent);
+  text-shadow: 0 0 0.8rem color-mix(in srgb, var(--core-energy) 32%, transparent);
 }
-
-.picker__sub {
-  margin: 0;
-  font-size: var(--font-size-sm, 0.85rem);
-  color: var(--core-text-secondary);
-}
+.gate-sub { margin: 0; font-size: var(--font-size-sm, 0.9rem); color: var(--core-text-secondary); }
 
 // ── Chart-a-new-universe action card ─────────────────────────────────────────
 .new-universe {
@@ -46,36 +88,35 @@
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--core-amber) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--core-amber, #ffb454) 40%, transparent);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--core-amber) 14%, transparent),
+    color-mix(in srgb, var(--core-amber, #ffb454) 14%, transparent),
     color-mix(in srgb, var(--core-energy) 8%, transparent)
   );
-  box-shadow: 0 0 1.2rem color-mix(in srgb, var(--core-amber) 12%, transparent);
+  box-shadow: 0 0 1.2rem color-mix(in srgb, var(--core-amber, #ffb454) 12%, transparent);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 
   &:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--core-amber) 65%, transparent);
-    box-shadow: 0 0 1.8rem color-mix(in srgb, var(--core-amber) 22%, transparent);
+    border-color: color-mix(in srgb, var(--core-amber, #ffb454) 65%, transparent);
+    box-shadow: 0 0 1.8rem color-mix(in srgb, var(--core-amber, #ffb454) 22%, transparent);
   }
-  &:focus-visible { outline: 2px solid var(--core-amber); outline-offset: 2px; }
+  &:focus-visible { outline: 2px solid var(--core-amber, #ffb454); outline-offset: 2px; }
 
   &__glyph {
-    font-size: 1.5rem;
-    color: var(--core-amber);
-    text-shadow: 0 0 0.7rem color-mix(in srgb, var(--core-amber) 50%, transparent);
+    font-size: 1.6rem;
+    color: var(--core-amber, #ffb454);
+    text-shadow: 0 0 0.7rem color-mix(in srgb, var(--core-amber, #ffb454) 50%, transparent);
   }
   &__text { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
   &__title { font-size: var(--font-size-lg, 1.05rem); font-weight: 600; color: var(--core-text-primary); }
   &__hint { font-size: var(--font-size-xs); color: var(--core-text-secondary); }
-  &__arrow { color: var(--core-amber); font-size: 0.9rem; }
+  &__arrow { color: var(--core-amber, #ffb454); font-size: 0.9rem; }
 }
 
 // ── Previous universes ───────────────────────────────────────────────────────
 .previous { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-
 .previous__label {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
@@ -83,11 +124,10 @@
   text-transform: uppercase;
   color: var(--core-energy);
 }
-
 .previous__state {
   padding: var(--spacing-md);
   text-align: center;
-  font-size: var(--font-size-sm, 0.85rem);
+  font-size: var(--font-size-sm, 0.9rem);
   color: var(--core-text-dim, var(--core-text-secondary));
   border: 1px dashed color-mix(in srgb, var(--core-energy) 18%, transparent);
   border-radius: var(--radius-md);
@@ -100,7 +140,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  max-height: 18rem;
+  max-height: 40vh;
   overflow-y: auto;
 }
 
@@ -112,7 +152,7 @@
   cursor: pointer;
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--core-energy) 12%, transparent);
-  background: color-mix(in srgb, var(--core-bg-base) 60%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 55%, transparent);
   transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
 
   &:hover, &:focus-visible {
@@ -144,12 +184,12 @@
   &:hover &__del, &:focus-within &__del { opacity: 1; }
 }
 
-@keyframes picker-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to { opacity: 1; transform: none; }
+@keyframes gate-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .picker { animation: none; }
+  .gate { animation: none; }
   .new-universe:hover, .world-row:hover, .world-row:focus-visible { transform: none; }
 }

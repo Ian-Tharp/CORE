@@ -1,4 +1,7 @@
 <section class="command-center" [class.detail-panel-open]="showDetailPanel && !isEditMode">
+  @if (showUniverseSelect) {
+    <app-universe-select (chosen)="onUniverseChosen($event)"></app-universe-select>
+  }
   <div class="command-center__bg" aria-hidden="true">
     <span class="command-center__nebula command-center__nebula--primary"></span>
     <span class="command-center__nebula command-center__nebula--secondary"></span>
