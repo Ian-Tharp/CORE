@@ -93,8 +93,9 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
     const el = this.host.nativeElement;
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     this.camera.aspect = w / h;
-    // Bias the planet left so the right-side control panel never covers it.
-    this.camera.setViewOffset(w, h, w * 0.14, 0, w, h);
+    // Bias the rendered planet up-and-left so it centres in the visible stage
+    // (clear of the right-side control panel). +x shifts left, +y shifts up.
+    this.camera.setViewOffset(w, h, w * 0.10, h * 0.12, w, h);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
   };
