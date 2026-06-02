@@ -1021,14 +1021,17 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
 
     const existingReaction = message.reactions.find(r => r.reaction_type === reactionType);
 
+    // Close picker regardless of outcome.
+    this.showReactionPicker = false;
+    this.activeReactionMessageId = null;
+
     if (existingReaction) {
-      // User is adding their reaction to existing
-      if (!existingReaction.hasReacted) {
-        existingReaction.count++;
-        existingReaction.hasReacted = true;
-      }
+      // Already reacted → nothing to persist.
+      if (existingReaction.hasReacted) { return; }
+      existingReaction.count++;
+      existingReaction.hasReacted = true;
     } else {
-      // Create new reaction
+      // Create new reaction (optimistic).
       message.reactions.push({
         reaction_type: reactionType,
         count: 1,
@@ -1036,9 +1039,8 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       });
     }
 
-    // Close picker
-    this.showReactionPicker = false;
-    this.activeReactionMessageId = null;
+    // Persist to the backend; roll the optimistic update back on failure.
+    this.persistReaction(message, reactionType, 'add');
   }
 
   toggleReaction(message: Message, reactionType: 'resonance' | 'question' | 'insight' | 'acknowledge' | 'pattern') {
@@ -1048,7 +1050,7 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
     if (!reaction) {return;}
 
     if (reaction.hasReacted) {
-      // Remove user's reaction
+      // Remove user's reaction (optimistic).
       reaction.count--;
       reaction.hasReacted = false;
 
@@ -1056,10 +1058,59 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
       if (reaction.count === 0) {
         message.reactions = message.reactions.filter(r => r.reaction_type !== reactionType);
       }
+      this.persistReaction(message, reactionType, 'remove');
     } else {
-      // Add user's reaction
+      // Add user's reaction (optimistic).
       reaction.count++;
       reaction.hasReacted = true;
+      this.persistReaction(message, reactionType, 'add');
+    }
+  }
+
+  /** Persist a reaction change; revert the optimistic UI update if it fails. */
+  private persistReaction(
+    message: Message,
+    reactionType: 'resonance' | 'question' | 'insight' | 'acknowledge' | 'pattern',
+    action: 'add' | 'remove'
+  ): void {
+    const request$ = action === 'add'
+      ? this.messageService.addReaction(message.message_id, reactionType)
+      : this.messageService.removeReaction(message.message_id, reactionType);
+
+    request$.pipe(takeUntil(this.destroy$)).subscribe({
+      error: (err) => {
+        console.error(`Failed to ${action} reaction "${reactionType}":`, err);
+        this.revertReaction(message, reactionType, action);
+      }
+    });
+  }
+
+  /** Undo an optimistic reaction change after a failed persist. */
+  private revertReaction(
+    message: Message,
+    reactionType: 'resonance' | 'question' | 'insight' | 'acknowledge' | 'pattern',
+    action: 'add' | 'remove'
+  ): void {
+    if (!message.reactions) { message.reactions = []; }
+    const reaction = message.reactions.find(r => r.reaction_type === reactionType);
+
+    if (action === 'add') {
+      // We had added/incremented — undo it.
+      if (reaction) {
+        reaction.count--;
+        reaction.hasReacted = false;
+        if (reaction.count <= 0) {
+          message.reactions = message.reactions.filter(r => r.reaction_type !== reactionType);
+        }
+      }
+    } else {
+      // We had removed/decremented — restore it.
+      if (reaction) {
+        reaction.count++;
+        reaction.hasReacted = true;
+      } else {
+        message.reactions.push({ reaction_type: reactionType, count: 1, hasReacted: true });
+      }
     }
   }
 

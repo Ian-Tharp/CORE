@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -29,7 +29,7 @@ import { EngineService, StepResponse, StepStreamEvent, COREStreamEvent, COREStat
     MatProgressSpinnerModule, MatChipsModule, MatTooltipModule, MatExpansionModule, MatSelectModule, MatOptionModule
   ]
 })
-export class EnginePlaygroundComponent {
+export class EnginePlaygroundComponent implements OnDestroy {
   // RSI TODO: Add explicit `public`/`private` modifiers for all fields/methods; prefix private with `_`.
   // RSI TODO: Persist per-step model selections to local storage or user settings service.
   // RSI TODO: Add cancel/abort support for in-flight streams; expose an unsubscribe/stop action per step.
@@ -255,8 +255,9 @@ export class EnginePlaygroundComponent {
    * Run the complete unified CORE pipeline with real-time SSE streaming.
    * This executes Comprehension → Orchestration → Reasoning → Evaluation → Conversation in one flow.
    *
-   * Note: Currently uses the streaming endpoint which simulates execution.
-   * RSI TODO: Backend needs to implement true step-by-step graph execution with streaming.
+   * Streams real per-node graph execution from GET /engine/runs/{run_id}/stream
+   * (the backend creates the run from user_input on first connect), then fetches
+   * the final COREState once the stream completes.
    */
   public runFullCORE() {
     if (!this.inputText.trim()) {
@@ -328,6 +329,14 @@ export class EnginePlaygroundComponent {
       this._coreSub = undefined;
     }
     this.coreRunning = false;
+  }
+
+  ngOnDestroy(): void {
+    // Tear down any in-flight SSE streams so their fetch readers don't leak
+    // when the user navigates away mid-run.
+    this.stopCORE();
+    Object.values(this._subs).forEach((sub) => sub?.unsubscribe());
+    this._subs = {};
   }
 
   /**
