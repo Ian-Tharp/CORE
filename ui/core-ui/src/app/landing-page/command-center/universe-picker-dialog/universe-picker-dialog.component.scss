@@ -1,0 +1,155 @@
+// First-load universe picker — solarpunk × LCARS, token-only (deck as reference).
+.picker {
+  width: min(34rem, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 90%, transparent);
+  box-shadow: 0 0 2.5rem color-mix(in srgb, var(--core-energy) 14%, transparent);
+  animation: picker-in 0.32s ease-out both;
+}
+
+.picker__head { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.picker__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--core-energy) 80%, transparent);
+}
+
+.picker__title {
+  margin: 0;
+  font-size: var(--font-size-2xl, 1.6rem);
+  font-weight: 600;
+  color: var(--core-text-primary);
+  text-shadow: 0 0 0.6rem color-mix(in srgb, var(--core-energy) 30%, transparent);
+}
+
+.picker__sub {
+  margin: 0;
+  font-size: var(--font-size-sm, 0.85rem);
+  color: var(--core-text-secondary);
+}
+
+// ── Chart-a-new-universe action card ─────────────────────────────────────────
+.new-universe {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--core-amber) 40%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--core-amber) 14%, transparent),
+    color-mix(in srgb, var(--core-energy) 8%, transparent)
+  );
+  box-shadow: 0 0 1.2rem color-mix(in srgb, var(--core-amber) 12%, transparent);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--core-amber) 65%, transparent);
+    box-shadow: 0 0 1.8rem color-mix(in srgb, var(--core-amber) 22%, transparent);
+  }
+  &:focus-visible { outline: 2px solid var(--core-amber); outline-offset: 2px; }
+
+  &__glyph {
+    font-size: 1.5rem;
+    color: var(--core-amber);
+    text-shadow: 0 0 0.7rem color-mix(in srgb, var(--core-amber) 50%, transparent);
+  }
+  &__text { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
+  &__title { font-size: var(--font-size-lg, 1.05rem); font-weight: 600; color: var(--core-text-primary); }
+  &__hint { font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+  &__arrow { color: var(--core-amber); font-size: 0.9rem; }
+}
+
+// ── Previous universes ───────────────────────────────────────────────────────
+.previous { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+
+.previous__label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--core-energy);
+}
+
+.previous__state {
+  padding: var(--spacing-md);
+  text-align: center;
+  font-size: var(--font-size-sm, 0.85rem);
+  color: var(--core-text-dim, var(--core-text-secondary));
+  border: 1px dashed color-mix(in srgb, var(--core-energy) 18%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.world-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.world-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 12%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 60%, transparent);
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+
+  &:hover, &:focus-visible {
+    border-color: color-mix(in srgb, var(--core-energy) 40%, transparent);
+    background: color-mix(in srgb, var(--core-energy) 8%, transparent);
+    transform: translateX(2px);
+    outline: none;
+  }
+
+  &__glyph { color: var(--core-energy); font-size: 0.85rem; }
+  &__body { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+  &__name {
+    font-size: var(--font-size-sm, 0.9rem);
+    color: var(--core-text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  &__meta { font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+
+  &__del {
+    border: none;
+    background: transparent;
+    color: var(--core-text-secondary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+    &:hover { color: var(--core-danger); }
+  }
+  &:hover &__del, &:focus-within &__del { opacity: 1; }
+}
+
+@keyframes picker-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker { animation: none; }
+  .new-universe:hover, .world-row:hover, .world-row:focus-visible { transform: none; }
+}

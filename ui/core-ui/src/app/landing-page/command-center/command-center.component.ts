@@ -10,6 +10,7 @@ import { WorldsService } from '../../services/worlds/worlds.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SaveWorldDialogComponent } from './save-world-dialog/save-world-dialog.component';
 import { WorldsDialogComponent } from './worlds-dialog/worlds-dialog.component';
+import { UniversePickerDialogComponent, UniversePickerResult } from './universe-picker-dialog/universe-picker-dialog.component';
 import { WorldDetailPanelComponent, SelectedTileInfo } from './world-detail-panel/world-detail-panel.component';
 import { SearchPaletteComponent, SearchResult } from './search-palette/search-palette.component';
 import { UiNotifyService } from '../../shared/services/ui-notify.service';
@@ -158,22 +159,59 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     } else {
       const worldId = params.get('worldId');
       if (worldId) {
-        this.currentWorldId = worldId; // Track the world ID from URL
-        this.worlds.getLatestSnapshot(worldId).subscribe({
-          next: (snap) => {
-            this.projectName = 'World';
-            this.gridConfig = this.convertToGridConfig(snap.config);
-            this.tileGrid.restore('World', { config: snap.config, tiles: snap.tiles, layers: snap.layers });
-            this._hydrateMetadata(worldId);
-          }
-        });
+        this.loadWorldById(worldId, 'World'); // deep-link load bypasses the picker
       } else {
         const name = params.get('name');
         const seed = params.get('seed');
         if (name) {this.projectName = name;}
         if (seed) { this.seed = seed; this.onApplySeed(); }
+        if (!name && !seed && !sessionStorage.getItem('core.universePicker.seen')) {
+          // No deep-link target, first entry this session → greet with the
+          // universe picker. Deferred to a microtask so opening the dialog can't
+          // mutate view-bound state during the first-render CD pass (NG0100).
+          sessionStorage.setItem('core.universePicker.seen', '1');
+          Promise.resolve().then(() => this.openUniversePicker());
+        }
       }
     }
+  }
+
+  /** Restore a world (snapshot geometry + tile metadata) by id — the single
+   *  load routine shared by the URL deep-link, the Worlds dialog, and the
+   *  first-load universe picker. */
+  private loadWorldById(id: string, name: string): void {
+    this.currentWorldId = id;
+    this.worlds.getLatestSnapshot(id).subscribe({
+      next: (snap) => {
+        this.projectName = name;
+        this.gridConfig = this.convertToGridConfig(snap.config);
+        this.tileGrid.restore(name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
+        this._hydrateMetadata(id);
+        this.showSaveMessage(`Loaded "${name}"`, 'success');
+      },
+      error: () => {
+        this.ui.showError('No snapshot found for that world yet. Try Quick Save from Command Center.');
+      }
+    });
+  }
+
+  /** First-load gateway: chart a new universe or descend into a saved one. */
+  private openUniversePicker(): void {
+    const ref = this.dialog.open(UniversePickerDialogComponent, {
+      data: { limit: 50 },
+      panelClass: 'glass-dialog',
+      disableClose: true
+    });
+    ref.afterClosed().subscribe((res?: UniversePickerResult) => {
+      if (res?.action === 'load') {
+        this.loadWorldById(res.world.id, res.world.name);
+      } else {
+        // Chart a New Universe → keep the fresh default grid; the next save
+        // creates a brand-new world (currentWorldId stays null).
+        this.currentWorldId = null;
+        this._triggerViewportScan();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -437,19 +475,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     const ref = this.dialog.open(WorldsDialogComponent, { data: { limit: 50 }, panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((world?: { id: string; name: string }) => {
       if (!world) {return;}
-      this.worlds.getLatestSnapshot(world.id).subscribe({
-        next: (snap) => {
-          this.projectName = world.name;
-          this.currentWorldId = world.id; // Track the loaded world's ID
-          this.gridConfig = this.convertToGridConfig(snap.config);
-          this.tileGrid.restore(world.name, { config: snap.config, tiles: snap.tiles, layers: snap.layers });
-          this._hydrateMetadata(world.id);
-          this.showSaveMessage(`Loaded "${world.name}"`, 'success');
-        },
-        error: () => {
-          this.ui.showError('No snapshot found for that world yet. Try Quick Save from Command Center.');
-        }
-      });
+      this.loadWorldById(world.id, world.name);
     });
   }
 

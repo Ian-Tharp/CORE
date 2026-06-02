@@ -19,8 +19,10 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(0, 255, 200, 0.15);
+  padding: 0.55rem 0.6rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--core-energy) 16%, transparent);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(0, 255, 200, 0.055), rgba(0, 210, 255, 0.025));
   margin-bottom: 0.6rem;
   flex-shrink: 0;
   gap: 0.5rem;
@@ -34,7 +36,8 @@
 .world-name {
   font-size: 1rem;
   font-weight: 500;
-  color: #e0fff8;
+  color: #f2fff9;
+  text-shadow: 0 0 0.55rem color-mix(in srgb, var(--core-energy) 34%, transparent);
   margin: 0 0 0.2rem 0;
   cursor: pointer;
   display: flex;
@@ -85,7 +88,7 @@
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding-right: 0.3rem;
+  padding-right: 0.45rem;
   min-height: 0; // Critical for flex/grid shrinking
 
   &::-webkit-scrollbar {
@@ -106,11 +109,13 @@
 
 .info-section {
   margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid color-mix(in srgb, var(--core-energy) 12%, transparent);
+  padding: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 10%, transparent);
+  border-radius: var(--radius-md);
+  background: rgba(0, 18, 24, 0.32);
+  box-shadow: inset 0 0 0.8rem rgba(0, 255, 200, 0.025);
 
   &:last-child {
-    border-bottom: none;
     margin-bottom: var(--spacing-sm);
   }
 
@@ -137,6 +142,7 @@
   letter-spacing: 0.12em;
   color: var(--core-energy);
   margin-bottom: var(--spacing-sm);
+  text-shadow: 0 0 0.5rem color-mix(in srgb, var(--core-energy) 38%, transparent);
 
   // A small glowing HUD tick before each section title.
   &::before {
@@ -886,6 +892,127 @@
 
 @media (prefers-reduced-motion: reduce) {
   .art-item { animation: none; }
+}
+
+// ── World Plate hero — the large, focused "studio" presentation ───────────────
+.art-hero {
+  position: relative;
+  margin: var(--spacing-sm) 0 0;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  animation: world-art-in 0.4s ease-out both;
+
+  &__img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 30%, transparent);
+    box-shadow: 0 0 1.4rem color-mix(in srgb, var(--core-energy) 16%, transparent);
+    transition: transform var(--transition-fast);
+  }
+
+  &:hover &__img { transform: scale(1.01); }
+  &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+
+  // A vignette scrim so caption text stays legible over any image luminance.
+  &__cap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-sm) var(--spacing-sm);
+    background: linear-gradient(to top, color-mix(in srgb, var(--core-bg-base) 92%, transparent), transparent);
+    pointer-events: none;
+  }
+
+  &__title {
+    font-size: var(--font-size-sm, 0.85rem);
+    color: var(--core-text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  &__expand {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.08em;
+    color: var(--core-energy);
+    opacity: 0.85;
+  }
+
+  &__remove {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--core-bg-base) 72%, transparent);
+    color: var(--core-text-secondary);
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+    &:hover { color: var(--core-danger); }
+  }
+
+  &:hover &__remove { opacity: 1; }
+}
+
+// ── Floating hover preview ("loupe") — fixed so it escapes panel scroll ───────
+.img-preview {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  width: 16rem;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 30%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 86%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 1.6rem color-mix(in srgb, var(--core-energy) 22%, transparent);
+  animation: img-preview-in var(--transition-fast) ease-out both;
+
+  &__img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+
+  &__label {
+    display: block;
+    margin-top: var(--spacing-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.06em;
+    color: var(--core-energy);
+    text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+}
+
+@keyframes img-preview-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art-hero { animation: none; }
+  .art-hero:hover .art-hero__img { transform: none; }
+  .img-preview { animation: none; }
 }
 
 // ── AI inhabitants gallery ───────────────────────────────────────────────────

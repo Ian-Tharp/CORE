@@ -7,6 +7,8 @@ import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection }
 import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
 import { CreativeService, WikiPageDto, CharacterDto } from '../../../services/creative/creative.service';
 import { WorldsService, WorldAsset } from '../../../services/worlds/worlds.service';
+import { MatDialog } from '@angular/material/dialog';
+import { ImageLightboxDialogComponent } from '../image-lightbox-dialog/image-lightbox-dialog.component';
 
 /** Shared art-direction / quality suffix appended to generated image prompts. */
 const ART_QUALITY =
@@ -50,6 +52,9 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   artError = '';
   worldArt: WorldAsset[] = [];
   artPrompt = ''; // optional custom prompt; blank = auto-generate from the world's lore
+
+  // Floating hover preview (a small studio "loupe" over any generated image).
+  hoverPreview: { url: string; label: string; x: number; y: number } | null = null;
 
   // AI-generated inhabitants (persisted in the characters table, world-scoped).
   inhabitants: CharacterDto[] = [];
@@ -95,7 +100,8 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     private metadataService: TileMetadataService,
     private creativeData: CreativeDataService,
     private creativeService: CreativeService,
-    private worldsService: WorldsService
+    private worldsService: WorldsService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -186,9 +192,19 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     this.worldsService.listAssets(this.worldId, this.selectedTile.index)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (assets) => { this.worldArt = (assets ?? []).filter(a => a.kind === 'art'); },
+        next: (assets) => {
+          // Newest first so the hero plate features the most recent portrait.
+          this.worldArt = (assets ?? [])
+            .filter(a => a.kind === 'art')
+            .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+        },
         error: () => { this.worldArt = []; }
       });
+  }
+
+  /** The most recent portrait — promoted to the large "World Plate" hero. */
+  get featuredArt(): WorldAsset | null {
+    return this.worldArt[0] ?? null;
   }
 
   generateWorldArt(): void {
@@ -211,10 +227,19 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
         next: () => { this.isGeneratingArt = false; this.loadWorldArt(); },
         error: (err) => {
           this.isGeneratingArt = false;
-          this.artError = 'Art generation failed — needs an OpenAI key configured.';
+          const detail = this.getErrorDetail(err);
+          this.artError = detail
+            ? `Art generation failed — ${detail}`
+            : 'Art generation failed — check OpenAI image configuration.';
           console.error('World art generation failed:', err);
         }
       });
+  }
+
+  private getErrorDetail(err: unknown): string {
+    const maybeError = err as { error?: { detail?: unknown; message?: unknown }; message?: unknown };
+    const detail = maybeError.error?.detail ?? maybeError.error?.message ?? maybeError.message;
+    return typeof detail === 'string' ? detail : '';
   }
 
   artImageUrl(a: WorldAsset): string {
@@ -226,6 +251,50 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     this.worldsService.deleteAsset(this.worldId, a.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({ next: () => this.loadWorldArt(), error: () => this.loadWorldArt() });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Image presentation — hover "loupe" preview + focused lightbox
+  // ─────────────────────────────────────────────────────────────
+
+  /** Show a floating preview of a world-art image at the cursor. */
+  showArtPreview(a: WorldAsset, ev: MouseEvent): void {
+    this.positionPreview(this.artImageUrl(a), a.title || 'World art', ev);
+  }
+
+  /** Show a floating preview of an inhabitant portrait (no-op without one). */
+  showInhabitantPreview(c: CharacterDto, ev: MouseEvent): void {
+    const url = this.inhabitantImageUrl(c);
+    if (!url) { this.hidePreview(); return; }
+    this.positionPreview(url, c.name, ev);
+  }
+
+  hidePreview(): void {
+    this.hoverPreview = null;
+  }
+
+  /** Position a fixed popover near the cursor, clamped to the viewport. */
+  private positionPreview(url: string, label: string, ev: MouseEvent): void {
+    const width = 256;   // .img-preview is 16rem wide
+    const height = 220;  // approximate popover height
+    const pad = 12;
+    let x = ev.clientX + 18;
+    let y = ev.clientY + 18;
+    if (x + width + pad > window.innerWidth) { x = ev.clientX - width - 18; }
+    if (y + height + pad > window.innerHeight) { y = window.innerHeight - height - pad; }
+    this.hoverPreview = { url, label, x: Math.max(pad, x), y: Math.max(pad, y) };
+  }
+
+  /** Open the focused, full-scale lightbox view of an image. */
+  openLightbox(url: string | null, title: string): void {
+    if (!url) { return; }
+    this.hidePreview();
+    this.dialog.open(ImageLightboxDialogComponent, {
+      data: { url, title },
+      panelClass: 'glass-dialog',
+      maxWidth: '92vw',
+      maxHeight: '92vh'
+    });
   }
 
   /** The subject clause describing this world (name + character + lore). */
@@ -254,7 +323,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     { id: 'desert', label: '🏜️ Desert Frontier', style: 'A sci-fantasy desert frontier — rippling dunes and weathered sandstone monoliths under twin suns, caravans and half-buried ruins casting long shadows; warm amber, rust and gold, sun-scorched grandeur.' },
     { id: 'jungle', label: '🌴 Verdant Wilds', style: 'Overgrown verdant wilds — emerald canopy swallowing colossal ancient ruins, vines and cascading waterfalls, shafts of misty god-rays piercing the green gloom; lush, mysterious, teeming with life.' },
     { id: 'cyber', label: '🌃 Cyber Metropolis', style: 'A towering cyber-metropolis — endless holographic skyscrapers and neon signage above rain-slick streets, flying traffic threading the canyons; electric magenta and cyan, dense, luminous, rain-soaked.' },
-    { id: 'astral', label: '✨ Astral Void', style: 'An astral void world adrift among swirling nebulae and dense starfields, ribbons of aurora and shattered moons hanging in the dark; deep cosmic blues, gold and violet, ethereal and dreamlike.' },
+    { id: 'astral', label: '✨ Astral Void', style: 'An astral void world adrift among swirling nebulae and dense starfields, ribbons of aurora and shattered moons hanging in the dark; deep cosmic blues, gold and violet, ethereal and dreamlike.' }
   ];
 
   /** Apply a theme preset to the prompt box (still editable before generating). */
@@ -331,7 +400,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   private readonly loreKinds: Record<string, { kind: string; focus: string }> = {
     lore: { kind: 'Overview', focus: 'an evocative encyclopedic overview — what this world is, its defining character and atmosphere, and what makes it singular.' },
     history: { kind: 'History', focus: 'a history and timeline — its major eras, defining events, rises and falls, and how it became what it is.' },
-    inhabitants: { kind: 'Peoples & Culture', focus: 'its peoples and cultures — who lives here, their customs, beliefs, factions and ways of life.' },
+    inhabitants: { kind: 'Peoples & Culture', focus: 'its peoples and cultures — who lives here, their customs, beliefs, factions and ways of life.' }
   };
 
   /** Generate a wiki page of the given kind, persist it, and link it to this tile. */

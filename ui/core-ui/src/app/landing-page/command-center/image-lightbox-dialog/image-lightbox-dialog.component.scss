@@ -1,0 +1,65 @@
+// Focused, full-scale view of a generated image — solarpunk glass, token-only.
+.lightbox {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 26%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 88%, transparent);
+  box-shadow: 0 0 2.5rem color-mix(in srgb, var(--core-energy) 18%, transparent);
+  animation: lightbox-in var(--transition-fast) ease-out both;
+
+  &__img {
+    display: block;
+    max-width: 88vw;
+    max-height: 80vh;
+    object-fit: contain; // never crop the full-resolution source
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+    box-shadow: 0 0 1.5rem color-mix(in srgb, var(--core-energy) 16%, transparent);
+  }
+
+  &__cap {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--core-energy);
+    text-shadow: 0 0 0.5rem color-mix(in srgb, var(--core-energy) 34%, transparent);
+    text-align: center;
+  }
+
+  &__close {
+    position: absolute;
+    top: -0.6rem;
+    right: -0.6rem;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--core-energy) 30%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--core-bg-base) 80%, transparent);
+    color: var(--core-text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover { color: var(--core-danger); border-color: color-mix(in srgb, var(--core-danger) 50%, transparent); }
+    &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+  }
+}
+
+@keyframes lightbox-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lightbox { animation: none; }
+}

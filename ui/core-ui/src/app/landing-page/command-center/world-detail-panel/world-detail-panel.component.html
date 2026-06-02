@@ -268,11 +268,32 @@
           <span>{{ isGeneratingArt ? 'Painting…' : 'Generate Image' }}</span>
           <span class="send-btn__arrow" aria-hidden="true">{{ isGeneratingArt ? '◌' : '➤' }}</span>
         </button>
-        @if (worldArt.length) {
+        @if (featuredArt; as hero) {
+          <figure class="art-hero"
+                  (click)="openLightbox(artImageUrl(hero), hero.title || 'World portrait')"
+                  (mouseenter)="showArtPreview(hero, $event)"
+                  (mousemove)="showArtPreview(hero, $event)"
+                  (mouseleave)="hidePreview()"
+                  (keydown.enter)="openLightbox(artImageUrl(hero), hero.title || 'World portrait')"
+                  tabindex="0" role="button" aria-label="Expand world portrait">
+            <img class="art-hero__img" [src]="artImageUrl(hero)" [alt]="hero.title || 'World portrait'" />
+            <figcaption class="art-hero__cap">
+              <span class="art-hero__title">{{ hero.title || 'World portrait' }}</span>
+              <span class="art-hero__expand" aria-hidden="true">⤢ Expand</span>
+            </figcaption>
+            <button class="art-hero__remove" (click)="$event.stopPropagation(); removeArt(hero)"
+                    title="Delete art" aria-label="Delete art">&#10005;</button>
+          </figure>
+        }
+        @if (worldArt.length > 1) {
           <div class="art-gallery">
-            @for (a of worldArt; track a.id) {
+            @for (a of worldArt.slice(1); track a.id) {
               <div class="art-item">
-                <img class="art-item__img" [src]="artImageUrl(a)" [alt]="a.title || 'World art'" />
+                <img class="art-item__img" [src]="artImageUrl(a)" [alt]="a.title || 'World art'"
+                     (click)="openLightbox(artImageUrl(a), a.title || 'World art')"
+                     (mouseenter)="showArtPreview(a, $event)"
+                     (mousemove)="showArtPreview(a, $event)"
+                     (mouseleave)="hidePreview()" />
                 <button class="art-item__remove" (click)="removeArt(a)" title="Delete art" aria-label="Delete art">&#10005;</button>
               </div>
             }
@@ -298,7 +319,11 @@
             @for (c of inhabitants; track c.id) {
               <div class="inhabitant" [title]="c.name">
                 @if (inhabitantImageUrl(c); as url) {
-                  <img class="inhabitant__img" [src]="url" [alt]="c.name" />
+                  <img class="inhabitant__img" [src]="url" [alt]="c.name"
+                       (click)="openLightbox(url, c.name)"
+                       (mouseenter)="showInhabitantPreview(c, $event)"
+                       (mousemove)="showInhabitantPreview(c, $event)"
+                       (mouseleave)="hidePreview()" />
                 } @else {
                   <div class="inhabitant__placeholder" aria-hidden="true">◍</div>
                 }
@@ -379,6 +404,13 @@
         }
       </section>
     </div>
+
+    @if (hoverPreview; as p) {
+      <div class="img-preview" [style.left.px]="p.x" [style.top.px]="p.y" aria-hidden="true">
+        <img class="img-preview__img" [src]="p.url" alt="" />
+        <span class="img-preview__label">{{ p.label }}</span>
+      </div>
+    }
   </div>
 } @else {
   <div class="no-selection">
