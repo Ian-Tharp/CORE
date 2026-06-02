@@ -21,6 +21,7 @@
 | 2026-06-02 | **Hygiene:** presence/creative/system-monitor URLs → AppConfigService | `293e1d2` |
 | 2026-06-02 | **Hygiene:** deleted ~300 lines dead mock in MessageService; collapsed duplicate `isConnected` | `102a655` |
 | 2026-06-02 | **Hygiene:** `.sample-badge` on Agent Marketplace + landing Boards (mock-data screens) | `0219b38` |
+| 2026-06-02 | **Docs:** new `architecture/agent-factory-mcp.md` (current-state wiring reference); indexed | — |
 
 ## Status legend
 
@@ -233,7 +234,7 @@ A dedicated sweep for TODOs, stale comments, dead code, mock data, and out-of-da
 - ✅ **Hardcoded URLs (engine)** — `engine.service.ts` had 6 hardcoded `http://localhost:8001/...`; now routed through `AppConfigService` (`api`/`engineApi` getters).
 - ✅ **Hardcoded URLs (presence/creative/system-monitor)** — routed through `AppConfigService` (`293e1d2`).
 - **Hardcoded URLs (remaining)** — `worlds.service.ts`, `spawn-templates.service.ts`, `chat-window.component.ts:97` still hardcode `http://localhost:8001`. Left intentionally — under active edit by a parallel worker; sweep once those land.
-- **Mock data presented as real** — ✅ `message.service.ts` mock methods were **dead** (no caller) → deleted; ✅ Agent Marketplace + landing Boards now carry a `.sample-badge` "preview" indicator. Remaining: `instance.service.ts` `getTaskSummary()` returns mock — surface or badge wherever it's displayed.
+- **Mock data presented as real** — ✅ `message.service.ts` mock methods were **dead** (no caller) → deleted; ✅ Agent Marketplace + landing Boards now carry a `.sample-badge` "preview" indicator. ✅ `instance.service.ts` `getTaskSummary()` returns **all-zeros** (an honest empty state, not misleading sample data) — no badge needed; wiring it to the real `GET /tasks` aggregation is a future *enhancement*, not hygiene.
 - ✅ **Duplicate logic** — `conversations-page.component.ts` `isConnected` computed once now (was twice, with a buggy `data.length > 0` clause).
 - **`mark-as-read` TODO** — `channel.service.ts:57` "Call backend API to mark messages as read": REST route doesn't exist (WS-only) — wire the WS path or add the route.
 - **8 stubbed presence actions** — `communication.component.ts:672–707` (`viewProfile`, `viewConsciousnessState`, `requestAgentTask`, `inviteToChannel`, …) are `console.log` placeholders with live buttons; implement or hide.

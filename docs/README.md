@@ -6,7 +6,8 @@ Guide to all documentation in this repository.
 Design documents and system architecture.
 
 - [Worlds & Creative Studio](architecture/worlds-architecture.md) — The "universe of worlds": 3D command center, per-world AI art / inhabitants / lore / knowledge, data model, and persistence/reload flow
-- [Agent Factory](architecture/agent-factory.md) — Agent system architecture: library, factory, registry, communication
+- [Agent Factory & MCP — Current Status](architecture/agent-factory-mcp.md) — Current-state reference: API surface, factory/MCP/registry services, data model, frontend wiring, and what's wired vs stubbed
+- [Agent Factory](architecture/agent-factory.md) — Original agent system design/vision (2025-10-26): library, factory, registry, communication
 - [Agent Factory Implementation](architecture/agent-factory-implementation.md) — Deep implementation plan for the agent factory system
 - [Agent Response System](architecture/agent-response-system.md) — Design for agent response generation in Communication Commons
 
