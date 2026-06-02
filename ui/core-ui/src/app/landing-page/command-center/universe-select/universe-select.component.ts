@@ -1,18 +1,19 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { WorldsService } from '../../../services/worlds/worlds.service';
 
-type World = { id: string; name: string; updated_at: string };
-
-/** Result emitted when the user chooses from the universe gate. */
-export type UniverseSelectResult =
-  | { action: 'new' }
-  | { action: 'load'; world: { id: string; name: string } };
+interface WorldSlot {
+  id: string;
+  name: string;
+  updated_at: string;
+  hue: number; // stable per-world hue for the procedural orb
+}
 
 /**
- * Full-screen entry gate for the command center: chart a NEW universe or descend
- * into a previously authored one. Rendered as a fixed full-viewport view (not a
- * dialog) so it fully replaces the editor until the user makes a choice.
+ * Standalone command-center entry route (`/command-center`): a game-style
+ * "select your universe" screen. Choosing a world (or starting a new one)
+ * navigates into the editor at `/command-center/edit`.
  */
 @Component({
   selector: 'app-universe-select',
@@ -22,40 +23,51 @@ export type UniverseSelectResult =
   styleUrl: './universe-select.component.scss'
 })
 export class UniverseSelectComponent implements OnInit {
-  @Input() limit = 50;
-  @Output() chosen = new EventEmitter<UniverseSelectResult>();
+  private readonly worldsSvc = inject(WorldsService);
+  private readonly router = inject(Router);
 
-  worlds: World[] = [];
+  worlds: WorldSlot[] = [];
   isLoading = true;
-
-  constructor(private readonly worldsSvc: WorldsService) {}
+  loadError = false;
+  readonly skeletons = [0, 1, 2, 3];
 
   ngOnInit(): void {
     this.refresh();
   }
 
-  private refresh(): void {
+  refresh(): void {
     this.isLoading = true;
-    this.worldsSvc.listWorlds(this.limit, 0).subscribe({
-      next: (res) => { this.worlds = res ?? []; this.isLoading = false; },
-      error: () => { this.worlds = []; this.isLoading = false; }
+    this.loadError = false;
+    this.worldsSvc.listWorlds(60, 0).subscribe({
+      next: (res) => {
+        this.worlds = (res ?? []).map((w) => ({ ...w, hue: this.hue(w.id) }));
+        this.isLoading = false;
+      },
+      error: () => { this.worlds = []; this.isLoading = false; this.loadError = true; }
     });
   }
 
-  onNew(): void {
-    this.chosen.emit({ action: 'new' });
+  newUniverse(): void {
+    this.router.navigate(['/command-center/edit']);
   }
 
-  onLoad(world: World): void {
-    this.chosen.emit({ action: 'load', world: { id: world.id, name: world.name } });
+  loadWorld(w: WorldSlot): void {
+    this.router.navigate(['/command-center/edit'], { queryParams: { worldId: w.id } });
   }
 
-  onDelete(world: World, ev: Event): void {
+  deleteWorld(w: WorldSlot, ev: Event): void {
     ev.stopPropagation();
-    if (!confirm(`Delete universe "${world.name}" and all its snapshots?`)) { return; }
-    this.worldsSvc.deleteWorld(world.id).subscribe({
+    if (!confirm(`Delete universe "${w.name}" and all its snapshots?`)) { return; }
+    this.worldsSvc.deleteWorld(w.id).subscribe({
       next: () => this.refresh(),
       error: () => this.refresh()
     });
+  }
+
+  /** Stable hue (0–360) derived from a world id, for a varied procedural orb. */
+  private hue(id: string): number {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) { h = (h * 31 + id.charCodeAt(i)) % 360; }
+    return h;
   }
 }

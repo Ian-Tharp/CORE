@@ -26,7 +26,7 @@ export class WorldDetailComponent implements OnInit {
 
   openInEditor(): void {
     if (!this.world) {return;}
-    this.router.navigate(['/command-center'], { queryParams: { projectId: this.world.id } });
+    this.router.navigate(['/command-center/edit'], { queryParams: { projectId: this.world.id } });
   }
 
   openBoards(): void {

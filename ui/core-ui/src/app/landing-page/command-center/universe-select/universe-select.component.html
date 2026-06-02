@@ -1,48 +1,51 @@
-<div class="gate">
-  <div class="gate__stars" aria-hidden="true"></div>
-  <div class="gate__glow" aria-hidden="true"></div>
+<div class="select-screen">
+  <div class="select-screen__stars" aria-hidden="true"></div>
+  <div class="select-screen__glow" aria-hidden="true"></div>
+  <div class="select-screen__scan" aria-hidden="true"></div>
 
-  <div class="gate__panel">
-    <header class="gate-head">
-      <span class="gate-eyebrow">CORE · Command Center</span>
-      <h1 class="gate-title">Enter the Universe</h1>
-      <p class="gate-sub">Chart a new cosmos, or descend into one you've already woven.</p>
-    </header>
+  <header class="select-head">
+    <span class="select-eyebrow">◇ CORE · COMMAND CENTER</span>
+    <h1 class="select-title">Select Your Universe</h1>
+    <p class="select-sub">Resume a saved cosmos — or chart a new one.</p>
+  </header>
 
-    <!-- Chart a new universe -->
-    <button class="new-universe" (click)="onNew()">
-      <span class="new-universe__glyph" aria-hidden="true">✦</span>
-      <span class="new-universe__text">
-        <span class="new-universe__title">Chart a New Universe</span>
-        <span class="new-universe__hint">Begin with a fresh galaxy of unwoven worlds</span>
-      </span>
-      <span class="new-universe__arrow" aria-hidden="true">➤</span>
+  <div class="slot-grid">
+    <!-- New universe slot -->
+    <button class="slot slot--new" (click)="newUniverse()">
+      <span class="slot--new__ring" aria-hidden="true"><span class="slot--new__plus">＋</span></span>
+      <span class="slot__name">New Universe</span>
+      <span class="slot__meta">Chart a fresh galaxy</span>
     </button>
 
-    <!-- Previously authored universes -->
-    <section class="previous">
-      <span class="previous__label">Previous Universes</span>
-
-      @if (isLoading) {
-        <div class="previous__state">Scanning the archive…</div>
-      } @else if (!worlds.length) {
-        <div class="previous__state">No universes yet — chart your first one above.</div>
-      } @else {
-        <ul class="world-list">
-          @for (w of worlds; track w.id) {
-            <li class="world-row" (click)="onLoad(w)" tabindex="0"
-                (keydown.enter)="onLoad(w)" role="button" [attr.aria-label]="'Load ' + w.name">
-              <span class="world-row__glyph" aria-hidden="true">◉</span>
-              <span class="world-row__body">
-                <span class="world-row__name">{{ w.name }}</span>
-                <span class="world-row__meta">{{ w.updated_at | date:'medium' }}</span>
-              </span>
-              <button class="world-row__del" (click)="onDelete(w, $event)"
-                      aria-label="Delete universe" title="Delete">&#10005;</button>
-            </li>
-          }
-        </ul>
+    @if (isLoading) {
+      @for (i of skeletons; track i) {
+        <div class="slot slot--skeleton" aria-hidden="true">
+          <span class="slot__orb"></span>
+          <span class="skel-line skel-line--name"></span>
+          <span class="skel-line skel-line--meta"></span>
+        </div>
       }
-    </section>
+    } @else {
+      @for (w of worlds; track w.id) {
+        <div class="slot slot--world" [style.--hue]="w.hue" (click)="loadWorld(w)"
+             tabindex="0" role="button" (keydown.enter)="loadWorld(w)"
+             [attr.aria-label]="'Enter ' + w.name">
+          <span class="slot__orb" aria-hidden="true"></span>
+          <span class="slot__name">{{ w.name }}</span>
+          <span class="slot__meta">Charted {{ w.updated_at | date:'mediumDate' }}</span>
+          <span class="slot__enter" aria-hidden="true">Enter ➤</span>
+          <button class="slot__del" (click)="deleteWorld(w, $event)"
+                  aria-label="Delete universe" title="Delete">&#10005;</button>
+        </div>
+      }
+    }
   </div>
+
+  @if (loadError) {
+    <p class="select-status select-status--error" role="status">
+      Couldn't reach the archive. <button class="retry" (click)="refresh()">Retry</button>
+    </p>
+  } @else if (!isLoading && !worlds.length) {
+    <p class="select-status">No saved universes yet — chart your first one above.</p>
+  }
 </div>

@@ -7,6 +7,7 @@ import { AgentBuilderComponent } from './agents-page/agent-builder/agent-builder
 import { MyAgentsPageComponent } from './agents-page/my-agents-page/my-agents-page.component';
 import { AgentMarketplaceComponent } from './agents-page/agent-marketplace/agent-marketplace.component';
 import { CommandCenterComponent } from './landing-page/command-center/command-center.component';
+import { UniverseSelectComponent } from './landing-page/command-center/universe-select/universe-select.component';
 import { LandingComponent as CreativeLandingComponent } from './creative-design-product/landing/landing.component';
 import { WorldsGridComponent } from './creative-design-product/worlds-grid/worlds-grid.component';
 import { MarketplaceComponent } from './creative-design-product/marketplace/marketplace.component';
@@ -27,6 +28,10 @@ export const routes: Routes = [
   },
   {
     path: 'command-center',
+    component: UniverseSelectComponent
+  },
+  {
+    path: 'command-center/edit',
     component: CommandCenterComponent
   },
   {

@@ -25,7 +25,7 @@ export class RemoteWorldCardComponent {
   constructor(private readonly router: Router) {}
 
   openInEditor(): void {
-    this.router.navigate(['/command-center'], { queryParams: { worldId: this.world.id } });
+    this.router.navigate(['/command-center/edit'], { queryParams: { worldId: this.world.id } });
   }
 
   onDelete(ev: MouseEvent): void { ev.stopPropagation(); this.delete.emit(this.world.id); }

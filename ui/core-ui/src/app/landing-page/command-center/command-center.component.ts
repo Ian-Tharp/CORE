@@ -10,7 +10,6 @@ import { WorldsService } from '../../services/worlds/worlds.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SaveWorldDialogComponent } from './save-world-dialog/save-world-dialog.component';
 import { WorldsDialogComponent } from './worlds-dialog/worlds-dialog.component';
-import { UniverseSelectComponent, UniverseSelectResult } from './universe-select/universe-select.component';
 import { WorldDetailPanelComponent, SelectedTileInfo } from './world-detail-panel/world-detail-panel.component';
 import { SearchPaletteComponent, SearchResult } from './search-palette/search-palette.component';
 import { UiNotifyService } from '../../shared/services/ui-notify.service';
@@ -18,7 +17,7 @@ import { ConnectionType } from './engine/tile-metadata.model';
 
 @Component({
   selector: 'app-command-center',
-  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent, UniverseSelectComponent],
+  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent],
   templateUrl: './command-center.component.html',
   styleUrl: './command-center.component.scss'
 })
@@ -86,10 +85,6 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
-
-  /** Full-screen universe entry gate — shown on entry until a world is chosen
-   *  (or a new one started). The editor builds behind it but stays hidden. */
-  showUniverseSelect = false;
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
@@ -169,12 +164,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         const seed = params.get('seed');
         if (name) {this.projectName = name;}
         if (seed) { this.seed = seed; this.onApplySeed(); }
-        if (!name && !seed) {
-          // No deep-link target → show the full-screen universe gate. The editor
-          // is built behind it but stays hidden until the user picks a world or
-          // starts a new one. Deferred to a microtask to avoid NG0100.
-          Promise.resolve().then(() => { this.showUniverseSelect = true; });
-        }
+        // No deep-link target → a fresh "New Universe" (default grid). World
+        // selection now lives on the /command-center route; the editor at
+        // /command-center/edit just starts blank when entered without a target.
       }
     }
   }
@@ -196,19 +188,6 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         this.ui.showError('No snapshot found for that world yet. Try Quick Save from Command Center.');
       }
     });
-  }
-
-  /** Handle the user's choice from the full-screen universe gate. */
-  onUniverseChosen(res: UniverseSelectResult): void {
-    this.showUniverseSelect = false;
-    if (res.action === 'load') {
-      this.loadWorldById(res.world.id, res.world.name);
-    } else {
-      // Chart a New Universe → keep the fresh default grid; the next save
-      // creates a brand-new world (currentWorldId stays null).
-      this.currentWorldId = null;
-      this._triggerViewportScan();
-    }
   }
 
   ngOnDestroy(): void {

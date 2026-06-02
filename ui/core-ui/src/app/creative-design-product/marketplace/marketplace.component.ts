@@ -52,7 +52,7 @@ export class MarketplaceComponent {
     const ref = this.dialog.open(CreateWorldDialogComponent, { panelClass: 'glass-dialog' });
     ref.afterClosed().subscribe((res?: { name: string; seed?: string }) => {
       if (!res?.name) {return;}
-      this.router.navigate(['/command-center'], { queryParams: { name: res.name, seed: res.seed || '' } });
+      this.router.navigate(['/command-center/edit'], { queryParams: { name: res.name, seed: res.seed || '' } });
     });
   }
 
