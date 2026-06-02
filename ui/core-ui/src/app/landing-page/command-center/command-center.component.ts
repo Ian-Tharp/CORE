@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { EngineService } from './engine/engine.service';
-import { TileGridService, TerrainState, BiomeState, ResourceState } from './engine/tile-grid.service';
+import { TileGridService } from './engine/tile-grid.service';
 import { ProjectService } from './engine/project.service';
 import { TileMetadataService } from './engine/tile-metadata.service';
 import { WorldsService } from '../../services/worlds/worlds.service';
@@ -49,14 +49,11 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     elevation: 0.1
   };
   public seed: string = '';
-  // Layers & tools
+  // Layers — `activeLayer` is the layer the galaxy colours by; visibility toggles
+  // show/hide each layer's encoding. (The old paint tools/brush were removed.)
   activeLayer: 'terrain' | 'biome' | 'resources' = 'terrain';
-  terrainTool: TerrainState = 'plain';
-  biomeTool: BiomeState = 'forest';
-  resourceTool: ResourceState | 'erase' = 'node';
   layerVisibility: { terrain: boolean; biome: boolean; resources: boolean } =
     { terrain: true, biome: true, resources: true };
-  brush = 1;
   outlinesVisible = false;
   connectionsVisible = true;
   hoveredInfo: {
@@ -499,9 +496,6 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   private _syncGridStateToService(): void {
     this.tileGrid.setActiveLayer(this.activeLayer);
-    this.tileGrid.setTerrainTool(this.terrainTool);
-    this.tileGrid.setBiomeTool(this.biomeTool);
-    this.tileGrid.setResourceTool(this.resourceTool);
     this.tileGrid.setEditMode(this.isEditMode);
     // explicitly sync visibility to service to avoid any initial template-driven toggle mismatch
     this.tileGrid.setLayerVisibility('terrain', this.layerVisibility.terrain);

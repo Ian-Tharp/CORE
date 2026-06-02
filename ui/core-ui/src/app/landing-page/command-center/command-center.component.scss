@@ -387,16 +387,14 @@
   font-size: 0.8rem;
 }
 
-// Checkbox and radio styling
-.checkbox-row,
-.radio-row {
+// Checkbox styling (Layer Visibility)
+.checkbox-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.checkbox-label,
-.radio-label {
+.checkbox-label {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -417,14 +415,7 @@
   }
 }
 
-.radio-label {
-  &.active {
-    background: rgba(0, 255, 200, 0.15);
-    color: #b0ffe8;
-  }
-}
-
-// Edit Mode — segmented control
+// Detail-panel toggle — segmented control
 .mode-buttons {
   display: flex;
   gap: 0.2rem;
@@ -455,137 +446,6 @@
     color: #80ffd8 !important;
     box-shadow: 0 0 0.6rem rgba(0, 255, 200, 0.2) inset !important;
   }
-}
-
-// Palette buttons with color indicators — terrain swatches
-.palette-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.palette-btn {
-  flex: 1 1 auto;
-  min-width: 3.5rem;
-  position: relative;
-  padding-left: 1.2rem !important;
-  transition: all 0.18s ease !important;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0.4rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background: currentColor;
-    transition: box-shadow 0.18s;
-  }
-
-  // Terrain swatches — colored borders per type
-  &.terrain-plain {
-    border-color: rgba(76, 175, 80, 0.35) !important;
-    &::before { background: #4CAF50; }
-    &.selected {
-      border-color: rgba(76, 175, 80, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(76, 175, 80, 0.4), inset 0 0 0.3rem rgba(76, 175, 80, 0.1) !important;
-      background: rgba(76, 175, 80, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  &.terrain-water {
-    border-color: rgba(33, 150, 243, 0.35) !important;
-    &::before { background: #2196F3; }
-    &.selected {
-      border-color: rgba(33, 150, 243, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(33, 150, 243, 0.4), inset 0 0 0.3rem rgba(33, 150, 243, 0.1) !important;
-      background: rgba(33, 150, 243, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  &.terrain-mountain {
-    border-color: rgba(188, 130, 80, 0.35) !important;
-    &::before { background: #A1704A; }
-    &.selected {
-      border-color: rgba(255, 183, 77, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(255, 183, 77, 0.4), inset 0 0 0.3rem rgba(255, 183, 77, 0.1) !important;
-      background: rgba(188, 130, 80, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  // Biome swatches
-  &.biome-forest {
-    border-color: rgba(46, 125, 50, 0.35) !important;
-    &::before { background: #2E7D32; }
-    &.selected {
-      border-color: rgba(46, 125, 50, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(46, 125, 50, 0.4) !important;
-      background: rgba(46, 125, 50, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  &.biome-desert {
-    border-color: rgba(255, 143, 0, 0.35) !important;
-    &::before { background: #FF8F00; }
-    &.selected {
-      border-color: rgba(255, 143, 0, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(255, 143, 0, 0.4) !important;
-      background: rgba(255, 143, 0, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  &.biome-tundra {
-    border-color: rgba(3, 169, 244, 0.35) !important;
-    &::before { background: #03A9F4; }
-    &.selected {
-      border-color: rgba(3, 169, 244, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(3, 169, 244, 0.4) !important;
-      background: rgba(3, 169, 244, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  // Resource swatch
-  &.resource-node {
-    border-color: rgba(233, 30, 99, 0.35) !important;
-    &::before { background: #E91E63; }
-    &.selected {
-      border-color: rgba(233, 30, 99, 0.85) !important;
-      box-shadow: 0 0 0.8rem rgba(233, 30, 99, 0.4) !important;
-      background: rgba(233, 30, 99, 0.15) !important;
-      transform: scale(1.04);
-    }
-  }
-
-  // Eraser
-  &.eraser {
-    &::before { background: #888; }
-    &.selected {
-      border-color: rgba(160, 160, 160, 0.7) !important;
-      box-shadow: 0 0 0.6rem rgba(160, 160, 160, 0.3) !important;
-      transform: scale(1.04);
-    }
-  }
-}
-
-// Brush size indicator
-.brush-size-indicator {
-  text-align: center;
-  font-size: 0.8rem;
-  color: rgba(0, 255, 200, 0.9);
-  padding: 0.25rem;
-  background: rgba(0, 255, 200, 0.1);
-  border-radius: 0.3rem;
-  margin-top: 0.25rem;
-  font-family: 'Rajdhani', monospace;
-  letter-spacing: 0.04rem;
 }
 
 // Tile info — Star Trek sensor display
