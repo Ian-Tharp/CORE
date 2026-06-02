@@ -57,6 +57,10 @@ services:
     environment:
       - NODE_ENV=development
       - BACKEND_URL=http://core-backend:8001
+      # Windows/Docker volume mounts don't deliver inotify events, so the file
+      # watcher must poll for the dev server to hot-reload on source edits.
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1500
     volumes:
       - ./ui/core-ui:/app
       - /app/node_modules
@@ -66,7 +70,7 @@ services:
     depends_on:
       - core-backend
     restart: unless-stopped
-    command: ng serve --host 0.0.0.0 --port 4200
+    command: ng serve --host 0.0.0.0 --port 4200 --poll 1500
 
   # Database - PostgreSQL (for future persistence)
   postgres:
