@@ -1608,6 +1608,27 @@ export class TileGridService {
     if (this.outlineMesh) {this.outlineMesh.visible = visible;}
   }
 
+  /** Hide/show a single galaxy-LOD orb instance (orbs are an InstancedMesh, so
+   *  engine.remove can't remove just one). Collapse to scale 0 to hide; on show,
+   *  re-apply the selected transform if it's still the selected tile, else baseline.
+   *  Used by the PLANET altitude tier, which mounts a detailed sphere over the orb. */
+  public setOrbVisible(index: number, visible: boolean): void {
+    if (!this.tiles[index]) { return; }
+    if (!visible) {
+      this.setTileTransform(index, { scale: 0 });
+    } else if (index === this.selectedIndex) {
+      this.setTileTransform(index, { scale: 1.12, yOffset: 0.18 }); // mirrors applySelection
+    } else {
+      this.setTileTransform(index);
+    }
+    this.markTileTransformsDirty();
+  }
+
+  /** Read-only cell radius, for component-side planet scale math. */
+  public getCellRadius(): number {
+    return this.currentConfig?.cellRadius ?? 1;
+  }
+
   setBrushRadius(radius: number): void {
     this.brushRadius = Math.max(0, Math.floor(radius));
   }

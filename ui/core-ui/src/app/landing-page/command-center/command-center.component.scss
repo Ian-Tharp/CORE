@@ -1209,3 +1209,46 @@
   opacity: 0; // shown/positioned by the render loop
   transition: opacity var(--transition-fast);
 }
+
+// ── Zoom-altitude chrome (Descend button + altitude badge) ───────────────────
+.descend-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius-pill, 999px);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm, 0.85rem);
+  letter-spacing: 0.06em;
+  color: var(--core-bg-base, #03060d);
+  background: color-mix(in srgb, var(--core-energy) 88%, white 12%);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 60%, transparent);
+  box-shadow: 0 0 1.4rem color-mix(in srgb, var(--core-energy) 40%, transparent);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+
+  &:hover { box-shadow: 0 0 2rem color-mix(in srgb, var(--core-energy) 55%, transparent); }
+  &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+}
+
+.altitude-badge {
+  position: absolute;
+  left: 1rem;
+  bottom: 1.5rem;
+  z-index: 6;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-pill, 999px);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  color: var(--core-energy);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 28%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 72%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .descend-btn { transition: none; }
+}

@@ -195,8 +195,18 @@
       <span class="stage__grid"></span>
       <span class="stage__reticle"></span>
     </div>
-    <canvas #canvas class="viewport" aria-label="Command Center viewport" tabindex="0"></canvas>
+    <canvas #canvas class="viewport" aria-label="Command Center viewport" tabindex="0"
+            (dblclick)="onCanvasDblClick()"></canvas>
     <span class="stage__scan" aria-hidden="true"></span>
+    @if (altitude === 'orbit' && selectedInfo) {
+      <button type="button" class="descend-btn" (click)="descend()"
+              aria-label="Descend to planet view" aria-keyshortcuts="Enter">Descend ↓</button>
+    }
+    @if (altitude !== 'galaxy') {
+      <div class="altitude-badge" aria-live="polite">
+        {{ altitude === 'orbit' ? 'Orbit' : 'Planet' }} · Esc to ascend
+      </div>
+    }
     @if (contextMenu.visible) {
       <div class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" (click)="$event.stopPropagation()">
         <button class="menu-item" (click)="onEnterWorld()">Enter Tile</button>

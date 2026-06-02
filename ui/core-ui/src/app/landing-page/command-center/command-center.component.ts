@@ -14,6 +14,14 @@ import { WorldDetailPanelComponent, SelectedTileInfo } from './world-detail-pane
 import { SearchPaletteComponent, SearchResult } from './search-palette/search-palette.component';
 import { UiNotifyService } from '../../shared/services/ui-notify.service';
 import { ConnectionType } from './engine/tile-metadata.model';
+import * as THREE from 'three';
+import {
+  buildPlanet, disposePlanet, attachAutoRotate, resolveParams,
+  type WorldGenParams, type BiomeArchetype,
+} from './engine/planet';
+
+/** Zoom-altitude tier: the explorable galaxy, an orbit on one world, or its planet surface. */
+export type Altitude = 'galaxy' | 'orbit' | 'planet';
 
 @Component({
   selector: 'app-command-center',
@@ -83,6 +91,14 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
 
+  // ── Zoom altitude (GALAXY → ORBIT → PLANET) ──────────────────────────────
+  altitude: Altitude = 'galaxy';                  // template-bound (Descend button + badge)
+  private readonly PLANET_ZOOM = 6.4;             // tighter than the 4.6 select focus
+  private readonly ORB_VISUAL_FACTOR = 0.78 * 1.12; // orb geom (cellRadius*0.78) × selection scale
+  private mountedPlanet?: THREE.Group;
+  private stopPlanetRotate?: () => void;
+  private mountedPlanetIndex = -1;
+
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
     this.engine.initialize(canvas);
@@ -94,6 +110,14 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       if (s && this.connectionCreationMode) {
         this.handleConnectionCreationClick();
       }
+      // Flip altitude off the CD pass (RxJS may emit mid-change-detection → NG0100).
+      Promise.resolve().then(() => {
+        if (!s) { this.unmountPlanet(); this.altitude = 'galaxy'; }
+        else if (this.altitude === 'galaxy') { this.altitude = 'orbit'; }
+        else if (this.altitude === 'planet' && s.index !== this.mountedPlanetIndex) {
+          this.unmountPlanet(); this.altitude = 'orbit'; // reselected a different world
+        }
+      });
     });
     this.tileGrid.onTileContext((ctx) => {
       this.contextMenu = {
@@ -194,6 +218,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     if (this.worldStepLabelTimeout) {
       clearTimeout(this.worldStepLabelTimeout);
     }
+    this.unmountPlanet();          // tear down any mounted planet BEFORE the engine
     this.removeLabelUpdater?.();
     this.engine.dispose();
   }
@@ -453,6 +478,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   public onApplyGridConfig(): void {
+    this.unmountPlanet(); this.altitude = 'galaxy'; // tile indices change → drop any planet
     this.tileGrid.createTileGrid(this.gridConfig);
     this._syncGridStateToService();
     this.queueWorldStepLabelUpdate();
@@ -460,6 +486,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   public onApplySeed(): void {
+    this.unmountPlanet(); this.altitude = 'galaxy';
     const trimmed = (this.seed ?? '').toString().trim();
     this.tileGrid.setRandomSeed(trimmed.length > 0 ? trimmed : null);
     this.tileGrid.triggerSeedBloom();
@@ -467,13 +494,89 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   }
 
   onRandomize(): void {
+    this.unmountPlanet(); this.altitude = 'galaxy';
     this.tileGrid.randomize();
     this._triggerViewportScan();
   }
 
   onClear(): void {
+    this.unmountPlanet(); this.altitude = 'galaxy';
     this.tileGrid.clear();
     this._triggerViewportScan();
+  }
+
+  // ── Zoom altitude transitions (GALAXY → ORBIT → PLANET) ───────────────────
+
+  /** ORBIT → PLANET: build the selected world's planet and frame it. */
+  descend(): void {
+    if (this.altitude !== 'orbit' || !this.selectedInfo) { return; }
+    this.mountPlanet(this.selectedInfo);
+    this.altitude = 'planet';
+    this.canvasRef.nativeElement.focus();
+  }
+
+  /** Esc: ascend exactly one tier (PLANET → ORBIT → GALAXY). */
+  ascend(): void {
+    if (this.altitude === 'planet') {
+      this.unmountPlanet();
+      this.altitude = 'orbit';
+      if (this.selectedInfo) {
+        this.engine.focusOn(
+          new THREE.Vector3(this.selectedInfo.worldX, this.selectedInfo.worldY, this.selectedInfo.worldZ), 4.6);
+      }
+      this.canvasRef.nativeElement.focus();
+    } else if (this.altitude === 'orbit') {
+      this.tileGrid.returnToOverview(); // clears selection → null emission → deferred flip to galaxy
+      this.canvasRef.nativeElement.focus();
+    }
+    this.queueWorldStepLabelUpdate();
+  }
+
+  /** Double-click a selected orb to descend. */
+  onCanvasDblClick(): void {
+    if (this.altitude === 'orbit' && this.selectedInfo) { this.descend(); }
+  }
+
+  /** Mount the planet for a world at its orb position (singleton — replaces any current planet). */
+  private mountPlanet(info: SelectedTileInfo): void {
+    this.unmountPlanet();
+    const params = this.deriveWorldGenParams(info);
+    const planet = buildPlanet(params, { tier: 'preview' });
+    planet.position.set(info.worldX, info.worldY, info.worldZ);    // true orb centre
+    planet.scale.setScalar(this.tileGrid.getCellRadius() * this.ORB_VISUAL_FACTOR);
+    this.engine.add(planet, false);                                // not in the raycast set
+    this.stopPlanetRotate = attachAutoRotate(planet, this.engine); // a11y-gated
+    this.tileGrid.setOrbVisible(info.index, false);
+    this.mountedPlanet = planet;
+    this.mountedPlanetIndex = info.index;
+    this.engine.focusOn(new THREE.Vector3(info.worldX, info.worldY, info.worldZ), this.PLANET_ZOOM);
+  }
+
+  /** Tear a mounted planet down in strict order; restore the galaxy orb. Idempotent. */
+  private unmountPlanet(): void {
+    if (!this.mountedPlanet) { return; }
+    this.stopPlanetRotate?.();                 // 1. unhook frame cb + media listener
+    this.engine.remove(this.mountedPlanet);    // 2. leave the scene before disposing
+    disposePlanet(this.mountedPlanet);         // 3. dispose geo/mat + evict noise seed
+    if (this.mountedPlanetIndex >= 0) {
+      this.tileGrid.setOrbVisible(this.mountedPlanetIndex, true); // 4. restore orb
+    }
+    this.stopPlanetRotate = undefined;
+    this.mountedPlanet = undefined;
+    this.mountedPlanetIndex = -1;
+  }
+
+  /** Derive a planet's params from the selected tile (v1 — persistence is a later step). */
+  private deriveWorldGenParams(info: SelectedTileInfo): WorldGenParams {
+    const name = this.worldLabels.find((w) => w.index === info.index)?.name?.trim();
+    const seed = name || `world-${info.index}`;
+    let archetype: BiomeArchetype = 'temperate';
+    if (info.terrain === 'water') { archetype = 'oceanic'; }
+    else if (info.terrain === 'mountain') { archetype = 'volcanic'; }
+    else if (info.biome === 'forest') { archetype = 'jungle'; }
+    else if (info.biome === 'desert') { archetype = 'desert'; }
+    else if (info.biome === 'tundra') { archetype = 'tundra'; }
+    return resolveParams({ seed, biomeArchetype: archetype });
   }
 
   onCloseContextMenu(): void {
@@ -512,9 +615,18 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     if (e.key === 'h' || e.key === 'H') {
       this.onToggleOutlines(!this.outlinesVisible);
     } else if (e.key === 'Escape') {
+      if (this.altitude !== 'galaxy') {
+        this.ascend();                 // PLANET→ORBIT→GALAXY, one tier per press
+        this.contextMenu.visible = false;
+        e.preventDefault();
+        return;
+      }
       this.tileGrid.returnToOverview();
       this.queueWorldStepLabelUpdate();
       this.contextMenu.visible = false;
+    } else if (e.key === 'Enter' && this.altitude === 'orbit' && this.selectedInfo) {
+      this.descend();
+      e.preventDefault();
     }
   }
 
