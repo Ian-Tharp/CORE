@@ -125,10 +125,13 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         }
         if (name) { labels.push({ index: idx, name }); }
       });
-      this.tileGrid.setDocumentedWorlds(documented);
-      // Defer the template-bound update one microtask so it never mutates the
-      // world-labels @for after it's been checked (avoids NG0100 on first emit).
-      Promise.resolve().then(() => { this.worldLabels = labels; });
+      // Defer to a microtask so neither the documented-world emphasis (which the
+      // stepper label reads via getNavInfo) nor the labels mutate view-bound state
+      // during the change-detection pass that triggered this emission (NG0100).
+      Promise.resolve().then(() => {
+        this.tileGrid.setDocumentedWorlds(documented);
+        this.worldLabels = labels;
+      });
     });
 
     // Float named-world labels above their orbs, following the camera each frame.
