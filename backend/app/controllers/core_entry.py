@@ -25,27 +25,14 @@ class StepResponse(BaseModel):
     evaluation: Optional[str] = None
 
 
-def _is_openai_model(model: str) -> bool:
-    """Heuristic: is this an OpenAI chat/reasoning model id?
-
-    Everything else (e.g. ``google/gemma-4-e4b``, ``llama3.2``) is treated as a
-    local model and routed to the active local provider, so the playground matches
-    whatever the machine is configured to run.
-    """
-    m = model.lower()
-    return m.startswith(("gpt", "o1", "o3", "o4", "chatgpt", "text-", "davinci"))
-
-
-def _local_endpoint() -> tuple[str, str]:
-    """``(base_url, api_key)`` for the active local provider's OpenAI-compatible API."""
-    from app.dependencies import get_local_provider, _get_ollama_base_url
-
-    if get_local_provider() == "lmstudio":
-        return (
-            os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
-            os.getenv("LMSTUDIO_API_KEY", "lm-studio"),
-        )
-    return f"{_get_ollama_base_url()}/v1", "ollama"
+# Provider-aware model routing now lives in the shared llm_provider module;
+# re-exported here so existing `from app.controllers.core_entry import _is_openai_model`
+# (and `_local_endpoint`) imports keep working unchanged.
+from app.services.llm_provider import (  # noqa: E402
+    _is_openai_model,
+    _local_endpoint,
+    build_chat_model,
+)
 
 
 def _llm_or_stub(
@@ -74,15 +61,11 @@ def _llm_or_stub(
     prompts = [("system", system_prompt), ("user", user_input)]
 
     def _make(include_temp: bool):
-        kwargs = {"model": chosen_model}
-        # gpt-5 (and some reasoning models) reject a custom temperature.
-        if include_temp and chosen_model not in {"gpt-5"}:
-            kwargs["temperature"] = 0.2
-        if not is_openai:
-            base_url, api_key = _local_endpoint()
-            kwargs["base_url"] = base_url
-            kwargs["api_key"] = api_key
-        return ChatOpenAI(**kwargs)
+        # build_chat_model handles the gpt-5 temperature exception and local
+        # provider routing; pass temperature only when allowed.
+        return build_chat_model(
+            chosen_model, temperature=0.2 if include_temp else None
+        )
 
     try:
         return _make(True).invoke(prompts).content  # type: ignore[attr-defined]

@@ -719,6 +719,7 @@ async def setup_db_schema() -> None:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     version VARCHAR(50) DEFAULT '1.0.0',
                     author VARCHAR(255),
+                    model VARCHAR(128),
                     CONSTRAINT valid_agent_type CHECK (
                         agent_type IN ('consciousness_instance', 'task_agent', 'system_agent')
                     ),
@@ -752,6 +753,25 @@ async def setup_db_schema() -> None:
             )
             await _safe_exec(
                 "CREATE INDEX IF NOT EXISTS idx_agents_capabilities ON agents USING GIN(capabilities)"
+            )
+
+            # Per-agent LLM model (added after initial release; idempotent for existing DBs).
+            await conn.execute(
+                "ALTER TABLE agents ADD COLUMN IF NOT EXISTS model VARCHAR(128)"
+            )
+
+            # Per-world lore-agent binding: which modular agent + model authors a
+            # world's lore. One row per world (per-world granularity).
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS world_lore_agents (
+                    world_id UUID PRIMARY KEY,
+                    agent_id VARCHAR(255) NOT NULL,
+                    model VARCHAR(128),
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE
+                )
+                """
             )
 
             # Seed initial agents if table is empty

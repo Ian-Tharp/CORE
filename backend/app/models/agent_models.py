@@ -291,6 +291,13 @@ class AgentConfig(BaseModel):
 
     author: Optional[str] = Field(None, description="Who created this agent")
 
+    model: Optional[str] = Field(
+        None,
+        max_length=128,
+        description="LLM model id for this agent (provider-aware: OpenAI ids → OpenAI, "
+        "any other id → the active local provider). Falls back to CORE_DEFAULT_MODEL.",
+    )
+
     # -------------------------------------------------------------------------
     # Configuration
     # -------------------------------------------------------------------------
@@ -393,6 +400,7 @@ class AgentCreateRequest(BaseModel):
     current_status: Literal["online", "offline", "busy", "inactive"] = "offline"
     version: str = "1.0.0"
     author: Optional[str] = None
+    model: Optional[str] = Field(None, max_length=128)
 
 
 class AgentUpdateRequest(BaseModel):
@@ -428,6 +436,7 @@ class AgentUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
     current_status: Optional[Literal["online", "offline", "busy", "inactive"]] = None
     version: Optional[str] = None
+    model: Optional[str] = Field(None, max_length=128)
 
 
 # =============================================================================

@@ -31,10 +31,10 @@ Performance considerations:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 
-from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import Runnable
@@ -42,6 +42,7 @@ from langchain_core.runnables import Runnable
 from app.models.agent_models import AgentConfig
 from app.repository.agent_repository import get_agent
 from app.services.agent_mcp_service import get_agent_mcp_service
+from app.services.llm_provider import build_chat_model
 
 logger = logging.getLogger(__name__)
 
@@ -322,18 +323,15 @@ class AgentFactoryService:
         temperature = self._calculate_temperature(traits)
         top_p = self._calculate_top_p(traits)
 
-        # Create LLM with personality tuning
-        # In production, consider per-agent LLM instances
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",  # Fast, cost-effective
-            temperature=temperature,
-            top_p=top_p,
-            # System prompt handled by state_modifier in create_react_agent
-        )
+        # Resolve the model: per-agent config.model → env default → fallback.
+        # build_chat_model routes OpenAI ids to OpenAI and any other id to the
+        # active local provider (Ollama / LM Studio), so agents are model-selectable.
+        model = config.model or os.getenv("CORE_DEFAULT_MODEL") or "gpt-4o-mini"
+        llm = build_chat_model(model, temperature=temperature, top_p=top_p)
 
         logger.debug(
             f"Created LLM for {config.agent_name} "
-            f"(temp={temperature}, top_p={top_p})"
+            f"(model={model}, temp={temperature}, top_p={top_p})"
         )
 
         return llm
@@ -423,16 +421,11 @@ class AgentFactoryService:
             Default ChatOpenAI instance
         """
 
-        # TODO: Make model configurable via environment variables
-        # TODO: Support local models (Ollama) for offline operation
+        # Model from env (provider-aware via build_chat_model), fallback gpt-4o-mini.
+        model = os.getenv("CORE_DEFAULT_MODEL") or "gpt-4o-mini"
+        llm = build_chat_model(model, temperature=0.7, top_p=0.9)
 
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.7,  # Balanced
-            top_p=0.9,
-        )
-
-        logger.debug("Created default LLM (gpt-4o-mini)")
+        logger.debug(f"Created default LLM ({model})")
 
         return llm
 

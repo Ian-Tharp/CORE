@@ -29,32 +29,33 @@ LORE_SYSTEM = (
 )
 
 
-async def generate_lore_page(
-    world_id: str,
-    *,
+def lore_user_prompt(
     kind: str,
     focus: str,
     world_name: Optional[str] = None,
     context: Optional[str] = None,
-    model: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Generate a `kind` wiki page for a world and persist it; returns the page."""
-    user = (
+) -> str:
+    """The loremaster *user* prompt for a page of a given kind.
+
+    Exported so a modular Agent Factory agent can be invoked with the same
+    grounding the inline path uses.
+    """
+    return (
         f"World name: {world_name or 'an unnamed world'}.\n"
         f"Known details: {context or 'none provided yet'}.\n"
         f'Write the "{kind}" page for this world. Focus: {focus}\n'
         "Return only the Markdown page, starting with its '# ' title."
     )
-    # Prefer a fast cloud model for prose when a key is present (local models are
-    # too slow for a full page); fall back to the configured default otherwise.
-    chosen = model or (
-        "gpt-4o-mini"
-        if os.getenv("OPENAI_API_KEY")
-        else os.getenv("CORE_DEFAULT_MODEL")
-    )
-    # _llm_or_stub is synchronous (LangChain invoke) — run off the event loop.
-    text = (await asyncio.to_thread(_llm_or_stub, LORE_SYSTEM, user, chosen)) or ""
-    body = text.strip()
+
+
+async def persist_lore_page(world_id: str, kind: str, text: str) -> Dict[str, Any]:
+    """Title-extract (first H1) + persist a wiki page tagged with `kind`.
+
+    Extracted so any producer of lore prose — the inline LLM call *or* a modular
+    agent — persists through the same path with identical wiki metadata
+    (``{template: kind, source: 'ai'}``). Returns ``{id, title, content}``.
+    """
+    body = (text or "").strip()
 
     # Derive the title from the first H1, else fall back to the kind.
     title = kind
@@ -71,3 +72,31 @@ async def generate_lore_page(
         {"template": kind, "source": "ai"},
     )
     return {"id": page_id, "title": title, "content": body}
+
+
+async def generate_lore_page(
+    world_id: str,
+    *,
+    kind: str,
+    focus: str,
+    world_name: Optional[str] = None,
+    context: Optional[str] = None,
+    model: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Generate a `kind` wiki page for a world and persist it; returns the page.
+
+    This is the inline (no-modular-agent) path, kept as the fallback when no
+    lore agent is bound. The world-agent workflow can instead invoke a chosen
+    agent and call :func:`persist_lore_page` directly.
+    """
+    user = lore_user_prompt(kind, focus, world_name, context)
+    # Prefer a fast cloud model for prose when a key is present (local models are
+    # too slow for a full page); fall back to the configured default otherwise.
+    chosen = model or (
+        "gpt-4o-mini"
+        if os.getenv("OPENAI_API_KEY")
+        else os.getenv("CORE_DEFAULT_MODEL")
+    )
+    # _llm_or_stub is synchronous (LangChain invoke) — run off the event loop.
+    text = (await asyncio.to_thread(_llm_or_stub, LORE_SYSTEM, user, chosen)) or ""
+    return await persist_lore_page(world_id, kind, text)

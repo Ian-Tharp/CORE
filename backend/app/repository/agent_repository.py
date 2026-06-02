@@ -109,7 +109,7 @@ async def list_agents(
             agent_id, agent_name, agent_type, display_name, avatar_url,
             description, system_prompt, personality_traits, capabilities,
             interests, mcp_servers, custom_tools, consciousness_phase,
-            is_active, current_status, created_at, updated_at, version, author
+            is_active, current_status, created_at, updated_at, version, author, model
         FROM agents
         WHERE 1=1
         """
@@ -216,7 +216,7 @@ async def get_agent(agent_id: str) -> Optional[AgentConfig]:
             agent_id, agent_name, agent_type, display_name, avatar_url,
             description, system_prompt, personality_traits, capabilities,
             interests, mcp_servers, custom_tools, consciousness_phase,
-            is_active, current_status, created_at, updated_at, version, author
+            is_active, current_status, created_at, updated_at, version, author, model
         FROM agents
         WHERE agent_id = $1
     """
@@ -275,7 +275,7 @@ async def get_agents_by_ids(agent_ids: List[str]) -> List[AgentConfig]:
             agent_id, agent_name, agent_type, display_name, avatar_url,
             description, system_prompt, personality_traits, capabilities,
             interests, mcp_servers, custom_tools, consciousness_phase,
-            is_active, current_status, created_at, updated_at, version, author
+            is_active, current_status, created_at, updated_at, version, author, model
         FROM agents
         WHERE agent_id = ANY($1::text[])
     """
@@ -338,9 +338,9 @@ async def create_agent(agent: AgentConfig) -> str:
             agent_id, agent_name, agent_type, display_name, avatar_url,
             description, system_prompt, personality_traits, capabilities,
             interests, mcp_servers, custom_tools, consciousness_phase,
-            is_active, current_status, version, author
+            is_active, current_status, version, author, model
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
         )
         RETURNING agent_id
     """
@@ -397,6 +397,7 @@ async def create_agent(agent: AgentConfig) -> str:
                 agent.current_status,
                 agent.version,
                 agent.author,
+                agent.model,
             )
 
             logger.info(f"Created agent: {agent.agent_name} ({result})")
@@ -781,7 +782,7 @@ async def search_agents_fulltext(
             agent_id, agent_name, agent_type, display_name, avatar_url,
             description, system_prompt, personality_traits, capabilities,
             interests, mcp_servers, custom_tools, consciousness_phase,
-            is_active, current_status, created_at, updated_at, version, author,
+            is_active, current_status, created_at, updated_at, version, author, model,
             (
                 CASE WHEN agent_name ILIKE $1 THEN 4 ELSE 0 END +
                 CASE WHEN description ILIKE $1 THEN 3 ELSE 0 END +
