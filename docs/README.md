@@ -50,6 +50,7 @@ UX philosophy and the design system.
 - [Sandbox Integration](deployment/sandbox-integration.md) — Sandbox environment setup
 
 ## Implementation
+- [UI Gaps & Improvements Audit](implementation/ui-gaps-audit.md) — Per-route audit of what's stubbed, broken, and gapped across the whole Angular UI, with a prioritized backlog
 - [CORE Engine Testing](implementation/core-engine-testing.md) — Testing strategy for the CORE engine
 - [Human-AI Collaboration Roadmap](implementation/roadmap-human-ai-collaboration.md) — Roadmap for human-AI collaboration features
 - [System Monitoring](implementation/system-monitoring.md) — System monitoring and health checks
