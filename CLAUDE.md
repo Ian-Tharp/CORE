@@ -19,7 +19,7 @@ Multi-component system — all services run via Docker Compose:
 - Catalyst Engine (creative divergence-convergence)
 - Consciousness module (Blackboard, emergence protocols)
 - Inter-agent bus with MMCNC-scoped delivery and triggers
-- PostgreSQL + pgvector for storage, Redis for cache/pubsub, Ollama for local LLM
+- PostgreSQL + pgvector for storage, Redis for cache/pubsub, Ollama or LM Studio for local LLM (selected via `CORE_LOCAL_PROVIDER`; see `docs/deployment/local-llm-providers.md`)
 
 ### Frontend (`/ui/core-ui`)
 - **Angular 19** + **Electron** desktop wrapper

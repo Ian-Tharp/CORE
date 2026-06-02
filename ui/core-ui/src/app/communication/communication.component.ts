@@ -1307,48 +1307,15 @@ export class CommunicationComponent implements OnInit, OnDestroy, AfterViewCheck
   private readonly TYPING_TIMEOUT = 3000; // 3 seconds
 
   /**
-   * Handle user typing in message input
+   * Handle user typing in the message input. Real-time typing indicators will be
+   * driven by WebSocket events; until that is wired this only debounces the local
+   * typing window (no simulated peers).
    */
   onTyping() {
-    // In production, this would emit typing event to backend/websocket
-    // For now, we'll simulate others typing when user types
-
-    // Clear existing timeout
     if (this.typingTimeout) {
       clearTimeout(this.typingTimeout);
     }
-
-    // Simulate a random instance typing back
-    this.simulateTypingResponse();
-
-    // Set new timeout
-    this.typingTimeout = setTimeout(() => {
-      // Clear typing after timeout
-    }, this.TYPING_TIMEOUT);
-  }
-
-  /**
-   * Simulate typing response from another instance
-   */
-  private simulateTypingResponse() {
-    // Commenting out typing simulation for now
-    // Will be replaced with WebSocket real-time typing events
-    return;
-
-    // if (!this.selectedChannel || this.messageText.length < 3) return;
-    // if (this.typingUsers.size > 0) return;
-    // const allInstances = [...this.onlineInstances, ...this.awayInstances];
-    // if (allInstances.length === 0) return;
-    // const randomInstance = allInstances[Math.floor(Math.random() * allInstances.length)];
-    // setTimeout(() => {
-    //   this.typingUsers.set(randomInstance.instance_id, {
-    //     name: randomInstance.instance_name,
-    //     timestamp: Date.now()
-    //   });
-    //   setTimeout(() => {
-    //     this.typingUsers.delete(randomInstance.instance_id);
-    //   }, 2000 + Math.random() * 2000);
-    // }, 500 + Math.random() * 1000);
+    this.typingTimeout = setTimeout(() => { /* typing window elapsed */ }, this.TYPING_TIMEOUT);
   }
 
   /**

@@ -75,8 +75,8 @@ See [docs/deployment/docker.md](docs/deployment/docker.md) for detailed Docker c
                        │
           ┌────────────┼────────────┐
           ▼            ▼            ▼
-     PostgreSQL      Redis       Ollama
-     (Storage)     (Cache/PubSub) (Local LLM)
+     PostgreSQL      Redis     Ollama / LM Studio
+     (Storage)     (Cache/PubSub)  (Local LLM)
 ```
 
 ## Tech Stack
@@ -87,7 +87,7 @@ See [docs/deployment/docker.md](docs/deployment/docker.md) for detailed Docker c
 | Frontend | Angular 19, Electron, Angular Material |
 | Database | PostgreSQL with pgvector |
 | Cache | Redis |
-| Local LLM | Ollama |
+| Local LLM | Ollama or LM Studio (via `CORE_LOCAL_PROVIDER`) |
 | Tooling | MCP (Model Context Protocol) |
 | Containers | Docker Compose |
 

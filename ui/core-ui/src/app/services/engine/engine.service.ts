@@ -121,12 +121,15 @@ export type COREStreamEvent =
 
 @Injectable({ providedIn: 'root' })
 export class EngineService {
-  private readonly api = 'http://localhost:8001/core';
-
   constructor(
     private readonly http: HttpClient,
     private readonly cfg: AppConfigService
   ) {}
+
+  /** Per-step CORE entry base (provider-agnostic; resolved from app config). */
+  private get api(): string { return `${this.cfg.apiBaseUrl}/core`; }
+  /** Unified engine run base. */
+  private get engineApi(): string { return `${this.cfg.apiBaseUrl}/engine`; }
 
   entry(payload: { message_id: string; user_input: string; model?: string }): Observable<unknown> {
     return this.http.post(`${this.api}`, payload);
@@ -243,14 +246,14 @@ export class EngineService {
    * This executes the full graph synchronously and returns the final state.
    */
   runCore(request: RunRequest): Observable<RunResponse> {
-    return this.http.post<RunResponse>('http://localhost:8001/engine/run', request);
+    return this.http.post<RunResponse>(`${this.engineApi}/run`, request);
   }
 
   /**
    * Get the current state of a CORE execution run.
    */
   getRunState(runId: string): Observable<COREState> {
-    return this.http.get<COREState>(`http://localhost:8001/engine/runs/${runId}`);
+    return this.http.get<COREState>(`${this.engineApi}/runs/${runId}`);
   }
 
   /**
@@ -259,7 +262,7 @@ export class EngineService {
    */
   streamCoreExecution(runId: string, userInput: string): Observable<COREStreamEvent> {
     return new Observable<COREStreamEvent>((observer) => {
-      const url = `http://localhost:8001/engine/runs/${runId}/stream?user_input=${encodeURIComponent(userInput)}`;
+      const url = `${this.engineApi}/runs/${runId}/stream?user_input=${encodeURIComponent(userInput)}`;
       // Raw fetch (SSE) bypasses the HttpClient API-key interceptor — attach manually.
       fetch(url, { method: 'GET', headers: { 'X-API-Key': this.cfg.apiKey } })
         .then((response) => {
@@ -301,14 +304,14 @@ export class EngineService {
    * Delete a completed run from memory.
    */
   deleteRun(runId: string): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`http://localhost:8001/engine/runs/${runId}`);
+    return this.http.delete<{ message: string }>(`${this.engineApi}/runs/${runId}`);
   }
 
   /**
    * List all active CORE runs.
    */
   listRuns(): Observable<{ total_runs: number; runs: Record<string, any> }> {
-    return this.http.get<{ total_runs: number; runs: Record<string, any> }>('http://localhost:8001/engine/runs');
+    return this.http.get<{ total_runs: number; runs: Record<string, any> }>(`${this.engineApi}/runs`);
   }
 }
 

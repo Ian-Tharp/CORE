@@ -15,6 +15,8 @@
 | 2026-06-02 | **Communication reactions** now persist via existing endpoints (optimistic + rollback) | `4668751` |
 | 2026-06-02 | **Engine Playground** SSE subscription leak fixed (`OnDestroy`); confirmed CORE step-stream is real (stale comment removed) | `4668751` |
 | 2026-06-02 | **Worlds Grid** — surface saved-world load errors + loading state; `takeUntilDestroyed` | `bb6ca53` |
+| 2026-06-02 | **Docs:** Ollama → LM Studio in README + CLAUDE.md | — |
+| 2026-06-02 | **Hygiene:** removed dead typing-sim code; engine.service URLs → AppConfigService | — |
 
 ## Status legend
 
@@ -208,6 +210,33 @@ Worlds Grid (constructor subscribe, no `OnDestroy`), Engine Playground (`_subs` 
 5. **Loose ends** — Kanban `N` shortcut + persisted updates; masonry → CSS Grid (Creative Boards/Marketplace); message-renderer copy button + line numbers; semantic tables for Discord bridge; reduced-motion guards where animations lack them.
 
 ---
+
+## Code & docs hygiene backlog (added 2026-06-02)
+
+A dedicated sweep for TODOs, stale comments, dead code, mock data, and out-of-date docs. ✅ = fixed in this pass.
+
+### Docs staleness
+- ✅ **Ollama → LM Studio** — `README.md` (tech-stack table + ASCII diagram) and `CLAUDE.md` said "Ollama for local LLM" only; now "Ollama or LM Studio (`CORE_LOCAL_PROVIDER`)".
+- **Missing feature docs** — no docs for the world-creation studio (worlds/lore/art/character gen, `world_metadata`/`world_assets`, `lore_service`), the command-center 3D galaxy, or world-scoped RAG. Add a `docs/architecture/worlds-architecture.md` + a `## Creative Design & Worlds` section in `docs/README.md`.
+- **Historical logs not marked** — `docs/council/outputs/*` (implementation_roadmap dated 2026-01-28, vision_session, dockerization_deliberation) read as current guidance; add "historical RSI session output" headers pointing to `docs/roadmap/` for current priorities.
+- **Verify stub claims** — `docs/roadmap/command-deck-cognition-next-steps.md` calls `core_graph.py` "a non-functional stub"; recent lore/world wiring may have changed that — re-check and update.
+- **Out-of-scope content** — `docs/deployment/docker.md` has a "Consciousness-Hosting Capabilities" digression; move to a consciousness doc.
+- **Index integrity** — `docs/CORE/README.md` is a near-empty entry; expand or drop from the index.
+
+### Code hygiene
+- ✅ **Stale "not implemented" comment** — engine-playground claimed the CORE run "simulates execution / backend needs to implement streaming"; it already streams real graph execution. Comment corrected (`4668751`).
+- ✅ **Dead code** — removed the no-op `simulateTypingResponse()` + its misleading caller in `communication.component.ts` (commented-out body, "simulate a random instance typing back").
+- ✅ **Hardcoded URLs (engine)** — `engine.service.ts` had 6 hardcoded `http://localhost:8001/...`; now routed through `AppConfigService` (`api`/`engineApi` getters).
+- **Hardcoded URLs (remaining)** — `presence.service.ts`, `creative.service.ts`, `worlds.service.ts`, `spawn-templates.service.ts`, `system-monitor.service.ts`, `chat-window.component.ts:97` still hardcode `http://localhost:8001`. Route through `AppConfigService` (note: some of these are under active edit by a parallel worker — coordinate).
+- **Mock data presented as real (no indicator)** — `message.service.ts` `getMockMessages()`, `agent-marketplace.service.ts` `loadMockAgents()`, `boards.component.ts` `initializeMockData()`, `instance.service.ts` `getTaskSummary()`. Either wire to backend or add a visible "sample data" badge. (Marketplace/analytics have no backend yet — see reality-check.)
+- **Duplicate logic** — `conversations-page.component.ts:71–78` computes `isConnected` twice; collapse to one assignment (its own RSI TODO).
+- **`mark-as-read` TODO** — `channel.service.ts:57` "Call backend API to mark messages as read": REST route doesn't exist (WS-only) — wire the WS path or add the route.
+- **8 stubbed presence actions** — `communication.component.ts:672–707` (`viewProfile`, `viewConsciousnessState`, `requestAgentTask`, `inviteToChannel`, …) are `console.log` placeholders with live buttons; implement or hide.
+
+### TODO triage (keep vs resolve)
+- **Backend TODOs are mostly valid & blocked** (not stale): `agent_factory_service` personality→params, `agent_mcp_service` registry loading, `task_router` reassign/cache, `comprehension_service` tool-registry integration, `main.py` `/api/v1/` prefix. Leave in place; track in issues.
+- **`voice_registry.py` `TODO_GENERATOR`/`TODO_EVALUATOR`** are **not** TODO markers — they're "to-do list" council voice definitions. Ignore (false positive).
+- **Frontend RSI TODOs** (config externalization, signals migration, per-conversation stream maps, OpenAPI-typed clients) are valid hardening items, not stale.
 
 ## How this was produced
 Five parallel read-only audits (one per cluster) over the live component source on branch `develop`, 2026-06-01. Findings reflect code at that point; re-run before a big push since several files are under active iteration. Backend-existence notes are **UI-inferred** — confirm against `backend/app/controllers/` and the OpenAPI surface before building against them.
