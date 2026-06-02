@@ -1,9 +1,18 @@
 // Planet Lab — token-only solarpunk chrome over a deep-space stage.
-:host { display: block; height: calc(100vh - 4.5rem); }
+// Fill the routed content area (.page-content) exactly — never guess the header
+// height with calc(), which overflows and produces a second (page) scrollbar.
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .lab {
   display: flex;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background:
     radial-gradient(120% 90% at 30% 10%, color-mix(in srgb, var(--core-energy) 8%, transparent), transparent 55%),
     var(--core-bg-base, #03060d);
@@ -19,16 +28,29 @@
 }
 
 .panel {
-  width: 19rem;
-  flex: 0 0 19rem;
-  overflow-y: auto;
+  width: 18rem;
+  flex: 0 0 18rem;
+  min-height: 0;
+  overflow-y: auto;          // the ONLY scroller in this view
+  overscroll-behavior: contain;
   padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 0.55rem;
   border-left: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
   background: color-mix(in srgb, var(--core-bg-base) 86%, transparent);
   backdrop-filter: blur(8px);
+
+  // Slim, themed scrollbar
+  &::-webkit-scrollbar { width: 0.45rem; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--core-energy) 28%, transparent);
+    border-radius: 0.25rem;
+    &:hover { background: color-mix(in srgb, var(--core-energy) 45%, transparent); }
+  }
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--core-energy) 30%, transparent) transparent;
 }
 
 .panel__head { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: var(--spacing-xs); }
@@ -79,7 +101,14 @@
   input[type=color] { width: 1.6rem; height: 1.2rem; border: none; background: transparent; padding: 0; }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 860px) {
   .lab { flex-direction: column; }
-  .panel { width: 100%; flex: 0 0 auto; border-left: none; }
+  .stage { flex: 1 1 40vh; min-height: 12rem; }
+  .panel {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 50vh;          // panel scrolls within its own area when stacked
+    border-left: none;
+    border-top: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+  }
 }
