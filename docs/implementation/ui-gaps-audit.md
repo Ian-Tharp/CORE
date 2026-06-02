@@ -19,6 +19,8 @@
 | 2026-06-02 | **Hygiene:** removed dead typing-sim code; engine.service URLs → AppConfigService | — |
 | 2026-06-02 | **Docs:** new `architecture/worlds-architecture.md`; indexed; historical logs flagged; `core_graph.py` stub claim verified | `58c894c` |
 | 2026-06-02 | **Hygiene:** presence/creative/system-monitor URLs → AppConfigService | `293e1d2` |
+| 2026-06-02 | **Hygiene:** deleted ~300 lines dead mock in MessageService; collapsed duplicate `isConnected` | `102a655` |
+| 2026-06-02 | **Hygiene:** `.sample-badge` on Agent Marketplace + landing Boards (mock-data screens) | `0219b38` |
 
 ## Status legend
 
@@ -231,8 +233,8 @@ A dedicated sweep for TODOs, stale comments, dead code, mock data, and out-of-da
 - ✅ **Hardcoded URLs (engine)** — `engine.service.ts` had 6 hardcoded `http://localhost:8001/...`; now routed through `AppConfigService` (`api`/`engineApi` getters).
 - ✅ **Hardcoded URLs (presence/creative/system-monitor)** — routed through `AppConfigService` (`293e1d2`).
 - **Hardcoded URLs (remaining)** — `worlds.service.ts`, `spawn-templates.service.ts`, `chat-window.component.ts:97` still hardcode `http://localhost:8001`. Left intentionally — under active edit by a parallel worker; sweep once those land.
-- **Mock data presented as real (no indicator)** — `message.service.ts` `getMockMessages()`, `agent-marketplace.service.ts` `loadMockAgents()`, `boards.component.ts` `initializeMockData()`, `instance.service.ts` `getTaskSummary()`. Either wire to backend or add a visible "sample data" badge. (Marketplace/analytics have no backend yet — see reality-check.)
-- **Duplicate logic** — `conversations-page.component.ts:71–78` computes `isConnected` twice; collapse to one assignment (its own RSI TODO).
+- **Mock data presented as real** — ✅ `message.service.ts` mock methods were **dead** (no caller) → deleted; ✅ Agent Marketplace + landing Boards now carry a `.sample-badge` "preview" indicator. Remaining: `instance.service.ts` `getTaskSummary()` returns mock — surface or badge wherever it's displayed.
+- ✅ **Duplicate logic** — `conversations-page.component.ts` `isConnected` computed once now (was twice, with a buggy `data.length > 0` clause).
 - **`mark-as-read` TODO** — `channel.service.ts:57` "Call backend API to mark messages as read": REST route doesn't exist (WS-only) — wire the WS path or add the route.
 - **8 stubbed presence actions** — `communication.component.ts:672–707` (`viewProfile`, `viewConsciousnessState`, `requestAgentTask`, `inviteToChannel`, …) are `console.log` placeholders with live buttons; implement or hide.
 
