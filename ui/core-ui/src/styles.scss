@@ -774,3 +774,19 @@ mat-chip,
   background: rgba(1, 5, 14, 0.85) !important;
   backdrop-filter: blur(4px) !important;
 }
+
+/* Reusable indicator for screens still showing sample/placeholder data
+   (no live backend yet). Amber so it reads as "preview", not an error. */
+.sample-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill, 999px);
+  font-size: var(--font-size-xs, 0.72rem);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--core-amber, #ffb454) 45%, transparent);
+  background: color-mix(in srgb, var(--core-amber, #ffb454) 14%, transparent);
+  color: var(--core-amber, #ffb454);
+}
