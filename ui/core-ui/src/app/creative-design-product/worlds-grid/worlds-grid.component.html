@@ -2,11 +2,16 @@
   <div class="cta">
     <a class="btn" routerLink="/command-center">Create New World</a>
   </div>
+  @if (remoteError) {
+    <div class="notice notice--error" role="status">Couldn't reach saved worlds — showing local worlds only.</div>
+  }
   @if (remoteWorlds.length > 0) {
     <app-remote-world-card *ngFor="let rw of remoteWorlds" [world]="rw"></app-remote-world-card>
   }
   <app-world-card *ngFor="let w of worlds" [world]="w"></app-world-card>
-  @if (remoteWorlds.length === 0 && worlds.length === 0) {
+  @if (isLoadingRemote && remoteWorlds.length === 0 && worlds.length === 0) {
+    <div class="empty" role="status">Loading saved worlds…</div>
+  } @else if (!isLoadingRemote && remoteWorlds.length === 0 && worlds.length === 0) {
     <div class="empty">No worlds yet. <a class="btn" routerLink="/command-center">Open Command Center</a></div>
   }
 </section>

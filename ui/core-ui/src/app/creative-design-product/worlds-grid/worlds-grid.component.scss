@@ -11,3 +11,16 @@
 .grid .cta .btn { display:inline-block; padding:0.6rem 1rem; border-radius:0.6rem; border:1px solid rgba(0,255,200,0.18); background: rgba(14,60,70,0.5); color:#dffff8; text-decoration:none; }
 .empty { grid-column: 1 / -1; text-align:center; opacity:0.9; }
 
+.notice {
+  grid-column: 1 / -1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.notice--error {
+  border: 1px solid color-mix(in srgb, var(--core-amber, #ffb454) 40%, transparent);
+  background: color-mix(in srgb, var(--core-amber, #ffb454) 12%, transparent);
+  color: var(--core-amber, #ffb454);
+}
+
