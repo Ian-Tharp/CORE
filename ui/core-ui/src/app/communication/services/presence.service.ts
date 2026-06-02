@@ -3,15 +3,17 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, interval } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { InstancePresence } from '../models/communication.models';
+import { AppConfigService } from '../../services/config/app-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PresenceService {
-  private apiUrl = 'http://localhost:8001/communication';
+  private apiUrl: string;
   private currentInstanceId = 'human_ian';
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private config: AppConfigService) {
+    this.apiUrl = `${this.config.apiBaseUrl}/communication`;
     // Start heartbeat timer
     this.startHeartbeat();
   }

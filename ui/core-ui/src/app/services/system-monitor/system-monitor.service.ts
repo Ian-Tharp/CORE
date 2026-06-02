@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, interval, switchMap, startWith, catchError, of } from 'rxjs';
+import { AppConfigService } from '../config/app-config.service';
 
 export interface SystemResources {
   cpu_usage: number;
@@ -28,9 +29,11 @@ export interface ProcessInfo {
   providedIn: 'root'
 })
 export class SystemMonitorService {
-  private readonly apiUrl = 'http://localhost:8001';
+  private readonly apiUrl: string;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {
+    this.apiUrl = this.config.apiBaseUrl;
+  }
 
   /**
    * Get current system resources snapshot
