@@ -105,23 +105,49 @@
 }
 
 .info-section {
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(0, 255, 200, 0.08);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--core-energy) 12%, transparent);
 
   &:last-child {
     border-bottom: none;
-    margin-bottom: 0;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  // Breathing room between an action button and the content it produces.
+  .btn-small + .btn-small,
+  .btn-small + .art-themes,
+  .btn-small + .linked-list,
+  .btn-small + .inhabitant-grid,
+  .btn-small + .art-gallery,
+  .btn-small + .knowledge-meta,
+  .btn-small + .knowledge-hint {
+    margin-top: var(--spacing-sm);
   }
 }
 
 .section-label {
-  display: block;
-  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04rem;
-  color: rgba(0, 255, 200, 0.7);
-  margin-bottom: 0.4rem;
+  letter-spacing: 0.12em;
+  color: var(--core-energy);
+  margin-bottom: var(--spacing-sm);
+
+  // A small glowing HUD tick before each section title.
+  &::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 1px;
+    background: var(--core-energy);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--core-energy) 70%, transparent);
+  }
 }
 
 // Terrain badges

@@ -8,6 +8,12 @@ import { CreativeDataService, Board } from '../../../creative-design-product/ser
 import { CreativeService, WikiPageDto, CharacterDto } from '../../../services/creative/creative.service';
 import { WorldsService, WorldAsset } from '../../../services/worlds/worlds.service';
 
+/** Shared art-direction / quality suffix appended to generated image prompts. */
+const ART_QUALITY =
+  'Ultra-detailed digital matte painting, volumetric lighting, atmospheric haze, '
+  + 'sweeping vista with an epic sense of scale, rich layered colour, sharp focus, '
+  + 'cinematic wide composition, concept-art quality.';
+
 export interface SelectedTileInfo {
   index: number;
   x: number;
@@ -231,25 +237,24 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
 
   /** Default auto-prompt (used when no theme/custom text is supplied). */
   private buildArtPrompt(): string {
-    return `Cinematic concept art. ${this.worldSubject()} `
-      + `Painterly science-fantasy, luminous solarpunk aesthetic, vast scale, dramatic lighting.`;
+    return `${this.worldSubject()} Painterly science-fantasy with a luminous solarpunk aesthetic. ${ART_QUALITY}`;
   }
 
-  /** Selectable theme presets — each composes the world subject with a style. */
+  /** Selectable theme presets — each composes the world subject with a rich style. */
   readonly artThemes: ReadonlyArray<{ id: string; label: string; style: string }> = [
-    { id: 'solarpunk', label: '🌿 Solarpunk Utopia', style: 'A lush solarpunk utopia of living architecture, verdant terraces and gentle solar tech, golden-hour light, hopeful and serene.' },
-    { id: 'volcanic', label: '🌋 Volcanic Forge', style: 'A volcanic forge-world of molten rivers, obsidian spires and ember glow beneath ashen skies, fierce and dramatic.' },
-    { id: 'tundra', label: '❄️ Crystalline Tundra', style: 'A frozen crystalline tundra of glittering ice spires and shimmering aurora, cold blues and violets, silent and vast.' },
-    { id: 'oceanic', label: '🌊 Oceanic Expanse', style: 'A boundless oceanic world of bioluminescent seas and floating cities, teal and cyan, mist and reflected starlight.' },
-    { id: 'desert', label: '🏜️ Desert Frontier', style: 'A sci-fantasy desert frontier of rippling dunes and sandstone monoliths under twin suns, warm amber and rust.' },
-    { id: 'jungle', label: '🌴 Verdant Wilds', style: 'Overgrown verdant wilds reclaiming ancient ruins, emerald canopy, shafts of misty light, mysterious and alive.' },
-    { id: 'cyber', label: '🌃 Cyber Metropolis', style: 'A neon cyber-metropolis of holographic towers and rain-slick streets, electric magenta and cyan, dense and luminous.' },
-    { id: 'astral', label: '✨ Astral Void', style: 'An astral void world adrift among nebulae and starfields, ethereal aurora veils, deep cosmic blues and gold, dreamlike.' },
+    { id: 'solarpunk', label: '🌿 Solarpunk Utopia', style: 'A radiant solarpunk utopia — terraced gardens cascading over living glass-and-vine architecture, solar sails and waterfalls catching golden-hour light, airborne gardens drifting between spires; verdant, hopeful, harmonious.' },
+    { id: 'volcanic', label: '🌋 Volcanic Forge', style: 'A volcanic forge-world — rivers of molten gold winding between obsidian crags and basalt spires, ember sparks drifting through ashen skies, distant eruptions glowing on the horizon; fierce, primal, dramatic.' },
+    { id: 'tundra', label: '❄️ Crystalline Tundra', style: 'A frozen crystalline tundra — fields of glittering ice shards and towering crystal spires beneath a vast shimmering aurora, breath-fogged stillness; glacial blues and violets, serene and immense.' },
+    { id: 'oceanic', label: '🌊 Oceanic Expanse', style: 'A boundless oceanic world — bioluminescent swells rolling beneath floating coral-cities and arching skybridges, reflected starlight and drifting mist; teal and cyan, tranquil and immense.' },
+    { id: 'desert', label: '🏜️ Desert Frontier', style: 'A sci-fantasy desert frontier — rippling dunes and weathered sandstone monoliths under twin suns, caravans and half-buried ruins casting long shadows; warm amber, rust and gold, sun-scorched grandeur.' },
+    { id: 'jungle', label: '🌴 Verdant Wilds', style: 'Overgrown verdant wilds — emerald canopy swallowing colossal ancient ruins, vines and cascading waterfalls, shafts of misty god-rays piercing the green gloom; lush, mysterious, teeming with life.' },
+    { id: 'cyber', label: '🌃 Cyber Metropolis', style: 'A towering cyber-metropolis — endless holographic skyscrapers and neon signage above rain-slick streets, flying traffic threading the canyons; electric magenta and cyan, dense, luminous, rain-soaked.' },
+    { id: 'astral', label: '✨ Astral Void', style: 'An astral void world adrift among swirling nebulae and dense starfields, ribbons of aurora and shattered moons hanging in the dark; deep cosmic blues, gold and violet, ethereal and dreamlike.' },
   ];
 
   /** Apply a theme preset to the prompt box (still editable before generating). */
   applyArtTheme(theme: { style: string }): void {
-    this.artPrompt = `${this.worldSubject()} ${theme.style} Cinematic concept art, highly detailed, dramatic lighting.`;
+    this.artPrompt = `${this.worldSubject()} ${theme.style} ${ART_QUALITY}`;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -307,8 +312,10 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     const t = this.selectedTile;
     const biome = t && t.biome !== 'none' ? `${t.biome} ` : '';
     const terrain = t ? `${t.terrain} ` : '';
-    return `Character portrait of "${name}", an inhabitant of a ${biome}${terrain}world. `
-      + `Head-and-shoulders, painterly science-fantasy, solarpunk aesthetic, dramatic rim lighting.`;
+    return `Character portrait of "${name}", an inhabitant of a ${biome}${terrain}world — `
+      + `distinctive attire, gear and bearing shaped by their homeworld, an expressive characterful face. `
+      + `Head-and-shoulders, painterly science-fantasy with a solarpunk aesthetic, dramatic rim lighting, `
+      + `intricate detail, concept-art quality.`;
   }
 
   private loadLinkedContent(): void {
