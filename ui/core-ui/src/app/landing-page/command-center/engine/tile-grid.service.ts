@@ -127,6 +127,9 @@ export class TileGridService {
   private readonly brushPulses: BrushPulse[] = [];
   private lastBrushPulseMs = -Infinity;
   private lastColorAnimationMs = -Infinity;
+  private selectionSpinStartMs = -Infinity;
+  private selectionSpinDurationMs = 900;
+  private selectionSpinTurns = 0;
 
   // Connection visualization
   private connectionLinesGroup?: THREE.Group;
@@ -694,7 +697,7 @@ export class TileGridService {
   private createGalaxyBackdrop(galaxyRadius: number, worldCount: number): void {
     if (!this.engine) {return;}
 
-    const starCount = Math.min(1800, Math.max(600, worldCount * 3));
+    const starCount = Math.min(2600, Math.max(900, worldCount * 4));
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
     const arms = 5;
@@ -708,12 +711,12 @@ export class TileGridService {
       const theta = (arm / arms) * Math.PI * 2 + t * Math.PI * 3.35 + (noiseB - 0.5) * 0.68;
       const idx = i * 3;
       positions[idx] = Math.cos(theta) * radius + (noiseB - 0.5) * galaxyRadius * 0.12;
-      positions[idx + 1] = (noiseC - 0.5) * galaxyRadius * 0.34;
+      positions[idx + 1] = (noiseC - 0.5) * galaxyRadius * 0.22;
       positions[idx + 2] = Math.sin(theta) * radius + (noiseA - 0.5) * galaxyRadius * 0.12;
 
       const cool = new THREE.Color(0x9fffea);
       const warm = new THREE.Color(0xffd580);
-      const color = cool.lerp(warm, this.hashNoise(i, 41) * 0.45);
+      const color = cool.lerp(warm, this.hashNoise(i, 41) * 0.32);
       colors[idx] = color.r;
       colors[idx + 1] = color.g;
       colors[idx + 2] = color.b;
@@ -723,10 +726,10 @@ export class TileGridService {
     starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const starMaterial = new THREE.PointsMaterial({
-      size: 0.16,
+      size: 0.2,
       vertexColors: true,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.78,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false
@@ -747,6 +750,21 @@ export class TileGridService {
     this.galaxyCore = new THREE.Mesh(coreGeometry, coreMaterial);
     this.galaxyCore.renderOrder = -1;
     this.engine.add(this.galaxyCore);
+
+    const coreDiskGeometry = new THREE.RingGeometry(galaxyRadius * 0.08, galaxyRadius * 0.24, 96);
+    coreDiskGeometry.rotateX(-Math.PI / 2);
+    const coreDiskMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00d2ff,
+      transparent: true,
+      opacity: 0.11,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    const coreDisk = new THREE.Mesh(coreDiskGeometry, coreDiskMaterial);
+    coreDisk.renderOrder = -1;
+    this.galaxyCore.add(coreDisk);
   }
 
   private setTileTransform(index: number, options: TileTransformOptions = {}): void {
@@ -755,21 +773,25 @@ export class TileGridService {
 
     const scale = (options.scale ?? 1) * this.getOrbScale(index);
     const y = this.getTileElevation(index) + (options.yOffset ?? 0);
+    const spinAngle = this.getSelectionSpinAngle(index);
 
     this.animationObject.position.set(tile.worldX, y, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.setScalar(scale);
     this.animationObject.updateMatrix();
     this.instancedMesh?.setMatrixAt(index, this.animationObject.matrix);
 
     this.animationObject.position.set(tile.worldX + 0.04, -0.045, tile.worldZ + 0.06);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.setScalar(scale * 1.06);
     this.animationObject.updateMatrix();
     this.tileShadowMesh?.setMatrixAt(index, this.animationObject.matrix);
 
     this.animationObject.position.set(tile.worldX, y + 0.032, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.setScalar(scale);
     this.animationObject.updateMatrix();
     this.tileEdgeMesh?.setMatrixAt(index, this.animationObject.matrix);
@@ -782,14 +804,17 @@ export class TileGridService {
     };
     this.animationObject.position.set(tile.worldX, y + 0.04, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.set(domeScale.x, domeScale.y, domeScale.z);
     this.animationObject.updateMatrix();
     this.worldDomeMesh?.setMatrixAt(index, this.animationObject.matrix);
 
     const documentedHalo = this.documentedWorlds.has(index) ? 1.32 : 1;
-    const atmosphereScale = (index === this.hoveredIndex || index === this.selectedIndex ? 1.12 : 1) * documentedHalo * scale;
+    const atmosphereInteractionScale = index === this.selectedIndex ? 1.38 : index === this.hoveredIndex ? 1.18 : 1;
+    const atmosphereScale = atmosphereInteractionScale * documentedHalo * scale;
     this.animationObject.position.set(tile.worldX, y + 0.16 + domeScale.y * 0.28, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.set(atmosphereScale, atmosphereScale, atmosphereScale);
     this.animationObject.updateMatrix();
     this.atmosphereRingMesh?.setMatrixAt(index, this.animationObject.matrix);
@@ -798,6 +823,7 @@ export class TileGridService {
     const coreScale = hasResource ? Math.max(0.55, scale * 0.92) : 0.001;
     this.animationObject.position.set(tile.worldX, y + 0.22 + domeScale.y * 0.18, tile.worldZ);
     this.animationObject.position.y += tile.worldY;
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.setScalar(coreScale);
     this.animationObject.updateMatrix();
     this.resourceCoreMesh?.setMatrixAt(index, this.animationObject.matrix);
@@ -809,22 +835,24 @@ export class TileGridService {
       tile.worldY + y + 0.34 + domeScale.y * 0.32,
       tile.worldZ + landmarkOffset.z
     );
-    this.animationObject.rotation.set(0, this.tileNoise(index) * Math.PI * 2, 0);
+    this.animationObject.rotation.set(0, this.tileNoise(index) * Math.PI * 2 + spinAngle, 0);
     this.animationObject.scale.setScalar(landmarkScale);
     this.animationObject.updateMatrix();
     this.landmarkMesh?.setMatrixAt(index, this.animationObject.matrix);
     this.animationObject.rotation.set(0, 0, 0);
 
     const beaconHeight = this.getBeaconHeight(index);
-    const beaconScale = (index === this.hoveredIndex || index === this.selectedIndex ? 1.35 : 1) * scale;
+    const beaconScale = (index === this.selectedIndex ? 1.8 : index === this.hoveredIndex ? 1.35 : 1) * scale;
     this.animationObject.position.set(
       tile.worldX,
       tile.worldY + y + 0.42 + domeScale.y * 0.58 + beaconHeight * 0.38,
       tile.worldZ
     );
+    this.animationObject.rotation.set(0, spinAngle, 0);
     this.animationObject.scale.set(beaconScale, beaconHeight, beaconScale);
     this.animationObject.updateMatrix();
     this.worldBeaconMesh?.setMatrixAt(index, this.animationObject.matrix);
+    this.animationObject.rotation.set(0, 0, 0);
   }
 
   private markTileTransformsDirty(): void {
@@ -858,6 +886,47 @@ export class TileGridService {
       elevation += 0.045;
     }
     return elevation;
+  }
+
+  private getSelectionSpinAngle(index: number): number {
+    if (index !== this.selectedIndex || this.selectionSpinTurns <= 0) {return 0;}
+    const progress = this.clamp01((this.animationTimeMs - this.selectionSpinStartMs) / this.selectionSpinDurationMs);
+    if (progress >= 1) {return 0;}
+    const eased = 1 - Math.pow(1 - progress, 3);
+    return eased * this.selectionSpinTurns * Math.PI * 2;
+  }
+
+  private getWorldDistance(a: WorldTile, b: WorldTile): number {
+    return Math.hypot(a.worldX - b.worldX, a.worldY - b.worldY, a.worldZ - b.worldZ);
+  }
+
+  private getNearestWorldDistance(index: number): number {
+    const tile = this.tiles[index];
+    if (!tile || this.tiles.length < 2) {return 1;}
+    let nearest = Infinity;
+    for (let i = 0; i < this.tiles.length; i++) {
+      if (i === index) {continue;}
+      nearest = Math.min(nearest, this.getWorldDistance(tile, this.tiles[i]));
+    }
+    return Number.isFinite(nearest) ? nearest : 1;
+  }
+
+  private configureSelectionSpin(previousIndex: number, nextIndex: number): void {
+    const previous = this.tiles[previousIndex];
+    const next = this.tiles[nextIndex];
+    if (!previous || !next || previousIndex === nextIndex) {
+      this.selectionSpinTurns = 0;
+      return;
+    }
+
+    const distance = this.getWorldDistance(previous, next);
+    const localStep = Math.max(1, this.getNearestWorldDistance(previousIndex));
+    const nearThreshold = localStep * 1.65;
+    const farThreshold = localStep * 5.5;
+    const intensity = this.clamp01((distance - nearThreshold) / Math.max(1, farThreshold - nearThreshold));
+    this.selectionSpinTurns = intensity <= 0.08 ? 0 : 0.08 + intensity * 0.22;
+    this.selectionSpinDurationMs = 1200 + intensity * 900;
+    this.selectionSpinStartMs = this.animationTimeMs;
   }
 
   private getDomeScale(index: number): { x: number; y: number; z: number } {
@@ -926,10 +995,15 @@ export class TileGridService {
     const resource = this.resourceStates.get(index) ?? 'none';
 
     let h = 0.42;
-    if (resource === 'node') {h = 1.25;}
-    else if (terrain === 'mountain') {h = 1.05;}
-    else if (terrain === 'water') {h = 0.52;}
-    else if (biome !== 'none') {h = 0.78;}
+    if (resource === 'node') {
+      h = 1.25;
+    } else if (terrain === 'mountain') {
+      h = 1.05;
+    } else if (terrain === 'water') {
+      h = 0.52;
+    } else if (biome !== 'none') {
+      h = 0.78;
+    }
     // Authored worlds raise a tall light pillar to stand out across the galaxy.
     if (this.documentedWorlds.has(index)) {h = Math.max(h, 1.0) * 1.6;}
     return h;
@@ -999,7 +1073,7 @@ export class TileGridService {
       c = c.clone().lerp(new THREE.Color(0x98fff0), 0.42);
     }
     if (index === this.selectedIndex) {
-      c = c.clone().lerp(new THREE.Color(0x00ffd5), 0.34);
+      c = c.clone().lerp(new THREE.Color(0xe9fff8), 0.48);
     }
     if (this.documentedWorlds.has(index)) {
       c = c.clone().lerp(new THREE.Color(0xd8fff4), 0.16); // authored worlds glow
@@ -1051,7 +1125,9 @@ export class TileGridService {
     if (resource === 'node') {
       color = color.lerp(new THREE.Color(0xff70d7), 0.22);
     }
-    if (index === this.hoveredIndex || index === this.selectedIndex) {
+    if (index === this.selectedIndex) {
+      color = color.lerp(new THREE.Color(0xffffff), 0.38);
+    } else if (index === this.hoveredIndex) {
       color = color.lerp(new THREE.Color(0xe9fff8), 0.22);
     }
     return color;
@@ -1062,6 +1138,7 @@ export class TileGridService {
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
+    if (index === this.selectedIndex) {return new THREE.Color(0xffffff);}
     if (this.documentedWorlds.has(index)) {return new THREE.Color(0xb9fff2);} // bright halo
     if (resource === 'node') {return new THREE.Color(0xff4fd8);}
     if (terrain === 'water') {return new THREE.Color(0x66f1ff);}
@@ -1077,6 +1154,7 @@ export class TileGridService {
     const biome = this.biomeStates.get(index) ?? 'none';
     const resource = this.resourceStates.get(index) ?? 'none';
 
+    if (index === this.selectedIndex) {return new THREE.Color(0xffffff);}
     if (this.documentedWorlds.has(index)) {return new THREE.Color(0xeafffb);}
     if (resource === 'node') {return new THREE.Color(0xff8aea);}
     if (terrain === 'water') {return new THREE.Color(0x73eaff);}
@@ -1204,8 +1282,8 @@ export class TileGridService {
         yOffset += 0.12;
       }
       if (i === this.selectedIndex) {
-        scale += 0.1 + (Math.sin(seconds * 3.5) + 1) * 0.02;
-        yOffset += 0.18;
+        scale += 0.22 + (Math.sin(seconds * 2.4) + 1) * 0.025;
+        yOffset += 0.34;
       }
       if ((this.resourceStates.get(i) ?? 'none') === 'node') {
         yOffset += (Math.sin(seconds * 4.2 + i) + 1) * 0.015;
@@ -1245,7 +1323,7 @@ export class TileGridService {
     if (this.selectedOutline?.visible) {
       const selectedScale = 1.02 + (Math.sin(seconds * 3) + 1) * 0.035;
       this.selectedOutline.scale.setScalar(selectedScale);
-      this.selectedOutline.rotation.y = seconds * 0.65;
+      this.selectedOutline.rotation.y = this.getSelectionSpinAngle(this.selectedIndex);
       const material = this.selectedOutline.material as THREE.LineBasicMaterial;
       material.opacity = 0.78 + (Math.sin(seconds * 2.4) + 1) * 0.11;
     }
@@ -1541,6 +1619,7 @@ export class TileGridService {
   returnToOverview(): void {
     const previousIndex = this.selectedIndex;
     this.selectedIndex = -1;
+    this.selectionSpinTurns = 0;
     this.selected$.next(null);
     if (this.selectedOutline) {this.selectedOutline.visible = false;}
     if (previousIndex >= 0) {
@@ -1739,6 +1818,7 @@ export class TileGridService {
     const previousIndex = this.selectedIndex;
     this.selected$.next(null);
     this.selectedIndex = -1;
+    this.selectionSpinTurns = 0;
     if (this.selectedOutline) {this.selectedOutline.visible = false;}
     if (previousIndex >= 0) {
       this.updateDisplayColor(previousIndex);
@@ -1763,6 +1843,11 @@ export class TileGridService {
       resource: this.resourceStates.get(index) ?? 'none'
     });
 
+    if (previousIndex >= 0 && previousIndex !== index) {
+      this.configureSelectionSpin(previousIndex, index);
+    } else {
+      this.selectionSpinTurns = 0;
+    }
     this.selectedIndex = index;
     if (previousIndex >= 0 && previousIndex !== index) {
       this.updateDisplayColor(previousIndex);

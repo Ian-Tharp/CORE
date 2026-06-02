@@ -21,6 +21,7 @@ describe('CommandCenterComponent', () => {
 
   const engineMock = {
     initialize: jest.fn(),
+    onBeforeRender: jest.fn().mockReturnValue(jest.fn()),
     start: jest.fn(),
     dispose: jest.fn()
   };
@@ -46,6 +47,11 @@ describe('CommandCenterComponent', () => {
     setRandomSeed: jest.fn(),
     triggerSeedBloom: jest.fn(),
     returnToOverview: jest.fn(),
+    stepSelection: jest.fn(),
+    getNavInfo: jest.fn().mockReturnValue({ position: -1, total: 0, scoped: false }),
+    getSelectedIndex: jest.fn().mockReturnValue(-1),
+    getWorldCount: jest.fn().mockReturnValue(0),
+    setDocumentedWorlds: jest.fn(),
     randomize: jest.fn(),
     clear: jest.fn(),
     getTileWorldPosition: jest.fn()
@@ -55,6 +61,7 @@ describe('CommandCenterComponent', () => {
     onConnectionsChanged: jest.fn().mockReturnValue(of([])),
     getConnections: jest.fn().mockReturnValue([]),
     onSelectedMetadataChanged: jest.fn().mockReturnValue(of(null)),
+    onAllMetadataChanged: jest.fn().mockReturnValue(of(new Map())),
     addConnection: jest.fn(),
     addAIObservation: jest.fn(),
     setSelectedTile: jest.fn(),

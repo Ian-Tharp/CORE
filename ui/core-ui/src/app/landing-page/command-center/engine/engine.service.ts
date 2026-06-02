@@ -21,7 +21,6 @@ export class EngineService {
     endZoom: number;
     startMs: number;
     durationMs: number;
-    spinTurns: number;
   };
   private overviewCamera?: { position: THREE.Vector3; target: THREE.Vector3; zoom: number };
   private canvas?: HTMLCanvasElement;
@@ -277,14 +276,11 @@ export class EngineService {
     const offset = currentOffset.lengthSq() > 0
       ? currentOffset.normalize().multiplyScalar(24)
       : new THREE.Vector3(0, 16, 24);
-    // Cinematic orbital swoop: spin ~1.25 turns around the world as we close in
-    // (straight, quick glide when the user prefers reduced motion).
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    this.animateCameraTo(
-      point.clone().add(offset), point, zoom,
-      reduced ? 480 : 1150,
-      reduced ? 0 : 1.25
-    );
+    const distance = this.controls.target.distanceTo(point);
+    const durationMs = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+      ? 360
+      : Math.min(1250, Math.max(520, 420 + distance * 8));
+    this.animateCameraTo(point.clone().add(offset), point, zoom, durationMs);
   }
 
   returnToOverview(): void {
@@ -350,7 +346,7 @@ export class EngineService {
     }
   }
 
-  private animateCameraTo(position: THREE.Vector3, target: THREE.Vector3, zoom: number, durationMs: number, spinTurns = 0): void {
+  private animateCameraTo(position: THREE.Vector3, target: THREE.Vector3, zoom: number, durationMs: number): void {
     if (!this.camera || !this.controls) {return;}
     this.cameraTween = {
       startPosition: this.camera.position.clone(),
@@ -360,8 +356,7 @@ export class EngineService {
       startZoom: this.camera.zoom,
       endZoom: Math.max(this.controls.minZoom, Math.min(zoom, this.controls.maxZoom)),
       startMs: performance.now(),
-      durationMs,
-      spinTurns
+      durationMs
     };
   }
 
@@ -371,25 +366,7 @@ export class EngineService {
     const progress = Math.min(1, (performance.now() - t.startMs) / t.durationMs);
     const eased = 1 - Math.pow(1 - progress, 3);
     this.controls.target.lerpVectors(t.startTarget, t.endTarget, eased);
-
-    if (t.spinTurns !== 0) {
-      // Orbit the camera around the (moving) target while easing the offset in —
-      // a swooping spiral toward the world rather than a straight glide.
-      const startOff = t.startPosition.clone().sub(t.startTarget);
-      const endOff = t.endPosition.clone().sub(t.endTarget);
-      const off = startOff.lerp(endOff, eased);
-      const angle = t.spinTurns * Math.PI * 2 * eased;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      this.camera.position.set(
-        this.controls.target.x + (off.x * cos - off.z * sin),
-        this.controls.target.y + off.y,
-        this.controls.target.z + (off.x * sin + off.z * cos)
-      );
-    } else {
-      this.camera.position.lerpVectors(t.startPosition, t.endPosition, eased);
-    }
-
+    this.camera.position.lerpVectors(t.startPosition, t.endPosition, eased);
     this.camera.zoom = THREE.MathUtils.lerp(t.startZoom, t.endZoom, eased);
     this.camera.updateProjectionMatrix();
     if (progress >= 1) {

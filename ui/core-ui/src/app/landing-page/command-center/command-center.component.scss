@@ -666,6 +666,9 @@
   overflow: hidden;
   box-shadow: 0 0 1.5rem rgba(0, 255, 200, 0.06) inset, 0 0 0.5rem rgba(0, 255, 200, 0.06);
   background:
+    radial-gradient(ellipse at 50% 52%, rgba(0, 255, 200, 0.12), transparent 18rem),
+    radial-gradient(ellipse at 62% 44%, rgba(0, 210, 255, 0.1), transparent 26rem),
+    radial-gradient(ellipse at 38% 64%, rgba(255, 179, 71, 0.055), transparent 24rem),
     radial-gradient(120rem 80rem at 60% 30%, rgba(0, 140, 160, 0.15), rgba(5, 14, 20, 0.95) 60%),
     linear-gradient(180deg, rgba(0, 180, 160, 0.08), rgba(4, 12, 18, 0.92));
   cursor: crosshair;
@@ -1053,11 +1056,18 @@
 
 .stage {
   background:
+    radial-gradient(ellipse at 50% 50%, rgba(3, 13, 26, 0) 42%, rgba(1, 7, 13, 0.46) 100%),
+    radial-gradient(ellipse at 50% 48%, rgba(0, 255, 200, 0.12), transparent 18rem),
+    radial-gradient(ellipse at 62% 42%, rgba(0, 210, 255, 0.12), transparent 28rem),
+    radial-gradient(ellipse at 36% 66%, rgba(255, 179, 71, 0.06), transparent 24rem),
     radial-gradient(90rem 60rem at 60% 28%, rgba(0, 210, 255, 0.12), transparent 58%),
     radial-gradient(45rem 30rem at 28% 72%, rgba(255, 179, 71, 0.06), transparent 58%),
     linear-gradient(180deg, rgba(0, 180, 160, 0.08), rgba(4, 12, 18, 0.94));
   border-color: var(--core-border-subtle);
-  box-shadow: inset 0 0 2rem rgba(0, 255, 200, 0.08), var(--core-shadow-base);
+  box-shadow:
+    inset 0 0 2rem rgba(0, 255, 200, 0.1),
+    inset 0 0 7rem rgba(0, 0, 0, 0.28),
+    var(--core-shadow-base);
   animation: command-center-reveal-scale 0.74s 0.18s ease-out both;
 
   &::before {
@@ -1087,8 +1097,8 @@
 
 .stage__grid {
   background-image:
-    linear-gradient(rgba(0, 255, 200, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 200, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(0, 255, 200, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 200, 0.035) 1px, transparent 1px);
   background-size: 2.4rem 2.4rem;
   mask-image: radial-gradient(ellipse at 50% 50%, black 24%, transparent 78%);
   animation: command-center-grid-drift 30s linear infinite;
@@ -1098,7 +1108,7 @@
   background:
     linear-gradient(transparent calc(50% - 1px), rgba(0, 255, 200, 0.08) 50%, transparent calc(50% + 1px)),
     linear-gradient(90deg, transparent calc(50% - 1px), rgba(0, 255, 200, 0.08) 50%, transparent calc(50% + 1px));
-  opacity: 0.75;
+  opacity: 0.42;
 }
 
 .stage__scan {
@@ -1150,10 +1160,13 @@
 }
 
 .detail-panel {
-  background: var(--core-card-bg);
+  background: color-mix(in srgb, var(--core-bg-base) 88%, transparent);
   backdrop-filter: var(--core-card-blur);
-  border-color: var(--core-border-subtle);
-  box-shadow: var(--core-shadow-raised), inset 0 0 1.2rem rgba(0, 255, 200, 0.04);
+  border-color: var(--core-border-normal);
+  box-shadow:
+    var(--core-shadow-raised),
+    inset 0 0 1.2rem rgba(0, 255, 200, 0.07),
+    0 0 1.4rem rgba(0, 255, 200, 0.08);
   animation: command-center-reveal-right 0.68s 0.22s ease-out both;
 }
 
@@ -1256,11 +1269,13 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--core-card-bg);
+  background: color-mix(in srgb, var(--core-bg-base) 86%, transparent);
   backdrop-filter: var(--core-card-blur);
-  border: 1px solid var(--core-border-subtle);
+  border: 1px solid var(--core-border-normal);
   border-radius: var(--radius-pill);
-  box-shadow: var(--core-shadow-base);
+  box-shadow:
+    var(--core-shadow-base),
+    0 0 1.2rem color-mix(in srgb, var(--core-energy) 16%, transparent);
   animation: world-stepper-in 0.4s ease-out both;
 
   &__btn {
@@ -1295,7 +1310,8 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
     letter-spacing: 0.04em;
-    color: var(--core-text-secondary);
+    color: var(--core-text-primary);
+    text-shadow: 0 0 0.55rem color-mix(in srgb, var(--core-energy) 45%, transparent);
   }
 }
 
@@ -1315,17 +1331,21 @@
 .world-label {
   position: fixed;
   transform: translate(-50%, -100%);
-  padding: 0.1rem 0.5rem;
+  padding: 0.18rem 0.55rem;
   white-space: nowrap;
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   letter-spacing: 0.04em;
-  color: var(--core-text-primary);
-  background: color-mix(in srgb, var(--core-bg-base) 72%, transparent);
-  border: 1px solid color-mix(in srgb, var(--core-energy) 32%, transparent);
+  color: #f0fff9;
+  background:
+    linear-gradient(180deg, rgba(5, 20, 28, 0.9), rgba(2, 10, 16, 0.82));
+  border: 1px solid color-mix(in srgb, var(--core-energy) 52%, transparent);
   border-radius: var(--radius-pill);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--core-energy) 18%, transparent);
-  backdrop-filter: blur(4px);
+  box-shadow:
+    0 0 0.55rem color-mix(in srgb, var(--core-energy) 24%, transparent),
+    0 0.25rem 0.9rem rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(8px);
+  text-shadow: 0 0 0.45rem rgba(0, 255, 200, 0.45);
   opacity: 0; // shown/positioned by the render loop
   transition: opacity var(--transition-fast);
 }
