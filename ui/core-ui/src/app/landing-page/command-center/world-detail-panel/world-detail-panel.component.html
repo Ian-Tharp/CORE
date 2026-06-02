@@ -251,14 +251,15 @@
         </div>
         <textarea
           class="art-prompt"
-          rows="2"
+          rows="3"
           [(ngModel)]="artPrompt"
           [disabled]="isGeneratingArt"
-          placeholder="Describe the art to generate… (leave blank to auto-build from this world's lore)"
+          placeholder="Describe the art… (or pick a theme above; leave blank to auto-build from this world's lore)"
           aria-label="World art prompt"
         ></textarea>
-        <button class="btn-small" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !worldId || !selectedTile">
-          {{ isGeneratingArt ? 'Painting…' : '✦ Generate World Art' }}
+        <button class="send-btn" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !worldId || !selectedTile">
+          <span>{{ isGeneratingArt ? 'Painting…' : 'Generate Image' }}</span>
+          <span class="send-btn__arrow" aria-hidden="true">{{ isGeneratingArt ? '◌' : '➤' }}</span>
         </button>
         @if (worldArt.length) {
           <div class="art-gallery">

@@ -800,6 +800,40 @@
   }
 }
 
+// Prominent "send this prompt" button for image generation.
+.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  margin-top: var(--spacing-xs);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 40%, transparent);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--core-energy) 22%, transparent),
+    color-mix(in srgb, var(--core-energy) 8%, transparent));
+  color: var(--core-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+
+  &__arrow {
+    color: var(--core-energy);
+    font-size: 0.95em;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--core-energy);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--core-energy) 18%, transparent);
+  }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+
 .art-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));

@@ -126,7 +126,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         if (name) { labels.push({ index: idx, name }); }
       });
       this.tileGrid.setDocumentedWorlds(documented);
-      this.worldLabels = labels;
+      // Defer the template-bound update one microtask so it never mutates the
+      // world-labels @for after it's been checked (avoids NG0100 on first emit).
+      Promise.resolve().then(() => { this.worldLabels = labels; });
     });
 
     // Float named-world labels above their orbs, following the camera each frame.
@@ -188,9 +190,10 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       if (this.isEditMode) { el.style.opacity = '0'; continue; }
       const anchor = this.tileGrid.getWorldLabelAnchor(this.worldLabels[i].index);
       const screen = anchor ? this.engine.projectPoint(anchor.x, anchor.y, anchor.z) : null;
+      // Strictly clip to the canvas so labels never spill over the sidebar/panel.
       const offscreen = !screen || (rect && (
-        screen.x < rect.left - 40 || screen.x > rect.right + 40 ||
-        screen.y < rect.top - 20 || screen.y > rect.bottom + 20
+        screen.x < rect.left || screen.x > rect.right ||
+        screen.y < rect.top || screen.y > rect.bottom
       ));
       if (offscreen) { el.style.opacity = '0'; continue; }
       el.style.left = `${screen!.x}px`;
