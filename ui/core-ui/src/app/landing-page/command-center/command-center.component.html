@@ -22,8 +22,6 @@
         {{ isEditMode ? 'EDIT MODE' : 'VIEW MODE' }}
       </span>
       <span class="ticker-chip">WORLD {{ projectName || 'Untitled' }}</span>
-      <span class="ticker-chip">LAYER {{ activeLayer | uppercase }}</span>
-      <span class="ticker-chip">BRUSH {{ brush }}</span>
       <span class="ticker-chip">SEED {{ seed || 'RANDOM' }}</span>
       <span class="ticker-chip">SELECTED {{ selectedInfo ? '(' + selectedInfo.x + ', ' + selectedInfo.y + ')' : 'NONE' }}</span>
     </div>
@@ -128,31 +126,10 @@
       </div>
 
       <div class="tool-group">
-        <label class="group-label">Active Layer</label>
-        <div class="radio-row">
-          <label class="radio-label" [class.active]="activeLayer==='terrain'">
-            <input type="radio" name="activeLayer" value="terrain" [checked]="activeLayer==='terrain'" (change)="onActiveLayerChange('terrain')">
-            <span>Terrain</span>
-          </label>
-          <label class="radio-label" [class.active]="activeLayer==='biome'">
-            <input type="radio" name="activeLayer" value="biome" [checked]="activeLayer==='biome'" (change)="onActiveLayerChange('biome')">
-            <span>Biome</span>
-          </label>
-          <label class="radio-label" [class.active]="activeLayer==='resources'">
-            <input type="radio" name="activeLayer" value="resources" [checked]="activeLayer==='resources'" (change)="onActiveLayerChange('resources')">
-            <span>Resources</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="tool-group">
-        <label class="group-label">Edit Mode</label>
+        <label class="group-label">Detail Panel</label>
         <div class="mode-buttons">
-          <button (click)="onToggleEditMode()" [class.selected]="isEditMode" class="mode-btn">
-            @if (isEditMode) { Editing } @else { View }
-          </button>
           <button (click)="onToggleDetailPanel()" [class.selected]="showDetailPanel" class="mode-btn" title="Toggle world details panel">
-            Details
+            {{ showDetailPanel ? 'Hide Details' : 'Show Details' }}
           </button>
         </div>
         @if (connectionCreationMode) {
@@ -161,31 +138,6 @@
             <button class="btn-cancel" (click)="connectionCreationMode = false; pendingConnectionFrom = null">Cancel</button>
           </div>
         }
-      </div>
-
-      <div class="tool-group">
-        <label class="group-label">Palette</label>
-        <div class="palette-buttons">
-          @if (activeLayer === 'terrain') {
-            <button (click)="onTerrainToolChange('plain')" [class.selected]="terrainTool==='plain'" class="palette-btn terrain-plain">Plain</button>
-            <button (click)="onTerrainToolChange('water')" [class.selected]="terrainTool==='water'" class="palette-btn terrain-water">Water</button>
-            <button (click)="onTerrainToolChange('mountain')" [class.selected]="terrainTool==='mountain'" class="palette-btn terrain-mountain">Mountain</button>
-          } @else if (activeLayer === 'biome') {
-            <button (click)="onBiomeToolChange('forest')" [class.selected]="biomeTool==='forest'" class="palette-btn biome-forest">Forest</button>
-            <button (click)="onBiomeToolChange('desert')" [class.selected]="biomeTool==='desert'" class="palette-btn biome-desert">Desert</button>
-            <button (click)="onBiomeToolChange('tundra')" [class.selected]="biomeTool==='tundra'" class="palette-btn biome-tundra">Tundra</button>
-            <button (click)="onBiomeToolChange('none')" [class.selected]="biomeTool==='none'" class="palette-btn eraser">Erase</button>
-          } @else {
-            <button (click)="onResourceToolChange('node')" [class.selected]="resourceTool==='node'" class="palette-btn resource-node">Resource</button>
-            <button (click)="onResourceToolChange('erase')" [class.selected]="resourceTool==='erase'" class="palette-btn eraser">Erase</button>
-          }
-        </div>
-      </div>
-
-      <div class="tool-group">
-        <label class="group-label">Brush Size</label>
-        <input type="range" min="0" max="6" [(ngModel)]="brush" (ngModelChange)="onBrushChange($event)">
-        <div class="brush-size-indicator">{{ brush }}</div>
       </div>
 
       <div class="tool-group tile-info">

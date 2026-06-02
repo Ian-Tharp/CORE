@@ -491,35 +491,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   isLoading = false;
 
-  onActiveLayerChange(next: 'terrain' | 'biome' | 'resources'): void {
-    this.activeLayer = next;
-    this.tileGrid.setActiveLayer(next);
-    this._triggerViewportScan();
-  }
-
-  onTerrainToolChange(next: TerrainState): void {
-    this.terrainTool = next;
-    this.tileGrid.setTerrainTool(next);
-  }
-  onBiomeToolChange(next: BiomeState): void {
-    this.biomeTool = next;
-    this.tileGrid.setBiomeTool(next);
-  }
-  onResourceToolChange(next: ResourceState | 'erase'): void {
-    this.resourceTool = next;
-    this.tileGrid.setResourceTool(next);
-  }
   onToggleLayerVisibility(layer: 'terrain' | 'biome' | 'resources', value: boolean): void {
     this.layerVisibility[layer] = value;
     this.tileGrid.setLayerVisibility(layer, value);
-    this._triggerViewportScan();
-  }
-
-  onToggleEditMode(): void {
-    this.isEditMode = !this.isEditMode;
-    this.tileGrid.setEditMode(this.isEditMode);
-    // Hide context menu when entering edit mode
-    if (this.isEditMode) {this.contextMenu.visible = false;}
     this._triggerViewportScan();
   }
 
@@ -547,18 +521,6 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       this.tileGrid.returnToOverview();
       this.queueWorldStepLabelUpdate();
       this.contextMenu.visible = false;
-    } else if (e.key === '+' || e.key === '=') {
-      this.brush = Math.min(6, this.brush + 1);
-      this.onBrushChange(this.brush);
-    } else if (e.key === '-' || e.key === '_') {
-      this.brush = Math.max(0, this.brush - 1);
-      this.onBrushChange(this.brush);
-    } else if (e.key === '1') {
-      this.onActiveLayerChange('terrain');
-    } else if (e.key === '2') {
-      this.onActiveLayerChange('biome');
-    } else if (e.key === '3') {
-      this.onActiveLayerChange('resources');
     }
   }
 
@@ -569,11 +531,6 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     const tagName = active.tagName.toLowerCase();
     return tagName === 'input' || tagName === 'textarea' || tagName === 'select' ||
       (active.hasAttribute('contenteditable') && active.getAttribute('contenteditable') !== 'false');
-  }
-
-  onBrushChange(next: number): void {
-    this.tileGrid.setBrushRadius(next);
-    this._triggerViewportScan();
   }
 
   onToggleOutlines(value: boolean): void {
