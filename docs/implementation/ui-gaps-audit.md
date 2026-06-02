@@ -43,6 +43,36 @@
 
 ---
 
+## Backend reality-check (verified 2026-06-02)
+
+The first pass marked backend claims **(unverified)**. A follow-up audit of `backend/app/controllers/` resolves them. This is the difference between "wire up an existing endpoint" (hours) and "build a backend feature" (days).
+
+### Frontend-wiring-only — backend already exists ✅
+| UI gap | Existing endpoint(s) |
+|--------|----------------------|
+| Communication **reactions not persisted** | `POST /communication/messages/{id}/reactions`, `DELETE …/reactions/{type}` — **just call them** |
+| Communication **presence actions** | `GET/PATCH /communication/presence[/{instance_id}]` (presence exists; the dialogs are the missing part) |
+| Conversations "move to service / signals" | `GET /conversations/`, `PATCH /conversations/{id}` exist |
+| Wiki **character generation** (was "may be unwired") | `POST /creative/characters`, `POST /creative/characters/{id}/image` — **exist exactly as the UI calls them** |
+| Engine Playground **step-stream** (was "may not exist") | `POST /engine/run/stream` — **SSE with `thinking/intent/plan/step/result` events already implemented**; the playground just isn't consuming it correctly |
+| Knowledgebase Global tab / search | `POST /knowledgebase/semantic-search` + `upload`/`batch-upload` + `files` CRUD exist |
+
+### Needs backend work first ❗
+| UI gap | Backend status |
+|--------|----------------|
+| **Agent Marketplace** (🔴 mocked) | No marketplace/install routes at all — the mock is "honest". Needs backend, or keep behind a clear "preview". |
+| **Analytics** (🟦 hardcoded) | Only `GET /system/resources(/stream)` + Prometheus `/metrics` exist — **no cognition-KPI/throughput/insights route**. Either add one or wire the dashboard to system metrics for partial real data. |
+| Communication **mark-as-read** | WebSocket-only (`mark_read` handler); no REST endpoint — wire the WS path or add REST. |
+| Communication **channel update/delete** | Only create/read exist. |
+| **Kanban persist** ("local only") | Task routes exist but no lightweight `PATCH /tasks/{id}` for drag/status edits — needs one. |
+
+> Net: the highest-ROI next fixes are **frontend-only** — reactions persistence and the engine step-stream are both "call the endpoint that already exists."
+
+### Missing-Material-module bug sweep — clean ✅
+A full sweep of all standalone components for the World-Detail bug class (Material directives used without importing the module) found **no remaining instances**. World Detail (`f5f1a8c`) was the only one.
+
+---
+
 ## Cross-cutting themes
 
 These recur across nearly every cluster and are the highest-leverage fixes because one pattern repays many screens.
@@ -153,11 +183,12 @@ Worlds Grid (constructor subscribe, no `OnDestroy`), Engine Playground (`_subs` 
 
 ### P1 — High-value (unblock features / meet AA floor)
 1. **Auth/user context** — replace hardcoded `human_ian` with a shared `UserContextService` (Message/Presence/Channel).
-2. **Reaction & read persistence** — call the reaction + `markAsRead` endpoints; stop optimistic-only updates **(verify endpoints)**.
-3. **Analytics service** — real `getKpis/getThroughput/getInsights` with loading/error/poll; remove the sample-data tag.
-4. **Agent Marketplace** — replace mock service with real registry fetch + install flow (or gate behind a clear "preview" banner).
-5. **Accessibility pass** — `role="button"`+`tabindex`+`focus-visible` on clickable divs/cards; `aria-label` on emoji/icon buttons and status pills; focus-trap + Escape on MCP modal; labels on creative form inputs.
-6. **Wire dead buttons** — My Agents Import/Export-All, Knowledgebase "View Details", Attribution "View Source", Agent Builder "Enhance"/file-upload, Creative Boards detail nav.
+2. **Reaction persistence** — ✅ backend exists; just call `POST/DELETE /communication/messages/{id}/reactions`. (`markAsRead` is WS-only — wire the WS path or add a REST route.) **Top frontend-only quick win.**
+3. **Engine Playground step-stream** — ✅ `POST /engine/run/stream` (SSE) exists; fix the client to consume `thinking/intent/plan/step/result` events instead of showing mock/typing. Frontend-only.
+4. **Analytics service** — ❗ needs a backend cognition-KPI route (only `system/resources` + Prometheus exist today); or wire the dashboard to system metrics for partial real data. Then add loading/error/poll and remove the sample tag.
+5. **Agent Marketplace** — ❗ no backend marketplace/install routes exist; either build them or gate the UI behind a clear "preview" banner instead of a fake install toast.
+6. **Accessibility pass** — `role="button"`+`tabindex`+`focus-visible` on clickable divs/cards; `aria-label` on emoji/icon buttons and status pills; focus-trap + Escape on MCP modal; labels on creative form inputs.
+7. **Wire dead buttons** — My Agents Import/Export-All, Knowledgebase "View Details", Attribution "View Source", Agent Builder "Enhance"/file-upload, Creative Boards detail nav.
 
 ### P2 — Polish & consistency
 1. **Design-token sweep** — Boards, Kanban, Conversations, Communication, Attribution (full), Knowledgebase inline styles, Agent Builder, creative/* → `--core-*`/`--spacing-*`/`--radius-*`. Unify the two ambers.
