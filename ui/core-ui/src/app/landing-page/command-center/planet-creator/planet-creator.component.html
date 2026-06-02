@@ -57,10 +57,16 @@
       </fieldset>
 
       <div class="creator__ai">
-        <button type="button" class="btn btn--wide" (click)="regenerate.emit('art')" [disabled]="!worldId"
-                title="{{ worldId ? '' : 'Save this world first' }}">Regenerate art</button>
-        <button type="button" class="btn btn--wide" (click)="regenerate.emit('lore')" [disabled]="!worldId"
-                title="{{ worldId ? '' : 'Save this world first' }}">Regenerate lore</button>
+        <button type="button" class="btn btn--wide" (click)="regenerateArt()" [disabled]="!worldId || busyArt"
+                title="{{ worldId ? 'Generate art from this planet' : 'Save this world first' }}">
+          {{ busyArt ? 'Painting…' : 'Regenerate art' }}
+        </button>
+        <button type="button" class="btn btn--wide" (click)="regenerateLore()" [disabled]="!worldId || busyLore"
+                title="{{ worldId ? 'Generate lore from this planet' : 'Save this world first' }}">
+          {{ busyLore ? 'Writing…' : 'Regenerate lore' }}
+        </button>
+        @if (status) { <span class="creator__status">{{ status }}</span> }
+        @if (!worldId) { <span class="creator__status creator__status--dim">Save this world to enable AI + persistence.</span> }
       </div>
     }
   </div>

@@ -58,6 +58,14 @@
     padding-top: var(--spacing-xs);
     border-top: 1px solid color-mix(in srgb, var(--core-energy) 14%, transparent);
   }
+
+  &__status {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--core-energy);
+    text-align: center;
+    &--dim { color: var(--core-text-secondary); }
+  }
 }
 
 .ctl {
