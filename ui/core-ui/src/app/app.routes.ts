@@ -35,6 +35,13 @@ export const routes: Routes = [
     component: CommandCenterComponent
   },
   {
+    // Standalone procedural-planet tuning lab (lazy — keeps Three out of the main bundle).
+    path: 'command-center/planet-lab',
+    loadComponent: () =>
+      import('./landing-page/command-center/engine/planet/demo/planet-lab.component')
+        .then(m => m.PlanetLabComponent),
+  },
+  {
     path: 'conversations',
     component: ConversationsPageComponent
   },

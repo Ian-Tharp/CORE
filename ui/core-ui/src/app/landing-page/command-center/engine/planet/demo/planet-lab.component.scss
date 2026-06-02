@@ -1,0 +1,78 @@
+// Planet Lab — token-only solarpunk chrome over a deep-space stage.
+:host { display: block; height: calc(100vh - 4.5rem); }
+
+.lab {
+  display: flex;
+  height: 100%;
+  background:
+    radial-gradient(120% 90% at 30% 10%, color-mix(in srgb, var(--core-energy) 8%, transparent), transparent 55%),
+    var(--core-bg-base, #03060d);
+}
+
+.stage { flex: 1 1 auto; min-width: 0; }
+
+.panel {
+  width: 19rem;
+  flex: 0 0 19rem;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  border-left: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 86%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.panel__head { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: var(--spacing-xs); }
+.panel__eyebrow {
+  font-family: var(--font-mono); font-size: var(--font-size-xs); letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--core-energy) 80%, transparent);
+}
+.panel__title { margin: 0; font-size: var(--font-size-xl, 1.3rem); color: var(--core-text-primary); }
+.panel__hud { margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--core-amber, #ffb454); }
+
+.ctl {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: var(--font-size-xs); color: var(--core-text-secondary);
+
+  > span { display: flex; justify-content: space-between; }
+  em { font-style: normal; color: var(--core-energy); font-family: var(--font-mono); }
+
+  input[type=text], select {
+    width: 100%; padding: 0.3rem 0.5rem; border-radius: var(--radius-sm, 6px);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+    background: color-mix(in srgb, var(--core-bg-base) 60%, transparent);
+    color: var(--core-text-primary); font-size: var(--font-size-xs);
+  }
+  input[type=range] { width: 100%; accent-color: var(--core-energy); }
+  &__row { display: flex; gap: 0.35rem; }
+}
+
+.btn {
+  flex: 0 0 auto; cursor: pointer; padding: 0.2rem 0.6rem; border-radius: var(--radius-sm, 6px);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 35%, transparent);
+  background: color-mix(in srgb, var(--core-energy) 12%, transparent); color: var(--core-energy);
+}
+
+.toggles {
+  display: flex; flex-direction: column; gap: 0.25rem; margin: var(--spacing-xs) 0;
+  label { display: flex; align-items: center; gap: 0.4rem; font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+  input { accent-color: var(--core-energy); }
+}
+
+.palette {
+  border: 1px solid color-mix(in srgb, var(--core-energy) 18%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  display: flex; flex-direction: column; gap: 0.25rem;
+
+  legend { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--core-energy); padding: 0 0.3rem; }
+  label { display: flex; align-items: center; gap: 0.4rem; font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+  input[type=color] { width: 1.6rem; height: 1.2rem; border: none; background: transparent; padding: 0; }
+}
+
+@media (max-width: 720px) {
+  .lab { flex-direction: column; }
+  .panel { width: 100%; flex: 0 0 auto; border-left: none; }
+}

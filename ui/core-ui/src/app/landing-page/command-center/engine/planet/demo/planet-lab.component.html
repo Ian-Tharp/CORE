@@ -1,0 +1,67 @@
+<div class="lab">
+  <div #host class="stage"></div>
+
+  <aside class="panel">
+    <header class="panel__head">
+      <span class="panel__eyebrow">CORE · PLANET LAB</span>
+      <h2 class="panel__title">World Forge</h2>
+      <p class="panel__hud">verts: {{ vertexCountSig() }}</p>
+    </header>
+
+    <label class="ctl">
+      <span>Seed</span>
+      <span class="ctl__row">
+        <input type="text" [(ngModel)]="params.seed" (change)="onParamsChange()">
+        <button type="button" class="btn" (click)="randomizeSeed()">⟳</button>
+      </span>
+    </label>
+
+    <label class="ctl">
+      <span>Archetype</span>
+      <select [(ngModel)]="params.biomeArchetype" (change)="onParamsChange()">
+        @for (a of archetypes; track a) { <option [value]="a">{{ a }}</option> }
+      </select>
+    </label>
+
+    <label class="ctl">
+      <span>Quality</span>
+      <select [ngModel]="tier()" (ngModelChange)="onTierChange($event)">
+        @for (t of tiers; track t) { <option [value]="t">{{ t }}</option> }
+      </select>
+    </label>
+
+    <label class="ctl"><span>Radius <em>{{ params.radius }}</em></span>
+      <input type="range" min="0.05" max="5" step="0.05" [(ngModel)]="params.radius" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Octaves <em>{{ params.octaves }}</em></span>
+      <input type="range" min="1" max="8" step="1" [(ngModel)]="params.octaves" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Persistence <em>{{ params.persistence }}</em></span>
+      <input type="range" min="0.1" max="0.95" step="0.01" [(ngModel)]="params.persistence" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Lacunarity <em>{{ params.lacunarity }}</em></span>
+      <input type="range" min="1.2" max="4" step="0.05" [(ngModel)]="params.lacunarity" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Noise strength <em>{{ params.noiseStrength }}</em></span>
+      <input type="range" min="0" max="1" step="0.01" [(ngModel)]="params.noiseStrength" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Sea level <em>{{ params.seaLevel }}</em></span>
+      <input type="range" min="0" max="1" step="0.01" [(ngModel)]="params.seaLevel" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Mountains <em>{{ params.mountainHeight }}</em></span>
+      <input type="range" min="0" max="1" step="0.01" [(ngModel)]="params.mountainHeight" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Temperature <em>{{ params.temperatureBias }}</em></span>
+      <input type="range" min="-1" max="1" step="0.01" [(ngModel)]="params.temperatureBias" (input)="onParamsChange()"></label>
+    <label class="ctl"><span>Moisture <em>{{ params.moistureBias }}</em></span>
+      <input type="range" min="-1" max="1" step="0.01" [(ngModel)]="params.moistureBias" (input)="onParamsChange()"></label>
+
+    <div class="toggles">
+      <label><input type="checkbox" [(ngModel)]="params.hasWater" (change)="onParamsChange()"> Water</label>
+      <label><input type="checkbox" [(ngModel)]="params.hasAtmosphere" (change)="onParamsChange()"> Atmosphere</label>
+      <label><input type="checkbox" [(ngModel)]="params.hasClouds" (change)="onParamsChange()"> Clouds</label>
+    </div>
+
+    <fieldset class="palette">
+      <legend>Palette</legend>
+      <label><input type="color" [(ngModel)]="params.palette.water" (input)="onParamsChange()"> water</label>
+      <label><input type="color" [(ngModel)]="params.palette.sand" (input)="onParamsChange()"> sand</label>
+      <label><input type="color" [(ngModel)]="params.palette.grass" (input)="onParamsChange()"> grass</label>
+      <label><input type="color" [(ngModel)]="params.palette.rock" (input)="onParamsChange()"> rock</label>
+      <label><input type="color" [(ngModel)]="params.palette.snow" (input)="onParamsChange()"> snow</label>
+    </fieldset>
+  </aside>
+</div>
