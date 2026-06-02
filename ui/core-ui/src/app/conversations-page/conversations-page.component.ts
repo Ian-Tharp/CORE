@@ -68,14 +68,10 @@ export class ConversationsPageComponent implements OnInit {
       )
       .subscribe((data) => {
         this.conversations = data;
-        this.isConnected = data.length > 0 || this.connectionError === '';
+        // Connected iff the request didn't error (catchError sets connectionError).
+        // An empty-but-successful list is still "connected".
+        this.isConnected = this.connectionError === '';
         this.isLoading = false;
-        
-        // If we successfully got data, mark as connected
-        if (data.length > 0 || this.connectionError === '') {
-          this.isConnected = true;
-        }
-        // RSI TODO: Remove duplicate connectivity logic above; compute once based on response/error.
       });
   }
 
