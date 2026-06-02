@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -100,23 +101,34 @@ class ImageGenRequest(BaseModel):
     size: str = "1024x1024"
 
 
+async def _generate_image_b64(prompt: str, size: str) -> str:
+    """Generate image base64 while handling model-specific Images API options."""
+    client = _get_openai_client()
+    model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
+    request: Dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "size": size,
+    }
+    # `gpt-image-1` returns base64 image data by default and rejects
+    # `response_format`; older image models need it to avoid URL-only output.
+    if not model.startswith("gpt-image"):
+        request["response_format"] = "b64_json"
+
+    result = await client.images.generate(**request)
+    b64 = result.data[0].b64_json  # type: ignore[attr-defined]
+    if not b64:
+        raise RuntimeError("Image generation returned empty base64 image data")
+    return b64
+
+
 @router.post("/image", response_model=Dict[str, str])
 async def generate_image(
     payload: ImageGenRequest, _auth: str = Depends(require_api_key)
 ) -> Dict[str, str]:
     """Generate an image from a prompt and return it as base64 (for world art, etc.)."""
     try:
-        client = _get_openai_client()
-        result = await client.images.generate(
-            model="gpt-image-1",
-            prompt=payload.prompt,
-            size=payload.size,
-            response_format="b64_json",
-        )
-        b64 = result.data[0].b64_json  # type: ignore[attr-defined]
-        if not b64:
-            raise RuntimeError("Image generation returned empty response")
-        return {"b64": b64}
+        return {"b64": await _generate_image_b64(payload.prompt, payload.size)}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Failed to generate image: {exc}")
 
@@ -133,17 +145,7 @@ async def generate_character_image(
     _auth: str = Depends(require_api_key),
 ) -> Dict[str, str]:
     try:
-        client = _get_openai_client()
-        # Using Images API for base64 response
-        result = await client.images.generate(
-            model="gpt-image-1",
-            prompt=payload.prompt,
-            size=payload.size,
-            response_format="b64_json",
-        )
-        b64 = result.data[0].b64_json  # type: ignore[attr-defined]
-        if not b64:
-            raise RuntimeError("Image generation returned empty response")
+        b64 = await _generate_image_b64(payload.prompt, payload.size)
         await repo.update_character_image(character_id, b64)
         return {"status": "ok"}
     except Exception as exc:  # noqa: BLE001
