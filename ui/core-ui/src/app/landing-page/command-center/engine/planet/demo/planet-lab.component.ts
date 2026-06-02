@@ -30,6 +30,7 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
   private planet!: THREE.Group;
   private raf = 0;
   private debounce = 0;
+  private resizeObs?: ResizeObserver;
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   ngAfterViewInit(): void {
@@ -37,7 +38,7 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 100);
-    this.camera.position.set(0, 0.6, 3);
+    this.camera.position.set(0, 0.5, 3.4);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(w, h, false);
@@ -67,7 +68,11 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
       };
       tick();
     });
-    addEventListener('resize', this.onResize);
+    // Observe the stage so the canvas tracks the real layout (panel reflow,
+    // window resize, and the post-layout settle that the initial measure misses).
+    this.resizeObs = new ResizeObserver(() => this.onResize());
+    this.resizeObs.observe(el);
+    this.onResize();
   }
 
   /** Debounced to one rAF so rebuild-class changes never run inside pointermove. */
@@ -92,7 +97,7 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.debounce);
-    removeEventListener('resize', this.onResize);
+    this.resizeObs?.disconnect();
     if (this.planet) { disposePlanet(this.planet); }
     this.controls?.dispose();
     this.renderer?.dispose();

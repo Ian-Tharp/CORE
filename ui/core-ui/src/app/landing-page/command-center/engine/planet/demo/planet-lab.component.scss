@@ -9,7 +9,14 @@
     var(--core-bg-base, #03060d);
 }
 
-.stage { flex: 1 1 auto; min-width: 0; }
+.stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  // Force the renderer canvas to fill the stage so the planet centres in the
+  // visible area (left of the panel), regardless of the drawing-buffer size.
+  canvas { display: block; width: 100% !important; height: 100% !important; }
+}
 
 .panel {
   width: 19rem;
