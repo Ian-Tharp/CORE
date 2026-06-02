@@ -68,6 +68,7 @@ Project planning and feature backlogs.
 - [Backlog](roadmap/backlog.md) — General UI and backend task backlog
 - [Command Deck & Cognition — Next Steps](roadmap/command-deck-cognition-next-steps.md) — Prioritized backlog after the command-deck rebuild + UI polish pass
 - [Communications Commons](roadmap/communications-commons.md) — Communication Commons feature roadmap
+- [Planet World Creator](roadmap/planet-world-creator.md) — Tiered zoom (galaxy→orbit→planet) + procedural sphere creator that replaces the 2D paint palette, with research + ready-to-run implementation prompts
 - [Solarpunk Vision](roadmap/solarpunk-vision.md) — Long-term vision and UI/backend evolution plan
 - [Vigil Integration](roadmap/vigil-integration.md) — Integration plan for Vigil (OpenClaw) ↔ CORE
 - [UI Polish Log](ui-polish-log.md) — Iteration log of the autonomous section-by-section UI polish
