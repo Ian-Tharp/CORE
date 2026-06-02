@@ -10,8 +10,11 @@ from openai import AsyncOpenAI, OpenAI
 import anthropic
 from dotenv import load_dotenv, find_dotenv
 
-# Load .env from current or parent directories if present (safe no-op if absent)
-load_dotenv(find_dotenv(usecwd=True))
+# Load .env from current or parent directories if present (safe no-op if absent).
+# override=True so the machine's gitignored backend/.env wins over empty values
+# that docker-compose injects via ${OPENAI_API_KEY}-style interpolation (which
+# otherwise shadow the real keys). Absent .env (e.g. on another machine) is a no-op.
+load_dotenv(find_dotenv(usecwd=True), override=True)
 
 
 @lru_cache()
