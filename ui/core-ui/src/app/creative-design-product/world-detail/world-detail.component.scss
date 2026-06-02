@@ -1,0 +1,87 @@
+// World detail — solarpunk glass, token-only.
+.world-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  &__back { flex: 0 0 auto; }
+
+  &__title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    h2 {
+      margin: 0;
+      font-size: var(--font-size-2xl, 1.6rem);
+      color: var(--core-text-primary);
+      text-shadow: 0 0 0.6rem color-mix(in srgb, var(--core-energy) 28%, transparent);
+    }
+    time {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      color: var(--core-text-secondary);
+    }
+  }
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+
+  &__chip {
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius-pill, 999px);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+    background: color-mix(in srgb, var(--core-bg-base) 60%, transparent);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--core-energy);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+// ── Not-found state ───────────────────────────────────────────────────────────
+.world-detail--missing {
+  min-height: 60vh;
+  align-items: center;
+  justify-content: center;
+}
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: center;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px dashed color-mix(in srgb, var(--core-energy) 20%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 50%, transparent);
+
+  &__glyph {
+    font-size: 2.4rem;
+    color: color-mix(in srgb, var(--core-energy) 55%, transparent);
+  }
+  h2 { margin: 0; color: var(--core-text-primary); }
+  p { margin: 0 0 var(--spacing-sm); color: var(--core-text-secondary); font-size: var(--font-size-sm, 0.9rem); }
+}
+
+@media (max-width: 640px) {
+  .world-detail__head { flex-direction: column; align-items: flex-start; }
+}
