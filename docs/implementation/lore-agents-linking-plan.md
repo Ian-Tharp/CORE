@@ -1,7 +1,17 @@
 # Linking Modular Agents to World Lore Generation — Implementation Plan
 
 **Date:** 2026-06-02
-**Status:** Plan (not yet implemented). Produced by a mapping workflow (understand → design → critique).
+**Status:** Phases 1–4 (foundation) **implemented** in `d21c54d`; Phases 5–8 pending (coordinate with the parallel worker). Produced by a mapping workflow (understand → design → critique).
+
+**Decisions locked:** per-**world** binding · backend **`role` filter** for the lore-agent list · model-override via a **one-off uncached** factory instance (no cache mutation).
+
+**Progress:**
+- ✅ **Phase 1** — `model` field on `AgentConfig`/create/update; `agents.model` column + idempotent ALTER; `world_lore_agents` binding table; `model` through repo SELECTs + INSERT.
+- ✅ **Phase 2** — shared `llm_provider.build_chat_model` (provider-aware); `core_entry` repointed with thin wrappers (no behavior change).
+- ✅ **Phase 3** — factory builds each agent's LLM from `config.model` (→ env → fallback) via `build_chat_model`.
+- ✅ **Phase 4** — `lore_service.persist_lore_page()` + `lore_user_prompt()` extracted; `generate_lore_page` unchanged (fallback).
+- ⏳ **Phase 5** (wire `generate_lore`) — **blocked on coordination** (parallel worker owns the file).
+- ⏳ **Phases 6–8** — binding repo/routes + role filter, frontend (ModelsService, pickers), tests.
 
 ## Goal
 
