@@ -6,6 +6,16 @@
 
 > This is a living backlog. When you fix an item, strike it through or move it to a "Done" note with the commit hash. The landing-page **command deck** is the reference implementation and the styling gold standard — it is intentionally excluded from the "fix" list.
 
+## Resolved (log)
+
+| Date | Item | Commit |
+|------|------|--------|
+| 2026-06-02 | **World Detail P0** — `MatButtonModule` import, not-found state, back nav, themed SCSS | `f5f1a8c` |
+| 2026-06-02 | Missing-Material-module bug sweep — clean (World Detail was the only one) | — |
+| 2026-06-02 | **Communication reactions** now persist via existing endpoints (optimistic + rollback) | `4668751` |
+| 2026-06-02 | **Engine Playground** SSE subscription leak fixed (`OnDestroy`); confirmed CORE step-stream is real (stale comment removed) | `4668751` |
+| 2026-06-02 | **Worlds Grid** — surface saved-world load errors + loading state; `takeUntilDestroyed` | `bb6ca53` |
+
 ## Status legend
 
 | Icon | Meaning |
