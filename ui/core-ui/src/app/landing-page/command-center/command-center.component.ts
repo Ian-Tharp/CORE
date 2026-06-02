@@ -165,11 +165,11 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
         const seed = params.get('seed');
         if (name) {this.projectName = name;}
         if (seed) { this.seed = seed; this.onApplySeed(); }
-        if (!name && !seed && !sessionStorage.getItem('core.universePicker.seen')) {
-          // No deep-link target, first entry this session → greet with the
-          // universe picker. Deferred to a microtask so opening the dialog can't
-          // mutate view-bound state during the first-render CD pass (NG0100).
-          sessionStorage.setItem('core.universePicker.seen', '1');
+        if (!name && !seed) {
+          // No deep-link target → greet with the universe picker on entry so the
+          // user chooses "New Universe" vs. a saved one before exploring.
+          // Deferred to a microtask so opening the dialog can't mutate view-bound
+          // state during the first-render CD pass (NG0100).
           Promise.resolve().then(() => this.openUniversePicker());
         }
       }
