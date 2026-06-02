@@ -38,7 +38,7 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 100);
-    this.camera.position.set(0, 0.5, 3.4);
+    this.camera.position.set(0, 0.4, 4.3);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(w, h, false);
@@ -49,6 +49,8 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
     this.controls.enableDamping = true;
     this.controls.autoRotate = !this.reducedMotion;
     this.controls.autoRotateSpeed = 0.6;
+    this.controls.minDistance = 2.6;   // can't zoom in past where the planet stays framed
+    this.controls.maxDistance = 16;
 
     this.scene.add(new THREE.HemisphereLight(0xdffcff, 0x081410, 1.1));
     const dir = new THREE.DirectionalLight(0xffffff, 1.6);
@@ -89,9 +91,12 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
 
   private onResize = (): void => {
     const el = this.host.nativeElement;
-    this.camera.aspect = (el.clientWidth || 1) / (el.clientHeight || 1);
+    const w = el.clientWidth || 1, h = el.clientHeight || 1;
+    this.camera.aspect = w / h;
+    // Bias the planet left so the right-side control panel never covers it.
+    this.camera.setViewOffset(w, h, w * 0.14, 0, w, h);
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(el.clientWidth, el.clientHeight, false);
+    this.renderer.setSize(w, h, false);
   };
 
   ngOnDestroy(): void {
