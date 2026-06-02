@@ -51,6 +51,11 @@ export class UniverseSelectComponent implements OnInit {
     this.router.navigate(['/command-center/edit']);
   }
 
+  /** Open the standalone procedural-planet tuning lab. */
+  openPlanetLab(): void {
+    this.router.navigate(['/command-center/planet-lab']);
+  }
+
   loadWorld(w: WorldSlot): void {
     this.router.navigate(['/command-center/edit'], { queryParams: { worldId: w.id } });
   }

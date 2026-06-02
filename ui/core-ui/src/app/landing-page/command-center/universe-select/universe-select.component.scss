@@ -86,6 +86,36 @@
 }
 .select-sub { margin: 0; font-size: var(--font-size-sm, 0.95rem); color: var(--core-text-secondary); }
 
+// Secondary launch into the standalone procedural Planet Lab.
+.lab-link {
+  margin-top: var(--spacing-sm);
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  border-radius: var(--radius-pill, 999px);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  color: var(--core-energy);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 35%, transparent);
+  background: color-mix(in srgb, var(--core-energy) 8%, transparent);
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--core-energy) 60%, transparent);
+    background: color-mix(in srgb, var(--core-energy) 14%, transparent);
+    transform: translateY(-1px);
+  }
+  &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-link:hover { transform: none; }
+}
+
 // ── Slot grid ────────────────────────────────────────────────────────────────
 .slot-grid {
   position: relative;
