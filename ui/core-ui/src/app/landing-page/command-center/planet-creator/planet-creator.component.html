@@ -1,0 +1,67 @@
+<aside class="creator" role="group" aria-label="Planet generator">
+  <header class="creator__head">
+    <span class="creator__eyebrow">CORE · WORLD FORGE</span>
+    <button type="button" class="creator__collapse" (click)="toggleCollapsed()"
+            [attr.aria-expanded]="!collapsed" aria-controls="creator-body">
+      {{ collapsed ? 'Show' : 'Hide' }}
+    </button>
+  </header>
+
+  <div id="creator-body" class="creator__body" [hidden]="collapsed">
+    @if (draft) {
+      <label class="ctl"><span>Seed</span>
+        <span class="ctl__row">
+          <input type="text" [(ngModel)]="draft.seed" (change)="onChange()" aria-label="Seed">
+          <button type="button" class="btn" (click)="randomizeSeed()" aria-label="Randomize seed">⟳</button>
+        </span>
+      </label>
+
+      <label class="ctl"><span>Archetype</span>
+        <select [(ngModel)]="draft.biomeArchetype" (change)="onChange()" aria-label="Biome archetype">
+          @for (a of archetypes; track a) { <option [value]="a">{{ a }}</option> }
+        </select>
+      </label>
+
+      <label class="ctl"><span>Radius <em>{{ draft.radius }}</em></span>
+        <input type="range" min="0.05" max="5" step="0.05" [(ngModel)]="draft.radius" (input)="onChange()"></label>
+      <label class="ctl"><span>Octaves <em>{{ draft.octaves }}</em></span>
+        <input type="range" min="1" max="8" step="1" [(ngModel)]="draft.octaves" (input)="onChange()"></label>
+      <label class="ctl"><span>Persistence <em>{{ draft.persistence }}</em></span>
+        <input type="range" min="0.1" max="0.95" step="0.01" [(ngModel)]="draft.persistence" (input)="onChange()"></label>
+      <label class="ctl"><span>Lacunarity <em>{{ draft.lacunarity }}</em></span>
+        <input type="range" min="1.2" max="4" step="0.05" [(ngModel)]="draft.lacunarity" (input)="onChange()"></label>
+      <label class="ctl"><span>Noise strength <em>{{ draft.noiseStrength }}</em></span>
+        <input type="range" min="0" max="1" step="0.01" [(ngModel)]="draft.noiseStrength" (input)="onChange()"></label>
+      <label class="ctl"><span>Sea level <em>{{ draft.seaLevel }}</em></span>
+        <input type="range" min="0" max="1" step="0.01" [(ngModel)]="draft.seaLevel" (input)="onChange()"></label>
+      <label class="ctl"><span>Mountains <em>{{ draft.mountainHeight }}</em></span>
+        <input type="range" min="0" max="1" step="0.01" [(ngModel)]="draft.mountainHeight" (input)="onChange()"></label>
+      <label class="ctl"><span>Temperature <em>{{ draft.temperatureBias }}</em></span>
+        <input type="range" min="-1" max="1" step="0.01" [(ngModel)]="draft.temperatureBias" (input)="onChange()"></label>
+      <label class="ctl"><span>Moisture <em>{{ draft.moistureBias }}</em></span>
+        <input type="range" min="-1" max="1" step="0.01" [(ngModel)]="draft.moistureBias" (input)="onChange()"></label>
+
+      <div class="toggles">
+        <label><input type="checkbox" [(ngModel)]="draft.hasWater" (change)="onChange()"> Water</label>
+        <label><input type="checkbox" [(ngModel)]="draft.hasAtmosphere" (change)="onChange()"> Atmosphere</label>
+        <label><input type="checkbox" [(ngModel)]="draft.hasClouds" (change)="onChange()"> Clouds</label>
+      </div>
+
+      <fieldset class="palette">
+        <legend>Palette</legend>
+        <label><input type="color" [(ngModel)]="draft.palette.water" (input)="onChange()"> water</label>
+        <label><input type="color" [(ngModel)]="draft.palette.sand" (input)="onChange()"> sand</label>
+        <label><input type="color" [(ngModel)]="draft.palette.grass" (input)="onChange()"> grass</label>
+        <label><input type="color" [(ngModel)]="draft.palette.rock" (input)="onChange()"> rock</label>
+        <label><input type="color" [(ngModel)]="draft.palette.snow" (input)="onChange()"> snow</label>
+      </fieldset>
+
+      <div class="creator__ai">
+        <button type="button" class="btn btn--wide" (click)="regenerate.emit('art')" [disabled]="!worldId"
+                title="{{ worldId ? '' : 'Save this world first' }}">Regenerate art</button>
+        <button type="button" class="btn btn--wide" (click)="regenerate.emit('lore')" [disabled]="!worldId"
+                title="{{ worldId ? '' : 'Save this world first' }}">Regenerate lore</button>
+      </div>
+    }
+  </div>
+</aside>

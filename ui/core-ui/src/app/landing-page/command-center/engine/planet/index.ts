@@ -6,3 +6,4 @@ export {
 export type {
   WorldGenParams, BiomeArchetype, PlanetPalette, LodTier, PlanetOptions,
 } from './world-gen-params';
+export { planetLoreContext, planetArtClause } from './planet-descriptor';

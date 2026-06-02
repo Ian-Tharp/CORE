@@ -1,0 +1,113 @@
+// Planet creator — a floating glass panel at the LEFT of the stage (clear of the
+// right-side detail panel). Token-only solarpunk; controls mirror the planet lab.
+.creator {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 6;
+  width: 15.5rem;
+  max-height: calc(100% - 2rem);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+  background: color-mix(in srgb, var(--core-bg-base) 84%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 1.4rem color-mix(in srgb, var(--core-energy) 14%, transparent);
+  animation: creator-in 0.22s ease-out both;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-sm) 0.4rem;
+  }
+  &__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.14em;
+    color: color-mix(in srgb, var(--core-energy) 82%, transparent);
+  }
+  &__collapse {
+    flex: 0 0 auto;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--core-energy);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--core-energy) 30%, transparent);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.1rem 0.5rem;
+    &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+  }
+
+  &__body {
+    overflow-y: auto;
+    padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  &__ai {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: var(--spacing-xs);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid color-mix(in srgb, var(--core-energy) 14%, transparent);
+  }
+}
+
+.ctl {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  font-size: var(--font-size-xs); color: var(--core-text-secondary);
+
+  > span { display: flex; justify-content: space-between; }
+  em { font-style: normal; color: var(--core-energy); font-family: var(--font-mono); }
+
+  input[type=text], select {
+    width: 100%; padding: 0.25rem 0.45rem; border-radius: var(--radius-sm, 6px);
+    border: 1px solid color-mix(in srgb, var(--core-energy) 22%, transparent);
+    background: color-mix(in srgb, var(--core-bg-base) 60%, transparent);
+    color: var(--core-text-primary); font-size: var(--font-size-xs);
+  }
+  input[type=range] { width: 100%; accent-color: var(--core-energy); }
+  &__row { display: flex; gap: 0.3rem; }
+}
+
+.btn {
+  cursor: pointer; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm, 6px);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 35%, transparent);
+  background: color-mix(in srgb, var(--core-energy) 12%, transparent); color: var(--core-energy);
+  font-size: var(--font-size-xs);
+  &--wide { width: 100%; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--core-energy); outline-offset: 2px; }
+}
+
+.toggles {
+  display: flex; flex-direction: column; gap: 0.2rem; margin: 0.25rem 0;
+  label { display: flex; align-items: center; gap: 0.4rem; font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+  input { accent-color: var(--core-energy); }
+}
+
+.palette {
+  border: 1px solid color-mix(in srgb, var(--core-energy) 18%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  display: flex; flex-direction: column; gap: 0.2rem;
+  legend { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--core-energy); padding: 0 0.3rem; }
+  label { display: flex; align-items: center; gap: 0.4rem; font-size: var(--font-size-xs); color: var(--core-text-secondary); }
+  input[type=color] { width: 1.5rem; height: 1.1rem; border: none; background: transparent; padding: 0; }
+}
+
+@keyframes creator-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creator { animation: none; }
+}

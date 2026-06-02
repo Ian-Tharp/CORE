@@ -461,6 +461,26 @@ async def setup_db_schema() -> None:
             )
 
             # -----------------------------------------------------------------
+            # World gen params: the authored WorldGenParams blob for a single
+            # ORB's procedural planet (seed/noise/sea level/palette/archetype…).
+            # Keyed per (world_id, tile_index) — one backend world holds a galaxy
+            # of orbs. Canonical schema + clamping lives in the frontend
+            # (engine/planet/world-gen-params.ts), so stored loosely as JSONB.
+            # -----------------------------------------------------------------
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS world_gen_params (
+                    world_id UUID NOT NULL,
+                    tile_index INTEGER NOT NULL DEFAULT 0,
+                    params JSONB NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (world_id, tile_index),
+                    FOREIGN KEY (world_id) REFERENCES worlds(id) ON DELETE CASCADE
+                )
+                """
+            )
+
+            # -----------------------------------------------------------------
             # World assets: AI-generated images (world art, etc.) persisted
             # immediately to the DB (not the metadata blob) so they reload
             # independently of a world save, optionally scoped to a tile.

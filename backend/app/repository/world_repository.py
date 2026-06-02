@@ -240,6 +240,39 @@ async def get_world_metadata(world_id: str) -> Optional[Dict[str, Any]]:
     return _parse_jsonb_field(row["snapshot"]) if row else None
 
 
+async def save_world_gen_params(
+    world_id: str, tile_index: int, params: Dict[str, Any]
+) -> None:
+    """Upsert an orb's authored WorldGenParams (procedural planet config)."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO world_gen_params (world_id, tile_index, params, updated_at)
+            VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
+            ON CONFLICT (world_id, tile_index)
+            DO UPDATE SET params = EXCLUDED.params, updated_at = CURRENT_TIMESTAMP
+            """,
+            world_id,
+            tile_index,
+            json.dumps(params),
+        )
+
+
+async def get_world_gen_params(
+    world_id: str, tile_index: int
+) -> Optional[Dict[str, Any]]:
+    """Return an orb's authored WorldGenParams, or None if never saved."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT params FROM world_gen_params WHERE world_id = $1 AND tile_index = $2",
+            world_id,
+            tile_index,
+        )
+    return _parse_jsonb_field(row["params"]) if row else None
+
+
 async def create_world_asset(
     world_id: str,
     *,
