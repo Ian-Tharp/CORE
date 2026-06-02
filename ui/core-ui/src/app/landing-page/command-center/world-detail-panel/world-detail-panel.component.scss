@@ -719,7 +719,37 @@
   .knowledge-result { animation: none; }
 }
 
-// ── AI world art prompt + gallery ────────────────────────────────────────────
+// ── AI world art themes + prompt + gallery ───────────────────────────────────
+.art-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-xs) 0;
+}
+
+.art-theme {
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--core-border-subtle);
+  background: color-mix(in srgb, var(--core-energy) 6%, transparent);
+  color: var(--core-text-secondary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--core-energy) 16%, transparent);
+    border-color: color-mix(in srgb, var(--core-energy) 40%, transparent);
+    color: var(--core-text-primary);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--core-energy);
+    outline-offset: 1px;
+  }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
 .art-prompt {
   display: block;
   width: 100%;

@@ -217,16 +217,39 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
       .subscribe({ next: () => this.loadWorldArt(), error: () => this.loadWorldArt() });
   }
 
-  /** Build an evocative image prompt from the world's known character + lore. */
-  private buildArtPrompt(): string {
-    const t = this.selectedTile!;
+  /** The subject clause describing this world (name + character + lore). */
+  private worldSubject(): string {
+    const t = this.selectedTile;
     const m = this.metadata;
-    const name = m?.name || `World ${t.index}`;
-    const biome = t.biome !== 'none' ? `${t.biome} ` : '';
-    const resource = t.resource === 'node' ? ', rich in rare resources' : '';
+    const name = m?.name || (t ? `World ${t.index}` : 'an uncharted world');
+    const biome = t && t.biome !== 'none' ? `${t.biome} ` : '';
+    const terrain = t ? `${t.terrain} ` : '';
+    const resource = t && t.resource === 'node' ? ', rich in rare resources' : '';
     const desc = m?.description ? ` ${m.description}` : '';
-    return `Cinematic concept art of a world named "${name}": a ${biome}${t.terrain} world${resource}.${desc} `
+    return `A ${biome}${terrain}world named "${name}"${resource}.${desc}`;
+  }
+
+  /** Default auto-prompt (used when no theme/custom text is supplied). */
+  private buildArtPrompt(): string {
+    return `Cinematic concept art. ${this.worldSubject()} `
       + `Painterly science-fantasy, luminous solarpunk aesthetic, vast scale, dramatic lighting.`;
+  }
+
+  /** Selectable theme presets — each composes the world subject with a style. */
+  readonly artThemes: ReadonlyArray<{ id: string; label: string; style: string }> = [
+    { id: 'solarpunk', label: '🌿 Solarpunk Utopia', style: 'A lush solarpunk utopia of living architecture, verdant terraces and gentle solar tech, golden-hour light, hopeful and serene.' },
+    { id: 'volcanic', label: '🌋 Volcanic Forge', style: 'A volcanic forge-world of molten rivers, obsidian spires and ember glow beneath ashen skies, fierce and dramatic.' },
+    { id: 'tundra', label: '❄️ Crystalline Tundra', style: 'A frozen crystalline tundra of glittering ice spires and shimmering aurora, cold blues and violets, silent and vast.' },
+    { id: 'oceanic', label: '🌊 Oceanic Expanse', style: 'A boundless oceanic world of bioluminescent seas and floating cities, teal and cyan, mist and reflected starlight.' },
+    { id: 'desert', label: '🏜️ Desert Frontier', style: 'A sci-fantasy desert frontier of rippling dunes and sandstone monoliths under twin suns, warm amber and rust.' },
+    { id: 'jungle', label: '🌴 Verdant Wilds', style: 'Overgrown verdant wilds reclaiming ancient ruins, emerald canopy, shafts of misty light, mysterious and alive.' },
+    { id: 'cyber', label: '🌃 Cyber Metropolis', style: 'A neon cyber-metropolis of holographic towers and rain-slick streets, electric magenta and cyan, dense and luminous.' },
+    { id: 'astral', label: '✨ Astral Void', style: 'An astral void world adrift among nebulae and starfields, ethereal aurora veils, deep cosmic blues and gold, dreamlike.' },
+  ];
+
+  /** Apply a theme preset to the prompt box (still editable before generating). */
+  applyArtTheme(theme: { style: string }): void {
+    this.artPrompt = `${this.worldSubject()} ${theme.style} Cinematic concept art, highly detailed, dramatic lighting.`;
   }
 
   // ─────────────────────────────────────────────────────────────
