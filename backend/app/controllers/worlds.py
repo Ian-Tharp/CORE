@@ -218,6 +218,32 @@ async def delete_world_asset(world_id: str, asset_id: str) -> Dict[str, str]:
     return {"status": "deleted"}
 
 
+class LoreGenRequest(BaseModel):
+    kind: str
+    focus: str
+    world_name: Optional[str] = None
+    context: Optional[str] = None
+    model: Optional[str] = None
+
+
+@router.post("/{world_id}/lore/generate")
+async def generate_lore(world_id: str, payload: LoreGenRequest) -> Dict[str, Any]:
+    """Generate a schema-tagged wiki page (Overview/History/Peoples…) for a world."""
+    from app.services import lore_service
+
+    try:
+        return await lore_service.generate_lore_page(
+            world_id,
+            kind=payload.kind,
+            focus=payload.focus,
+            world_name=payload.world_name,
+            context=payload.context,
+            model=payload.model,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Lore generation failed: {exc}")
+
+
 @router.get("/by-name/{name}")
 async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""

@@ -95,6 +95,16 @@ export class WorldsService {
     return this.http.get<any[]>(`${this.apiUrl}/worlds/${worldId}/knowledge`);
   }
 
+  /** Generate a schema-tagged wiki page (Overview/History/Peoples…) for a world. */
+  generateLore(
+    worldId: string,
+    payload: { kind: string; focus: string; world_name?: string; context?: string }
+  ): Observable<{ id: string; title: string; content: string }> {
+    return this.http.post<{ id: string; title: string; content: string }>(
+      `${this.apiUrl}/worlds/${worldId}/lore/generate`, payload
+    );
+  }
+
   /** Semantic search scoped to this world's knowledge (world-filtered RAG). */
   searchKnowledge(
     worldId: string, query: string, maxChunks = 5

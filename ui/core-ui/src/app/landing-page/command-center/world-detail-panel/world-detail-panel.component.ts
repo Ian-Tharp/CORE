@@ -56,6 +56,11 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   isGeneratingInhabitant = false;
   inhabitantError = '';
 
+  // AI lore generation (schema-tagged wiki pages, persisted + linked to the tile).
+  isGeneratingLore = false;
+  loreError = '';
+  loreStatus = '';
+
   // World-scoped knowledge (ingested wiki lore).
   knowledgeDocs: Array<{ id: string; title: string; source: string }> = [];
   isIngesting = false;
@@ -316,6 +321,61 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
       + `distinctive attire, gear and bearing shaped by their homeworld, an expressive characterful face. `
       + `Head-and-shoulders, painterly science-fantasy with a solarpunk aesthetic, dramatic rim lighting, `
       + `intricate detail, concept-art quality.`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // AI lore — generate schema-tagged wiki pages grounded in the world
+  // ─────────────────────────────────────────────────────────────
+
+  /** Maps the AI Assistant actions to a wiki page kind + generation focus. */
+  private readonly loreKinds: Record<string, { kind: string; focus: string }> = {
+    lore: { kind: 'Overview', focus: 'an evocative encyclopedic overview — what this world is, its defining character and atmosphere, and what makes it singular.' },
+    history: { kind: 'History', focus: 'a history and timeline — its major eras, defining events, rises and falls, and how it became what it is.' },
+    inhabitants: { kind: 'Peoples & Culture', focus: 'its peoples and cultures — who lives here, their customs, beliefs, factions and ways of life.' },
+  };
+
+  /** Generate a wiki page of the given kind, persist it, and link it to this tile. */
+  generateLore(action: string): void {
+    const spec = this.loreKinds[action];
+    if (!spec) { this.quickAIPrompt(action); return; } // non-lore actions keep old behaviour
+    if (!this.worldId) { this.loreError = 'Save this world first to generate lore.'; return; }
+    if (!this.selectedTile || this.isGeneratingLore) { return; }
+    const tileIndex = this.selectedTile.index;
+    this.isGeneratingLore = true;
+    this.loreError = '';
+    this.loreStatus = `Writing ${spec.kind}…`;
+    this.worldsService.generateLore(this.worldId, {
+      kind: spec.kind,
+      focus: spec.focus,
+      world_name: this.metadata?.name || `World ${tileIndex}`,
+      context: this.loreContext()
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ id, title }) => {
+          this.isGeneratingLore = false;
+          this.loreStatus = `Created “${title}”`;
+          this.metadataService.linkWikiPage(tileIndex, id);
+          this.loadLinkedContent();
+        },
+        error: (err) => {
+          this.isGeneratingLore = false;
+          this.loreStatus = '';
+          this.loreError = 'Lore generation failed — check the model/API key.';
+          console.error('Lore generation failed:', err);
+        }
+      });
+  }
+
+  /** Summarise what's known about the selected world to ground generation. */
+  private loreContext(): string {
+    const t = this.selectedTile;
+    const m = this.metadata;
+    const parts: string[] = [];
+    if (t) { parts.push(`terrain: ${t.terrain}`, `biome: ${t.biome}`, `resource: ${t.resource}`); }
+    if (m?.tags?.length) { parts.push(`tags: ${m.tags.join(', ')}`); }
+    if (m?.description) { parts.push(`description: ${m.description}`); }
+    return parts.join('; ');
   }
 
   private loadLinkedContent(): void {

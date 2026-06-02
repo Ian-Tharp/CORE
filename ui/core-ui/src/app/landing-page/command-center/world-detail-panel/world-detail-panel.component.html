@@ -157,11 +157,18 @@
       <section class="info-section ai-section">
         <label class="section-label">AI Assistant</label>
         <div class="ai-quick-actions">
-          <button class="btn-ai" (click)="quickAIPrompt('lore')">Generate Lore</button>
+          <button class="btn-ai" (click)="generateLore('lore')" [disabled]="isGeneratingLore">Generate Lore</button>
           <button class="btn-ai" (click)="quickAIPrompt('connections')">Suggest Connections</button>
-          <button class="btn-ai" (click)="quickAIPrompt('inhabitants')">Describe Inhabitants</button>
-          <button class="btn-ai" (click)="quickAIPrompt('history')">Create History</button>
+          <button class="btn-ai" (click)="generateLore('inhabitants')" [disabled]="isGeneratingLore">Describe Inhabitants</button>
+          <button class="btn-ai" (click)="generateLore('history')" [disabled]="isGeneratingLore">Create History</button>
         </div>
+        @if (loreError) {
+          <span class="knowledge-hint">{{ loreError }}</span>
+        } @else if (loreStatus) {
+          <span class="knowledge-hint">{{ loreStatus }}</span>
+        } @else if (!worldId) {
+          <span class="knowledge-hint">Save this world to generate lore into its wiki.</span>
+        }
         <div class="ai-prompt-wrap">
           <textarea
             class="ai-prompt-input"
