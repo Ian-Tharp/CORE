@@ -43,6 +43,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   isGeneratingArt = false;
   artError = '';
   worldArt: WorldAsset[] = [];
+  artPrompt = ''; // optional custom prompt; blank = auto-generate from the world's lore
 
   // AI-generated inhabitants (persisted in the characters table, world-scoped).
   inhabitants: CharacterDto[] = [];
@@ -104,6 +105,7 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedTile']) {
       this.artError = '';
+      this.artPrompt = '';
       if (this.selectedTile) {
         this.metadataService.setSelectedTile(this.selectedTile.index);
       } else {
@@ -184,8 +186,10 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     const name = this.metadata?.name || `World ${tileIndex}`;
     this.isGeneratingArt = true;
     this.artError = '';
+    // Use the typed prompt if provided, otherwise auto-build one from the world.
+    const prompt = this.artPrompt.trim() || this.buildArtPrompt();
     // Generate the image, then persist it immediately to the world_assets table.
-    this.creativeService.generateImage(this.buildArtPrompt())
+    this.creativeService.generateImage(prompt)
       .pipe(
         switchMap(({ b64 }) => this.worldsService.saveAsset(this.worldId!, {
           image_b64: b64, kind: 'art', title: `${name} — portrait`, tile_index: tileIndex

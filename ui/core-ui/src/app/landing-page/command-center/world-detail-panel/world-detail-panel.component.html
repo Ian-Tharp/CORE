@@ -242,6 +242,14 @@
       <!-- AI-generated world art (persisted in the DB, reloads with the world) -->
       <section class="info-section">
         <label class="section-label">World Art</label>
+        <textarea
+          class="art-prompt"
+          rows="2"
+          [(ngModel)]="artPrompt"
+          [disabled]="isGeneratingArt"
+          placeholder="Describe the art to generate… (leave blank to auto-build from this world's lore)"
+          aria-label="World art prompt"
+        ></textarea>
         <button class="btn-small" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !worldId || !selectedTile">
           {{ isGeneratingArt ? 'Painting…' : '✦ Generate World Art' }}
         </button>
