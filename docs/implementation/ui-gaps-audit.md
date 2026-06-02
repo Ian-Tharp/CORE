@@ -219,7 +219,7 @@ A dedicated sweep for TODOs, stale comments, dead code, mock data, and out-of-da
 - ✅ **Ollama → LM Studio** — `README.md` (tech-stack table + ASCII diagram) and `CLAUDE.md` said "Ollama for local LLM" only; now "Ollama or LM Studio (`CORE_LOCAL_PROVIDER`)".
 - **Missing feature docs** — no docs for the world-creation studio (worlds/lore/art/character gen, `world_metadata`/`world_assets`, `lore_service`), the command-center 3D galaxy, or world-scoped RAG. Add a `docs/architecture/worlds-architecture.md` + a `## Creative Design & Worlds` section in `docs/README.md`.
 - **Historical logs not marked** — `docs/council/outputs/*` (implementation_roadmap dated 2026-01-28, vision_session, dockerization_deliberation) read as current guidance; add "historical RSI session output" headers pointing to `docs/roadmap/` for current priorities.
-- **Verify stub claims** — `docs/roadmap/command-deck-cognition-next-steps.md` calls `core_graph.py` "a non-functional stub"; recent lore/world wiring may have changed that — re-check and update.
+- ✅ **Verified (claim stands)** — `docs/roadmap/command-deck-cognition-next-steps.md` calls `core_graph.py` "a non-functional stub"; confirmed still a 56-line skeleton (5 nodes wired but stub bodies, `compile()` result unused, `intialize_graph` typo). No doc change needed — the graph itself is the real backlog item. Note: the `/engine/run/stream` path streams real graph *traversal/events*, but the nodes it traverses are these stubs.
 - **Out-of-scope content** — `docs/deployment/docker.md` has a "Consciousness-Hosting Capabilities" digression; move to a consciousness doc.
 - **Index integrity** — `docs/CORE/README.md` is a near-empty entry; expand or drop from the index.
 

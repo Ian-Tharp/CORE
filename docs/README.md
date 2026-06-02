@@ -5,6 +5,7 @@ Guide to all documentation in this repository.
 ## Architecture
 Design documents and system architecture.
 
+- [Worlds & Creative Studio](architecture/worlds-architecture.md) — The "universe of worlds": 3D command center, per-world AI art / inhabitants / lore / knowledge, data model, and persistence/reload flow
 - [Agent Factory](architecture/agent-factory.md) — Agent system architecture: library, factory, registry, communication
 - [Agent Factory Implementation](architecture/agent-factory-implementation.md) — Deep implementation plan for the agent factory system
 - [Agent Response System](architecture/agent-response-system.md) — Design for agent response generation in Communication Commons
@@ -30,10 +31,10 @@ Council of Perspectives deliberation framework.
 
 - [Council Charter](council/council-charter.md) — Charter and rules for council deliberation
 - [Council Synthesis](council/council-synthesis.md) — Synthesis methodology for council outputs
-- **Outputs:**
+- **Outputs** — _historical session records (early 2026); for current priorities see [Roadmap](#roadmap), not these:_
   - [Dockerization Deliberation](council/outputs/dockerization_deliberation.md) — Expanded council deliberation on CORE dockerization architecture
   - [Domain Exploration](council/outputs/domain_exploration.md) — Cross-disciplinary exploration of next-gen AI UX
-  - [Implementation Roadmap](council/outputs/implementation_roadmap.md) — 90-day implementation roadmap and sprint planning
+  - [Implementation Roadmap](council/outputs/implementation_roadmap.md) — 90-day roadmap from 2026-01-28 (historical snapshot)
   - [TODO Backlog](council/outputs/todo_backlog.md) — Comprehensive TODO backlog from council session
   - [Vision Session](council/outputs/vision_session.md) — Oracle and Ethicist findings on human-AI interaction
 
@@ -70,6 +71,8 @@ Project planning and feature backlogs.
 - [UI Polish Log](ui-polish-log.md) — Iteration log of the autonomous section-by-section UI polish
 
 ## RSI (Recursive Self-Improvement)
+_Historical session reports — point-in-time records, not current guidance._
+
 - [2026-01-11 Session](RSI/2026-01-11-session-superintelligence-collaboration.md) — Superintelligence collaboration session
 - [2026-01-12 Vertical Slice](RSI/2026-01-12-vertical-slice-complete.md) — Vertical slice completion report
 - [WebSocket Implementation](RSI/websocket-implementation.md) — WebSocket real-time communication RSI report
