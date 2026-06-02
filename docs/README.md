@@ -52,6 +52,7 @@ UX philosophy and the design system.
 - [Sandbox Integration](deployment/sandbox-integration.md) — Sandbox environment setup
 
 ## Implementation
+- [Lore Agents Linking Plan](implementation/lore-agents-linking-plan.md) — Plan to route world lore generation through modular Agent Factory agents with per-agent model selection and config UI (phased tasks, decisions, risks, coordination)
 - [UI Gaps & Improvements Audit](implementation/ui-gaps-audit.md) — Per-route audit of what's stubbed, broken, and gapped across the whole Angular UI, with a prioritized backlog
 - [CORE Engine Testing](implementation/core-engine-testing.md) — Testing strategy for the CORE engine
 - [Human-AI Collaboration Roadmap](implementation/roadmap-human-ai-collaboration.md) — Roadmap for human-AI collaboration features
