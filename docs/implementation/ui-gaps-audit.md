@@ -17,6 +17,8 @@
 | 2026-06-02 | **Worlds Grid** — surface saved-world load errors + loading state; `takeUntilDestroyed` | `bb6ca53` |
 | 2026-06-02 | **Docs:** Ollama → LM Studio in README + CLAUDE.md | — |
 | 2026-06-02 | **Hygiene:** removed dead typing-sim code; engine.service URLs → AppConfigService | — |
+| 2026-06-02 | **Docs:** new `architecture/worlds-architecture.md`; indexed; historical logs flagged; `core_graph.py` stub claim verified | `58c894c` |
+| 2026-06-02 | **Hygiene:** presence/creative/system-monitor URLs → AppConfigService | `293e1d2` |
 
 ## Status legend
 
@@ -227,7 +229,8 @@ A dedicated sweep for TODOs, stale comments, dead code, mock data, and out-of-da
 - ✅ **Stale "not implemented" comment** — engine-playground claimed the CORE run "simulates execution / backend needs to implement streaming"; it already streams real graph execution. Comment corrected (`4668751`).
 - ✅ **Dead code** — removed the no-op `simulateTypingResponse()` + its misleading caller in `communication.component.ts` (commented-out body, "simulate a random instance typing back").
 - ✅ **Hardcoded URLs (engine)** — `engine.service.ts` had 6 hardcoded `http://localhost:8001/...`; now routed through `AppConfigService` (`api`/`engineApi` getters).
-- **Hardcoded URLs (remaining)** — `presence.service.ts`, `creative.service.ts`, `worlds.service.ts`, `spawn-templates.service.ts`, `system-monitor.service.ts`, `chat-window.component.ts:97` still hardcode `http://localhost:8001`. Route through `AppConfigService` (note: some of these are under active edit by a parallel worker — coordinate).
+- ✅ **Hardcoded URLs (presence/creative/system-monitor)** — routed through `AppConfigService` (`293e1d2`).
+- **Hardcoded URLs (remaining)** — `worlds.service.ts`, `spawn-templates.service.ts`, `chat-window.component.ts:97` still hardcode `http://localhost:8001`. Left intentionally — under active edit by a parallel worker; sweep once those land.
 - **Mock data presented as real (no indicator)** — `message.service.ts` `getMockMessages()`, `agent-marketplace.service.ts` `loadMockAgents()`, `boards.component.ts` `initializeMockData()`, `instance.service.ts` `getTaskSummary()`. Either wire to backend or add a visible "sample data" badge. (Marketplace/analytics have no backend yet — see reality-check.)
 - **Duplicate logic** — `conversations-page.component.ts:71–78` computes `isConnected` twice; collapse to one assignment (its own RSI TODO).
 - **`mark-as-read` TODO** — `channel.service.ts:57` "Call backend API to mark messages as read": REST route doesn't exist (WS-only) — wire the WS path or add the route.
