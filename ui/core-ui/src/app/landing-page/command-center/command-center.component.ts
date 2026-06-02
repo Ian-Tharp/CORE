@@ -80,6 +80,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   private saveMessageTimeout?: ReturnType<typeof setTimeout>;
   public viewportScanActive = false;
   private viewportScanTimeout?: ReturnType<typeof setTimeout>;
+  public worldStepLabel = '';
+  private worldStepLabelTimeout?: ReturnType<typeof setTimeout>;
 
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
@@ -91,6 +93,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.tileGrid.onHoverChanged().subscribe((h) => { this.hoveredInfo = h; });
     this.tileGrid.onSelectedChanged().subscribe((s) => {
       this.selectedInfo = s;
+      this.queueWorldStepLabelUpdate();
       if (s && this.connectionCreationMode) {
         this.handleConnectionCreationClick();
       }
@@ -105,6 +108,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.isInitialized = true;
     // defaults
     this._syncGridStateToService();
+    this.queueWorldStepLabelUpdate();
 
     // Subscribe to connection changes for visualization
     this.tileMetadata.onConnectionsChanged().subscribe((connections) => {
@@ -131,6 +135,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       Promise.resolve().then(() => {
         this.tileGrid.setDocumentedWorlds(documented);
         this.worldLabels = labels;
+        this.queueWorldStepLabelUpdate();
       });
     });
 
@@ -174,6 +179,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.viewportScanTimeout) {
       clearTimeout(this.viewportScanTimeout);
+    }
+    if (this.worldStepLabelTimeout) {
+      clearTimeout(this.worldStepLabelTimeout);
     }
     this.removeLabelUpdater?.();
     this.engine.dispose();
@@ -403,19 +411,26 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   /** Step the highlighted world forward (+1) or back (-1) through the universe. */
   public stepWorld(delta: number): void {
     this.tileGrid.stepSelection(delta);
+    this.updateWorldStepLabel();
   }
 
-  /**
-   * Label for the world stepper, e.g. "World 7 / 441" — a ✦ marks when stepping
-   * is scoped to authored worlds rather than every orb.
-   */
-  public get worldStepLabel(): string {
+  private updateWorldStepLabel(): void {
     const { position, total, scoped } = this.tileGrid.getNavInfo();
-    if (!total) { return ''; }
+    if (!total) {
+      this.worldStepLabel = '';
+      return;
+    }
     const mark = scoped ? ' ✦' : '';
-    return position >= 0
+    this.worldStepLabel = position >= 0
       ? `World ${position + 1} / ${total}${mark}`
       : `${total} world${total === 1 ? '' : 's'}${mark}`;
+  }
+
+  private queueWorldStepLabelUpdate(): void {
+    if (this.worldStepLabelTimeout) {
+      clearTimeout(this.worldStepLabelTimeout);
+    }
+    this.worldStepLabelTimeout = setTimeout(() => this.updateWorldStepLabel(), 0);
   }
 
   public onOpenWorlds(): void {
@@ -441,6 +456,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   public onApplyGridConfig(): void {
     this.tileGrid.createTileGrid(this.gridConfig);
     this._syncGridStateToService();
+    this.queueWorldStepLabelUpdate();
     this._triggerViewportScan();
   }
 
@@ -527,6 +543,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       this.onToggleOutlines(!this.outlinesVisible);
     } else if (e.key === 'Escape') {
       this.tileGrid.returnToOverview();
+      this.queueWorldStepLabelUpdate();
       this.contextMenu.visible = false;
     } else if (e.key === '+' || e.key === '=') {
       this.brush = Math.min(6, this.brush + 1);
