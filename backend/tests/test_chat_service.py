@@ -51,7 +51,12 @@ class TestNormaliseProvider:
         """Unknown providers default to "openai"."""
         assert _normalise_provider("openai") == "openai"
         assert _normalise_provider("gpt-4") == "openai"
-        assert _normalise_provider("anthropic") == "openai"
+        assert _normalise_provider("mystery-provider") == "openai"
+
+    def test_anthropic_maps_to_anthropic(self):
+        """Anthropic is a first-class provider (own circuit breaker + stream path)."""
+        assert _normalise_provider("anthropic") == "anthropic"
+        assert _normalise_provider("Anthropic") == "anthropic"
 
 
 # ===========================================================================

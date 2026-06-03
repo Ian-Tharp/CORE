@@ -6,40 +6,16 @@ import { AnalyticsPageComponent } from './analytics-page/analytics-page.componen
 import { AgentBuilderComponent } from './agents-page/agent-builder/agent-builder.component';
 import { MyAgentsPageComponent } from './agents-page/my-agents-page/my-agents-page.component';
 import { AgentMarketplaceComponent } from './agents-page/agent-marketplace/agent-marketplace.component';
-import { CommandCenterComponent } from './landing-page/command-center/command-center.component';
-import { UniverseSelectComponent } from './landing-page/command-center/universe-select/universe-select.component';
-import { LandingComponent as CreativeLandingComponent } from './creative-design-product/landing/landing.component';
-import { WorldsGridComponent } from './creative-design-product/worlds-grid/worlds-grid.component';
-import { MarketplaceComponent } from './creative-design-product/marketplace/marketplace.component';
-import { WikiComponent } from './creative-design-product/wiki/wiki.component';
-import { WorldDetailComponent } from './creative-design-product/world-detail/world-detail.component';
-import { CreativeBoardsComponent } from './creative-design-product/boards/creative-boards.component';
 import { CommunicationComponent } from './communication/communication.component';
 import { McpRegistryComponent } from './tools/mcp-registry.component';
 import { DiscordBridgeDashboardComponent } from './tools/discord-bridge-dashboard/discord-bridge-dashboard.component';
 import { AttributionBrowserComponent } from './knowledge-attribution/attribution-browser.component';
-import { KanbanComponent } from './kanban/kanban.component';
 import { BoardsComponent } from './landing-page/boards/boards.component';
 
 export const routes: Routes = [
   {
     path: '',
     component: LandingPageComponent
-  },
-  {
-    path: 'command-center',
-    component: UniverseSelectComponent
-  },
-  {
-    path: 'command-center/edit',
-    component: CommandCenterComponent
-  },
-  {
-    // Standalone procedural-planet tuning lab (lazy — keeps Three out of the main bundle).
-    path: 'command-center/planet-lab',
-    loadComponent: () =>
-      import('./landing-page/command-center/engine/planet/demo/planet-lab.component')
-        .then(m => m.PlanetLabComponent),
   },
   {
     path: 'conversations',
@@ -87,21 +63,15 @@ export const routes: Routes = [
     component: AgentMarketplaceComponent
   },
   {
-    path: 'creative',
-    component: CreativeLandingComponent
-  },
-  { path: 'creative/worlds', component: WorldsGridComponent },
-  { path: 'creative/world/:id', component: WorldDetailComponent },
-  { path: 'creative/wiki', component: WikiComponent },
-  { path: 'creative/boards', component: CreativeBoardsComponent },
-  { path: 'creative/marketplace', component: MarketplaceComponent },
-  {
-    path: 'kanban',
-    component: KanbanComponent
-  },
-  {
     path: 'boards',
     component: BoardsComponent
+  },
+  {
+    // Standalone procedural-planet tuning lab (lazy — keeps Three out of the main bundle).
+    path: 'planet-lab',
+    loadComponent: () =>
+      import('./landing-page/planet-lab/demo/planet-lab.component')
+        .then(m => m.PlanetLabComponent),
   },
   {
     path: '**',

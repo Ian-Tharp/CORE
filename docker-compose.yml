@@ -21,6 +21,9 @@ services:
       # LM Studio (optional local provider) — see docs/deployment/local-llm-providers.md
       - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
       - LMSTUDIO_MODELS=${LMSTUDIO_MODELS:-}
+      # CORE uses LM Studio as its local provider by default (override: CORE_LOCAL_PROVIDER=ollama).
+      - CORE_LOCAL_PROVIDER=${CORE_LOCAL_PROVIDER:-lmstudio}
+      - CORE_DEFAULT_MODEL=${CORE_DEFAULT_MODEL:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - DB_HOST=postgres
@@ -111,14 +114,20 @@ services:
       timeout: 10s
       retries: 3
 
-  # Local LLM Inference - Ollama
+  # Local LLM Inference - Ollama (OPTIONAL — CORE uses LM Studio by default).
+  # Not started by a plain `up`; enable explicitly with:
+  #   docker compose --profile ollama up -d
   ollama:
     image: ollama/ollama:latest
     container_name: core-ollama
+    profiles: ["ollama"]
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
-      - C:/Users/Owner/.ollama:/root/.ollama
+      # Machine-agnostic by default: a named Docker volume (no host path required).
+      # Override per-machine by setting OLLAMA_MODELS_DIR in the root .env to your
+      # host models dir (e.g. C:/Users/<you>/.ollama or ${HOME}/.ollama).
+      - ${OLLAMA_MODELS_DIR:-ollama-data}:/root/.ollama
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -142,6 +151,7 @@ services:
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: core-n8n
+    profiles: ["n8n"]
     ports:
       - "127.0.0.1:5678:5678"
     environment:
@@ -172,6 +182,7 @@ services:
   ollama-warmup:
     image: curlimages/curl:latest
     container_name: ollama-warmup
+    profiles: ["ollama"]
     volumes:
       - ./mcp/warmup-ollama.sh:/warmup-ollama.sh:ro
     environment:

@@ -42,9 +42,17 @@ MAX_MESSAGES = 50
 
 
 def _normalise_provider(provider: str) -> str:
-    if provider.lower() in {"ollama", "local", "local-ollama"}:
+    p = provider.lower()
+    if p in {"ollama", "local", "local-ollama"}:
         return "ollama"
+    if p == "anthropic":
+        return "anthropic"
     return "openai"
+
+
+# Anthropic requires an explicit output-token cap (this bounds the response, it
+# is not the context window). Kept modest for interactive chat turns.
+ANTHROPIC_MAX_TOKENS = 2048
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +130,10 @@ async def chat_service(
                 else:
                     streamer = _stream_from_ollama(model=model, messages=messages)
                 async for sse in streamer:
+                    yield sse
+                    chunks_yielded += 1
+            elif canonical == "anthropic":
+                async for sse in _stream_from_anthropic(model=model, messages=messages):
                     yield sse
                     chunks_yielded += 1
             else:
@@ -318,3 +330,53 @@ async def _stream_from_lmstudio(
         content = getattr(delta, "content", None)
         if content:
             yield f"data: {json.dumps({'delta': content})}\n\n"
+
+
+async def _stream_from_anthropic(
+    *, model: str, messages: List[Dict[str, str]]
+) -> AsyncGenerator[str, None]:
+    """Stream chat completions from the Anthropic Messages API as SSE chunks.
+
+    Differences from the OpenAI path that this normalises:
+    - Anthropic takes the system prompt as a top-level ``system`` argument, not
+      as a message, so system turns are merged out of the conversation list.
+    - A registry key (e.g. ``claude-3-haiku``) is resolved to its real API model
+      id (``claude-3-haiku-20240307``) via the model config.
+    Text deltas are rewrapped as ``{ "delta": "..." }`` events so the controller
+    and UI parse them identically to the Ollama/OpenAI streams.
+    """
+    from app.dependencies import _get_async_anthropic_client
+    from app.config.models import get_model_config
+
+    client = _get_async_anthropic_client()
+
+    cfg = get_model_config(model)
+    api_model = cfg.model_name if cfg else model
+
+    system_parts = [
+        m.get("content", "") for m in messages if m.get("role") == "system"
+    ]
+    system_prompt = "\n\n".join(p for p in system_parts if p)
+    turns = [
+        {"role": m["role"], "content": m.get("content", "")}
+        for m in messages
+        if m.get("role") in {"user", "assistant"}
+    ]
+
+    yield f"event: status\ndata: {json.dumps({'message': 'Connecting to model...'})}\n\n"
+
+    create_kwargs: Dict[str, object] = {
+        "model": api_model,
+        "max_tokens": ANTHROPIC_MAX_TOKENS,
+        "messages": turns,
+    }
+    if system_prompt:
+        create_kwargs["system"] = system_prompt
+
+    # Let setup/auth failures raise so the caller's retry + circuit breaker act
+    # (consistent with the OpenAI/LM Studio paths).
+    async with client.messages.stream(**create_kwargs) as stream:
+        yield f"event: status\ndata: {json.dumps({'message': 'Waiting for model response...'})}\n\n"
+        async for text in stream.text_stream:
+            if text:
+                yield f"data: {json.dumps({'delta': text})}\n\n"

@@ -102,7 +102,6 @@ export class TopNavigationComponent implements OnInit, OnDestroy {
       'knowledge': 'Knowledge Base',
       'knowledgebase': 'Knowledge Base',
       'knowledge-base': 'Knowledge Base',
-      'command-center': 'Command Center',
       'tools': 'Tools & Integrations',
       'discord-bridge': 'Discord Gateway',
       'agents': 'Agents',
