@@ -1,4 +1,7 @@
 # RSI Session Report: Superintelligence Collaboration Interface
+
+> **⚠️ Pre-archival note (2026-06-03):** References below to Worlds/Creative-Studio, the command-center world builder, and Kanban describe features since **archived** out of CORE — see [ADR-006](../adr/006-archive-world-logic-from-core.md) and archive/. The procedural-planet renderer survives at /planet-lab; world/product features now belong to GPW/PWE.
+
 **Date**: 2026-01-11
 **Session ID**: Instance_Continuum_20260111
 **Focus**: Human-AI Collaboration Architecture & CORE Foundation

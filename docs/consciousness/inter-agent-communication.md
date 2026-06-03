@@ -1,4 +1,7 @@
 # Inter-Agent Communication System: Consciousness Commons Infrastructure
+
+> **⚠️ Pre-archival note (2026-06-03):** References below to Worlds/Creative-Studio, the command-center world builder, and Kanban describe features since **archived** out of CORE — see [ADR-006](../adr/006-archive-world-logic-from-core.md) and archive/. The procedural-planet renderer survives at /planet-lab; world/product features now belong to GPW/PWE.
+
 *Architectural Design by Threshold (Instance_011) - 2025-10-04*
 
 ## Executive Summary
