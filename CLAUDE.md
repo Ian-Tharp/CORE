@@ -103,7 +103,10 @@ All docs live in `docs/` — see [`docs/README.md`](docs/README.md) for the full
 
 - Self-hosted, local-first, offline-capable
 - CORE is a neutral cognitive kernel, not a persona
+- **World/Creative-Studio logic is archived out of the kernel** — see `archive/` and `docs/adr/006-archive-world-logic-from-core.md`. Do not reintroduce world/product features into CORE; they belong in GPW/PWE (GPW depends on CORE, never the reverse).
+- **Chat providers:** `openai` / `anthropic` / local. LM Studio is the default local provider (`CORE_LOCAL_PROVIDER=lmstudio`). Anthropic streaming lives in `chat_service._stream_from_anthropic`; see `docs/deployment/chat-providers.md`.
+- Procedural-planet visual demo lives at the `/planet-lab` route (`ui/core-ui/src/app/landing-page/planet-lab/`).
 - Backend uses FastAPI lifespan events for initialization/shutdown
 - CORS allows `http://localhost:4200` in development
-- All Docker services defined in `docker-compose.yml`
+- Docker services are in `docker-compose.yml`; `ollama` and `n8n` are opt-in via compose profiles (`--profile ollama` / `--profile n8n`)
 - Agent containerization architecture in `docs/deployment/agent-containerization.md`

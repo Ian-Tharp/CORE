@@ -1,6 +1,6 @@
 # Local LLM Providers (Ollama & LM Studio)
 
-_Last updated: 2026-06-01_
+_Last updated: 2026-06-03_
 
 CORE routes completions through `ModelRouter`
 ([`backend/app/services/model_router.py`](../../backend/app/services/model_router.py)),
@@ -9,8 +9,8 @@ are supported (both free, no network egress) alongside the cloud providers:
 
 | Provider | Default endpoint | Notes |
 |----------|------------------|-------|
-| **Ollama** | `http://ollama:11434/v1` (`OLLAMA_BASE_URL`) | runs as a Docker service |
-| **LM Studio** | `http://localhost:1234/v1` (`LMSTUDIO_BASE_URL`) | runs on the **host** |
+| **LM Studio** (default) | `http://host.docker.internal:1234/v1` (`LMSTUDIO_BASE_URL`) | runs on the **host**; the default local provider |
+| **Ollama** | `http://ollama:11434/v1` (`OLLAMA_BASE_URL`) | optional container, opt-in via `docker compose --profile ollama up -d` |
 | OpenAI | api.openai.com | needs `OPENAI_API_KEY` |
 | Anthropic | api.anthropic.com | needs `ANTHROPIC_API_KEY` |
 
@@ -39,13 +39,14 @@ Set these env vars (e.g. in `backend/.env`, or your shell, or override in compos
 | `LMSTUDIO_BASE_URL` | Server URL. Defaults to `http://localhost:1234/v1`; the dockerized backend defaults to `http://host.docker.internal:1234/v1`. | |
 | `LMSTUDIO_API_KEY` | Any non-empty string. | `lm-studio` |
 | `LMSTUDIO_CONTEXT_WINDOW` | Context window registered for the models. | `8192` |
-| `CORE_LOCAL_PROVIDER` | `ollama` (default) or `lmstudio`. Switches the **entire** local layer — completions, the comprehension intent model, embeddings, and model auto-selection — to that provider, so a machine can run with **no Ollama at all**. | `lmstudio` |
+| `CORE_LOCAL_PROVIDER` | `lmstudio` (the compose default) or `ollama`. Switches the **entire** local layer — completions, the comprehension intent model, embeddings, and model auto-selection — to that provider, so a machine can run with **no Ollama at all**. | `lmstudio` |
 | `CORE_DEFAULT_MODEL` | Make a specific model the default. Set to an LM Studio model id to use it by default. | `google/gemma-4-e4b` |
 | `EMBEDDING_MODEL` | Embedding model id for the knowledgebase / RAG. Set to LM Studio's embedding model when running LM Studio (else it defaults to `nomic-embed-text` for Ollama). | `text-embedding-nomic-embed-text-v1.5` |
 
-> LM Studio stays **dormant** until you set `LMSTUDIO_MODELS` — by default nothing is
-> registered and Ollama remains the local provider, so this change is zero-impact
-> until you opt in.
+> CORE defaults to **LM Studio** as the local provider (`CORE_LOCAL_PROVIDER=lmstudio` in the
+> compose files). Set `LMSTUDIO_MODELS` to the id(s) you've loaded so they register in the
+> model router. To use Ollama instead, set `CORE_LOCAL_PROVIDER=ollama` and start the optional
+> Ollama container (`docker compose --profile ollama up -d`).
 
 ### 3. Apply and verify
 ```bash
@@ -72,11 +73,10 @@ The model router will now prefer your LM Studio model for local inference (per
   (`get_local_chat_model`), and the embedding service — so when set to `lmstudio` the
   inactive Ollama provider is never contacted (no `ollama` container required).
 
-## Running with no Ollama
-Set `CORE_LOCAL_PROVIDER=lmstudio` + `LMSTUDIO_MODELS` + `EMBEDDING_MODEL` and the
-backend needs no Ollama service at all. (The `ollama` service in the compose files is
-still defined; on a LM-Studio-only machine you can simply not start it — the backend
-won't reach for it.)
+## Running with no Ollama (the default)
+The compose default is `CORE_LOCAL_PROVIDER=lmstudio`, so the backend needs no Ollama service
+at all — just set `LMSTUDIO_MODELS` + `EMBEDDING_MODEL`. The `ollama` container is opt-in
+(`docker compose --profile ollama up -d`) and is never started or contacted otherwise.
 
 ## Sources
 - [LM Studio — OpenAI compatibility endpoints](https://lmstudio.ai/docs/developer/openai-compat)

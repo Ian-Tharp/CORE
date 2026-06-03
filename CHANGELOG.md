@@ -3,6 +3,37 @@
 
 ---
 
+## Session: June 3, 2026 — Kernel focus, Anthropic chat, portable Docker
+
+### Refocus CORE on the cognitive architecture
+Archived all non-cognitive World/Creative-Studio + Kanban code into `archive/` (history
+preserved via `git mv`) and unwired it from the app: `worlds`/`creative` controllers,
+`world_agent_workflow_service`, `lore_service`, world/creative repositories; the frontend
+`command-center` builder, `creative-design-product`, `kanban`. Kept the procedural-planet
+module as a standalone **`/planet-lab`** demo. See `archive/README.md` and
+`docs/adr/006-archive-world-logic-from-core.md`.
+**Status:** ✅ Complete
+
+### Anthropic as a first-class chat provider
+Added an Anthropic streaming path to `/chat/stream` (`chat_service._stream_from_anthropic`,
+async client, own circuit breaker), registered `claude-haiku-4-5`, and added the Anthropic
+option to the chat UI. Verified end-to-end. See `docs/deployment/chat-providers.md` and
+`docs/adr/007-anthropic-streaming-provider.md`.
+**Status:** ✅ Complete
+
+### Portable Docker / LM Studio default
+Replaced the hardcoded `C:/Users/Owner/.ollama` bind with `${OLLAMA_MODELS_DIR:-ollama-data}`
+(machine-agnostic), made **LM Studio** the default local provider, gated `ollama`/`n8n` behind
+compose profiles, and added a root `.env.example`.
+**Status:** ✅ Complete
+
+### CI greened
+Fixed the pipeline (`black --check`, `ng lint` errors in the restored planet-lab module,
+agent-builder spec `HttpClient` provider, Jest `forceExit`). Backend + frontend jobs pass.
+**Status:** ✅ Complete
+
+---
+
 ## Session: January 28, 2026
 
 ### Improvement #1: Fixed Engine Controller Bug
