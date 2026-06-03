@@ -16,7 +16,12 @@ module.exports = {
     ]
   },
   transformIgnorePatterns: ['node_modules/(?!.*)'],
-  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/e2e/']
+  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/e2e/'],
+  // A pre-existing service leaves an open handle (timer/socket) after specs
+  // finish, so Jest hangs at exit without this — which would stall CI
+  // (`npm test` runs no --forceExit). forceExit lets the run terminate once
+  // all tests complete. TODO: track down the leak via --detectOpenHandles.
+  forceExit: true
 };
 
 
