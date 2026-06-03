@@ -11,7 +11,7 @@ export function linearPalette(p: WorldGenParams): PaletteLinear {
   const c = (hex: string) => new THREE.Color().setStyle(hex).convertSRGBToLinear();
   return {
     water: c(p.palette.water), sand: c(p.palette.sand), grass: c(p.palette.grass),
-    rock: c(p.palette.rock), snow: c(p.palette.snow),
+    rock: c(p.palette.rock), snow: c(p.palette.snow)
   };
 }
 
@@ -22,7 +22,7 @@ const _scratch = new THREE.Color();
  */
 export function biomeColor(
   heightAboveSea: number, temperature: number, moisture: number, slope01: number,
-  pal: PaletteLinear, p: WorldGenParams, out: THREE.Color = new THREE.Color(),
+  pal: PaletteLinear, p: WorldGenParams, out: THREE.Color = new THREE.Color()
 ): THREE.Color {
   // 1) Water (deep -> shallow). Body colour; the water shell overlays it.
   if (heightAboveSea < 0) {

@@ -16,7 +16,7 @@ export function planetLoreContext(p: WorldGenParams): string {
   const features = [
     p.hasWater && 'liquid water',
     p.hasAtmosphere && 'an atmosphere',
-    p.hasClouds && 'cloud cover',
+    p.hasClouds && 'cloud cover'
   ].filter(Boolean).join(', ');
   return [
     `biome archetype: ${p.biomeArchetype}`,
@@ -25,7 +25,7 @@ export function planetLoreContext(p: WorldGenParams): string {
     sea,
     mts,
     features && `features: ${features}`,
-    `palette — water ${p.palette.water}, lowlands ${p.palette.grass}, highlands ${p.palette.rock}, peaks ${p.palette.snow}`,
+    `palette — water ${p.palette.water}, lowlands ${p.palette.grass}, highlands ${p.palette.rock}, peaks ${p.palette.snow}`
   ].filter(Boolean).join('; ');
 }
 

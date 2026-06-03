@@ -33,7 +33,7 @@ export const LOD_DETAIL: Record<LodTier, number> = {
   preview: 4,  //  ~2,562 verts  (galaxy embed)
   standard: 5, // ~10,242 verts  (demo default)
   high: 6,     // ~40,962 verts  (close inspect)
-  ultra: 7,    // ~163,842 verts (demo toggle only)
+  ultra: 7    // ~163,842 verts (demo toggle only)
 };
 export const MAX_DETAIL = 7;
 export interface PlanetOptions { tier?: LodTier; }
@@ -48,7 +48,7 @@ export const DEFAULT_PLANET_PARAMS: WorldGenParams = {
   temperatureBias: 0, moistureBias: 0,
   biomeArchetype: 'temperate',
   hasWater: true, hasAtmosphere: true, hasClouds: true,
-  palette: { water: '#1d6e7a', sand: '#c9b287', grass: '#4f9d5d', rock: '#6b6256', snow: '#eef3f2' },
+  palette: { water: '#1d6e7a', sand: '#c9b287', grass: '#4f9d5d', rock: '#6b6256', snow: '#eef3f2' }
 };
 
 /** Preset = DEFAULTS overlay (caller values still win for fields the caller explicitly sets). */
@@ -67,13 +67,13 @@ export const BIOME_PRESETS: Record<BiomeArchetype, Preset> = {
     palette: { water: '#15716b', sand: '#cdbf7e', grass: '#2f7d33', rock: '#5d5a44', snow: '#eafff2' } },
   astral:   { seaLevel: 0.40, mountainHeight: 0.40, temperatureBias: 0, moistureBias: 0.10,
     hasAtmosphere: true,
-    palette: { water: '#142a4d', sand: '#6a5a8f', grass: '#2fd9c8', rock: '#3a3358', snow: '#b98cff' } },
+    palette: { water: '#142a4d', sand: '#6a5a8f', grass: '#2fd9c8', rock: '#3a3358', snow: '#b98cff' } }
 };
 
 const NUM_CLAMP: Record<string, [number, number]> = {
   radius: [0.05, 50], octaves: [1, 8], persistence: [0.1, 0.95], lacunarity: [1.2, 4],
   noiseStrength: [0, 1], seaLevel: [0, 1], mountainHeight: [0, 1],
-  temperatureBias: [-1, 1], moistureBias: [-1, 1],
+  temperatureBias: [-1, 1], moistureBias: [-1, 1]
 };
 
 export function clampParams(p: WorldGenParams): WorldGenParams {
@@ -93,7 +93,7 @@ export function resolveParams(input: Partial<WorldGenParams> & { seed: string })
   const merged: WorldGenParams = {
     ...DEFAULT_PLANET_PARAMS, ...preset, ...input,
     biomeArchetype: archetype,
-    palette: { ...DEFAULT_PLANET_PARAMS.palette, ...preset.palette, ...input.palette },
+    palette: { ...DEFAULT_PLANET_PARAMS.palette, ...preset.palette, ...input.palette }
   };
   return clampParams(merged);
 }
@@ -110,7 +110,7 @@ export function hashParams(p: WorldGenParams): string {
     o.seed, o.radius, o.octaves, o.persistence, o.lacunarity, o.noiseStrength,
     o.seaLevel, o.mountainHeight, o.temperatureBias, o.moistureBias,
     o.biomeArchetype, o.hasWater, o.hasAtmosphere, o.hasClouds,
-    o.palette.water, o.palette.sand, o.palette.grass, o.palette.rock, o.palette.snow,
+    o.palette.water, o.palette.sand, o.palette.grass, o.palette.rock, o.palette.snow
   ]);
 }
 export function paramsEqual(a: WorldGenParams, b: WorldGenParams): boolean {

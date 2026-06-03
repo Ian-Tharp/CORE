@@ -71,7 +71,7 @@ export const routes: Routes = [
     path: 'planet-lab',
     loadComponent: () =>
       import('./landing-page/planet-lab/demo/planet-lab.component')
-        .then(m => m.PlanetLabComponent),
+        .then(m => m.PlanetLabComponent)
   },
   {
     path: '**',

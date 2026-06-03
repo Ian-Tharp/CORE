@@ -15,7 +15,7 @@ function mulberry32(seed: number): () => number {
 }
 const GRAD3 = new Float32Array([
   1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0, 1, 0, 1, -1, 0, 1,
-  1, 0, -1, -1, 0, -1, 0, 1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1,
+  1, 0, -1, -1, 0, -1, 0, 1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1
 ]);
 const F3 = 1 / 3, G3 = 1 / 6;
 
@@ -37,13 +37,21 @@ export class SimplexNoise3 {
     const x0 = xin - (i - t), y0 = yin - (j - t), z0 = zin - (k - t);
     let i1, j1, k1, i2, j2, k2;
     if (x0 >= y0) {
-      if (y0 >= z0)      { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
-      else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
-      else               { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
+      if (y0 >= z0) {
+        i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0;
+      } else if (x0 >= z0) {
+        i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1;
+      } else {
+        i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1;
+      }
     } else {
-      if (y0 < z0)       { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
-      else if (x0 < z0)  { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
-      else               { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+      if (y0 < z0) {
+        i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1;
+      } else if (x0 < z0) {
+        i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1;
+      } else {
+        i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0;
+      }
     }
     const x1 = x0 - i1 + G3, y1 = y0 - j1 + G3, z1 = z0 - k1 + G3;
     const x2 = x0 - i2 + 2 * G3, y2 = y0 - j2 + 2 * G3, z2 = z0 - k2 + 2 * G3;
@@ -64,7 +72,10 @@ export class SimplexNoise3 {
   fbm(x: number, y: number, z: number, octaves: number, persistence: number, lacunarity: number): number {
     let freq = 1, amp = 1, sum = 0, norm = 0;
     const oct = Math.max(1, Math.min(8, octaves | 0));
-    for (let o = 0; o < oct; o++) { sum += amp * this.noise3(x * freq, y * freq, z * freq); norm += amp; amp *= persistence; freq *= lacunarity; }
+    for (let o = 0; o < oct; o++) {
+      sum += amp * this.noise3(x * freq, y * freq, z * freq);
+      norm += amp; amp *= persistence; freq *= lacunarity;
+    }
     return sum / norm; // ~[-1,1]
   }
   ridged(x: number, y: number, z: number, octaves: number, persistence: number, lacunarity: number): number {
