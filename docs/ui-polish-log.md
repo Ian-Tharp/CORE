@@ -1,5 +1,7 @@
 # UI Polish Log
 
+> **⚠️ Pre-archival note (2026-06-03):** References below to Worlds/Creative-Studio, the command-center world builder, and Kanban describe features since **archived** out of CORE — see [ADR-006](./adr/006-archive-world-logic-from-core.md) and archive/. The procedural-planet renderer survives at /planet-lab; world/product features now belong to GPW/PWE.
+
 Autonomous UI/UX polish pass — cron job `af92ce65`, fires every 30 min (`:07`/`:37`).
 Each iteration improves **one** section adhering to the solarpunk × LCARS design
 system. Verified against the dev build; changes are left in the working tree

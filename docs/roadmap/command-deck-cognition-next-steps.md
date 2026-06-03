@@ -100,14 +100,11 @@ same treatment (token migration, deck-consistent animation, empty/loading/error
 states, `:focus-visible`, responsive):
 
 - [ ] `communication` (large — 46 KB SCSS; scope carefully)
-- [ ] `kanban`
-- [ ] `command-center`
 - [ ] `agents` (builder / library / marketplace)
 - [ ] `knowledgebase`
 - [ ] `knowledge-attribution`
 - [ ] `discord-bridge-dashboard`
 - [ ] `boards`
-- [ ] `creative/*`
 
 ## P2 — Design-system hardening
 

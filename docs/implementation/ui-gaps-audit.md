@@ -1,5 +1,7 @@
 # UI Gaps & Improvements Audit
 
+> **⚠️ Pre-archival note (2026-06-03):** References below to Worlds/Creative-Studio, the command-center world builder, and Kanban describe features since **archived** out of CORE — see [ADR-006](../adr/006-archive-world-logic-from-core.md) and archive/. The procedural-planet renderer survives at /planet-lab; world/product features now belong to GPW/PWE.
+
 **Date:** 2026-06-01
 **Scope:** Every route in `ui/core-ui/src/app` (16 routes across 5 feature clusters).
 **Method:** Parallel code-reading audit of each component's `.ts` / `.html` / `.scss`. Findings are grounded in source; claims about *backend* endpoints existing/not existing are inferred from the UI side and marked **(unverified)** — confirm against `backend/app/controllers/` before acting.
