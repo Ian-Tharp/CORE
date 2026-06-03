@@ -66,7 +66,7 @@ export class ChatService {
     content: string,
     model: string,
     conversationId?: string,
-    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local' }
+    options?: { kbMode?: 'none' | 'all' | 'file'; kbFileId?: string; provider?: 'openai' | 'ollama' | 'local' | 'anthropic' }
   ): Observable<string> {
     // 1. Persist the user message locally so that it is part of the chat history.
     const userInput: UserInput = { role: 'user', content };

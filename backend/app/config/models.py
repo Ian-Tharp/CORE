@@ -166,6 +166,17 @@ MODELS: Dict[str, ModelConfig] = {
         cost_per_1k_output=0.00125,
         recommended_for=["quick_responses", "high_volume"],
     ),
+    "claude-haiku-4-5": ModelConfig(
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-haiku-4-5-20251001",
+        display_name="Claude Haiku 4.5",
+        api_key_env="ANTHROPIC_API_KEY",
+        max_tokens=200000,
+        supports_vision=True,
+        cost_per_1k_input=0.001,
+        cost_per_1k_output=0.005,
+        recommended_for=["quick_responses", "high_volume", "low_latency"],
+    ),
 }
 
 

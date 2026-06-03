@@ -68,9 +68,11 @@ export class ChatWindowComponent implements OnChanges {
   // The 'ollama' option value means "the active local provider" — the backend
   // routes it to whichever local provider CORE_LOCAL_PROVIDER selects (Ollama or
   // LM Studio), so only the label and model list change per machine.
-  readonly providers: Array<'openai' | 'ollama'> = ['openai', 'ollama'];
-  selectedProvider: 'openai' | 'ollama' = 'openai';
+  readonly providers: Array<'openai' | 'ollama' | 'anthropic'> = ['openai', 'ollama', 'anthropic'];
+  selectedProvider: 'openai' | 'ollama' | 'anthropic' = 'openai';
   models: string[] = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o', 'o3', 'o4-mini'];
+  // Anthropic chat models — registry keys the backend resolves to real API ids.
+  readonly anthropicModels: string[] = ['claude-haiku-4-5', 'claude-3-5-sonnet', 'claude-3-haiku'];
   selectedModel = this.models[0];
   isPullingModel = false;
   newLocalModelName = '';
@@ -141,6 +143,9 @@ export class ChatWindowComponent implements OnChanges {
       this.loadLocalModels();
     } else if (this.selectedProvider === 'openai') {
       this.models = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o', 'o3', 'o4-mini'];
+      this.selectedModel = this.models[0];
+    } else if (this.selectedProvider === 'anthropic') {
+      this.models = this.anthropicModels;
       this.selectedModel = this.models[0];
     }
   }

@@ -170,6 +170,15 @@ def _get_anthropic_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
+@lru_cache()
+def _get_async_anthropic_client() -> anthropic.AsyncAnthropic:
+    """Authenticated async Anthropic client for streaming chat completions."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY environment variable not set.")
+    return anthropic.AsyncAnthropic(api_key=api_key)
+
+
 # ---------------------------------------------------------------------------
 # Database connection pool (PostgreSQL via asyncpg)
 # ---------------------------------------------------------------------------
