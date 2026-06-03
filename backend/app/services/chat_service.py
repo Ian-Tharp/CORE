@@ -353,9 +353,7 @@ async def _stream_from_anthropic(
     cfg = get_model_config(model)
     api_model = cfg.model_name if cfg else model
 
-    system_parts = [
-        m.get("content", "") for m in messages if m.get("role") == "system"
-    ]
+    system_parts = [m.get("content", "") for m in messages if m.get("role") == "system"]
     system_prompt = "\n\n".join(p for p in system_parts if p)
     turns = [
         {"role": m["role"], "content": m.get("content", "")}

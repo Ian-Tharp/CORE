@@ -282,9 +282,7 @@ class TestCorruptedPdf:
         mock_pdfium = MagicMock()
         mock_pdfium.PdfDocument.side_effect = Exception("also corrupt")
 
-        with patch.dict(
-            "sys.modules", {"pypdf": mock_pypdf, "pypdfium2": mock_pdfium}
-        ):
+        with patch.dict("sys.modules", {"pypdf": mock_pypdf, "pypdfium2": mock_pdfium}):
             title, text = await _extract_title_and_text(
                 "/corrupt.pdf", "application/pdf"
             )
