@@ -65,9 +65,7 @@ def _llm_or_stub(
     def _make(include_temp: bool):
         # build_chat_model handles the gpt-5 temperature exception and local
         # provider routing; pass temperature only when allowed.
-        return build_chat_model(
-            chosen_model, temperature=0.2 if include_temp else None
-        )
+        return build_chat_model(chosen_model, temperature=0.2 if include_temp else None)
 
     try:
         return _make(True).invoke(prompts).content  # type: ignore[attr-defined]

@@ -9,7 +9,7 @@ export function makeSurfaceMaterial(_p: WorldGenParams): THREE.MeshStandardMater
     vertexColors: true,
     roughness: 0.92,
     metalness: 0.0,
-    flatShading: false,
+    flatShading: false
   });
 }
 
@@ -20,7 +20,7 @@ export function makeWaterMaterial(p: WorldGenParams): THREE.MeshStandardMaterial
     opacity: 0.8,
     roughness: 0.16,
     metalness: 0.15,
-    depthWrite: false,
+    depthWrite: false
   });
   // Kill shoreline z-fighting against the surface.
   mat.polygonOffset = true;
@@ -44,8 +44,8 @@ export function makeAtmosphereMaterial(p: WorldGenParams): THREE.ShaderMaterial 
       uColorOuter: { value: outer },
       uSunDir: { value: new THREE.Vector3(0.6, 0.5, 0.4).normalize() },
       uIntensity: { value: 1.3 },
-      uPower: { value: 4.0 },
-    },
+      uPower: { value: 4.0 }
+    }
   });
 }
 
@@ -58,7 +58,7 @@ export function makeCloudMaterial(_p: WorldGenParams): THREE.ShaderMaterial {
     blending: THREE.AdditiveBlending,
     uniforms: {
       uColor: { value: new THREE.Color('#eef6ff').convertSRGBToLinear() },
-      uIntensity: { value: 0.85 },
-    },
+      uIntensity: { value: 0.85 }
+    }
   });
 }

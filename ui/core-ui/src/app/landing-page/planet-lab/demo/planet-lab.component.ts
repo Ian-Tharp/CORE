@@ -11,7 +11,7 @@ import { WorldGenParams, DEFAULT_PLANET_PARAMS, BiomeArchetype, LodTier } from '
   standalone: true,
   imports: [FormsModule],
   templateUrl: './planet-lab.component.html',
-  styleUrl: './planet-lab.component.scss',
+  styleUrl: './planet-lab.component.scss'
 })
 export class PlanetLabComponent implements AfterViewInit, OnDestroy {
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
@@ -87,7 +87,10 @@ export class PlanetLabComponent implements AfterViewInit, OnDestroy {
   }
 
   onTierChange(t: LodTier): void { this.tier.set(t); this.onParamsChange(); }
-  randomizeSeed(): void { this.params = { ...this.params, seed: Math.random().toString(36).slice(2, 10) }; this.onParamsChange(); }
+  randomizeSeed(): void {
+    this.params = { ...this.params, seed: Math.random().toString(36).slice(2, 10) };
+    this.onParamsChange();
+  }
 
   private onResize = (): void => {
     const el = this.host.nativeElement;

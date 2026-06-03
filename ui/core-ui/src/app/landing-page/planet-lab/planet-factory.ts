@@ -5,13 +5,13 @@ import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   resolveParams, hashParams, topoSig, detailFor,
-  type WorldGenParams, type PlanetOptions,
+  type WorldGenParams, type PlanetOptions
 } from './world-gen-params';
 import { makeFields, evictFields } from './noise';
 import { sampleAll } from './height-field';
 import { linearPalette, biomeColor } from './biome';
 import {
-  makeSurfaceMaterial, makeWaterMaterial, makeAtmosphereMaterial, makeCloudMaterial,
+  makeSurfaceMaterial, makeWaterMaterial, makeAtmosphereMaterial, makeCloudMaterial
 } from './planet-materials';
 import type { PlanetGroupUserData } from './planet.types';
 
@@ -46,7 +46,7 @@ export function buildPlanet(input: WorldGenParams, opts: PlanetOptions = {}): TH
 
   const ud: PlanetGroupUserData = {
     kind: 'core-planet', paramsHash: hashParams(p), topoSig: topoSig(p, opts), tier,
-    vertexCount: pos.count, basePositions, seed: p.seed,
+    vertexCount: pos.count, basePositions, seed: p.seed
   };
   group.userData = ud;
 
@@ -99,14 +99,13 @@ export function disposePlanet(group: THREE.Group): void {
 export function attachAutoRotate(
   group: THREE.Group,
   host: { onBeforeRender(cb: () => void): () => void },
-  radPerSec = 0.15,
+  radPerSec = 0.15
 ): () => void {
   const mq = matchMedia('(prefers-reduced-motion: reduce)');
   let remove: (() => void) | null = null;
   let last = performance.now();
   const apply = () => {
-    if (mq.matches) { remove?.(); remove = null; }
-    else if (!remove) {
+    if (mq.matches) { remove?.(); remove = null; } else if (!remove) {
       last = performance.now();
       remove = host.onBeforeRender(() => {
         const now = performance.now();
@@ -208,8 +207,7 @@ function disposeChildren(group: THREE.Group): void {
     const m = o as THREE.Mesh;
     if (m.geometry) { m.geometry.dispose(); }
     const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-    if (Array.isArray(mat)) { mat.forEach(disposeMat); }
-    else if (mat) { disposeMat(mat); }
+    if (Array.isArray(mat)) { mat.forEach(disposeMat); } else if (mat) { disposeMat(mat); }
   });
 }
 
