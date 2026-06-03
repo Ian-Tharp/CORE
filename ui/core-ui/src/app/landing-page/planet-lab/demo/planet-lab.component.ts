@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildPlanet, updatePlanet, disposePlanet } from '../planet-factory';
 import { WorldGenParams, DEFAULT_PLANET_PARAMS, BiomeArchetype, LodTier } from '../world-gen-params';
 
-/** Standalone tuning lab for the procedural planet module (/command-center/planet-lab). */
+/** Standalone tuning lab for the procedural planet module (/planet-lab). */
 @Component({
   selector: 'app-planet-lab',
   standalone: true,

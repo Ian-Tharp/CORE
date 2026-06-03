@@ -10,8 +10,6 @@ from app.controllers import (
     core_entry,
     conversations,
     system_monitor,
-    worlds,
-    creative,
     knowledgebase,
     local_llm,
     communication,
@@ -239,8 +237,6 @@ app.include_router(core_entry.router)
 app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(system_monitor.router)
-app.include_router(worlds.router)
-app.include_router(creative.router)
 app.include_router(knowledgebase.router)
 app.include_router(local_llm.router)
 app.include_router(communication.router)
