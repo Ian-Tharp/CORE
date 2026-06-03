@@ -1,9 +1,25 @@
 <div class="boards-container">
   <!-- Three-column responsive layout -->
-  <div class="boards-layout">
+  <div class="boards-layout" [class.boards-layout--chat-collapsed]="isChatPanelCollapsed">
     <!-- Chat / Assistant column (Left) -->
-    <aside class="chat-section">
-      <app-chat-window></app-chat-window>
+    <aside class="chat-section" [class.chat-section--collapsed]="isChatPanelCollapsed">
+      <button
+        type="button"
+        mat-icon-button
+        class="chat-section__toggle"
+        [attr.aria-expanded]="!isChatPanelCollapsed"
+        [matTooltip]="isChatPanelCollapsed ? 'Expand chat panel' : 'Collapse chat panel'"
+        (click)="toggleChatPanel()">
+        <mat-icon>{{isChatPanelCollapsed ? 'chevron_right' : 'chevron_left'}}</mat-icon>
+      </button>
+      @if (!isChatPanelCollapsed) {
+        <app-chat-window></app-chat-window>
+      } @else {
+        <div class="chat-section__collapsed-label" aria-hidden="true">
+          <mat-icon>forum</mat-icon>
+          <span>Chat</span>
+        </div>
+      }
     </aside>
 
     <!-- Central main content column (Middle) -->
@@ -13,8 +29,10 @@
         <mat-card class="calendar-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon>calendar_month</mat-icon>
-              Task Calendar
+              <span class="section-title__label">
+                <mat-icon>calendar_month</mat-icon>
+                Task Calendar
+              </span>
               <span class="sample-badge" role="status">Sample data</span>
             </mat-card-title>
             <div class="calendar-actions">
@@ -52,8 +70,10 @@
         <mat-card class="tasks-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon>assignment</mat-icon>
-              Tasks for {{selectedDate | date:'fullDate'}}
+              <span class="section-title__label">
+                <mat-icon>assignment</mat-icon>
+                Tasks for {{selectedDate | date:'fullDate'}}
+              </span>
               <mat-chip 
                 [matBadge]="tasksForSelectedDate.length.toString()" 
                 matBadgeSize="small" 
@@ -114,27 +134,35 @@
                         <h4 class="task-title" [class.completed]="task.status === 'completed'">
                           {{task.title}}
                         </h4>
-                        <p class="task-description" *ngIf="task.description">
-                          {{task.description}}
-                        </p>
+                        @if (task.description) {
+                          <p class="task-description">
+                            {{task.description}}
+                          </p>
+                        }
                         <div class="task-meta">
                           <mat-chip class="priority-chip" [class]="'priority-chip priority-' + task.priority.toLowerCase()">
                             {{task.priority}}
                           </mat-chip>
-                          <span class="assigned-to" *ngIf="task.assignedTo">
-                            <mat-icon>person</mat-icon>
-                            {{task.assignedTo}}
-                          </span>
-                          <span class="estimated-time" *ngIf="task.estimatedHours">
-                            <mat-icon>schedule</mat-icon>
-                            {{task.completedHours || 0}}/{{task.estimatedHours}}h
-                          </span>
-                        </div>
-                        <div class="task-tags" *ngIf="task.tags.length > 0">
-                          @for (tag of task.tags; track tag) {
-                            <mat-chip class="tag-chip">{{tag}}</mat-chip>
+                          @if (task.assignedTo) {
+                            <span class="assigned-to">
+                              <mat-icon>person</mat-icon>
+                              {{task.assignedTo}}
+                            </span>
+                          }
+                          @if (task.estimatedHours) {
+                            <span class="estimated-time">
+                              <mat-icon>schedule</mat-icon>
+                              {{task.completedHours || 0}}/{{task.estimatedHours}}h
+                            </span>
                           }
                         </div>
+                        @if (task.tags.length > 0) {
+                          <div class="task-tags">
+                            @for (tag of task.tags; track tag) {
+                              <mat-chip class="tag-chip">{{tag}}</mat-chip>
+                            }
+                          </div>
+                        }
                       </div>
                       <div class="task-actions">
                         <button mat-icon-button matTooltip="Edit Task">
@@ -159,13 +187,15 @@
                         </mat-menu>
                       </div>
                     </div>
-                    <div class="task-progress" *ngIf="task.estimatedHours && task.completedHours">
-                      <mat-progress-bar 
-                        mode="determinate" 
-                        [value]="(task.completedHours / task.estimatedHours) * 100"
-                        class="progress-bar">
-                      </mat-progress-bar>
-                    </div>
+                    @if (task.estimatedHours && task.completedHours) {
+                      <div class="task-progress">
+                        <mat-progress-bar
+                          mode="determinate"
+                          [value]="(task.completedHours / task.estimatedHours) * 100"
+                          class="progress-bar">
+                        </mat-progress-bar>
+                      </div>
+                    }
                   </div>
                 }
               }
@@ -182,8 +212,10 @@
         <mat-card class="events-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon>upcoming</mat-icon>
-              Upcoming Events
+              <span class="section-title__label">
+                <mat-icon>upcoming</mat-icon>
+                Upcoming Events
+              </span>
             </mat-card-title>
             <div class="events-actions">
               <button mat-icon-button matTooltip="Add Event">
@@ -214,9 +246,11 @@
                         <mat-icon class="event-type-icon">{{getEventTypeIcon(event.type)}}</mat-icon>
                         <h4 class="event-title">{{event.title}}</h4>
                       </div>
-                      <p class="event-description" *ngIf="event.description">
-                        {{event.description}}
-                      </p>
+                      @if (event.description) {
+                        <p class="event-description">
+                          {{event.description}}
+                        </p>
+                      }
                       <div class="event-meta">
                         <mat-chip class="event-type-chip" [class]="event.type">
                           {{event.type}}
@@ -242,8 +276,10 @@
         <mat-card class="stats-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon>analytics</mat-icon>
-              Quick Stats
+              <span class="section-title__label">
+                <mat-icon>analytics</mat-icon>
+                Quick Stats
+              </span>
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>

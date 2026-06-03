@@ -34,7 +34,7 @@ export interface UpcomingEvent {
   title: string;
   description?: string;
   date: Date;
-  type: 'meeting' | 'deadline' | 'milestone' | 'reminder';
+  type: 'meeting' | 'deadline' | 'milestone' | 'reminder' | 'maintenance';
   priority: 'low' | 'medium' | 'high';
 }
 
@@ -62,58 +62,64 @@ export interface UpcomingEvent {
   styleUrl: './boards.component.scss'
 })
 export class BoardsComponent implements OnInit {
-  selectedDate: Date = new Date();
-  tasks: Task[] = [];
-  upcomingEvents: UpcomingEvent[] = [];
+  public selectedDate: Date = new Date();
+  public tasks: Task[] = [];
+  public upcomingEvents: UpcomingEvent[] = [];
+  public isChatPanelCollapsed = false;
   
   // Filter options
-  priorityFilters = ['low', 'medium', 'high', 'urgent'];
-  statusFilters = ['pending', 'in-progress', 'completed', 'blocked'];
+  public priorityFilters = ['low', 'medium', 'high', 'urgent'];
+  public statusFilters = ['pending', 'in-progress', 'completed', 'blocked'];
   
   constructor() {
-    this.initializeMockData();
+    this._initializeMockData();
   }
 
-  ngOnInit(): void {
+  public ngOnInit(): void {
     // Component initialization
   }
 
-  get tasksForSelectedDate(): Task[] {
+  public get tasksForSelectedDate(): Task[] {
     return this.tasks.filter(task => 
-      this.isSameDay(task.dueDate, this.selectedDate)
+      this._isSameDay(task.dueDate, this.selectedDate)
     );
   }
 
-  get upcomingEventsThisWeek(): UpcomingEvent[] {
-    const startOfWeek = this.getStartOfWeek(new Date());
-    const endOfWeek = this.getEndOfWeek(new Date());
+  public get upcomingEventsThisWeek(): UpcomingEvent[] {
+    const startOfWeek = this._getStartOfWeek(new Date());
+    const endOfWeek = this._getEndOfWeek(new Date());
     
     return this.upcomingEvents.filter(event => 
       event.date >= startOfWeek && event.date <= endOfWeek
     ).sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
-  get pendingTasksCount(): number {
+  public get pendingTasksCount(): number {
     return this.tasks.filter(task => task.status === 'pending').length;
   }
 
-  get inProgressTasksCount(): number {
+  public get inProgressTasksCount(): number {
     return this.tasks.filter(task => task.status === 'in-progress').length;
   }
 
-  get completedTasksCount(): number {
+  public get completedTasksCount(): number {
     return this.tasks.filter(task => task.status === 'completed').length;
   }
 
-  get highPriorityTasksCount(): number {
+  public get highPriorityTasksCount(): number {
     return this.tasks.filter(task => task.priority === 'urgent' || task.priority === 'high').length;
   }
 
-  onDateSelected(date: Date): void {
+  public onDateSelected(date: Date | null): void {
+    if (!date) {return;}
     this.selectedDate = date;
   }
 
-  toggleTaskStatus(task: Task): void {
+  public toggleChatPanel(): void {
+    this.isChatPanelCollapsed = !this.isChatPanelCollapsed;
+  }
+
+  public toggleTaskStatus(task: Task): void {
     if (task.status === 'completed') {
       task.status = 'pending';
     } else if (task.status === 'pending') {
@@ -123,7 +129,7 @@ export class BoardsComponent implements OnInit {
     }
   }
 
-  getPriorityColor(priority: string): string {
+  public getPriorityColor(priority: string): string {
     switch (priority) {
       case 'low': return '#4caf50';
       case 'medium': return '#ff9800';
@@ -133,7 +139,7 @@ export class BoardsComponent implements OnInit {
     }
   }
 
-  getStatusIcon(status: string): string {
+  public getStatusIcon(status: string): string {
     switch (status) {
       case 'pending': return 'radio_button_unchecked';
       case 'in-progress': return 'schedule';
@@ -143,22 +149,23 @@ export class BoardsComponent implements OnInit {
     }
   }
 
-  getEventTypeIcon(type: string): string {
+  public getEventTypeIcon(type: string): string {
     switch (type) {
       case 'meeting': return 'group';
       case 'deadline': return 'schedule';
       case 'milestone': return 'flag';
       case 'reminder': return 'notifications';
+      case 'maintenance': return 'build';
       default: return 'event';
     }
   }
 
   // Date utility methods
-  private isSameDay(date1: Date, date2: Date): boolean {
+  private _isSameDay(date1: Date, date2: Date): boolean {
     return date1.toDateString() === date2.toDateString();
   }
 
-  private getStartOfWeek(date: Date): Date {
+  private _getStartOfWeek(date: Date): Date {
     const startOfWeek = new Date(date);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day;
@@ -167,7 +174,7 @@ export class BoardsComponent implements OnInit {
     return startOfWeek;
   }
 
-  private getEndOfWeek(date: Date): Date {
+  private _getEndOfWeek(date: Date): Date {
     const endOfWeek = new Date(date);
     const day = endOfWeek.getDay();
     const diff = endOfWeek.getDate() + (6 - day);
@@ -176,7 +183,7 @@ export class BoardsComponent implements OnInit {
     return endOfWeek;
   }
 
-  private initializeMockData(): void {
+  private _initializeMockData(): void {
     // Mock tasks
     this.tasks = [
       {
@@ -235,7 +242,7 @@ export class BoardsComponent implements OnInit {
         title: 'System Maintenance Window',
         description: 'Scheduled maintenance for core infrastructure',
         date: new Date(Date.now() + 2 * 86400000), // 2 days from now
-        type: 'maintenance' as any,
+        type: 'maintenance',
         priority: 'high'
       },
       {
