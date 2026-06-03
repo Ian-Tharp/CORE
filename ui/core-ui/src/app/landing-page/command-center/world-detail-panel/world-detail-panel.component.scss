@@ -156,6 +156,177 @@
   }
 }
 
+.knowledge-hint--audit {
+  display: block;
+  margin-top: var(--spacing-xs);
+  color: color-mix(in srgb, var(--core-amber-bright) 82%, var(--core-text-primary));
+}
+
+.lore-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--core-amber) 28%, transparent);
+  border-radius: var(--radius-md);
+  background: rgba(255, 179, 71, 0.05);
+}
+
+.lore-draft__title,
+.lore-draft__content {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--core-energy) 18%, transparent);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 20, 25, 0.62);
+  color: var(--core-text-primary);
+  font: inherit;
+}
+
+.lore-draft__title {
+  padding: 0.4rem 0.55rem;
+  font-weight: 600;
+}
+
+.lore-draft__content {
+  min-height: 9rem;
+  padding: 0.55rem;
+  resize: vertical;
+}
+
+.lore-draft__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.connection-suggestions {
+  margin-top: var(--spacing-sm);
+}
+
+.connection-item--suggested {
+  align-items: center;
+  flex-wrap: wrap;
+  border-color: color-mix(in srgb, var(--core-amber) 28%, transparent);
+  background: rgba(255, 179, 71, 0.055);
+}
+
+.connection-confidence {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--core-amber-bright);
+}
+
+.connection-accept {
+  border: 1px solid color-mix(in srgb, var(--core-success) 42%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--core-success) 14%, transparent);
+  color: var(--core-success);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.connection-rationale {
+  flex: 1 0 100%;
+  margin: var(--spacing-xs) 0 0;
+  color: var(--core-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.linked-item--clickable {
+  cursor: pointer;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--core-energy) 32%, transparent);
+    background: rgba(0, 255, 200, 0.06);
+  }
+}
+
+.mood-board-preview {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 14%, transparent);
+  border-radius: var(--radius-md);
+  background: rgba(0, 18, 24, 0.38);
+}
+
+.mood-board-preview__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  color: var(--core-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.mood-board-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.mood-board-card {
+  min-width: 0;
+  padding: var(--spacing-xs);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 10%, transparent);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 10, 15, 0.42);
+
+  h4 {
+    margin: 0 0 var(--spacing-xs);
+    color: var(--core-energy);
+    font-size: var(--font-size-xs);
+  }
+
+  p {
+    max-height: 5.5rem;
+    margin: 0;
+    overflow: hidden;
+    color: var(--core-text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+    white-space: pre-line;
+  }
+}
+
+.mood-board-card__img {
+  width: 100%;
+  height: 4.5rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.agent-stack {
+  display: grid;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--core-energy) 16%, transparent);
+  border-radius: var(--radius-md);
+  background: rgba(0, 255, 200, 0.045);
+}
+
+.agent-stack__label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--core-energy);
+}
+
+.agent-stack__select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--core-energy) 24%, transparent);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 20, 25, 0.72);
+  color: var(--core-text-primary);
+}
+
 // Terrain badges
 .terrain-info {
   display: flex;

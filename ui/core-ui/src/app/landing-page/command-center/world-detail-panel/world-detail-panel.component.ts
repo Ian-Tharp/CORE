@@ -1,14 +1,21 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Subject, takeUntil, switchMap, map } from 'rxjs';
 import { TileMetadataService } from '../engine/tile-metadata.service';
 import { TileWorldMetadata, ConnectionType, CONNECTION_STYLES, WorldConnection } from '../engine/tile-metadata.model';
-import { CreativeDataService, Board } from '../../../creative-design-product/services/creative-data.service';
+import { Board, BoardCard, CreativeDataService } from '../../../creative-design-product/services/creative-data.service';
 import { CreativeService, WikiPageDto, CharacterDto } from '../../../services/creative/creative.service';
-import { WorldsService, WorldAsset } from '../../../services/worlds/worlds.service';
+import {
+  WorldAgentAuditResult,
+  WorldConnectionSuggestion,
+  WorldsService,
+  WorldAsset
+} from '../../../services/worlds/worlds.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ImageLightboxDialogComponent } from '../image-lightbox-dialog/image-lightbox-dialog.component';
+import { SpawnTemplateDto, SpawnTemplatesService } from '../../../services/spawn-templates.service';
 
 /** Shared art-direction / quality suffix appended to generated image prompts. */
 const ART_QUALITY =
@@ -52,6 +59,8 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   artError = '';
   worldArt: WorldAsset[] = [];
   artPrompt = ''; // optional custom prompt; blank = auto-generate from the world's lore
+  isDirectingArtPrompt = false;
+  artPromptStatus = '';
 
   // Floating hover preview (a small studio "loupe" over any generated image).
   hoverPreview: { url: string; label: string; x: number; y: number } | null = null;
@@ -65,6 +74,18 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   isGeneratingLore = false;
   loreError = '';
   loreStatus = '';
+  loreAuditSummary = '';
+  isAuditingLore = false;
+  worldAgentTemplates: SpawnTemplateDto[] = [];
+  selectedLoreAgentRole = 'world_lore_architect';
+  loreDraft: {
+    tileIndex: number;
+    title: string;
+    content: string;
+    generatedBy: string;
+    audit: WorldAgentAuditResult;
+  } | null = null;
+  isSavingLoreDraft = false;
 
   // World-scoped knowledge (ingested wiki lore).
   knowledgeDocs: Array<{ id: string; title: string; source: string }> = [];
@@ -73,6 +94,11 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   knowledgeResults: Array<{ text: string; document_id: string; distance: number }> = [];
   isSearchingKnowledge = false;
   tileConnections: WorldConnection[] = [];
+  connectionSuggestions: WorldConnectionSuggestion[] = [];
+  isSuggestingConnections = false;
+  connectionSuggestionError = '';
+  selectedBoard: Board | null = null;
+  moodBoardStatus = '';
 
   // Edit states
   isEditingName = false;
@@ -101,16 +127,32 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     private creativeData: CreativeDataService,
     private creativeService: CreativeService,
     private worldsService: WorldsService,
-    private dialog: MatDialog
+    private spawnTemplates: SpawnTemplatesService,
+    private dialog: MatDialog,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.loadWorldAgentTemplates();
     this.metadataService.onSelectedMetadataChanged()
       .pipe(takeUntil(this.destroy$))
       .subscribe(meta => {
         this.metadata = meta;
         this.loadLinkedContent();
         this.loadConnections();
+      });
+  }
+
+  private loadWorldAgentTemplates(): void {
+    this.spawnTemplates.listTemplates({ tag: 'procedural-worlds', builtin_only: true })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ templates }) => {
+          this.worldAgentTemplates = templates ?? [];
+          const defaultTemplate = this.worldAgentTemplates.find(t => t.role === 'world_lore_architect');
+          this.selectedLoreAgentRole = defaultTemplate?.role ?? this.selectedLoreAgentRole;
+        },
+        error: () => { this.worldAgentTemplates = []; }
       });
   }
 
@@ -232,6 +274,31 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
             ? `Art generation failed — ${detail}`
             : 'Art generation failed — check OpenAI image configuration.';
           console.error('World art generation failed:', err);
+        }
+      });
+  }
+
+  directArtPrompt(): void {
+    if (!this.worldId || !this.selectedTile || this.isDirectingArtPrompt) {return;}
+    this.isDirectingArtPrompt = true;
+    this.artError = '';
+    this.artPromptStatus = '';
+    this.worldsService.generateImagePrompt(this.worldId, {
+      tile_index: this.selectedTile.index,
+      world_name: this.metadata?.name || `World ${this.selectedTile.index}`,
+      user_context: this.loreContext()
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ prompt, generated_by }) => {
+          this.isDirectingArtPrompt = false;
+          this.artPrompt = prompt;
+          this.artPromptStatus = `Prompt drafted by ${generated_by}`;
+        },
+        error: (err) => {
+          this.isDirectingArtPrompt = false;
+          const detail = this.getErrorDetail(err);
+          this.artError = detail ? `Prompt direction failed — ${detail}` : 'Prompt direction failed.';
         }
       });
   }
@@ -412,26 +479,97 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     const tileIndex = this.selectedTile.index;
     this.isGeneratingLore = true;
     this.loreError = '';
+    this.loreAuditSummary = '';
     this.loreStatus = `Writing ${spec.kind}…`;
-    this.worldsService.generateLore(this.worldId, {
+    this.worldsService.generateAgentLore(this.worldId, {
+      tile_index: tileIndex,
       kind: spec.kind,
       focus: spec.focus,
       world_name: this.metadata?.name || `World ${tileIndex}`,
-      context: this.loreContext()
+      user_context: this.loreContext(),
+      agent_id: this.selectedLoreAgentRole
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ id, title }) => {
+        next: ({ title, content, generated_by, audit }) => {
           this.isGeneratingLore = false;
-          this.loreStatus = `Created “${title}”`;
-          this.metadataService.linkWikiPage(tileIndex, id);
-          this.loadLinkedContent();
+          this.loreDraft = { tileIndex, title, content, generatedBy: generated_by, audit };
+          this.loreStatus = `Drafted “${title}” via ${generated_by}`;
+          const missing = audit.missing_details.length
+            ? ` Missing: ${audit.missing_details.join(' ')}`
+            : '';
+          this.loreAuditSummary = `Audit ${Math.round(audit.confidence * 100)}% confidence — ${audit.approved ? 'approved' : 'review suggested'}.${missing}`;
         },
         error: (err) => {
           this.isGeneratingLore = false;
           this.loreStatus = '';
-          this.loreError = 'Lore generation failed — check the model/API key.';
+          const detail = this.getErrorDetail(err);
+          this.loreError = detail
+            ? `Lore generation failed — ${detail}`
+            : 'Lore generation failed — check the model/API key.';
           console.error('Lore generation failed:', err);
+        }
+      });
+  }
+
+  approveLoreDraft(): void {
+    if (!this.worldId || !this.loreDraft || this.isSavingLoreDraft) {return;}
+    this.isSavingLoreDraft = true;
+    this.loreError = '';
+    this.worldsService.saveAgentLore(this.worldId, {
+      tile_index: this.loreDraft.tileIndex,
+      title: this.loreDraft.title,
+      content: this.loreDraft.content,
+      generated_by: this.loreDraft.generatedBy,
+      audit: this.loreDraft.audit
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ id, title }) => {
+          this.isSavingLoreDraft = false;
+          this.loreStatus = `Saved “${title}” to wiki`;
+          this.metadataService.linkWikiPage(this.loreDraft!.tileIndex, id);
+          this.loreDraft = null;
+          this.loadLinkedContent();
+        },
+        error: (err) => {
+          this.isSavingLoreDraft = false;
+          const detail = this.getErrorDetail(err);
+          this.loreError = detail ? `Lore save failed — ${detail}` : 'Lore save failed.';
+        }
+      });
+  }
+
+  discardLoreDraft(): void {
+    this.loreDraft = null;
+    this.loreAuditSummary = '';
+    this.loreStatus = '';
+  }
+
+  auditCurrentLore(): void {
+    if (!this.worldId || !this.selectedTile || this.isAuditingLore) {return;}
+    const tileIndex = this.selectedTile.index;
+    this.isAuditingLore = true;
+    this.loreError = '';
+    this.worldsService.auditWorldAgent(this.worldId, {
+      tile_index: tileIndex,
+      content: this.loreDraft?.content ?? '',
+      world_name: this.metadata?.name || `World ${tileIndex}`,
+      user_context: this.loreContext()
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ audit, generated_by }) => {
+          this.isAuditingLore = false;
+          const missing = audit.missing_details.length
+            ? ` Missing: ${audit.missing_details.join(' ')}`
+            : '';
+          this.loreAuditSummary = `${generated_by}: ${Math.round(audit.confidence * 100)}% confidence — ${audit.approved ? 'approved' : 'review suggested'}.${missing}`;
+        },
+        error: (err) => {
+          this.isAuditingLore = false;
+          const detail = this.getErrorDetail(err);
+          this.loreError = detail ? `Audit failed — ${detail}` : 'Audit failed.';
         }
       });
   }
@@ -471,6 +609,13 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
     // Boards remain local for now (no backend board API yet).
     const allBoards = this.creativeData.listBoards();
     this.linkedBoards = allBoards.filter(b => this.metadata?.boardIds?.includes(b.id));
+    const firstLinkedBoardId = this.metadata?.boardIds?.[0];
+    if (!this.selectedBoard && firstLinkedBoardId) {
+      this.selectedBoard = this.linkedBoards.find(board => board.id === firstLinkedBoardId) ?? null;
+    }
+    if (this.selectedBoard && !this.linkedBoards.some(board => board.id === this.selectedBoard?.id)) {
+      this.selectedBoard = null;
+    }
   }
 
   private loadConnections(): void {
@@ -479,6 +624,48 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
       return;
     }
     this.tileConnections = this.metadataService.getConnectionsForTile(this.metadata.tileIndex);
+  }
+
+  suggestConnections(): void {
+    if (!this.worldId || !this.selectedTile || this.isSuggestingConnections) {return;}
+    this.isSuggestingConnections = true;
+    this.connectionSuggestionError = '';
+    this.worldsService.suggestWorldConnections(this.worldId, {
+      tile_index: this.selectedTile.index,
+      max_suggestions: 4,
+      world_name: this.metadata?.name || `World ${this.selectedTile.index}`,
+      user_context: this.loreContext()
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ suggestions }) => {
+          this.isSuggestingConnections = false;
+          this.connectionSuggestions = suggestions ?? [];
+        },
+        error: (err) => {
+          this.isSuggestingConnections = false;
+          const detail = this.getErrorDetail(err);
+          this.connectionSuggestionError = detail
+            ? `Connection suggestions failed — ${detail}`
+            : 'Connection suggestions failed.';
+        }
+      });
+  }
+
+  acceptConnectionSuggestion(suggestion: WorldConnectionSuggestion): void {
+    this.metadataService.addConnection(
+      suggestion.from_tile_index,
+      suggestion.to_tile_index,
+      suggestion.type,
+      true,
+      suggestion.label
+    );
+    this.connectionSuggestions = this.connectionSuggestions.filter(item => item !== suggestion);
+    this.loadConnections();
+  }
+
+  rejectConnectionSuggestion(suggestion: WorldConnectionSuggestion): void {
+    this.connectionSuggestions = this.connectionSuggestions.filter(item => item !== suggestion);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -749,16 +936,163 @@ export class WorldDetailPanelComponent implements OnInit, OnDestroy, OnChanges {
   createBoard(): void {
     if (!this.selectedTile) {return;}
     const title = this.metadata?.name || `World ${this.selectedTile.index}`;
-    const board = this.creativeData.createBoard({ title: `${title} - Mood Board` });
+    const board = this.creativeData.createBoard({
+      title: `${title} - Mood Board`,
+      worldId: this.worldId ?? undefined
+    });
     this.metadataService.linkBoard(this.selectedTile.index, board.id);
     this.loadLinkedContent();
+    this.selectedBoard = board;
+    this.moodBoardStatus = `Created ${board.title}`;
+  }
+
+  autoCreateMoodBoard(): void {
+    if (!this.selectedTile) {return;}
+    const title = this.metadata?.name || `World ${this.selectedTile.index}`;
+    try {
+      const board = this.creativeData.createBoardWithCards(
+        { title: `${title} - Mood Board`, worldId: this.worldId ?? undefined },
+        this.buildMoodBoardCards(title)
+      );
+      this.metadataService.linkBoard(this.selectedTile.index, board.id);
+      this.loadLinkedContent();
+      if (!this.linkedBoards.some(item => item.id === board.id)) {
+        this.linkedBoards = [...this.linkedBoards, board];
+      }
+      this.selectedBoard = board;
+      this.moodBoardStatus = `Auto-created ${board.title} with ${board.cards.length} cards`;
+    } catch (err) {
+      const detail = this.getErrorDetail(err);
+      this.moodBoardStatus = detail
+        ? `Mood board creation failed — ${detail}`
+        : 'Mood board creation failed — browser storage is full.';
+    }
+  }
+
+  selectBoard(board: Board): void {
+    this.selectedBoard = this.creativeData.getBoard(board.id) ?? board;
+    this.persistSelectedBoard(board.id);
+  }
+
+  openBoard(board: Board): void {
+    this.selectBoard(board);
+    this.router.navigate(['/creative/boards'], {
+      queryParams: {
+        worldId: this.worldId ?? undefined,
+        projectId: this.worldId ?? undefined,
+        boardId: board.id
+      }
+    });
   }
 
   unlinkBoard(boardId: string): void {
     if (this.selectedTile) {
       this.metadataService.unlinkBoard(this.selectedTile.index, boardId);
+      if (this.selectedBoard?.id === boardId) {
+        this.selectedBoard = null;
+      }
       this.loadLinkedContent();
     }
+  }
+
+  private buildMoodBoardCards(worldName: string): Array<Omit<BoardCard, 'id' | 'createdAt'>> {
+    const cards: Array<Omit<BoardCard, 'id' | 'createdAt'>> = [
+      {
+        title: 'World Overview',
+        notes: this.moodBoardOverview(worldName)
+      },
+      {
+        title: 'Palette',
+        notes: this.moodBoardPalette()
+      }
+    ];
+
+    for (const art of this.worldArt) {
+      cards.push({
+        title: `World Art: ${art.title || worldName}`,
+        imageSource: 'world_asset',
+        sourceId: art.id,
+        notes: `Source: world_asset\nKind: ${art.kind}\nTile: ${art.tile_index ?? this.selectedTile?.index ?? 'world'}`
+      });
+    }
+
+    for (const inhabitant of this.inhabitants) {
+      cards.push({
+        title: `Inhabitant: ${inhabitant.name}`,
+        imageSource: 'character',
+        sourceId: inhabitant.id,
+        notes: `Source: character\nName: ${inhabitant.name}`
+      });
+    }
+
+    for (const page of this.linkedWikiPages.slice(0, 4)) {
+      cards.push({
+        title: `Lore: ${page.title}`,
+        notes: `Source: wiki\n\n${page.content.slice(0, 600)}`
+      });
+    }
+
+    if (this.artPrompt.trim()) {
+      cards.push({
+        title: 'Prompt Direction',
+        notes: this.artPrompt.trim()
+      });
+    }
+
+    return cards;
+  }
+
+  private persistSelectedBoard(boardId: string): void {
+    if (!this.selectedTile) {return;}
+    const current = this.metadata?.boardIds ?? [];
+    this.metadataService.unlinkBoard(this.selectedTile.index, boardId);
+    this.metadataService.linkBoard(this.selectedTile.index, boardId);
+    for (const id of current) {
+      if (id !== boardId) {
+        this.metadataService.linkBoard(this.selectedTile.index, id);
+      }
+    }
+  }
+
+  moodBoardCardImage(card: BoardCard): string | null {
+    if (card.imageUrl) {return card.imageUrl;}
+    if (card.imageSource === 'world_asset' && card.sourceId) {
+      const asset = this.worldArt.find(item => item.id === card.sourceId);
+      return asset ? this.artImageUrl(asset) : null;
+    }
+    if (card.imageSource === 'character' && card.sourceId) {
+      const character = this.inhabitants.find(item => item.id === card.sourceId);
+      return character ? this.inhabitantImageUrl(character) : null;
+    }
+    return null;
+  }
+
+  private moodBoardOverview(worldName: string): string {
+    const terrain = this.selectedTile?.terrain ?? 'unknown';
+    const biome = this.selectedTile?.biome ?? 'none';
+    const resource = this.selectedTile?.resource ?? 'none';
+    const tags = this.metadata?.tags?.length ? this.metadata.tags.join(', ') : 'none';
+    const description = this.metadata?.description || 'No description yet.';
+    return [
+      `World: ${worldName}`,
+      `Terrain: ${terrain}`,
+      `Biome: ${biome}`,
+      `Resource: ${resource}`,
+      `Tags: ${tags}`,
+      '',
+      description
+    ].join('\n');
+  }
+
+  private moodBoardPalette(): string {
+    const palette = ['cyan energy', 'deep navy atmosphere', 'warm solar amber'];
+    if (this.selectedTile?.terrain === 'water') {palette.push('aquatic blue', 'bioluminescent teal');}
+    if (this.selectedTile?.terrain === 'mountain') {palette.push('basalt brown', 'golden ridge light');}
+    if (this.selectedTile?.biome === 'forest') {palette.push('verdant green', 'moss glow');}
+    if (this.selectedTile?.biome === 'desert') {palette.push('sand gold', 'rust orange');}
+    if (this.selectedTile?.biome === 'tundra') {palette.push('ice blue', 'aurora violet');}
+    if (this.selectedTile?.resource === 'node') {palette.push('magenta resource glow');}
+    return palette.map(item => `- ${item}`).join('\n');
   }
 
   // ─────────────────────────────────────────────────────────────

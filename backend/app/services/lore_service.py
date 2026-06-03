@@ -100,3 +100,23 @@ async def generate_lore_page(
     # _llm_or_stub is synchronous (LangChain invoke) — run off the event loop.
     text = (await asyncio.to_thread(_llm_or_stub, LORE_SYSTEM, user, chosen)) or ""
     return await persist_lore_page(world_id, kind, text)
+
+
+async def generate_lore_draft(
+    *,
+    kind: str,
+    focus: str,
+    world_name: Optional[str] = None,
+    context: Optional[str] = None,
+    model: Optional[str] = None,
+    llm_runner=_llm_or_stub,
+) -> str:
+    """Generate a `kind` wiki page draft without persisting it."""
+    user = lore_user_prompt(kind, focus, world_name, context)
+    chosen = model or (
+        "gpt-4o-mini"
+        if os.getenv("OPENAI_API_KEY")
+        else os.getenv("CORE_DEFAULT_MODEL")
+    )
+    text = (await asyncio.to_thread(llm_runner, LORE_SYSTEM, user, chosen)) or ""
+    return text.strip()

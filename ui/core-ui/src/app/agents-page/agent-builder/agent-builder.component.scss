@@ -1103,11 +1103,57 @@
   }
 }
 
+// Deploy status feedback (token-only, AA contrast, reduced-motion safe).
+.deploy-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--core-border-subtle);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background: var(--core-bg-surface-2);
+  color: var(--core-text-primary);
+
+  mat-icon {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+  }
+
+  &--error {
+    border-color: var(--core-danger);
+    mat-icon { color: var(--core-danger); }
+  }
+
+  &--success {
+    border-color: var(--core-success);
+    mat-icon { color: var(--core-success); }
+  }
+}
+
+// Keyboard focus affordance for the deploy actions.
+.deployment-actions button {
+  &:focus-visible {
+    outline: 2px solid var(--core-accent, var(--core-success));
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deploy-status {
+    transition: none;
+  }
+}
+
 // Add MatSpinner import to component
 .mat-mdc-progress-spinner {
   display: inline-block;
   vertical-align: middle;
-  
+
   svg {
     circle {
       stroke: #00ffff !important;

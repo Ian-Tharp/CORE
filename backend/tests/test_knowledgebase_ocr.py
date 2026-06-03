@@ -3,16 +3,20 @@ Tests for knowledgebase PDF extraction with OCR fallback.
 
 The extraction pipeline in _extract_title_and_text() for PDFs:
 1. Try pypdf (text extraction)
-2. If pypdf yields < 100 chars, fall back to pymupdf with per-page OCR
-3. If pypdf throws, fall back to pymupdf entirely
-4. pymupdf OCR triggers per-page when get_text("text") yields < 20 chars
+2. If pypdf yields < 100 chars, fall back to pypdfium2 with per-page OCR
+3. If pypdf throws, fall back to pypdfium2 entirely
+4. OCR triggers per-page when the pypdfium2 text layer yields < 20 chars
 
-Related: _extract_pdf_with_pymupdf() and _PYMUPDF_MAX_OCR_PAGES
+OCR uses pypdfium2 (Apache-2.0/BSD-3) to render + pytesseract (Apache-2.0) to
+recognise — both permissively licensed (replacing the former AGPL pymupdf path).
+
+Related: _extract_pdf_with_ocr(), _pdfium_page_text(), _ocr_pdfium_page() and
+_OCR_MAX_PAGES.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, call
-from typing import List, Optional
+from unittest.mock import patch, MagicMock
+from typing import Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -36,33 +40,25 @@ def _make_pypdf_reader(pages_text: List[str], metadata_title: Optional[str] = No
     return reader
 
 
-def _make_fitz_doc(pages_text: List[str], ocr_text: Optional[List[str]] = None):
-    """Mock fitz (pymupdf) document.
-    pages_text: what get_text("text") returns per page
-    ocr_text: what get_text("ocr") returns per page (defaults to empty)
+class _FakePdfiumDoc:
+    """Lightweight fake of a pypdfium2 PdfDocument.
+
+    Page "handles" are simply their integer index, so the patched
+    _pdfium_page_text / _ocr_pdfium_page seams can map index -> content.
     """
-    doc = MagicMock()
-    doc.__len__ = lambda self: len(pages_text)
 
-    mock_pages = []
-    for i, t in enumerate(pages_text):
-        page = MagicMock()
-        ocr_val = ocr_text[i] if ocr_text and i < len(ocr_text) else ""
+    def __init__(self, num_pages: int):
+        self._n = num_pages
+        self.closed = False
 
-        def make_get_text(text_val, ocr_val):
-            def get_text(mode="text"):
-                if mode == "ocr":
-                    return ocr_val
-                return text_val
+    def __len__(self):
+        return self._n
 
-            return get_text
+    def __getitem__(self, idx):
+        return idx
 
-        page.get_text = make_get_text(t, ocr_val)
-        mock_pages.append(page)
-
-    doc.__getitem__ = lambda self, idx: mock_pages[idx]
-    doc.close = MagicMock()
-    return doc
+    def close(self):
+        self.closed = True
 
 
 def _patch_pypdf(reader):
@@ -72,11 +68,27 @@ def _patch_pypdf(reader):
     return patch.dict("sys.modules", {"pypdf": mock_mod})
 
 
-def _patch_fitz(doc):
-    """Context manager to patch fitz (pymupdf) inline import."""
+def _patch_pdfium(doc):
+    """Patch the pypdfium2 inline import so PdfDocument(path) -> doc."""
     mock_mod = MagicMock()
-    mock_mod.open.return_value = doc
-    return patch.dict("sys.modules", {"fitz": mock_mod})
+    mock_mod.PdfDocument.return_value = doc
+    return patch.dict("sys.modules", {"pypdfium2": mock_mod})
+
+
+def _patch_page_text(text_map: Dict[int, str]):
+    """Patch _pdfium_page_text to return per-page text-layer content."""
+    return patch(
+        "app.services.knowledgebase_service._pdfium_page_text",
+        side_effect=lambda page: text_map.get(page, ""),
+    )
+
+
+def _patch_page_ocr(ocr_map: Dict[int, str]):
+    """Patch _ocr_pdfium_page to return per-page OCR content."""
+    return patch(
+        "app.services.knowledgebase_service._ocr_pdfium_page",
+        side_effect=lambda page: ocr_map.get(page, ""),
+    )
 
 
 def _patch_tesseract_available(available=True):
@@ -93,7 +105,7 @@ class TestTextPdfExtraction:
 
     @pytest.mark.asyncio
     async def test_basic_text_extraction(self):
-        """pypdf extracts enough text → no pymupdf fallback."""
+        """pypdf extracts enough text → no OCR fallback."""
         from app.services.knowledgebase_service import _extract_title_and_text
 
         reader = _make_pypdf_reader(
@@ -138,7 +150,7 @@ class TestTextPdfExtraction:
 
 
 # =============================================================================
-# SCANNED PDF — pypdf empty, pymupdf OCR fallback
+# SCANNED PDF — pypdf empty, pypdfium2 OCR fallback
 # =============================================================================
 
 
@@ -146,16 +158,17 @@ class TestOcrFallback:
 
     @pytest.mark.asyncio
     async def test_ocr_fallback_when_pypdf_empty(self):
-        """pypdf returns < 100 chars → pymupdf fallback is invoked."""
+        """pypdf returns < 100 chars → pypdfium2 OCR fallback is invoked."""
         from app.services.knowledgebase_service import _extract_title_and_text
 
         reader = _make_pypdf_reader(["", "", ""])
-        fitz_doc = _make_fitz_doc(
-            pages_text=["", "", ""],
-            ocr_text=["OCR Chapter 1 content here", "OCR page 2", "OCR page 3"],
-        )
+        doc = _FakePdfiumDoc(3)
 
-        with _patch_pypdf(reader), _patch_fitz(fitz_doc), _patch_tesseract_available():
+        with _patch_pypdf(reader), _patch_pdfium(doc), _patch_page_text(
+            {0: "", 1: "", 2: ""}
+        ), _patch_page_ocr(
+            {0: "OCR Chapter 1 content here", 1: "OCR page 2", 2: "OCR page 3"}
+        ), _patch_tesseract_available():
             title, text = await _extract_title_and_text(
                 "/scanned.pdf", "application/pdf"
             )
@@ -165,33 +178,34 @@ class TestOcrFallback:
 
     @pytest.mark.asyncio
     async def test_ocr_fallback_when_pypdf_throws(self):
-        """pypdf raises → pymupdf fallback is invoked."""
+        """pypdf raises → pypdfium2 fallback is invoked."""
         from app.services.knowledgebase_service import _extract_title_and_text
 
         mock_pypdf = MagicMock()
         mock_pypdf.PdfReader.side_effect = Exception("bad pypdf")
 
-        fitz_doc = _make_fitz_doc(
-            pages_text=["Full text from pymupdf. " * 10],
-        )
+        doc = _FakePdfiumDoc(1)
 
-        with patch.dict("sys.modules", {"pypdf": mock_pypdf}), _patch_fitz(fitz_doc):
+        with patch.dict("sys.modules", {"pypdf": mock_pypdf}), _patch_pdfium(
+            doc
+        ), _patch_page_text({0: "Full text from the pdf. " * 10}):
             title, text = await _extract_title_and_text("/bad.pdf", "application/pdf")
 
-        assert "Full text from pymupdf" in text
+        assert "Full text from the pdf" in text
 
     @pytest.mark.asyncio
     async def test_ocr_per_page_threshold(self):
-        """Pages with < 20 chars of text trigger per-page OCR in pymupdf."""
-        from app.services.knowledgebase_service import _extract_pdf_with_pymupdf
+        """Pages with < 20 chars of text-layer trigger per-page OCR."""
+        from app.services.knowledgebase_service import _extract_pdf_with_ocr
 
-        fitz_doc = _make_fitz_doc(
-            pages_text=["Short", "This page has plenty of normal text content here."],
-            ocr_text=["OCR recovered full content for page 0", ""],
-        )
+        doc = _FakePdfiumDoc(2)
 
-        with _patch_fitz(fitz_doc), _patch_tesseract_available():
-            text, title = _extract_pdf_with_pymupdf("/test.pdf", None)
+        with _patch_pdfium(doc), _patch_page_text(
+            {0: "Short", 1: "This page has plenty of normal text content here."}
+        ), _patch_page_ocr(
+            {0: "OCR recovered full content for page 0", 1: ""}
+        ), _patch_tesseract_available():
+            text, title = _extract_pdf_with_ocr("/test.pdf", None)
 
         # Page 0: "Short" is < 20 chars, so OCR should be used
         assert "OCR recovered" in text
@@ -201,15 +215,14 @@ class TestOcrFallback:
     @pytest.mark.asyncio
     async def test_title_from_ocr_content(self):
         """Title derived from OCR'd first page text."""
-        from app.services.knowledgebase_service import _extract_pdf_with_pymupdf
+        from app.services.knowledgebase_service import _extract_pdf_with_ocr
 
-        fitz_doc = _make_fitz_doc(
-            pages_text=[""],
-            ocr_text=["1984 by George Orwell\nChapter 1\nIt was a bright cold day..."],
-        )
+        doc = _FakePdfiumDoc(1)
 
-        with _patch_fitz(fitz_doc), _patch_tesseract_available():
-            text, title = _extract_pdf_with_pymupdf("/1984.pdf", None)
+        with _patch_pdfium(doc), _patch_page_text({0: ""}), _patch_page_ocr(
+            {0: "1984 by George Orwell\nChapter 1\nIt was a bright cold day..."}
+        ), _patch_tesseract_available():
+            text, title = _extract_pdf_with_ocr("/1984.pdf", None)
 
         assert title == "1984 by George Orwell"
 
@@ -223,26 +236,27 @@ class TestMixedPdf:
 
     @pytest.mark.asyncio
     async def test_mixed_text_and_scanned_pages(self):
-        """pymupdf handles mix: text pages kept, empty pages get OCR."""
-        from app.services.knowledgebase_service import _extract_pdf_with_pymupdf
+        """Mix: text pages kept, empty / tiny pages get OCR."""
+        from app.services.knowledgebase_service import _extract_pdf_with_ocr
 
-        fitz_doc = _make_fitz_doc(
-            pages_text=[
-                "Chapter 1: This is normal extracted text with enough content.",
-                "",  # scanned page
-                "Chapter 3: Also normal text.",
-                "tiny",  # < 20 chars → OCR
-            ],
-            ocr_text=[
-                "",
-                "Chapter 2 recovered via OCR scanning",
-                "",
-                "Chapter 4 full OCR text recovered here",
-            ],
-        )
+        doc = _FakePdfiumDoc(4)
+        text_map = {
+            0: "Chapter 1: This is normal extracted text with enough content.",
+            1: "",  # scanned page
+            2: "Chapter 3: Also normal text.",
+            3: "tiny",  # < 20 chars → OCR
+        }
+        ocr_map = {
+            0: "",
+            1: "Chapter 2 recovered via OCR scanning",
+            2: "",
+            3: "Chapter 4 full OCR text recovered here",
+        }
 
-        with _patch_fitz(fitz_doc), _patch_tesseract_available():
-            text, _ = _extract_pdf_with_pymupdf("/mixed.pdf", None)
+        with _patch_pdfium(doc), _patch_page_text(text_map), _patch_page_ocr(
+            ocr_map
+        ), _patch_tesseract_available():
+            text, _ = _extract_pdf_with_ocr("/mixed.pdf", None)
 
         assert "Chapter 1" in text
         assert "Chapter 2 recovered" in text
@@ -259,16 +273,18 @@ class TestCorruptedPdf:
 
     @pytest.mark.asyncio
     async def test_both_extractors_fail(self):
-        """Both pypdf and pymupdf fail → returns (None, '') via text fallback."""
+        """Both pypdf and pypdfium2 fail → returns (None, '') via text fallback."""
         from app.services.knowledgebase_service import _extract_title_and_text
 
         mock_pypdf = MagicMock()
         mock_pypdf.PdfReader.side_effect = Exception("corrupt")
 
-        mock_fitz = MagicMock()
-        mock_fitz.open.side_effect = Exception("also corrupt")
+        mock_pdfium = MagicMock()
+        mock_pdfium.PdfDocument.side_effect = Exception("also corrupt")
 
-        with patch.dict("sys.modules", {"pypdf": mock_pypdf, "fitz": mock_fitz}):
+        with patch.dict(
+            "sys.modules", {"pypdf": mock_pypdf, "pypdfium2": mock_pdfium}
+        ):
             title, text = await _extract_title_and_text(
                 "/corrupt.pdf", "application/pdf"
             )
@@ -282,11 +298,12 @@ class TestCorruptedPdf:
         from app.services.knowledgebase_service import _extract_title_and_text
 
         reader = _make_pypdf_reader([])
+        doc = _FakePdfiumDoc(0)
 
-        with _patch_pypdf(reader):
+        with _patch_pypdf(reader), _patch_pdfium(doc):
             title, text = await _extract_title_and_text("/empty.pdf", "application/pdf")
 
-        # 0 pages, < 100 chars → pymupdf fallback triggered but may also return empty
+        # 0 pages, < 100 chars → OCR fallback triggered but also returns empty
         assert isinstance(text, str)
 
     @pytest.mark.asyncio
@@ -317,32 +334,32 @@ class TestCorruptedPdf:
 
 class TestPageLimit:
 
-    def test_pymupdf_respects_max_pages(self):
-        """_PYMUPDF_MAX_OCR_PAGES limits how many pages are processed."""
+    def test_ocr_respects_max_pages(self):
+        """_OCR_MAX_PAGES limits how many pages are processed."""
         from app.services.knowledgebase_service import (
-            _extract_pdf_with_pymupdf,
-            _PYMUPDF_MAX_OCR_PAGES,
+            _extract_pdf_with_ocr,
+            _OCR_MAX_PAGES,
         )
 
-        num = _PYMUPDF_MAX_OCR_PAGES + 50
-        fitz_doc = _make_fitz_doc(
-            pages_text=[f"Page {i}" for i in range(num)],
-        )
-        # Override __len__ to report full count
-        fitz_doc.__len__ = lambda self: num
+        num = _OCR_MAX_PAGES + 50
+        doc = _FakePdfiumDoc(num)
+        # >= 20 chars so OCR is never consulted; we only verify the page cap.
+        text_map = {i: f"Page {i} has enough text to avoid ocr." for i in range(num)}
 
-        with _patch_fitz(fitz_doc):
-            text, _ = _extract_pdf_with_pymupdf("/huge.pdf", None)
+        with _patch_pdfium(doc), _patch_page_text(text_map), _patch_tesseract_available(
+            False
+        ):
+            text, _ = _extract_pdf_with_ocr("/huge.pdf", None)
 
         # Should NOT contain pages beyond the limit
-        assert f"Page {_PYMUPDF_MAX_OCR_PAGES + 10}" not in text
+        assert f"Page {_OCR_MAX_PAGES + 10}" not in text
         # Should contain pages within limit
         assert "Page 0" in text
 
     def test_max_pages_constant_is_500(self):
-        from app.services.knowledgebase_service import _PYMUPDF_MAX_OCR_PAGES
+        from app.services.knowledgebase_service import _OCR_MAX_PAGES
 
-        assert _PYMUPDF_MAX_OCR_PAGES == 500
+        assert _OCR_MAX_PAGES == 500
 
 
 # =============================================================================

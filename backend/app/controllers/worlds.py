@@ -6,6 +6,19 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.repository import world_repository as repo
+from app.services.world_agent_workflow_service import (
+    WorldAgentAuditRequest,
+    WorldAgentAuditResponse,
+    WorldAgentConnectionsRequest,
+    WorldAgentConnectionsResponse,
+    WorldAgentImagePromptRequest,
+    WorldAgentImagePromptResponse,
+    WorldAgentLoreRequest,
+    WorldAgentLoreResponse,
+    WorldAgentLoreSaveRequest,
+    WorldAgentLoreSaveResponse,
+    get_world_agent_workflow_service,
+)
 
 
 router = APIRouter(prefix="/worlds", tags=["worlds"])
@@ -244,8 +257,103 @@ async def generate_lore(world_id: str, payload: LoreGenRequest) -> Dict[str, Any
         raise HTTPException(status_code=400, detail=f"Lore generation failed: {exc}")
 
 
+@router.post("/{world_id}/agents/lore", response_model=WorldAgentLoreResponse)
+async def generate_lore_with_world_agent(
+    world_id: str, payload: WorldAgentLoreRequest
+) -> WorldAgentLoreResponse:
+    """Run the modular world-lore agent workflow and return lore plus audit."""
+    try:
+        return await get_world_agent_workflow_service().generate_lore(world_id, payload)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"World agent lore workflow failed: {exc}",
+        )
+
+
+@router.post("/{world_id}/agents/lore/save", response_model=WorldAgentLoreSaveResponse)
+async def save_world_agent_lore(
+    world_id: str, payload: WorldAgentLoreSaveRequest
+) -> WorldAgentLoreSaveResponse:
+    """Persist an approved world-agent lore draft as a wiki page."""
+    try:
+        return await get_world_agent_workflow_service().save_lore(world_id, payload)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"World agent lore save failed: {exc}",
+        )
+
+
+@router.post("/{world_id}/agents/audit", response_model=WorldAgentAuditResponse)
+async def audit_world_with_agent(
+    world_id: str, payload: WorldAgentAuditRequest
+) -> WorldAgentAuditResponse:
+    """Run the modular canon-auditor workflow over selected-world context/content."""
+    try:
+        return await get_world_agent_workflow_service().audit_world(world_id, payload)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"World agent audit workflow failed: {exc}",
+        )
+
+
+@router.post("/{world_id}/agents/connections", response_model=WorldAgentConnectionsResponse)
+async def suggest_connections_with_agent(
+    world_id: str, payload: WorldAgentConnectionsRequest
+) -> WorldAgentConnectionsResponse:
+    """Run the modular connection-cartographer workflow for a selected world."""
+    try:
+        return await get_world_agent_workflow_service().suggest_connections(world_id, payload)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"World agent connection workflow failed: {exc}",
+        )
+
+
+@router.post("/{world_id}/agents/image-prompt", response_model=WorldAgentImagePromptResponse)
+async def generate_image_prompt_with_agent(
+    world_id: str, payload: WorldAgentImagePromptRequest
+) -> WorldAgentImagePromptResponse:
+    """Run the modular visual-prompt-director workflow for selected world art."""
+    try:
+        return await get_world_agent_workflow_service().generate_image_prompt(world_id, payload)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"World agent image-prompt workflow failed: {exc}",
+        )
+
+
 @router.get("/by-name/{name}")
 async def get_world_by_name(name: str) -> Optional[Dict[str, str]]:
     """Find a world by its name. Returns the world record or null if not found."""
     world = await repo.get_world_by_name(name)
     return world
+
+
+# ── Per-orb procedural-planet params (WorldGenParams) ────────────────────────
+class PlanetParamsRequest(BaseModel):
+    tile_index: int = 0
+    # Full WorldGenParams blob; canonical schema + clamping lives in the frontend.
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+@router.put("/{world_id}/gen-params")
+async def save_world_planet_params(
+    world_id: str, payload: PlanetParamsRequest
+) -> Dict[str, str]:
+    """Persist an orb's authored procedural-planet params (WorldGenParams)."""
+    await repo.save_world_gen_params(world_id, payload.tile_index, payload.params)
+    return {"status": "ok"}
+
+
+@router.get("/{world_id}/gen-params", response_model=Dict[str, Any])
+async def get_world_planet_params(
+    world_id: str, tile_index: int = Query(0)
+) -> Dict[str, Any]:
+    """Return an orb's WorldGenParams (empty object if none authored yet)."""
+    params = await repo.get_world_gen_params(world_id, tile_index)
+    return params or {}

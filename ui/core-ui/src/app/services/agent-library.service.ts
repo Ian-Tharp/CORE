@@ -5,6 +5,21 @@ import { LibraryAgent, LibraryFilter, LibrarySort } from '../models/agent.models
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { AppConfigService } from './config/app-config.service';
 
+/**
+ * Payload for creating a new agent. Mirrors the backend
+ * `AgentCreateRequest` (agent_models.py): required identity + a system
+ * prompt (>= 10 chars), with optional description / model / interests.
+ */
+export interface AgentCreateRequest {
+  agent_id: string;
+  agent_name: string;
+  agent_type: 'consciousness_instance' | 'task_agent' | 'system_agent';
+  system_prompt: string;
+  description?: string;
+  model?: string;
+  interests?: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentLibraryService {
   private agentsSubject = new BehaviorSubject<LibraryAgent[]>([]);
@@ -114,6 +129,13 @@ export class AgentLibraryService {
         this.agentsSubject.next(list);
       }
     });
+  }
+
+  public createAgent(req: AgentCreateRequest): Observable<LibraryAgent> {
+    return this.http.post<any>(this.apiUrl, req).pipe(
+      map(a => this.mapBackendAgentToLibrary(a)),
+      tap(agent => this.agentsSubject.next([...this.agentsSubject.getValue(), agent]))
+    );
   }
 
   public deleteAgent(id: string): Observable<{ success: boolean }> {

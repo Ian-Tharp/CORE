@@ -1,13 +1,137 @@
-<section class="boards">
-  <header class="bar">
-    <input placeholder="New board title" [(ngModel)]="newTitle"/>
-    <button (click)="createBoard()">Create Board</button>
+<section class="boards-studio">
+  <div class="boards-studio__bg" aria-hidden="true"></div>
+
+  <header class="studio-hero">
+    <div>
+      <span class="studio-hero__eyebrow">C.O.R.E. Creative Studio</span>
+      <h1>Mood Board Curator</h1>
+      <p>Curate generated world art, inhabitants, lore, and palette signals into a focused visual direction.</p>
+    </div>
+    <div class="studio-hero__actions">
+      <button type="button" class="ghost-btn" (click)="backToCommandCenter()">Back to Command Center</button>
+      <span class="hero-chip">{{ boardCountLabel }}</span>
+    </div>
   </header>
-  <section class="masonry">
-    <article class="board" *ngFor="let b of boards">
-      <h3>{{ b.title }}</h3>
-      <small>{{ b.createdAt | date:'medium' }}</small>
-      <div class="chips">{{ b.cards.length }} cards</div>
-    </article>
-  </section>
+
+  <div class="boards-layout">
+    <aside class="board-rail">
+      <div class="create-panel">
+        <label for="new-board-title">New Board</label>
+        <div class="create-panel__row">
+          <input id="new-board-title" placeholder="New board title" [(ngModel)]="newTitle" />
+          <button type="button" (click)="createBoard()">Create</button>
+        </div>
+      </div>
+
+      <div class="board-list">
+        @if (boards.length) {
+          @for (board of boards; track board.id) {
+            <button
+              type="button"
+              class="board-tile"
+              [class.board-tile--active]="selectedBoard?.id === board.id"
+              (click)="selectBoard(board)"
+            >
+              <span class="board-tile__orb" aria-hidden="true"></span>
+              <span class="board-tile__main">
+                <strong>{{ board.title }}</strong>
+                <small>{{ board.createdAt | date:'medium' }}</small>
+              </span>
+              <span class="board-tile__count">{{ board.cards.length }}</span>
+              <span
+                class="board-tile__delete"
+                role="button"
+                tabindex="0"
+                aria-label="Delete mood board"
+                title="Delete mood board"
+                (click)="deleteBoard(board, $event)"
+                (keydown.enter)="deleteBoard(board, $event)"
+              >×</span>
+            </button>
+          }
+        } @else {
+          <div class="empty-rail">
+            <strong>No boards yet</strong>
+            <p>Return to Command Center and auto-create a mood board from a selected world.</p>
+          </div>
+        }
+      </div>
+    </aside>
+
+    <main class="board-canvas">
+      @if (selectedBoard) {
+        <section class="selected-board">
+          <header class="selected-board__head">
+            <div>
+              <span class="selected-board__eyebrow">Selected Board</span>
+              <h2>{{ selectedBoard.title }}</h2>
+            </div>
+            <div class="selected-board__actions">
+              <span class="hero-chip">{{ selectedCardCountLabel }}</span>
+              <button type="button" class="danger-btn" (click)="deleteBoard(selectedBoard)">Delete Board</button>
+            </div>
+          </header>
+
+          @if (heroCard; as hero) {
+            <article class="hero-card">
+              @if (cardImage(hero); as heroImage) {
+                <img [src]="heroImage" [alt]="hero.title" />
+              } @else if (isCardImageLoading(hero)) {
+                <div class="image-ref image-ref--hero image-ref--loading">
+                  <span class="image-spinner" aria-hidden="true"></span>
+                  Loading image from database
+                </div>
+              } @else if (hasImageReference(hero)) {
+                <div class="image-ref image-ref--hero">{{ cardSourceLabel(hero) }}</div>
+              }
+              <div class="hero-card__copy">
+                <span>{{ cardKind(hero) }}</span>
+                <h3>{{ hero.title }}</h3>
+                @if (hero.notes) {
+                  <p>{{ hero.notes }}</p>
+                }
+              </div>
+            </article>
+          }
+
+          <section class="curation-grid">
+            @for (card of selectedBoard.cards; track card.id) {
+              <article class="curation-card" [class.curation-card--image]="cardImage(card)">
+                <div class="curation-card__meta">
+                  <span>{{ cardKind(card) }}</span>
+                  <small>{{ cardSourceLabel(card) }}</small>
+                </div>
+                @if (cardImage(card); as imageUrl) {
+                  <img class="curation-card__img" [src]="imageUrl" [alt]="card.title" />
+                } @else if (isCardImageLoading(card)) {
+                  <div class="image-ref image-ref--loading">
+                    <span class="image-spinner" aria-hidden="true"></span>
+                    Loading image from database
+                  </div>
+                } @else if (hasImageReference(card)) {
+                  <div class="image-ref">{{ cardSourceLabel(card) }}</div>
+                }
+                <h3>{{ card.title }}</h3>
+                @if (paletteItems(card).length) {
+                  <div class="palette-row">
+                    @for (item of paletteItems(card); track item) {
+                      <span>{{ item }}</span>
+                    }
+                  </div>
+                } @else if (card.notes) {
+                  <p>{{ card.notes }}</p>
+                }
+              </article>
+            }
+          </section>
+        </section>
+      } @else {
+        <section class="empty-canvas">
+          <span class="empty-canvas__glyph">◇</span>
+          <h2>Select a board</h2>
+          <p>Choose a board from the rail to inspect its generated world direction.</p>
+        </section>
+      }
+    </main>
+  </div>
 </section>

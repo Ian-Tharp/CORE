@@ -121,8 +121,8 @@ export class ChatWindowComponent implements OnChanges {
   private loadLocalProviderInfo(): void {
     this.http
       .get<{ provider: 'ollama' | 'lmstudio'; label: string; supports_pull: boolean }>(
-        `${this._apiUrl}/local-llm/provider`
-      )
+      `${this._apiUrl}/local-llm/provider`
+    )
       .subscribe({
         next: (info) => {
           this.localProvider = info.provider;

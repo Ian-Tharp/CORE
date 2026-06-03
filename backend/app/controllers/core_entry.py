@@ -33,6 +33,7 @@ from app.services.llm_provider import (  # noqa: E402
     _local_endpoint,
     build_chat_model,
 )
+from app.dependencies import get_local_chat_model  # noqa: E402
 
 
 def _llm_or_stub(
@@ -50,7 +51,8 @@ def _llm_or_stub(
     chosen_model = (
         model_override
         or os.getenv("CORE_DEFAULT_MODEL")
-        or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        or os.getenv("OPENAI_MODEL")
+        or get_local_chat_model()
     ).strip()
     is_openai = _is_openai_model(chosen_model)
 

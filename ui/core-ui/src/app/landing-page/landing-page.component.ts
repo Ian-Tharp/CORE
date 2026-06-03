@@ -499,7 +499,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     ollama: 'Ollama',
     task_queue: 'Task Queue',
     vector_db: 'Vector DB',
-    websocket: 'WebSocket',
+    websocket: 'WebSocket'
   };
 
   healthServiceLabel(key: string): string {

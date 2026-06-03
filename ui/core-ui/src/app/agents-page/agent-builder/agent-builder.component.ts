@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +15,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { LocalLlmService } from '../../services/local-llm.service';
+import { AgentLibraryService, AgentCreateRequest } from '../../services/agent-library.service';
 
 interface Step {
   id: string;
@@ -126,6 +128,23 @@ export class AgentBuilderComponent implements OnInit {
   isTestLoading = false;
   chatMessages: ChatMessage[] = [];
 
+  // Deploy (create) state surfaced to the review step.
+  isDeploying = false;
+  deployError: string | null = null;
+  deploySuccess: string | null = null;
+
+  private readonly localLlm = inject(LocalLlmService);
+  private readonly agentLibrary = inject(AgentLibraryService);
+
+  // Map the builder's agent-type taxonomy onto the backend Literal.
+  private readonly agentTypeMap: Record<string, AgentCreateRequest['agent_type']> = {
+    general: 'task_agent',
+    analyst: 'task_agent',
+    coder: 'task_agent',
+    researcher: 'task_agent',
+    automation: 'system_agent'
+  };
+
   steps: Step[] = [
     { id: 'core', label: 'Core Config', icon: 'settings' },
     { id: 'knowledge', label: 'Knowledge Base', icon: 'school' },
@@ -149,16 +168,9 @@ export class AgentBuilderComponent implements OnInit {
     { id: 'creative', name: 'Creative Partner', prompt: 'You are a creative thinking partner...' }
   ];
 
-  aiModels: AIModel[] = [
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI', description: 'Most capable model with 128k context' },
-    { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', description: 'Advanced reasoning and generation' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', description: 'Fast and cost-effective' },
-    { id: 'claude-3-opus', name: 'Claude 3 Opus', provider: 'Anthropic', description: 'Top-tier reasoning and analysis' },
-    { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'Anthropic', description: 'Balanced performance' },
-    { id: 'claude-3-haiku', name: 'Claude 3 Haiku', provider: 'Anthropic', description: 'Fast and efficient' },
-    { id: 'gemini-pro', name: 'Gemini Pro', provider: 'Google', description: 'Multimodal capabilities' },
-    { id: 'llama-3-70b', name: 'Llama 3 70B', provider: 'Meta', description: 'Open source powerhouse' }
-  ];
+  // Populated at runtime from the live local-models endpoint (no baked-in list).
+  aiModels: AIModel[] = [];
+  modelsLoading = false;
 
   testScenarios: TestScenario[] = [
     {
@@ -284,6 +296,26 @@ export class AgentBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateProgress();
+    this.loadModels();
+  }
+
+  private loadModels(): void {
+    this.modelsLoading = true;
+    this.localLlm.getModels().subscribe({
+      next: res => {
+        this.aiModels = (res.models || []).map(m => ({
+          id: m.name,
+          name: m.name,
+          provider: res.provider,
+          description: ''
+        }));
+        this.modelsLoading = false;
+      },
+      error: () => {
+        this.aiModels = [];
+        this.modelsLoading = false;
+      }
+    });
   }
 
   updateProgress(): void {
@@ -316,8 +348,8 @@ export class AgentBuilderComponent implements OnInit {
   canProceed(): boolean {
     switch (this.currentStepIndex) {
       case 0:
-        return !!this.agentConfig.name && !!this.agentConfig.type &&
-          !!this.agentConfig.systemPrompt && !!this.agentConfig.model;
+        return !!this.agentConfig.name.trim() && !!this.agentConfig.type &&
+          this.agentConfig.systemPrompt.trim().length >= 10 && !!this.agentConfig.model;
       case 1:
         return true; // Knowledge base is optional
       case 2:
@@ -393,13 +425,59 @@ export class AgentBuilderComponent implements OnInit {
   }
 
   deployAgent(): void {
-    console.log('Deploying agent with config:', {
-      agentConfig: this.agentConfig,
-      documents: this.uploadedDocuments,
-      tools: this.selectedTools,
-      deploymentConfig: this.deploymentConfig
+    if (this.isDeploying) {
+      return;
+    }
+
+    this.deployError = null;
+    this.deploySuccess = null;
+
+    const name = this.agentConfig.name.trim();
+    const systemPrompt = this.agentConfig.systemPrompt.trim();
+
+    if (!name || systemPrompt.length < 10 || !this.agentConfig.model) {
+      this.deployError =
+        'Please provide a name, a model, and a system prompt of at least 10 characters.';
+      return;
+    }
+
+    const agentId = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+    const req: AgentCreateRequest = {
+      agent_id: agentId || `agent_${Date.now()}`,
+      agent_name: name,
+      agent_type: this.agentTypeMap[this.agentConfig.type] ?? 'task_agent',
+      system_prompt: systemPrompt,
+      description: this.agentConfig.description?.trim() || undefined,
+      model: this.agentConfig.model
+    };
+
+    this.isDeploying = true;
+    this.agentLibrary.createAgent(req).subscribe({
+      next: agent => {
+        this.isDeploying = false;
+        this.deploySuccess = `Agent "${agent.displayName}" was created successfully.`;
+      },
+      error: err => {
+        this.isDeploying = false;
+        const status = err?.status;
+        if (status === 400) {
+          this.deployError =
+            err?.error?.detail ||
+            'An agent with this name already exists. Choose a different name.';
+        } else if (status === 422) {
+          this.deployError =
+            'The agent configuration was rejected. Check the name, model, and system prompt.';
+        } else {
+          this.deployError =
+            err?.error?.detail || 'Failed to create the agent. Please try again.';
+        }
+      }
     });
-    // Placeholder for deployment logic
   }
 
   saveAsTemplate(): void {

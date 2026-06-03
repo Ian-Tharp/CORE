@@ -405,54 +405,112 @@ async def _extract_text(path: str, mime_type: str) -> str:
         return ""
 
 
-_PYMUPDF_MAX_OCR_PAGES = 500
+_OCR_MAX_PAGES = 500
 _TESSERACT_AVAILABLE = shutil.which("tesseract") is not None
+# Render scale for OCR rasterization (~144 DPI at the 72pt PDF base).
+_OCR_RENDER_SCALE = 2.0
 
 
-def _extract_pdf_with_pymupdf(
+def _pdfium_page_text(page) -> str:
+    """Extract the embedded text layer from a pypdfium2 page."""
+    try:
+        textpage = page.get_textpage()
+    except Exception:
+        return ""
+    try:
+        return textpage.get_text_range() or ""
+    except Exception:
+        return ""
+    finally:
+        try:
+            textpage.close()
+        except Exception:
+            pass
+
+
+def _ocr_pdfium_page(page) -> str:
+    """Render a pypdfium2 page to an image and OCR it with pytesseract.
+
+    Both pypdfium2 (Apache-2.0/BSD-3) and pytesseract (Apache-2.0) are
+    permissively licensed, replacing the former AGPL pymupdf OCR path.
+    """
+    try:
+        import pytesseract  # type: ignore
+
+        bitmap = page.render(scale=_OCR_RENDER_SCALE)
+        image = bitmap.to_pil()
+        try:
+            return pytesseract.image_to_string(image) or ""
+        finally:
+            try:
+                image.close()
+            except Exception:
+                pass
+    except Exception:
+        logger.debug("pytesseract OCR failed", exc_info=True)
+        return ""
+
+
+def _extract_pdf_with_ocr(
     path: str, existing_title: Optional[str]
 ) -> Tuple[str, Optional[str]]:
-    """Extract text from a PDF using pymupdf (fitz), with OCR fallback per page."""
-    import fitz  # pymupdf
+    """Extract text from a PDF using pypdfium2 (text layer) with a pytesseract
+    OCR fallback per page.
+
+    Permissive-licensed replacement for the former pymupdf/fitz path (PyMuPDF
+    is AGPL-3.0). pypdfium2 is fast and does not hang on malformed font maps,
+    preserving the reason the pymupdf-first path originally existed.
+    """
+    try:
+        import pypdfium2 as pdfium  # type: ignore
+    except Exception:
+        logger.warning(
+            "pypdfium2 unavailable; cannot extract %s (install pypdfium2)",
+            path,
+            exc_info=True,
+        )
+        return "", existing_title
 
     title = existing_title
     pages_text: List[str] = []
 
     try:
-        doc = fitz.open(path)
+        doc = pdfium.PdfDocument(path)
     except Exception:
-        logger.error("pymupdf could not open %s", path, exc_info=True)
+        logger.error("pypdfium2 could not open %s", path, exc_info=True)
         return "", title
 
-    num_pages = min(len(doc), _PYMUPDF_MAX_OCR_PAGES)
-    if len(doc) > _PYMUPDF_MAX_OCR_PAGES:
-        logger.warning(
-            "PDF has %d pages; limiting OCR to first %d pages: %s",
-            len(doc),
-            _PYMUPDF_MAX_OCR_PAGES,
-            path,
-        )
+    try:
+        total = len(doc)
+        num_pages = min(total, _OCR_MAX_PAGES)
+        if total > _OCR_MAX_PAGES:
+            logger.warning(
+                "PDF has %d pages; limiting OCR to first %d pages: %s",
+                total,
+                _OCR_MAX_PAGES,
+                path,
+            )
 
-    for idx in range(num_pages):
-        try:
-            page = doc[idx]
-            text = page.get_text("text") or ""
-            if len(text.strip()) < 20 and _TESSERACT_AVAILABLE:
-                try:
-                    ocr_text = page.get_text("ocr") or ""
+        for idx in range(num_pages):
+            text = ""
+            try:
+                page = doc[idx]
+                text = _pdfium_page_text(page) or ""
+                if len(text.strip()) < 20 and _TESSERACT_AVAILABLE:
+                    ocr_text = _ocr_pdfium_page(page)
                     if len(ocr_text.strip()) > len(text.strip()):
                         text = ocr_text
                         logger.debug("OCR used for page %d of %s", idx, path)
-                except Exception:
-                    logger.debug(
-                        "OCR failed for page %d of %s", idx, path, exc_info=True
-                    )
+            except Exception:
+                logger.debug(
+                    "pypdfium2 failed on page %d of %s", idx, path, exc_info=True
+                )
             pages_text.append(text)
+    finally:
+        try:
+            doc.close()
         except Exception:
-            logger.debug("pymupdf failed on page %d of %s", idx, path, exc_info=True)
-            continue
-
-    doc.close()
+            pass
 
     full_text = "\n".join(pages_text)
 
@@ -464,33 +522,38 @@ def _extract_pdf_with_pymupdf(
                 break
 
     logger.info(
-        "pymupdf extracted %d chars from %d pages: %s", len(full_text), num_pages, path
+        "pypdfium2 extracted %d chars from %d pages: %s",
+        len(full_text),
+        num_pages,
+        path,
     )
     return full_text, title
 
 
 async def _extract_title_and_text(
-    path: str, mime_type: str, *, prefer_pymupdf: bool = False
+    path: str, mime_type: str, *, prefer_ocr: bool = False
 ) -> Tuple[Optional[str], str]:
     """Best-effort extraction of a human-friendly title and full text.
 
-    If prefer_pymupdf=True, use pymupdf first (faster, no hanging on malformed fonts).
-    Falls back to pypdf only if pymupdf fails.
+    If prefer_ocr=True, use the pypdfium2 path first (faster, no hanging on
+    malformed fonts). Falls back to pypdf only if pypdfium2 fails.
     """
     title: Optional[str] = None
 
     # PDF path
     if mime_type == "application/pdf":
-        if prefer_pymupdf:
-            # pymupdf-first path: faster and doesn't hang on font map issues
+        if prefer_ocr:
+            # pypdfium2-first path: faster and doesn't hang on font map issues
             try:
-                text, fallback_title = _extract_pdf_with_pymupdf(path, None)
+                text, fallback_title = _extract_pdf_with_ocr(path, None)
                 if text and len(text.strip()) >= 100:
                     return fallback_title, text
-                logger.info("pymupdf extracted < 100 chars for %s, trying pypdf", path)
+                logger.info(
+                    "pypdfium2 extracted < 100 chars for %s, trying pypdf", path
+                )
             except Exception:
                 logger.warning(
-                    "pymupdf failed for %s, trying pypdf", path, exc_info=True
+                    "pypdfium2 failed for %s, trying pypdf", path, exc_info=True
                 )
 
         try:
@@ -532,22 +595,22 @@ async def _extract_title_and_text(
             if len(full_text.strip()) < 100 and num_pages > 0:
                 logger.info(
                     "pypdf extracted < 100 chars from %d-page PDF, "
-                    "falling back to pymupdf OCR: %s",
+                    "falling back to pypdfium2 OCR: %s",
                     num_pages,
                     path,
                 )
-                full_text, title = _extract_pdf_with_pymupdf(path, title)
+                full_text, title = _extract_pdf_with_ocr(path, title)
             else:
                 logger.debug("pypdf text extraction succeeded for %s", path)
 
             return title, full_text
         except Exception:
-            logger.warning("pypdf failed for %s, trying pymupdf", path, exc_info=True)
+            logger.warning("pypdf failed for %s, trying pypdfium2", path, exc_info=True)
             try:
-                text, fallback_title = _extract_pdf_with_pymupdf(path, None)
+                text, fallback_title = _extract_pdf_with_ocr(path, None)
                 return fallback_title, text
             except Exception:
-                logger.warning("pymupdf also failed for %s", path, exc_info=True)
+                logger.warning("pypdfium2 also failed for %s", path, exc_info=True)
             pass
 
     # DOCX path
@@ -714,7 +777,7 @@ async def batch_upload_and_process(
             mime = mimetypes.guess_type(fpath)[0] or "application/octet-stream"
             # Run extraction with timeout — pypdf can hang on malformed PDFs
             title, text = await asyncio.wait_for(
-                _extract_title_and_text(fpath, mime, prefer_pymupdf=True),
+                _extract_title_and_text(fpath, mime, prefer_ocr=True),
                 timeout=extraction_timeout,
             )
             # Strip null bytes — some PDFs contain \x00 that PostgreSQL rejects

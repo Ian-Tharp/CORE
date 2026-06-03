@@ -552,15 +552,32 @@
               </div>
 
               <div class="deployment-actions">
-                <button mat-raised-button color="primary" class="deploy-btn" (click)="deployAgent()">
-                  <mat-icon>rocket_launch</mat-icon>
-                  Deploy Agent
+                <button mat-raised-button color="primary" class="deploy-btn" (click)="deployAgent()" [disabled]="isDeploying">
+                  @if (isDeploying) {
+                    <mat-spinner diameter="18"></mat-spinner>
+                  } @else {
+                    <mat-icon>rocket_launch</mat-icon>
+                  }
+                  {{ isDeploying ? 'Deploying…' : 'Deploy Agent' }}
                 </button>
-                <button mat-stroked-button (click)="saveAsTemplate()">
+                <button mat-stroked-button (click)="saveAsTemplate()" [disabled]="isDeploying">
                   <mat-icon>save</mat-icon>
                   Save as Template
                 </button>
               </div>
+
+              @if (deployError) {
+                <div class="deploy-status deploy-status--error" role="alert" aria-live="assertive">
+                  <mat-icon>error_outline</mat-icon>
+                  <span>{{ deployError }}</span>
+                </div>
+              }
+              @if (deploySuccess) {
+                <div class="deploy-status deploy-status--success" role="status" aria-live="polite">
+                  <mat-icon>check_circle_outline</mat-icon>
+                  <span>{{ deploySuccess }}</span>
+                </div>
+              }
             </mat-card-content>
           </mat-card>
         </div>

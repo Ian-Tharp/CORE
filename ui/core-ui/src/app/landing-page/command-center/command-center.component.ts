@@ -16,16 +16,17 @@ import { UiNotifyService } from '../../shared/services/ui-notify.service';
 import { ConnectionType } from './engine/tile-metadata.model';
 import * as THREE from 'three';
 import {
-  buildPlanet, disposePlanet, attachAutoRotate, resolveParams,
-  type WorldGenParams, type BiomeArchetype,
+  buildPlanet, updatePlanet, disposePlanet, attachAutoRotate, resolveParams, clampParams,
+  type WorldGenParams, type BiomeArchetype
 } from './engine/planet';
+import { PlanetCreatorComponent } from './planet-creator/planet-creator.component';
 
 /** Zoom-altitude tier: the explorable galaxy, an orbit on one world, or its planet surface. */
 export type Altitude = 'galaxy' | 'orbit' | 'planet';
 
 @Component({
   selector: 'app-command-center',
-  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent],
+  imports: [CommonModule, FormsModule, MatDialogModule, WorldDetailPanelComponent, SearchPaletteComponent, PlanetCreatorComponent],
   templateUrl: './command-center.component.html',
   styleUrl: './command-center.component.scss'
 })
@@ -90,6 +91,8 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
 
   // Current world tracking (for update vs create)
   currentWorldId: string | null = null;
+  isWorldSaved = false;
+  private savedStateTimeout?: ReturnType<typeof setTimeout>;
 
   // ── Zoom altitude (GALAXY → ORBIT → PLANET) ──────────────────────────────
   altitude: Altitude = 'galaxy';                  // template-bound (Descend button + badge)
@@ -97,7 +100,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   private readonly ORB_VISUAL_FACTOR = 0.78 * 1.12; // orb geom (cellRadius*0.78) × selection scale
   private mountedPlanet?: THREE.Group;
   private stopPlanetRotate?: () => void;
-  private mountedPlanetIndex = -1;
+  mountedPlanetIndex = -1;                         // template-bound (creator [tileIndex])
+  mountedParams?: WorldGenParams;                 // live params bound to the creator panel
+  private saveParamsRaf = 0;
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
@@ -112,9 +117,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       }
       // Flip altitude off the CD pass (RxJS may emit mid-change-detection → NG0100).
       Promise.resolve().then(() => {
-        if (!s) { this.unmountPlanet(); this.altitude = 'galaxy'; }
-        else if (this.altitude === 'galaxy') { this.altitude = 'orbit'; }
-        else if (this.altitude === 'planet' && s.index !== this.mountedPlanetIndex) {
+        if (!s) { this.unmountPlanet(); this.altitude = 'galaxy'; return; }
+        if (this.altitude === 'galaxy') { this.altitude = 'orbit'; return; }
+        if (this.altitude === 'planet' && s.index !== this.mountedPlanetIndex) {
           this.unmountPlanet(); this.altitude = 'orbit'; // reselected a different world
         }
       });
@@ -196,7 +201,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
    *  load routine shared by the URL deep-link, the Worlds dialog, and the
    *  first-load universe picker. */
   private loadWorldById(id: string, name: string): void {
-    this.currentWorldId = id;
+    this.setCurrentWorldId(id);
     this.worlds.getLatestSnapshot(id).subscribe({
       next: (snap) => {
         this.projectName = name;
@@ -217,6 +222,9 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     }
     if (this.worldStepLabelTimeout) {
       clearTimeout(this.worldStepLabelTimeout);
+    }
+    if (this.savedStateTimeout) {
+      clearTimeout(this.savedStateTimeout);
     }
     this.unmountPlanet();          // tear down any mounted planet BEFORE the engine
     this.removeLabelUpdater?.();
@@ -279,7 +287,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       ).subscribe({
         next: (result) => {
           this.isSaving = false;
-          this.currentWorldId = result.worldId; // Track the world ID for future saves
+          this.setCurrentWorldId(result.worldId); // Track the world ID for future saves
           this._flushMetadata(result.worldId);
           const message = result.isNew ? 'World created successfully' : 'World updated successfully';
           this.showSaveMessage(message, 'success');
@@ -372,7 +380,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
             ).subscribe({
               next: (result) => {
                 this.isSaving = false;
-                this.currentWorldId = result.worldId; // Track the new world ID
+                this.setCurrentWorldId(result.worldId); // Track the new world ID
                 this._flushMetadata(result.worldId);
                 this.showSaveMessage('World created successfully', 'success');
               },
@@ -396,7 +404,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
             ).subscribe({
               next: (result) => {
                 this.isSaving = false;
-                this.currentWorldId = result.worldId;
+                this.setCurrentWorldId(result.worldId);
                 this._flushMetadata(result.worldId);
                 this.showSaveMessage('World created successfully', 'success');
               },
@@ -467,6 +475,16 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
       clearTimeout(this.worldStepLabelTimeout);
     }
     this.worldStepLabelTimeout = setTimeout(() => this.updateWorldStepLabel(), 0);
+  }
+
+  private setCurrentWorldId(worldId: string | null): void {
+    this.currentWorldId = worldId;
+    if (this.savedStateTimeout) {
+      clearTimeout(this.savedStateTimeout);
+    }
+    this.savedStateTimeout = setTimeout(() => {
+      this.isWorldSaved = !!this.currentWorldId;
+    }, 0);
   }
 
   public onOpenWorlds(): void {
@@ -540,7 +558,7 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   /** Mount the planet for a world at its orb position (singleton — replaces any current planet). */
   private mountPlanet(info: SelectedTileInfo): void {
     this.unmountPlanet();
-    const params = this.deriveWorldGenParams(info);
+    const params = this.mountedParams = this.deriveWorldGenParams(info);
     const planet = buildPlanet(params, { tier: 'preview' });
     planet.position.set(info.worldX, info.worldY, info.worldZ);    // true orb centre
     planet.scale.setScalar(this.tileGrid.getCellRadius() * this.ORB_VISUAL_FACTOR);
@@ -550,6 +568,33 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
     this.mountedPlanet = planet;
     this.mountedPlanetIndex = info.index;
     this.engine.focusOn(new THREE.Vector3(info.worldX, info.worldY, info.worldZ), this.PLANET_ZOOM);
+    // Prefer saved per-orb params over the tile-derived defaults (non-blocking).
+    if (this.currentWorldId) {
+      const idx = info.index;
+      this.worlds.getWorldGenParams(this.currentWorldId, idx).subscribe((saved) => {
+        if (saved && this.mountedPlanet && this.mountedPlanetIndex === idx) {
+          this.mountedParams = clampParams(saved);
+          updatePlanet(this.mountedPlanet, this.mountedParams, { tier: 'preview' });
+        }
+      });
+    }
+  }
+
+  /** Live edits from the creator panel: re-apply to the mounted planet + persist (debounced). */
+  onCreatorParamsChange(p: WorldGenParams): void {
+    this.mountedParams = p;
+    if (this.mountedPlanet) { updatePlanet(this.mountedPlanet, p, { tier: 'preview' }); }
+    if (this.currentWorldId && this.mountedPlanetIndex >= 0) {
+      cancelAnimationFrame(this.saveParamsRaf);
+      const id = this.currentWorldId, idx = this.mountedPlanetIndex, snap = p;
+      this.saveParamsRaf = requestAnimationFrame(() =>
+        this.worlds.saveWorldGenParams(id, idx, snap).subscribe());
+    }
+  }
+
+  /** The creator (re)generated art/lore from the planet — surface a hint. */
+  onPlanetRegenerated(kind: 'art' | 'lore'): void {
+    this.showSaveMessage(kind === 'art' ? 'World art regenerated ✓' : 'World lore regenerated ✓', 'success');
   }
 
   /** Tear a mounted planet down in strict order; restore the galaxy orb. Idempotent. */
@@ -570,12 +615,12 @@ export class CommandCenterComponent implements AfterViewInit, OnDestroy {
   private deriveWorldGenParams(info: SelectedTileInfo): WorldGenParams {
     const name = this.worldLabels.find((w) => w.index === info.index)?.name?.trim();
     const seed = name || `world-${info.index}`;
-    let archetype: BiomeArchetype = 'temperate';
-    if (info.terrain === 'water') { archetype = 'oceanic'; }
-    else if (info.terrain === 'mountain') { archetype = 'volcanic'; }
-    else if (info.biome === 'forest') { archetype = 'jungle'; }
-    else if (info.biome === 'desert') { archetype = 'desert'; }
-    else if (info.biome === 'tundra') { archetype = 'tundra'; }
+    if (info.terrain === 'water') { return resolveParams({ seed, biomeArchetype: 'oceanic' }); }
+    if (info.terrain === 'mountain') { return resolveParams({ seed, biomeArchetype: 'volcanic' }); }
+    if (info.biome === 'forest') { return resolveParams({ seed, biomeArchetype: 'jungle' }); }
+    if (info.biome === 'desert') { return resolveParams({ seed, biomeArchetype: 'desert' }); }
+    if (info.biome === 'tundra') { return resolveParams({ seed, biomeArchetype: 'tundra' }); }
+    const archetype: BiomeArchetype = 'temperate';
     return resolveParams({ seed, biomeArchetype: archetype });
   }
 

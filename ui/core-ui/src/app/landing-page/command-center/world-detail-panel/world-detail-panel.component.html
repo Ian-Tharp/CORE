@@ -156,9 +156,25 @@
       <!-- AI Assistant -->
       <section class="info-section ai-section">
         <label class="section-label">AI Assistant</label>
+        <div class="agent-stack">
+          <span class="agent-stack__label">Lore Agent</span>
+          <select class="agent-stack__select" [(ngModel)]="selectedLoreAgentRole">
+            @for (template of worldAgentTemplates; track template.id) {
+              <option [value]="template.role">{{ template.name }}</option>
+            }
+          </select>
+          @if (!worldAgentTemplates.length) {
+            <span class="knowledge-hint">Using default world lore architect.</span>
+          }
+        </div>
         <div class="ai-quick-actions">
           <button class="btn-ai" (click)="generateLore('lore')" [disabled]="isGeneratingLore">Generate Lore</button>
-          <button class="btn-ai" (click)="quickAIPrompt('connections')">Suggest Connections</button>
+          <button class="btn-ai" (click)="auditCurrentLore()" [disabled]="isAuditingLore || !worldId || !selectedTile">
+            {{ isAuditingLore ? 'Auditing…' : 'Canon Audit' }}
+          </button>
+          <button class="btn-ai" (click)="suggestConnections()" [disabled]="isSuggestingConnections || !worldId || !selectedTile">
+            {{ isSuggestingConnections ? 'Charting…' : 'Suggest Connections' }}
+          </button>
           <button class="btn-ai" (click)="generateLore('inhabitants')" [disabled]="isGeneratingLore">Describe Inhabitants</button>
           <button class="btn-ai" (click)="generateLore('history')" [disabled]="isGeneratingLore">Create History</button>
         </div>
@@ -166,8 +182,30 @@
           <span class="knowledge-hint">{{ loreError }}</span>
         } @else if (loreStatus) {
           <span class="knowledge-hint">{{ loreStatus }}</span>
+          @if (loreAuditSummary) {
+            <span class="knowledge-hint knowledge-hint--audit">{{ loreAuditSummary }}</span>
+          }
         } @else if (!worldId) {
           <span class="knowledge-hint">Save this world to generate lore into its wiki.</span>
+        }
+        @if (loreDraft) {
+          <div class="lore-draft">
+            <input class="lore-draft__title" [(ngModel)]="loreDraft.title" aria-label="Lore draft title" />
+            <textarea
+              class="lore-draft__content"
+              rows="8"
+              [(ngModel)]="loreDraft.content"
+              aria-label="Lore draft content"
+            ></textarea>
+            <div class="lore-draft__actions">
+              <button class="btn-small" (click)="approveLoreDraft()" [disabled]="isSavingLoreDraft">
+                {{ isSavingLoreDraft ? 'Saving…' : 'Approve & Save to Wiki' }}
+              </button>
+              <button class="btn-small secondary" (click)="discardLoreDraft()" [disabled]="isSavingLoreDraft">
+                Discard Draft
+              </button>
+            </div>
+          </div>
         }
         <div class="ai-prompt-wrap">
           <textarea
@@ -228,6 +266,27 @@
             }
           </div>
         }
+        @if (connectionSuggestionError) {
+          <span class="knowledge-hint">{{ connectionSuggestionError }}</span>
+        }
+        @if (connectionSuggestions.length) {
+          <div class="connections-list connection-suggestions">
+            @for (suggestion of connectionSuggestions; track suggestion.to_tile_index) {
+              <div class="connection-item connection-item--suggested">
+                <span
+                  class="connection-type-indicator"
+                  [style.background]="connectionStyles[suggestion.type].color"
+                ></span>
+                <span class="connection-label">{{ connectionStyles[suggestion.type].label }}</span>
+                <span class="connection-partner">Tile {{ suggestion.to_tile_index }}</span>
+                <span class="connection-confidence">{{ suggestion.confidence * 100 | number:'1.0-0' }}%</span>
+                <button class="connection-accept" (click)="acceptConnectionSuggestion(suggestion)">Accept</button>
+                <button class="connection-remove" (click)="rejectConnectionSuggestion(suggestion)">&#10005;</button>
+                <p class="connection-rationale">{{ suggestion.rationale }}</p>
+              </div>
+            }
+          </div>
+        }
       </section>
 
       <!-- Linked Content -->
@@ -264,6 +323,9 @@
           placeholder="Describe the art… (or pick a theme above; leave blank to auto-build from this world's lore)"
           aria-label="World art prompt"
         ></textarea>
+        <button class="btn-small" (click)="directArtPrompt()" [disabled]="isDirectingArtPrompt || !worldId || !selectedTile">
+          {{ isDirectingArtPrompt ? 'Directing…' : 'Draft Prompt with Visual Director' }}
+        </button>
         <button class="send-btn" (click)="generateWorldArt()" [disabled]="isGeneratingArt || !worldId || !selectedTile">
           <span>{{ isGeneratingArt ? 'Painting…' : 'Generate Image' }}</span>
           <span class="send-btn__arrow" aria-hidden="true">{{ isGeneratingArt ? '◌' : '➤' }}</span>
@@ -301,6 +363,8 @@
         }
         @if (artError) {
           <span class="knowledge-hint">{{ artError }}</span>
+        } @else if (artPromptStatus) {
+          <span class="knowledge-hint">{{ artPromptStatus }}</span>
         } @else if (!worldId) {
           <span class="knowledge-hint">Save this world first to generate art.</span>
         } @else if (!worldArt.length) {
@@ -392,14 +456,43 @@
       <section class="info-section">
         <label class="section-label">Mood Boards</label>
         <button class="btn-small" (click)="createBoard()">+ Create Board</button>
+        <button class="btn-small" (click)="autoCreateMoodBoard()" [disabled]="!selectedTile">
+          Auto-create Mood Board
+        </button>
+        @if (moodBoardStatus) {
+          <span class="knowledge-hint">{{ moodBoardStatus }}</span>
+        }
         @if (linkedBoards.length) {
           <div class="linked-list">
             @for (board of linkedBoards; track board.id) {
-              <div class="linked-item">
+              <div class="linked-item linked-item--clickable" (click)="openBoard(board)"
+                   (keydown.enter)="openBoard(board)" tabindex="0" role="link">
                 <span class="linked-title">{{ board.title }}</span>
-                <button class="linked-remove" (click)="unlinkBoard(board.id)">&#10005;</button>
+                <button class="btn-small secondary" (click)="$event.stopPropagation(); selectBoard(board)">Preview</button>
+                <button class="linked-remove" (click)="$event.stopPropagation(); unlinkBoard(board.id)">&#10005;</button>
               </div>
             }
+          </div>
+        }
+        @if (selectedBoard) {
+          <div class="mood-board-preview">
+            <div class="mood-board-preview__head">
+              <strong>{{ selectedBoard.title }}</strong>
+              <span>{{ selectedBoard.cards.length }} cards</span>
+            </div>
+            <div class="mood-board-card-grid">
+              @for (card of selectedBoard.cards; track card.id) {
+                <article class="mood-board-card">
+                  @if (moodBoardCardImage(card); as imageUrl) {
+                    <img class="mood-board-card__img" [src]="imageUrl" [alt]="card.title" />
+                  }
+                  <h4>{{ card.title }}</h4>
+                  @if (card.notes) {
+                    <p>{{ card.notes }}</p>
+                  }
+                </article>
+              }
+            </div>
           </div>
         }
       </section>

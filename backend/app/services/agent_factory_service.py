@@ -39,6 +39,7 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import Runnable
 
+from app.dependencies import get_local_chat_model
 from app.models.agent_models import AgentConfig
 from app.repository.agent_repository import get_agent
 from app.services.agent_mcp_service import get_agent_mcp_service
@@ -326,7 +327,9 @@ class AgentFactoryService:
         # Resolve the model: per-agent config.model → env default → fallback.
         # build_chat_model routes OpenAI ids to OpenAI and any other id to the
         # active local provider (Ollama / LM Studio), so agents are model-selectable.
-        model = config.model or os.getenv("CORE_DEFAULT_MODEL") or "gpt-4o-mini"
+        model = (
+            config.model or os.getenv("CORE_DEFAULT_MODEL") or get_local_chat_model()
+        )
         llm = build_chat_model(model, temperature=temperature, top_p=top_p)
 
         logger.debug(

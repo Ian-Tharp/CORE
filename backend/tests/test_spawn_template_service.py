@@ -92,6 +92,17 @@ class TestBuiltinTemplates:
         assert tmpl is not None
         assert tmpl.role == "writer"
 
+    def test_world_agent_templates_exist(self, service):
+        expected = {
+            "world_lore_architect",
+            "canon_continuity_auditor",
+            "world_connection_cartographer",
+            "visual_prompt_director",
+            "inhabitant_culture_designer",
+        }
+        roles = {tmpl.role for tmpl in service.list_templates(tag="procedural-worlds")}
+        assert expected.issubset(roles)
+
     def test_builtins_have_system_prompts(self, service):
         for tmpl in service.list_templates(builtin_only=True):
             assert tmpl.system_prompt

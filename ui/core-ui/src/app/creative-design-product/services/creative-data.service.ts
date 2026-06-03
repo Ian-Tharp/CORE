@@ -1,6 +1,14 @@
 import { Injectable } from '@angular/core';
 
-export interface BoardCard { id: string; title: string; imageUrl?: string; notes?: string; createdAt: string; }
+export interface BoardCard {
+  id: string;
+  title: string;
+  imageUrl?: string;
+  imageSource?: 'world_asset' | 'character' | 'manual';
+  sourceId?: string;
+  notes?: string;
+  createdAt: string;
+}
 export interface Board { id: string; worldId?: string; title: string; cards: BoardCard[]; createdAt: string; }
 
 export interface MediaItem { id: string; url: string; type: 'image' | 'video' | 'audio'; caption?: string; }
@@ -31,7 +39,35 @@ export class CreativeDataService {
   private wikiKey = 'creative.wiki.v1';
 
   private read<T>(key: string): T[] { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } }
-  public write<T>(key: string, value: T[]): void { localStorage.setItem(key, JSON.stringify(value)); }
+  public write<T>(key: string, value: T[]): void {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      if (key !== this.boardsKey || !this.isQuotaError(err)) {throw err;}
+      const compacted = this.compactBoards(value as Board[]) as T[];
+      localStorage.setItem(key, JSON.stringify(compacted));
+    }
+  }
+
+  private isQuotaError(err: unknown): boolean {
+    return err instanceof DOMException && (
+      err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    );
+  }
+
+  private compactBoards(boards: Board[]): Board[] {
+    return boards.map(board => ({
+      ...board,
+      cards: board.cards.map(card => ({
+        ...card,
+        imageUrl: card.imageUrl?.startsWith('data:image/') ? undefined : card.imageUrl,
+        notes: card.notes
+          ? `${card.notes}\n\n[Storage note: embedded image data was compacted; source reference preserved when available.]`
+          : card.notes
+      }))
+    }));
+  }
 
   listBoards(worldId?: string): Board[] {
     const all = this.read<Board>(this.boardsKey);
@@ -46,6 +82,43 @@ export class CreativeDataService {
       createdAt: new Date().toISOString()
     };
     const all = this.listBoards(); all.push(board); this.write(this.boardsKey, all); return board;
+  }
+
+  getBoard(boardId: string): Board | null {
+    return this.listBoards().find(board => board.id === boardId) ?? null;
+  }
+
+  deleteBoard(boardId: string): boolean {
+    const all = this.listBoards();
+    const next = all.filter(board => board.id !== boardId);
+    if (next.length === all.length) {return false;}
+    this.write(this.boardsKey, next);
+    return true;
+  }
+
+  addCardToBoard(boardId: string, card: Omit<BoardCard, 'id' | 'createdAt'>): Board | null {
+    const all = this.listBoards();
+    const index = all.findIndex(board => board.id === boardId);
+    if (index < 0) {return null;}
+    const nextCard: BoardCard = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      ...card
+    };
+    all[index] = { ...all[index], cards: [...all[index].cards, nextCard] };
+    this.write(this.boardsKey, all);
+    return all[index];
+  }
+
+  createBoardWithCards(
+    partial: { title: string; worldId?: string },
+    cards: Array<Omit<BoardCard, 'id' | 'createdAt'>>
+  ): Board {
+    let board = this.createBoard(partial);
+    for (const card of cards) {
+      board = this.addCardToBoard(board.id, card) ?? board;
+    }
+    return board;
   }
 
   listWiki(worldId?: string): WikiPage[] {

@@ -1,3 +1,57 @@
+import { CreativeDataService } from './creative-data.service';
+
+describe('CreativeDataService', () => {
+  let service: CreativeDataService;
+
+  beforeEach(() => {
+    localStorage.clear();
+    service = new CreativeDataService();
+  });
+
+  it('should persist board cards and return the updated board', () => {
+    // Arrange
+    const board = service.createBoard({ title: 'Verdant Gate - Mood Board', worldId: 'world-1' });
+
+    // Act
+    const updated = service.addCardToBoard(board.id, {
+      title: 'World Overview',
+      notes: 'Terrain: water'
+    });
+
+    // Assert
+    expect(updated?.cards.length).toBe(1);
+    expect(service.getBoard(board.id)?.cards[0].title).toBe('World Overview');
+    expect(service.listBoards('world-1').length).toBe(1);
+  });
+
+  it('should create a board with an initial card set', () => {
+    // Arrange
+    const cards = [
+      { title: 'Palette', notes: '- cyan energy' },
+      { title: 'World Art', imageUrl: 'data:image/png;base64,abc' }
+    ];
+
+    // Act
+    const board = service.createBoardWithCards({ title: 'Auto Board' }, cards);
+
+    // Assert
+    expect(board.cards.map(card => card.title)).toEqual(['Palette', 'World Art']);
+    expect(service.getBoard(board.id)?.cards.length).toBe(2);
+  });
+
+  it('should delete a board from storage', () => {
+    // Arrange
+    const board = service.createBoard({ title: 'Delete Me', worldId: 'world-1' });
+
+    // Act
+    const deleted = service.deleteBoard(board.id);
+
+    // Assert
+    expect(deleted).toBe(true);
+    expect(service.getBoard(board.id)).toBeNull();
+    expect(service.listBoards('world-1')).toEqual([]);
+  });
+});
 import { TestBed } from '@angular/core/testing';
 import { CreativeDataService, WikiPage, Board } from './creative-data.service';
 

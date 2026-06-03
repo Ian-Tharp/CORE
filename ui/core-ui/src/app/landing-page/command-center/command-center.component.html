@@ -25,8 +25,8 @@
       <span class="ticker-chip">SEED {{ seed || 'RANDOM' }}</span>
       <span class="ticker-chip">SELECTED {{ selectedInfo ? '(' + selectedInfo.x + ', ' + selectedInfo.y + ')' : 'NONE' }}</span>
     </div>
-    <div class="ticker-save-state" [class.ticker-save-state--saving]="isSaving" [class.ticker-save-state--saved]="currentWorldId">
-      {{ isSaving ? 'SYNCING' : currentWorldId ? 'SAVED' : 'DRAFT' }}
+    <div class="ticker-save-state" [class.ticker-save-state--saving]="isSaving" [class.ticker-save-state--saved]="isWorldSaved">
+      {{ isSaving ? 'SYNCING' : isWorldSaved ? 'SAVED' : 'DRAFT' }}
     </div>
   </header>
 
@@ -35,7 +35,7 @@
     <div class="controls">
       <div class="project-name-row">
         <input class="name" placeholder="Project name" [(ngModel)]="projectName" />
-        @if (currentWorldId) {
+        @if (isWorldSaved) {
           <span class="world-status saved" title="This world is saved. Changes will update it.">&#9679;</span>
         } @else {
           <span class="world-status unsaved" title="New world. Use Save to create it.">&#9675;</span>
@@ -206,6 +206,14 @@
       <div class="altitude-badge" aria-live="polite">
         {{ altitude === 'orbit' ? 'Orbit' : 'Planet' }} · Esc to ascend
       </div>
+    }
+    @if (altitude === 'planet' && mountedParams) {
+      <app-planet-creator class="planet-creator"
+        [params]="mountedParams"
+        [worldId]="currentWorldId"
+        [tileIndex]="mountedPlanetIndex"
+        (paramsChange)="onCreatorParamsChange($event)"
+        (regenerated)="onPlanetRegenerated($event)" />
     }
     @if (contextMenu.visible) {
       <div class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" (click)="$event.stopPropagation()">

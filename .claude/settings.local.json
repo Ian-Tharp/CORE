@@ -42,7 +42,10 @@
       "Bash(docker run:*)",
       "WebFetch(domain:dev.to)",
       "WebFetch(domain:opensource.microsoft.com)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\praht\\\\OneDrive\\\\Desktop\\\\Projects\\\\CORE\" -Directory)",
+      "Bash(Select-Object Name)",
+      "mcp__claude_ai_Notion__notion-create-pages"
     ],
     "defaultMode": "acceptEdits"
   },
