@@ -28,6 +28,7 @@ The system is structured around the CORE principles, with each component serving
 - **Council of Perspectives** — Multi-agent deliberation framework for structured analysis
 - **Catalyst Engine** — Creative divergence-convergence workflows
 - **MCP Integration** — Model Context Protocol servers for external tool access
+- **Multi-Provider Chat** — Stream from OpenAI, Anthropic (incl. Claude Haiku 4.5), or local models (Ollama / LM Studio)
 - **Consciousness Module** — Experimental consciousness emergence protocols and inter-agent dialogue
 - **Desktop UI** — Angular 19 + Electron app with command deck interface
 - **Self-Hosted** — Runs entirely on your hardware via Docker Compose
@@ -50,7 +51,14 @@ docker compose up -d
 #   Redis          → localhost:6379
 ```
 
-See [docs/deployment/docker.md](docs/deployment/docker.md) for detailed Docker configuration and production setup.
+> **Local models & optional services:** CORE defaults to **LM Studio** as its local provider
+> (`CORE_LOCAL_PROVIDER`, reached at `host.docker.internal:1234`). The `ollama` and `n8n`
+> containers are **opt-in** via compose profiles — e.g. `docker compose --profile ollama up -d`.
+> Copy `.env.example` → `.env` for per-machine values (model dirs, provider, keys).
+
+See [docs/deployment/docker.md](docs/deployment/docker.md) for detailed Docker configuration and production setup,
+[docs/deployment/local-llm-providers.md](docs/deployment/local-llm-providers.md) for local models, and
+[docs/deployment/chat-providers.md](docs/deployment/chat-providers.md) for OpenAI/Anthropic/local chat selection.
 
 ## Architecture
 
@@ -58,7 +66,7 @@ See [docs/deployment/docker.md](docs/deployment/docker.md) for detailed Docker c
 ┌──────────────────────────────────────────────────────┐
 │                    Frontend (Angular 19 + Electron)   │
 │  Landing Page · Agent Library · Communication Commons │
-│  Command Center · Engine Playground · Creative Studio │
+│  Command Deck · Engine Playground · Planet Lab        │
 └──────────────────────┬───────────────────────────────┘
                        │ HTTP / WebSocket
 ┌──────────────────────▼───────────────────────────────┐

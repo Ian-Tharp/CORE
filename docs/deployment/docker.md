@@ -46,6 +46,20 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.prod.yml logs -f
 ```
 
+### Optional services (Ollama, n8n)
+A plain `up` starts only `core-backend`, `core-ui`, `postgres`, and `redis`. The `ollama` and
+`n8n` containers are **opt-in** via compose profiles:
+
+```bash
+docker compose --profile ollama up -d   # local Ollama container
+docker compose --profile n8n up -d      # workflow automation
+```
+
+CORE uses **LM Studio** (host app) as its default local provider, so most setups don't need
+the Ollama container — see [local-llm-providers.md](./local-llm-providers.md). Ollama's model
+store defaults to a named volume; set `OLLAMA_MODELS_DIR` in the root `.env` to bind-mount an
+existing host models directory.
+
 ## Services
 
 ### Core Backend (`core-backend`)
@@ -74,20 +88,14 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 ## Environment Variables
 
-Create `.env` file in project root:
+Two `.env` files are used:
 
-```env
-# Database
-DB_PASSWORD=your_secure_password
-
-# API Keys (for LLM services)
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-
-# Core Settings
-CORE_ENV=development
-LOG_LEVEL=INFO
-```
+- **Root `.env`** — read by Docker Compose for variable interpolation. Copy the template:
+  `cp .env.example .env`. Per-machine knobs include `CORE_LOCAL_PROVIDER` (default `lmstudio`),
+  `OLLAMA_MODELS_DIR` (default a named volume), `LMSTUDIO_BASE_URL`, and `LMSTUDIO_MODELS`.
+- **`backend/.env`** — app runtime config/secrets (gitignored): `OPENAI_API_KEY`,
+  `ANTHROPIC_API_KEY`, `CORE_API_KEY`, etc. The backend's `load_dotenv(override=True)` makes
+  these win over compose-injected values.
 
 ## Development Workflow
 
