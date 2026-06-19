@@ -4,8 +4,8 @@ Tests for the output-validation gate wiring into the verdict path (target #7).
 These tests exercise ``evaluate()``'s integration with ``validate_output``
 behind the ``ENABLE_OUTPUT_VALIDATION`` feature flag. They prove three things:
 
-  (a) Flag OFF (default): an APPROVE-worthy case with deliberately broken
-      output still returns APPROVE — the gate is a strict no-op.
+  (a) Flag OFF (explicitly disabled): an APPROVE-worthy case with deliberately
+      broken output still returns APPROVE — the gate is a strict no-op.
   (b) Flag ON + failing validation on an otherwise-APPROVE case → ESCALATE.
   (c) Flag ON + passing validation → verdict unchanged (APPROVE).
 
@@ -93,8 +93,8 @@ BROKEN_CODE_OUTPUT = (
 
 @pytest.mark.asyncio
 async def test_flag_off_broken_output_still_approves(monkeypatch):
-    """Default (flag OFF): broken output that would fail validation still APPROVES."""
-    # Ensure the default-off flag is off for this test regardless of env.
+    """Flag OFF (explicit): broken output that would fail validation still APPROVES."""
+    # Force the flag OFF for this test regardless of the (now ON-by-default) value.
     monkeypatch.setattr(eval_service, "ENABLE_OUTPUT_VALIDATION", False)
 
     repo_patch, mem_patch = _mock_repos()

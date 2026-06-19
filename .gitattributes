@@ -1,0 +1,5 @@
+# Git hooks and shell scripts must keep LF endings so they execute correctly
+# on Windows checkouts (the repo runs with core.autocrlf=true). A CRLF shebang
+# breaks `#!/usr/bin/env bash`.
+.githooks/** text eol=lf
+*.sh text eol=lf

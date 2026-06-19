@@ -43,13 +43,14 @@ logger = logging.getLogger(__name__)
 # FEATURE FLAGS
 # =============================================================================
 
-# Advisory output-validation gate (target #7). When ON, an otherwise-APPROVE
-# verdict whose final output fails deterministic validation is downgraded to
-# ESCALATE for human review. Defaults to OFF so behavior is exactly unchanged
-# unless explicitly enabled. Env values "1"/"true"/"yes" (any case) turn it on;
-# unset / "0" / "false" / anything else keeps it off.
+# Output-validation gate. When ON, an otherwise-APPROVE verdict whose final
+# output fails deterministic validation (empty/oversized output, broken code
+# syntax, unsafe paths) is downgraded to ESCALATE for human review. Defaults
+# to ON: the gate only ever changes a verdict on a genuine validation failure,
+# so good outputs are unaffected. Set ENABLE_OUTPUT_VALIDATION=0/false to
+# disable (e.g. for debugging or to restore the pre-gate behavior).
 ENABLE_OUTPUT_VALIDATION: bool = os.getenv(
-    "ENABLE_OUTPUT_VALIDATION", "false"
+    "ENABLE_OUTPUT_VALIDATION", "true"
 ).strip().lower() in ("1", "true", "yes")
 
 

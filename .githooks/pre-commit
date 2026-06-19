@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# CORE pre-commit hook — mirrors CI's backend gate so failures are caught
+# locally, not in CI. Runs ONLY when backend Python files are staged:
+#   1. black --check (formatting)        — same as CI "Lint (black)"
+#   2. pytest unit suite                 — same as CI "Run tests"
+#
+# Activate once per clone:
+#   git config core.hooksPath .githooks
+#
+# Bypass for an emergency/WIP commit:
+#   git commit --no-verify
+#
+set -uo pipefail
+
+# Only gate on backend Python changes — docs/ui-only commits skip the suite.
+staged_py="$(git diff --cached --name-only --diff-filter=ACM | grep -E '^backend/.*\.py$' || true)"
+if [ -z "$staged_py" ]; then
+    exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root/backend" || {
+    echo "[pre-commit] could not cd into backend/"; exit 1;
+}
+
+echo "[pre-commit] black --check (app/ tests/) ..."
+if ! uv run black --check app/ tests/; then
+    echo
+    echo "[pre-commit] BLOCKED: code is not black-formatted."
+    echo "             Fix with:  (cd backend && uv run black app/ tests/)  then re-stage."
+    exit 1
+fi
+
+echo "[pre-commit] pytest (unit suite; integration deselected) ..."
+if ! uv run python -m pytest -q; then
+    echo
+    echo "[pre-commit] BLOCKED: unit tests failed. Fix them before committing."
+    echo "             (Use 'git commit --no-verify' only for a deliberate WIP commit.)"
+    exit 1
+fi
+
+echo "[pre-commit] OK — formatting clean, unit tests green."
+exit 0

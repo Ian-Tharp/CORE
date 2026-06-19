@@ -97,7 +97,8 @@ All docs live in `docs/` — see [`docs/README.md`](docs/README.md) for the full
 2. **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 3. **Testing**: `python -m pytest tests/ -q` for backend. `npm test` for frontend.
 4. **Formatting**: `black` for Python, Angular lint for TypeScript.
-5. **PRs**: feature → develop → main.
+5. **Pre-commit hook** (recommended): run `git config core.hooksPath .githooks` once per clone. `.githooks/pre-commit` then runs `black --check app/ tests/` + the backend unit suite (mirrors CI) on any commit touching `backend/**.py`. Bypass a deliberate WIP commit with `git commit --no-verify`.
+6. **PRs**: feature → develop → main.
 
 ## Important Notes
 
