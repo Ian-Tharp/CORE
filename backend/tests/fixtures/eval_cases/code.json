@@ -1,0 +1,218 @@
+[
+  {
+    "id": "code-approve-fizzbuzz",
+    "domain": "code",
+    "intent": "Write a Python function fizzbuzz(n) that returns the FizzBuzz string for n.",
+    "plan_steps": [
+      {
+        "description": "Implement fizzbuzz(n) handling 3, 5, and 15 multiples.",
+        "expected_output": "A correct fizzbuzz function.",
+        "required": true
+      },
+      {
+        "description": "Add a quick inline test for n in {3, 5, 15, 7}.",
+        "expected_output": "Assertions pass for representative cases.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "def fizzbuzz(n):\n    if n % 15 == 0:\n        return 'FizzBuzz'\n    if n % 3 == 0:\n        return 'Fizz'\n    if n % 5 == 0:\n        return 'Buzz'\n    return str(n)",
+        "error": null,
+        "duration_ms": 420
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "assert fizzbuzz(3) == 'Fizz'; assert fizzbuzz(5) == 'Buzz'; assert fizzbuzz(15) == 'FizzBuzz'; assert fizzbuzz(7) == '7'  # all pass",
+        "error": null,
+        "duration_ms": 110
+      }
+    ],
+    "final_output": "Here is fizzbuzz(n):\n\ndef fizzbuzz(n):\n    if n % 15 == 0:\n        return 'FizzBuzz'\n    if n % 3 == 0:\n        return 'Fizz'\n    if n % 5 == 0:\n        return 'Buzz'\n    return str(n)\n\nVerified against 3, 5, 15, and 7.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "code-approve-binary-search",
+    "domain": "code",
+    "intent": "Implement an iterative binary_search(arr, target) returning the index or -1.",
+    "plan_steps": [
+      {
+        "description": "Implement iterative binary search with lo/hi pointers.",
+        "expected_output": "Returns correct index or -1; no infinite loop.",
+        "required": true
+      },
+      {
+        "description": "Test on an empty list, a hit, and a miss.",
+        "expected_output": "All three cases return expected values.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        if arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+        "error": null,
+        "duration_ms": 530
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "binary_search([], 1) == -1; binary_search([1,2,3,4], 3) == 2; binary_search([1,2,3,4], 9) == -1  # pass",
+        "error": null,
+        "duration_ms": 95
+      }
+    ],
+    "final_output": "Iterative binary_search implemented and verified on empty/hit/miss cases. Index returned for hits, -1 otherwise.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "code-refine-missing-edge-case",
+    "domain": "code",
+    "intent": "Write parse_int(s) that returns the integer value of s, handling leading/trailing whitespace and a leading sign.",
+    "plan_steps": [
+      {
+        "description": "Strip whitespace and parse an optional sign + digits.",
+        "expected_output": "Handles ' +42 ', '-7', and '0'.",
+        "required": true
+      },
+      {
+        "description": "Reject non-numeric input with a clear error.",
+        "expected_output": "Raises ValueError on 'abc'.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "def parse_int(s):\n    s = s.strip()\n    return int(s)",
+        "error": null,
+        "duration_ms": 300
+      },
+      {
+        "step_index": 1,
+        "status": "partial",
+        "output": "int('abc') already raises ValueError, but no custom message and no explicit sign handling test was written.",
+        "error": null,
+        "duration_ms": 140
+      }
+    ],
+    "final_output": "def parse_int(s):\n    s = s.strip()\n    return int(s)\n\nThis covers whitespace and signs via int(), but the requested explicit error-handling step was only partially addressed.",
+    "ground_truth_verdict": "refine",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "code-retry-shallow-output",
+    "domain": "code",
+    "intent": "Implement a thread-safe in-memory LRU cache class with get/put and a capacity bound.",
+    "plan_steps": [
+      {
+        "description": "Implement LRUCache with O(1) get/put using an ordered map.",
+        "expected_output": "Eviction order is correct under capacity pressure.",
+        "required": true
+      },
+      {
+        "description": "Make get/put thread-safe with a lock.",
+        "expected_output": "Concurrent access does not corrupt internal state.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "partial",
+        "output": "class LRUCache:\n    def __init__(self, cap):\n        self.cap = cap\n        self.d = {}\n    def get(self, k):\n        return self.d.get(k)\n    def put(self, k, v):\n        self.d[k] = v  # no eviction, no recency tracking",
+        "error": null,
+        "duration_ms": 610
+      },
+      {
+        "step_index": 1,
+        "status": "not_started",
+        "output": null,
+        "error": null,
+        "duration_ms": null
+      }
+    ],
+    "final_output": "A basic dict-backed cache. Eviction and locking are not implemented yet.",
+    "ground_truth_verdict": "retry",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "code-escalate-import-error",
+    "domain": "code",
+    "intent": "Write a script that loads model weights from disk and prints the layer count.",
+    "plan_steps": [
+      {
+        "description": "Import the framework and load weights from the given path.",
+        "expected_output": "Weights object loaded without error.",
+        "required": true
+      },
+      {
+        "description": "Count and print the number of layers.",
+        "expected_output": "An integer layer count is printed.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "failed",
+        "output": null,
+        "error": "ModuleNotFoundError: No module named 'torch'. Dependency unavailable in the execution sandbox.",
+        "duration_ms": 230
+      },
+      {
+        "step_index": 1,
+        "status": "not_started",
+        "output": null,
+        "error": null,
+        "duration_ms": null
+      }
+    ],
+    "final_output": "",
+    "ground_truth_verdict": "escalate",
+    "expected_quality_band": "low"
+  },
+  {
+    "id": "code-escalate-wrong-algorithm",
+    "domain": "code",
+    "intent": "Implement quicksort(arr) returning a new sorted list (ascending).",
+    "plan_steps": [
+      {
+        "description": "Implement quicksort with a pivot and partition.",
+        "expected_output": "Returns a correctly sorted ascending list.",
+        "required": true
+      },
+      {
+        "description": "Verify on a reverse-sorted list.",
+        "expected_output": "[5,4,3,2,1] sorts to [1,2,3,4,5].",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "def quicksort(arr):\n    return arr  # returns input unchanged",
+        "error": null,
+        "duration_ms": 280
+      },
+      {
+        "step_index": 1,
+        "status": "failed",
+        "output": "quicksort([5,4,3,2,1]) returned [5,4,3,2,1]; expected [1,2,3,4,5].",
+        "error": "AssertionError: output not sorted",
+        "duration_ms": 90
+      }
+    ],
+    "final_output": "def quicksort(arr):\n    return arr\n\nThe function returns the input unchanged and fails the sort assertion.",
+    "ground_truth_verdict": "retry",
+    "expected_quality_band": "medium"
+  }
+]

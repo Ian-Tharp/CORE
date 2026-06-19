@@ -136,8 +136,19 @@ Guidelines:
         for step in plan.steps:
             if step.requires_hitl:
                 hitl_steps += 1
-            if step.tool and step.tool in available_tools:
-                tool_counts[step.tool] = tool_counts.get(step.tool, 0) + 1
+            # Normalize untrusted tool names from the LLM plan JSON before matching.
+            # Case/whitespace variants ("GIT", " git ") must not slip past the
+            # high-risk gate by failing the membership check and being silently
+            # dropped from tool_counts. Unknown tools degrade to LLM steps
+            # (conservative: they are never under-counted as low-risk).
+            if step.tool:
+                normalized_tool = step.tool.lower().strip()
+                if normalized_tool in available_tools:
+                    tool_counts[normalized_tool] = (
+                        tool_counts.get(normalized_tool, 0) + 1
+                    )
+                else:
+                    llm_steps += 1
             else:
                 llm_steps += 1
 

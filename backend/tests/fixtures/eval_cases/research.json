@@ -1,0 +1,218 @@
+[
+  {
+    "id": "research-approve-pgvector-index",
+    "domain": "research",
+    "intent": "Summarize the tradeoffs between HNSW and IVFFlat indexes in pgvector and recommend one for a 1M-row knowledge base.",
+    "plan_steps": [
+      {
+        "description": "Gather the recall/latency/build-time characteristics of HNSW and IVFFlat.",
+        "expected_output": "Both indexes' key tradeoffs identified with sources.",
+        "required": true
+      },
+      {
+        "description": "Make a recommendation tied to the 1M-row, read-heavy constraint.",
+        "expected_output": "A clear recommendation with justification.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "HNSW: higher recall and lower query latency, slower build, more memory. IVFFlat: cheaper to build, lower memory, recall depends on probes and requires training on representative data.",
+        "error": null,
+        "duration_ms": 2100
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "For 1M rows that are read-heavy with infrequent writes, HNSW is recommended: the one-time build cost is amortized and query latency/recall dominate.",
+        "error": null,
+        "duration_ms": 880
+      }
+    ],
+    "final_output": "Recommendation: use HNSW for the 1M-row read-heavy KB. HNSW gives higher recall and lower query latency than IVFFlat at the cost of a slower, more memory-intensive build; since writes are infrequent that build cost is amortized. Choose IVFFlat only if memory is tightly constrained or rebuilds are frequent.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "research-approve-license-comparison",
+    "domain": "research",
+    "intent": "Compare the MIT and Apache-2.0 licenses for a self-hosted open-source project, focusing on patent grants.",
+    "plan_steps": [
+      {
+        "description": "State the core permissions and conditions of each license.",
+        "expected_output": "Accurate summary of both licenses.",
+        "required": true
+      },
+      {
+        "description": "Highlight the patent-grant difference and its practical impact.",
+        "expected_output": "Explains Apache-2.0's explicit patent grant vs MIT's silence.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "MIT: permissive, requires preserving the copyright notice, no explicit patent terms. Apache-2.0: permissive, requires NOTICE preservation, includes an explicit patent license and termination clause.",
+        "error": null,
+        "duration_ms": 1750
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "Apache-2.0 grants contributors' patent rights to users and terminates them on patent litigation; MIT is silent on patents, leaving an implied (weaker, jurisdiction-dependent) grant.",
+        "error": null,
+        "duration_ms": 640
+      }
+    ],
+    "final_output": "Both MIT and Apache-2.0 are permissive. The key difference for patents: Apache-2.0 includes an explicit patent grant plus a retaliation/termination clause, giving downstream users clearer protection; MIT says nothing about patents, relying on a weaker implied grant. For a project where contributors may hold patents, Apache-2.0 is the safer default.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "research-refine-incomplete-coverage",
+    "domain": "research",
+    "intent": "Explain the four phases of the CORE cognitive loop and what each contributes.",
+    "plan_steps": [
+      {
+        "description": "Name all four phases (Comprehension, Orchestration, Reasoning, Evaluation).",
+        "expected_output": "All four phases named.",
+        "required": true
+      },
+      {
+        "description": "Describe the contribution of each phase.",
+        "expected_output": "A sentence on each of the four phases.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "Comprehension, Orchestration, Reasoning, Evaluation.",
+        "error": null,
+        "duration_ms": 700
+      },
+      {
+        "step_index": 1,
+        "status": "partial",
+        "output": "Comprehension parses intent; Orchestration plans and assigns steps. Reasoning and Evaluation were not described.",
+        "error": null,
+        "duration_ms": 980
+      }
+    ],
+    "final_output": "The CORE loop has four phases: Comprehension, Orchestration, Reasoning, and Evaluation. Comprehension parses the user's intent into a structured task, and Orchestration plans the steps and routes them. (Reasoning and Evaluation still need to be explained.)",
+    "ground_truth_verdict": "refine",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "research-retry-no-sources",
+    "domain": "research",
+    "intent": "Summarize current evidence on whether retrieval-augmented generation reduces hallucination, with citations.",
+    "plan_steps": [
+      {
+        "description": "Collect findings from at least two studies on RAG and hallucination.",
+        "expected_output": "Two or more cited sources with their findings.",
+        "required": true
+      },
+      {
+        "description": "Synthesize the evidence into a balanced conclusion.",
+        "expected_output": "A nuanced conclusion grounded in the sources.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "partial",
+        "output": "Found general claims that RAG 'usually helps' but did not capture specific studies or citations.",
+        "error": null,
+        "duration_ms": 1900
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "RAG generally reduces hallucination by grounding answers in retrieved context, though quality depends on retrieval relevance.",
+        "error": null,
+        "duration_ms": 720
+      }
+    ],
+    "final_output": "RAG generally reduces hallucination by grounding responses in retrieved context, but the effect depends on retrieval quality. (No specific studies or citations were captured, despite citations being requested.)",
+    "ground_truth_verdict": "retry",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "research-escalate-search-failed",
+    "domain": "research",
+    "intent": "Find the latest published benchmark numbers for the gemma4:12b model on MMLU and report them.",
+    "plan_steps": [
+      {
+        "description": "Search for an authoritative source of gemma4:12b MMLU scores.",
+        "expected_output": "A primary or reputable benchmark source located.",
+        "required": true
+      },
+      {
+        "description": "Report the MMLU number with the source.",
+        "expected_output": "A specific score plus citation.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "failed",
+        "output": null,
+        "error": "Web search tool unavailable (offline sandbox); no source could be retrieved.",
+        "duration_ms": 410
+      },
+      {
+        "step_index": 1,
+        "status": "not_started",
+        "output": null,
+        "error": null,
+        "duration_ms": null
+      }
+    ],
+    "final_output": "",
+    "ground_truth_verdict": "escalate",
+    "expected_quality_band": "low"
+  },
+  {
+    "id": "research-escalate-fabricated",
+    "domain": "research",
+    "intent": "Report the exact founding date and headquarters city of the organization that maintains the CORE kernel.",
+    "plan_steps": [
+      {
+        "description": "Verify the organization's founding date from a reliable source.",
+        "expected_output": "A verifiable founding date.",
+        "required": true
+      },
+      {
+        "description": "Verify the headquarters city.",
+        "expected_output": "A verifiable HQ location.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "failed",
+        "output": "Produced 'March 14, 2019, Geneva' but no source supports this; value appears fabricated.",
+        "error": "No supporting source found; answer unverifiable.",
+        "duration_ms": 1300
+      },
+      {
+        "step_index": 1,
+        "status": "failed",
+        "output": "Produced 'Geneva, Switzerland' with no citation.",
+        "error": "No supporting source found; answer unverifiable.",
+        "duration_ms": 1100
+      }
+    ],
+    "final_output": "The organization was founded on March 14, 2019 and is headquartered in Geneva, Switzerland.",
+    "ground_truth_verdict": "escalate",
+    "expected_quality_band": "low"
+  }
+]

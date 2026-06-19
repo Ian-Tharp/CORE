@@ -1,0 +1,230 @@
+[
+  {
+    "id": "file_ops-approve-rename-batch",
+    "domain": "file_ops",
+    "intent": "Rename every .jpeg file in ./photos to .jpg, preserving the base name.",
+    "plan_steps": [
+      {
+        "description": "List all .jpeg files under ./photos.",
+        "expected_output": "A complete list of .jpeg files.",
+        "required": true
+      },
+      {
+        "description": "Rename each to .jpg without overwriting existing files.",
+        "expected_output": "All targets renamed; no collisions.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "Found 12 .jpeg files in ./photos.",
+        "error": null,
+        "duration_ms": 60
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "Renamed 12/12 files to .jpg. No existing .jpg names collided.",
+        "error": null,
+        "duration_ms": 340
+      }
+    ],
+    "final_output": "Renamed all 12 .jpeg files in ./photos to .jpg, preserving base names and with no collisions.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "file_ops-approve-merge-csv",
+    "domain": "file_ops",
+    "intent": "Merge all *.csv files in ./exports into combined.csv, keeping a single header row.",
+    "plan_steps": [
+      {
+        "description": "Enumerate the CSV files and confirm they share a header.",
+        "expected_output": "Files listed and headers verified identical.",
+        "required": true
+      },
+      {
+        "description": "Concatenate rows under one header into combined.csv.",
+        "expected_output": "combined.csv with one header and all data rows.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "3 CSV files found; all share the header 'id,name,amount'.",
+        "error": null,
+        "duration_ms": 120
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "Wrote combined.csv with 1 header row and 1,488 data rows.",
+        "error": null,
+        "duration_ms": 510
+      }
+    ],
+    "final_output": "Merged 3 CSV files into combined.csv with a single 'id,name,amount' header and 1,488 data rows.",
+    "ground_truth_verdict": "approve",
+    "expected_quality_band": "high"
+  },
+  {
+    "id": "file_ops-refine-partial-archive",
+    "domain": "file_ops",
+    "intent": "Archive all .log files older than 30 days into logs_archive.tar.gz, then delete the originals.",
+    "plan_steps": [
+      {
+        "description": "Find .log files with mtime older than 30 days.",
+        "expected_output": "Correct set of stale log files.",
+        "required": true
+      },
+      {
+        "description": "Add them to logs_archive.tar.gz.",
+        "expected_output": "Archive contains all stale logs.",
+        "required": true
+      },
+      {
+        "description": "Delete the originals after verifying the archive.",
+        "expected_output": "Originals removed only after archive verified.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "Identified 47 .log files older than 30 days.",
+        "error": null,
+        "duration_ms": 210
+      },
+      {
+        "step_index": 1,
+        "status": "completed",
+        "output": "Created logs_archive.tar.gz containing all 47 files.",
+        "error": null,
+        "duration_ms": 1300
+      },
+      {
+        "step_index": 2,
+        "status": "skipped",
+        "output": "Deletion skipped: archive integrity was not verified, so originals were left in place for safety.",
+        "error": null,
+        "duration_ms": null
+      }
+    ],
+    "final_output": "Archived 47 stale .log files into logs_archive.tar.gz. The originals were NOT deleted because the archive was not verified first; the cleanup step still needs to be completed.",
+    "ground_truth_verdict": "refine",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "file_ops-retry-no-confirmation",
+    "domain": "file_ops",
+    "intent": "Move every PDF from ./inbox to ./review/<year> based on each file's modified year.",
+    "plan_steps": [
+      {
+        "description": "Read each PDF's modified-year and compute its target subfolder.",
+        "expected_output": "Per-file target paths computed.",
+        "required": true
+      },
+      {
+        "description": "Create year subfolders and move files into them.",
+        "expected_output": "All PDFs relocated under the correct year.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "Computed target years for 9 PDFs (2023, 2024, 2025).",
+        "error": null,
+        "duration_ms": 180
+      },
+      {
+        "step_index": 1,
+        "status": "partial",
+        "output": "Created ./review/2023, ./review/2024, ./review/2025 and moved 4 of 9 PDFs before the run ended; 5 files remain in ./inbox.",
+        "error": null,
+        "duration_ms": 760
+      }
+    ],
+    "final_output": "Created the year subfolders and moved 4 of 9 PDFs. 5 files are still in ./inbox and the move is incomplete.",
+    "ground_truth_verdict": "retry",
+    "expected_quality_band": "medium"
+  },
+  {
+    "id": "file_ops-escalate-permission-denied",
+    "domain": "file_ops",
+    "intent": "Delete the temp directory /var/cache/app-tmp and report how much space was freed.",
+    "plan_steps": [
+      {
+        "description": "Measure the size of /var/cache/app-tmp.",
+        "expected_output": "A size figure for the directory.",
+        "required": true
+      },
+      {
+        "description": "Delete the directory and report freed space.",
+        "expected_output": "Directory removed; freed bytes reported.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "completed",
+        "output": "/var/cache/app-tmp is 2.3 GB.",
+        "error": null,
+        "duration_ms": 240
+      },
+      {
+        "step_index": 1,
+        "status": "failed",
+        "output": null,
+        "error": "PermissionError: [Errno 13] Permission denied: '/var/cache/app-tmp'. Insufficient privileges to remove the directory.",
+        "duration_ms": 130
+      }
+    ],
+    "final_output": "",
+    "ground_truth_verdict": "escalate",
+    "expected_quality_band": "low"
+  },
+  {
+    "id": "file_ops-escalate-wrong-target",
+    "domain": "file_ops",
+    "intent": "Empty the ./build directory but leave ./build/.gitkeep in place.",
+    "plan_steps": [
+      {
+        "description": "Enumerate ./build contents, excluding .gitkeep.",
+        "expected_output": "Correct list of items to remove.",
+        "required": true
+      },
+      {
+        "description": "Remove the enumerated items, preserving .gitkeep.",
+        "expected_output": "./build empty except for .gitkeep.",
+        "required": true
+      }
+    ],
+    "step_results": [
+      {
+        "step_index": 0,
+        "status": "failed",
+        "output": "Enumerated the parent ./ directory instead of ./build, selecting source folders for deletion.",
+        "error": "Target path resolved incorrectly to the project root.",
+        "duration_ms": 90
+      },
+      {
+        "step_index": 1,
+        "status": "failed",
+        "output": "Aborted before deletion after a safety check flagged source directories in the removal set.",
+        "error": "Refusing to delete outside the intended ./build target.",
+        "duration_ms": 70
+      }
+    ],
+    "final_output": "Operation aborted: the plan targeted the wrong directory (project root instead of ./build) and no files were changed.",
+    "ground_truth_verdict": "escalate",
+    "expected_quality_band": "low"
+  }
+]

@@ -194,6 +194,36 @@ class TestEstimatePlanCost:
         assert result["estimated_tokens"] == 0
         assert result["risk_level"] == "low"
 
+    def test_risk_gate_normalizes_untrusted_tool_names(self):
+        """
+        SENTINEL TEST — tool names from the (untrusted) LLM plan must be
+        normalized before the high-risk gate matches them. Remove the
+        `.lower().strip()` normalization in estimate_plan_cost() and these
+        case/whitespace bypasses report risk_level="low" → test fails.
+
+        Bypass vectors: case mismatch ("GIT"), surrounding whitespace (" git ").
+        Unknown tools must degrade to LLM steps (never counted as a known tool).
+        """
+        agent = OrchestrationAgent()
+
+        # Uppercase must normalize to the high-risk "git" tool.
+        upper = agent.estimate_plan_cost(_make_plan("GIT"))
+        assert upper["risk_level"] in ("medium", "high"), (
+            f"'GIT' must normalize to 'git' and trip the risk gate; "
+            f"got {upper['risk_level']} / breakdown={upper['tool_breakdown']}"
+        )
+        assert upper["tool_breakdown"].get("git") == 1
+
+        # Surrounding whitespace must normalize too.
+        spaced = agent.estimate_plan_cost(_make_plan(" git "))
+        assert spaced["risk_level"] in ("medium", "high")
+        assert spaced["tool_breakdown"].get("git") == 1
+
+        # Genuinely unknown tools degrade to LLM steps (conservative fallback).
+        unknown = agent.estimate_plan_cost(_make_plan("unknown_tool"))
+        assert unknown["llm_step_count"] == 1
+        assert unknown["tool_breakdown"] == {}
+
 
 # ---------------------------------------------------------------------------
 # Plan revision feedback

@@ -9,6 +9,7 @@ back into procedural memory to close the CORE loop.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
@@ -36,6 +37,20 @@ from app.repository import evaluation_repository, memory_repository
 from app.repository.memory_repository import ProceduralMemory
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+
+# Advisory output-validation gate (target #7). When ON, an otherwise-APPROVE
+# verdict whose final output fails deterministic validation is downgraded to
+# ESCALATE for human review. Defaults to OFF so behavior is exactly unchanged
+# unless explicitly enabled. Env values "1"/"true"/"yes" (any case) turn it on;
+# unset / "0" / "false" / anything else keeps it off.
+ENABLE_OUTPUT_VALIDATION: bool = os.getenv(
+    "ENABLE_OUTPUT_VALIDATION", "false"
+).strip().lower() in ("1", "true", "yes")
 
 
 # =============================================================================
@@ -78,6 +93,11 @@ async def evaluate(evaluation_input: EvaluationInput) -> EvaluationResult:
         retry_count=evaluation_input.retry_count,
         max_retries=evaluation_input.max_retries,
     )
+
+    # 3b. Optional advisory output-validation gate (target #7, flag-gated).
+    # No-op unless ENABLE_OUTPUT_VALIDATION is ON. May downgrade APPROVE →
+    # ESCALATE when the final output fails deterministic validation.
+    verdict = _apply_output_validation_gate(verdict, evaluation_input)
 
     # 4. Build retry decision (if not approved)
     retry_decision: Optional[RetryDecision] = None
@@ -449,6 +469,12 @@ def _check_plan_completion(
             completed += 1
         elif status == StepStatus.PARTIAL:
             partial += 1
+            # A partially-completed required step has NOT met its requirement
+            # (parity with FAILED/SKIPPED/NOT_STARTED). Without this, partial
+            # work on a required step left required_met=True and suppressed the
+            # REFINE verdict path. See app/eval/FINDINGS_code_drift_2026-06-19.md.
+            if step.required:
+                required_met = False
         elif status == StepStatus.FAILED:
             failed += 1
             if step.required:
@@ -627,6 +653,70 @@ def _determine_verdict(
         reasoning=f"Output quality ({overall:.2f}) below approval threshold ({EvaluationThresholds.APPROVE_QUALITY}). Retrying.",
         confidence=0.7,
         suggested_improvements=improvements,
+    )
+
+
+# =============================================================================
+# OUTPUT VALIDATION GATE (target #7)
+# =============================================================================
+
+
+def _apply_output_validation_gate(
+    verdict: EvaluationVerdict,
+    evaluation_input: EvaluationInput,
+) -> EvaluationVerdict:
+    """Advisory output-validation gate, behind ``ENABLE_OUTPUT_VALIDATION``.
+
+    When the flag is OFF (the default) this is a strict no-op: the input
+    verdict is returned unchanged, so existing behavior is preserved exactly.
+
+    When the flag is ON, AND there is no human-feedback override, AND the
+    computed verdict is APPROVE, the final output is run through
+    ``validate_output``. If validation does not pass, the verdict is downgraded
+    to ESCALATE — reasoning is extended to note the validation failure (with the
+    failed check names) and confidence is nudged down but kept sensible. Any
+    other verdict (RETRY/REFINE/ESCALATE) is returned untouched.
+    """
+    # Flag OFF → exact no-op (default path).
+    if not ENABLE_OUTPUT_VALIDATION:
+        return verdict
+
+    # Only ever act on an APPROVE verdict.
+    if verdict.verdict != Verdict.APPROVE:
+        return verdict
+
+    # Respect any human-feedback override. EvaluationInput has no first-class
+    # human_feedback field (it is recorded post-hoc), but if a caller has
+    # already stamped a human decision into metadata, never override it.
+    if evaluation_input.metadata.get("human_feedback_override"):
+        return verdict
+
+    # Lazy import keeps the validator dependency out of the module import path
+    # when the flag is off (and avoids any import cost on the default path).
+    from app.services.output_validator import validate_output
+
+    task_category = evaluation_input.metadata.get("task_category")
+    validation = validate_output(evaluation_input.final_output, task_category)
+
+    if validation.passed:
+        return verdict
+
+    # Validation failed → downgrade APPROVE to ESCALATE for human review.
+    failed_names = ", ".join(c.name for c in validation.failures) or "unknown"
+    return EvaluationVerdict(
+        verdict=Verdict.ESCALATE,
+        reasoning=(
+            f"{verdict.reasoning} However, output validation failed "
+            f"(failed checks: {failed_names}); escalating for human review."
+        ),
+        # Keep confidence sensible: reduce it (validation contradicts approval)
+        # while staying within bounds.
+        confidence=max(0.5, min(verdict.confidence, 0.85)),
+        suggested_improvements=verdict.suggested_improvements
+        + [
+            f"Resolve failed output validation check: {c.name}"
+            for c in validation.failures
+        ],
     )
 
 
