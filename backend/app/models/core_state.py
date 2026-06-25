@@ -136,6 +136,11 @@ class COREState(BaseModel):
     # Orchestration outputs
     plan: Optional[ExecutionPlan] = None
 
+    # Orchestration grounding (Phase 2): structured report of plan steps dropped
+    # for being invented tools / unknown actions / schema-invalid params, plus any
+    # orphaned dependents. Optional + default so existing construction is unaffected.
+    grounding_report: Optional[Dict[str, Any]] = None
+
     # Reasoning outputs
     step_results: List[StepResult] = Field(default_factory=list)
     current_step_id: Optional[str] = None

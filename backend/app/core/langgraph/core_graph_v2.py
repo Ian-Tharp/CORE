@@ -228,6 +228,24 @@ class COREGraph:
                     revision=revision_num,
                 )
 
+                # --- Phase 2: additive registry grounding ---------------------
+                # Ground the draft plan to the Capability Registry: drop invented
+                # tools, registry-unknown actions, and schema-invalid params before
+                # the plan reaches Reasoning. Report-only for orphaned dependents.
+                if plan is not None:
+                    from app.core.registry.grounding import ground_plan
+
+                    roots = {e.id.split(".", 1)[0] for e in self.registry.all()}
+                    grounded_plan, report = ground_plan(plan, self.registry, roots)
+                    plan = grounded_plan
+                    if not report.is_clean() or report.orphaned_dependents:
+                        state.add_warning(
+                            f"grounding dropped {len(report.dropped)} step(s); "
+                            f"orphaned dependents: {len(report.orphaned_dependents)}"
+                        )
+                    state.grounding_report = report.to_dict()
+                    span.set_attribute("grounding.dropped", len(report.dropped))
+
                 state.plan = plan
                 if plan:
                     span.set_attribute("plan.step_count", len(plan.steps))
