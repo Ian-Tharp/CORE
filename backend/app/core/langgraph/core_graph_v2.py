@@ -58,6 +58,16 @@ class COREGraph:
         self.reasoning_agent = ReasoningAgent(model=ollama_model)
         self.evaluation_agent = EvaluationAgent(model=ollama_model)
 
+        # Capability Registry — the system's self-model. Built FROM the live
+        # dispatcher so what comprehension reasons over can't drift from what runs.
+        from app.core.tools.dispatcher import ToolDispatcher
+        from app.core.registry.builtin import build_registry_from_dispatcher
+
+        _workspace = os.getenv("CORE_WORKSPACE_DIR", os.getcwd())
+        self.registry = build_registry_from_dispatcher(
+            ToolDispatcher(workspace_dir=_workspace)
+        )
+
     def initialize_graph(self) -> None:
         """Build and compile the CORE graph with conditional routing."""
         # Create graph with COREState as the state schema
@@ -141,6 +151,30 @@ class COREGraph:
                 span.set_attribute(
                     "intent.confidence", float(intent.confidence) if intent else 0.0
                 )
+
+                # Merge deterministic ambiguity detection into the intent so the
+                # gate sees both the model's and the pattern-based ambiguities.
+                try:
+                    for amb in self.comprehension_agent.detect_ambiguities(
+                        state.user_input
+                    ):
+                        if amb not in intent.ambiguities:
+                            intent.ambiguities.append(amb)
+                except Exception as amb_exc:  # never block on ambiguity detection
+                    import logging as _logging
+
+                    _logging.getLogger(__name__).debug(
+                        "ambiguity detection failed (non-critical): %s", amb_exc
+                    )
+
+                # Front verifier: tri-state gate over the capability registry.
+                # proceed → run the loop; clarify/refuse → answer directly (no spend).
+                from app.core.agents.comprehension_gate import decide_gate
+
+                decision = decide_gate(intent, self.registry)
+                state.gate_outcome = decision.outcome
+                state.gate_message = decision.message or None
+                span.set_attribute("gate.outcome", decision.outcome)
 
             except Exception as e:
                 span.record_exception(e)
@@ -339,8 +373,13 @@ class COREGraph:
             )
 
             try:
+                # Front gate asked to clarify or honestly refused — surface that
+                # message directly (the O→R→E loop never ran).
+                if state.gate_message:
+                    state.response = state.gate_message
+
                 # For simple conversations (no task execution)
-                if state.intent and state.intent.type == "conversation":
+                elif state.intent and state.intent.type == "conversation":
                     state.response = f"I understand you're saying: {state.user_input}. How can I help?"
 
                 # For task executions
@@ -463,18 +502,14 @@ class COREGraph:
         self, state: COREState
     ) -> Literal["orchestration", "conversation"]:
         """
-        Route after comprehension based on intent type.
+        Route after comprehension based on the front-gate decision.
 
-        - task/question → orchestration (needs planning and execution)
-        - conversation/clarification → conversation (direct response)
+        - gate "proceed" on an actionable intent (task/question) → orchestration
+        - clarify / refuse / plain conversation → conversation (direct response)
         """
-        if not state.intent:
-            return "conversation"  # Default to conversation on error
+        from app.core.agents.comprehension_routing import route_after_comprehension
 
-        if state.intent.type in ["task", "question"]:
-            return "orchestration"
-        else:
-            return "conversation"
+        return route_after_comprehension(state.intent, state.gate_outcome)
 
     def route_from_evaluation(
         self, state: COREState

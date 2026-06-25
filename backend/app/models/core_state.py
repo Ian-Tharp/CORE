@@ -128,6 +128,11 @@ class COREState(BaseModel):
     # Comprehension outputs
     intent: Optional[UserIntent] = None
 
+    # Comprehension gate (front verifier): "proceed" | "clarify" | "refuse".
+    # gate_message carries the user-facing text for clarify/refuse.
+    gate_outcome: Optional[str] = None
+    gate_message: Optional[str] = None
+
     # Orchestration outputs
     plan: Optional[ExecutionPlan] = None
 
