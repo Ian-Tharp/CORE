@@ -34,6 +34,7 @@ dependencies = [
     "opentelemetry-sdk>=1.40.0",
     "opentelemetry-exporter-otlp-proto-http>=1.40.0",
     "pyjwt>=2.8.0",
+    "jsonschema>=4.25",
 ]
 
 [dependency-groups]

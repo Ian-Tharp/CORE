@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -388,6 +388,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-community" },
@@ -428,6 +429,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastmcp", specifier = ">=2.5.1" },
     { name = "httpx", specifier = ">=0.27.0" },
+    { name = "jsonschema", specifier = ">=4.25" },
     { name = "langchain", specifier = ">=0.3.25" },
     { name = "langchain-anthropic", specifier = ">=0.3.15" },
     { name = "langchain-community", specifier = ">=0.3.0" },

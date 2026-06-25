@@ -134,6 +134,42 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
 }
 
 
+# --- root → capability-id reconciliation (single source of truth) -----------
+#
+# The dispatcher dispatches by ROOT tool name (e.g. "file_operations") with the
+# sub-operation in params["action"] (e.g. "read"); registry capability ids are
+# ACTION-level (e.g. "file_operations.read"). Grounding reconciles the two using
+# the maps below, kept next to _BUILTIN so the vocabulary has one home.
+#
+# Roots whose single capability is NOT keyed by params["action"] (they read a
+# url/endpoint, not an action) map to a FIXED capability id:
+_ROOT_FIXED_CAPABILITY: Dict[str, str] = {
+    "web_research": "web_research.fetch",
+    "database": "database.query",
+}
+
+# Dispatcher default actions when params omit "action" (mirrors dispatcher.py:
+# FileOperationsTool defaults to "list", GitTool defaults to "status"):
+_ROOT_DEFAULT_ACTION: Dict[str, str] = {
+    "file_operations": "list",
+    "git": "status",
+}
+
+
+def capability_id_for_step(tool: str, params: Dict) -> str:
+    """Resolve a plan step's (root tool, params) to its action-level capability id.
+
+    - web_research / database → their fixed capability id (no action used).
+    - file_operations / git   → f"{tool}.{action}" using params["action"] or the
+      dispatcher default action.
+    - any other root with no resolvable action → the bare tool name.
+    """
+    if tool in _ROOT_FIXED_CAPABILITY:
+        return _ROOT_FIXED_CAPABILITY[tool]
+    action = params.get("action") or _ROOT_DEFAULT_ACTION.get(tool)
+    return f"{tool}.{action}" if action else tool
+
+
 def build_registry_from_dispatcher(dispatcher) -> CapabilityRegistry:
     """Build a registry containing only capabilities the dispatcher can run.
 
