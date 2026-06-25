@@ -20,6 +20,70 @@ The system is structured around the CORE principles, with each component serving
 
 ![CORE Architecture](assets/imgs/COREv1%20Diagram.png)
 
+## The deliberation loop (two verifiers)
+
+CORE is not a single forward pass — it is a **deliberation loop bracketed by two verifiers**.
+**Comprehension** verifies *up front* that the system understands the request and actually has the
+capabilities to attempt it. **Evaluation** verifies *after* that the result achieved the intent,
+looping back to retry a step or revise the plan when it didn't. The loop generalizes to the degree
+those two verifiers are good.
+
+```
+   user input
+       |
+       v
+  +----------------+  proceed   +----------------+    +-----------+    +----------------+  finalize
+  | COMPREHENSION  |----------->| ORCHESTRATION  |--->| REASONING |--->|  EVALUATION    |---------> response
+  | front verifier |            | sequencer      |    | executor  |    | back verifier  |
+  +----------------+            +----------------+    +-----------+    +----------------+
+       |    |                         ^                     ^                  |    |
+       |    |          revise plan    |                     |   retry step     |    |
+       |    |    (goal not achieved)  +---------------------|------------------+    |
+       |    |                                               |  (execution flaked)   |
+       |    |                                               +-----------------------+
+       |    |
+       |    +-- clarify --> ask the user: "do you mean X / Y / Z?  (here's what I can do)"
+       +------- refuse  --> honest:       "I can't do that -- but here's what I CAN do"
+                            clarify & refuse answer directly -- the O->R->E loop never runs,
+                            which makes the front gate the cheapest place to run a verifier.
+```
+
+**Comprehension is grounded in a self-model** — it reasons about intent using *what it can do* (a
+Capability Registry) and *what it knows* (a memory summary), not a blind classifier:
+
+```
+       what it CAN do                          what it KNOWS
+  +--------------------------+        +----------------------------+
+  |   Capability Registry    |        |      Memory summary        |
+  |  tools + MCP, with        |        |  recent asks, session      |
+  |  descriptions + schemas   |        |  history, tool activity    |
+  +------------+-------------+        +-------------+--------------+
+               | presence retrieval                | injected context
+               v                                   v
+            +-------------------------------------------+
+            |               COMPREHENSION               |
+            |     intent + feasibility + ambiguity      |
+            +---------------------+---------------------+
+                                  v
+                  +--------------------------------+
+                  |          tri-state gate        |
+                  |   proceed | clarify | refuse   |
+                  +--------------------------------+
+```
+
+Each node owns exactly one question — keeping them separate is what stops Comprehension from
+becoming a second Evaluator (which causes over-conservative refusals):
+
+| Node | The one question it answers | Verifies |
+|------|------------------------------|----------|
+| **Comprehension** | "Do I understand this, and do the *primitives* exist to attempt it?" | capability **presence** |
+| **Orchestration** | "Can I *wire* those primitives into an ordered plan?" | **composability** |
+| **Reasoning** | "Execute each step." | — |
+| **Evaluation** | "Did the result actually *satisfy the intent*?" | **achievement** |
+
+> Design detail and the phased build live in
+> [`docs/architecture/comprehension-grounded-gate.md`](docs/architecture/comprehension-grounded-gate.md).
+
 ## Features
 
 - **Cognitive Pipeline** — LangGraph-based workflow: Comprehension → Orchestration → Reasoning → Evaluation
