@@ -39,7 +39,9 @@ __all__ = [
     "ground_plan",
 ]
 
-DropReason = Literal["invented_tool", "unknown_action", "invalid_params"]
+DropReason = Literal[
+    "invented_tool", "unknown_action", "invalid_params", "orphaned_dependency"
+]
 
 
 @dataclass(frozen=True)
@@ -105,80 +107,80 @@ def ground_plan(
       4. params (minus 'action') fail params_schema -> DROP, reason="invalid_params".
       5. otherwise KEEP.
 
-    With drop=True (default) failing steps are removed from the returned plan.
-    With drop=False they are marked status="skipped" and kept (report-only mode).
-    Surviving steps whose dependencies reference a dropped id are recorded in
-    `report.orphaned_dependents` (report-only; reasoning treats unknown dep ids
-    as satisfied, so this never deadlocks).
+    A step whose prerequisite was dropped cannot run correctly (reasoning treats
+    an unknown dependency id as *satisfied*), so dependents of dropped steps are
+    **cascade-dropped** transitively, reason="orphaned_dependency", and surfaced in
+    `report.orphaned_dependents`. The surviving plan is the fully-grounded,
+    self-consistent subgraph.
+
+    With drop=True (default) dropped steps are removed from the returned plan;
+    with drop=False they are kept but marked status="skipped" (report-only mode).
     """
-    survivors: List[PlanStep] = []
-    skipped: List[PlanStep] = []
+    step_by_id: Dict[str, PlanStep] = {s.id: s for s in plan.steps}
+    survivor_ids: Set[str] = set()
     dropped: List[DroppedStep] = []
+    dropped_ids: Set[str] = set()
+
+    def _drop(step: PlanStep, reason: DropReason, detail: str, cap_id=None) -> None:
+        dropped.append(
+            DroppedStep(
+                step_id=step.id,
+                step_name=step.name,
+                tool=step.tool,
+                reason=reason,
+                detail=detail,
+                capability_id=cap_id,
+            )
+        )
+        dropped_ids.add(step.id)
 
     for step in plan.steps:
         # 1) LLM-only step — always legitimate.
         if step.tool is None:
-            survivors.append(step)
+            survivor_ids.add(step.id)
             continue
-
         # 2) invented tool — not a registry-backed dispatcher root.
         if step.tool not in roots:
-            dropped.append(
-                DroppedStep(
-                    step_id=step.id,
-                    step_name=step.name,
-                    tool=step.tool,
-                    reason="invented_tool",
-                    detail=(
-                        f"tool '{step.tool}' is not a registry-backed dispatcher tool"
-                    ),
-                    capability_id=None,
-                )
+            _drop(
+                step,
+                "invented_tool",
+                f"tool '{step.tool}' is not a registry-backed dispatcher tool",
             )
-            skipped.append(step)
             continue
-
         # 3) real root, but the composed action has no capability entry.
         cap_id = capability_id_for_step(step.tool, step.params)
         entry = registry.get(cap_id)
         if entry is None:
-            dropped.append(
-                DroppedStep(
-                    step_id=step.id,
-                    step_name=step.name,
-                    tool=step.tool,
-                    reason="unknown_action",
-                    detail=f"no registry capability '{cap_id}'",
-                    capability_id=cap_id,
-                )
-            )
-            skipped.append(step)
+            _drop(step, "unknown_action", f"no registry capability '{cap_id}'", cap_id)
             continue
-
         # 4) param-schema validation (action key excluded; {} accepts).
         err = validate_params(_params_without_action(step.params), entry.params_schema)
         if err is not None:
-            dropped.append(
-                DroppedStep(
-                    step_id=step.id,
-                    step_name=step.name,
-                    tool=step.tool,
-                    reason="invalid_params",
-                    detail=err,
-                    capability_id=cap_id,
-                )
-            )
-            skipped.append(step)
+            _drop(step, "invalid_params", err, cap_id)
             continue
-
         # 5) grounded.
-        survivors.append(step)
+        survivor_ids.add(step.id)
 
-    dropped_ids = {d.step_id for d in dropped}
+    # Cascade-drop dependents of dropped steps, transitively, to a fixpoint.
+    changed = True
+    while changed:
+        changed = False
+        for sid in list(survivor_ids):
+            bad_deps = [d for d in step_by_id[sid].dependencies if d in dropped_ids]
+            if bad_deps:
+                survivor_ids.discard(sid)
+                _drop(
+                    step_by_id[sid],
+                    "orphaned_dependency",
+                    f"depends on dropped step(s): {bad_deps}",
+                )
+                changed = True
 
     # Build the NEW step list without mutating the input steps.
     if drop:
-        kept_steps = [s.model_copy(deep=True) for s in survivors]
+        kept_steps = [
+            s.model_copy(deep=True) for s in plan.steps if s.id in survivor_ids
+        ]
     else:
         kept_steps = []
         for s in plan.steps:
@@ -186,14 +188,6 @@ def ground_plan(
             if s.id in dropped_ids:
                 copy.status = "skipped"
             kept_steps.append(copy)
-
-    # 5b) orphaned dependents: surviving steps that depend on a dropped step.
-    surviving_ids = {s.id for s in kept_steps if s.id not in dropped_ids}
-    orphaned = [
-        s.id
-        for s in kept_steps
-        if s.id in surviving_ids and any(dep in dropped_ids for dep in s.dependencies)
-    ]
 
     grounded_plan = ExecutionPlan(
         id=plan.id,
@@ -206,8 +200,10 @@ def ground_plan(
     )
 
     report = GroundingReport(
-        grounded_step_ids=[s.id for s in kept_steps if s.id not in dropped_ids],
+        grounded_step_ids=[s.id for s in plan.steps if s.id in survivor_ids],
         dropped=dropped,
-        orphaned_dependents=orphaned,
+        orphaned_dependents=[
+            d.step_id for d in dropped if d.reason == "orphaned_dependency"
+        ],
     )
     return grounded_plan, report

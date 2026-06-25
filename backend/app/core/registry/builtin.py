@@ -23,6 +23,14 @@ _PATH_SCHEMA = {
     "required": ["path"],
 }
 
+# Path-optional: for handlers that default the path (e.g. list defaults to '.').
+# The registry schema must not be stricter than the dispatcher, or grounding
+# would over-reject steps that actually run fine.
+_PATH_OPTIONAL_SCHEMA = {
+    "type": "object",
+    "properties": {"path": {"type": "string"}},
+}
+
 # Descriptors grouped by dispatcher tool root (matches ToolDispatcher handlers).
 _BUILTIN: Dict[str, List[CapabilityEntry]] = {
     "file_operations": [
@@ -53,7 +61,7 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
             id="file_operations.list",
             name="List files",
             description="List the files and directories in a workspace folder",
-            params_schema=_PATH_SCHEMA,
+            params_schema=_PATH_OPTIONAL_SCHEMA,  # path defaults to '.' in the dispatcher
             side_effects="read",
             examples=["list the files in a directory"],
         ),

@@ -312,9 +312,31 @@ class TestGroundPlanInvalidParams:
         grounded, report = ground_plan(plan, reg, _roots(reg))
         assert report.is_clean()
 
+    def test_list_without_path_is_grounded(self):
+        # file_operations.list defaults path to '.' in the dispatcher, so a list
+        # step with no path is VALID and must NOT be dropped. The registry schema
+        # must not be stricter than the handler it describes.
+        from app.core.registry.grounding import ground_plan
+
+        reg = _registry()
+        step = PlanStep(
+            name="list",
+            description="list workspace root",
+            tool="file_operations",
+            params={"action": "list"},
+        )
+        plan = _plan(step)
+        grounded, report = ground_plan(plan, reg, _roots(reg))
+        assert report.is_clean()
+        assert len(grounded.steps) == 1
+
 
 class TestGroundPlanOrphanedDependents:
-    def test_dependent_on_dropped_step_is_reported_not_dropped(self):
+    def test_dependent_on_dropped_step_is_cascade_dropped(self):
+        # If a step is dropped, steps that depend on it cannot run correctly, so
+        # they are cascade-dropped too — not left to silently run without their
+        # prerequisite (reasoning treats unknown dep ids as satisfied). They are
+        # also surfaced in orphaned_dependents.
         from app.core.registry.grounding import ground_plan
 
         reg = _registry()
@@ -335,11 +357,37 @@ class TestGroundPlanOrphanedDependents:
         grounded, report = ground_plan(plan, reg, _roots(reg))
 
         surviving = {s.id for s in grounded.steps}
-        # B survives (no auto-drop / no deadlock)...
-        assert b.id in surviving
-        assert a.id not in surviving
-        # ...but is flagged as orphaned.
+        assert a.id not in surviving  # invented tool dropped
+        assert b.id not in surviving  # cascade-dropped (depended on A)
         assert b.id in report.orphaned_dependents
+        reasons = {d.step_id: d.reason for d in report.dropped}
+        assert reasons[a.id] == "invented_tool"
+        assert reasons[b.id] == "orphaned_dependency"
+
+    def test_transitive_cascade_drop(self):
+        # C -> B -> A(dropped): both B and C cascade-drop to fixpoint.
+        from app.core.registry.grounding import ground_plan
+
+        reg = _registry()
+        a = PlanStep(name="A", description="invented", tool="browser", params={})
+        b = PlanStep(
+            name="B",
+            description="read",
+            tool="file_operations",
+            params={"action": "read", "path": "x"},
+            dependencies=[a.id],
+        )
+        c = PlanStep(
+            name="C",
+            description="read",
+            tool="file_operations",
+            params={"action": "read", "path": "y"},
+            dependencies=[b.id],
+        )
+        plan = _plan(a, b, c)
+        grounded, report = ground_plan(plan, reg, _roots(reg))
+        assert grounded.steps == []
+        assert set(report.orphaned_dependents) == {b.id, c.id}
 
     def test_to_dict_shape(self):
         from app.core.registry.grounding import ground_plan

@@ -64,9 +64,13 @@ class COREGraph:
         from app.core.registry.builtin import build_registry_from_dispatcher
 
         _workspace = os.getenv("CORE_WORKSPACE_DIR", os.getcwd())
-        self.registry = build_registry_from_dispatcher(
-            ToolDispatcher(workspace_dir=_workspace)
-        )
+        _dispatcher = ToolDispatcher(workspace_dir=_workspace)
+        self.registry = build_registry_from_dispatcher(_dispatcher)
+        # Dispatchable tool roots, used by plan grounding to reject invented tools.
+        # Sourced from the dispatcher (not registry ids) so that future MCP
+        # capabilities registered into the registry can't make a tool the
+        # in-process dispatcher cannot run look valid.
+        self._dispatcher_tools = set(_dispatcher.available_tools)
 
     def initialize_graph(self) -> None:
         """Build and compile the CORE graph with conditional routing."""
@@ -231,12 +235,14 @@ class COREGraph:
                 # --- Phase 2: additive registry grounding ---------------------
                 # Ground the draft plan to the Capability Registry: drop invented
                 # tools, registry-unknown actions, and schema-invalid params before
-                # the plan reaches Reasoning. Report-only for orphaned dependents.
+                # the plan reaches Reasoning. Dependents of dropped steps are
+                # cascade-dropped so nothing runs without its prerequisite.
                 if plan is not None:
                     from app.core.registry.grounding import ground_plan
 
-                    roots = {e.id.split(".", 1)[0] for e in self.registry.all()}
-                    grounded_plan, report = ground_plan(plan, self.registry, roots)
+                    grounded_plan, report = ground_plan(
+                        plan, self.registry, self._dispatcher_tools
+                    )
                     plan = grounded_plan
                     if not report.is_clean() or report.orphaned_dependents:
                         state.add_warning(
