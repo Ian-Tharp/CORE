@@ -85,6 +85,47 @@ async def get_run(run_id: str) -> Optional[Dict[str, Any]]:
         return _row_to_dict(row) if row else None
 
 
+async def save_run(state: Dict[str, Any]) -> None:
+    """Upsert a full COREState snapshot (``COREState.model_dump()``).
+
+    Used by the engine controller to persist a run at start, completion and
+    failure. Status is derived from the snapshot: completed when the state
+    reached END / has ``completed_at``, failed when it carries errors,
+    otherwise running.
+    """
+    completed_at = state.get("completed_at")
+    errors = state.get("errors") or []
+    if state.get("current_node") == "END" or completed_at:
+        status = "completed"
+    elif errors:
+        status = "failed"
+    else:
+        status = "running"
+
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO core_runs (run_id, user_id, input_text, status, state, error,
+                                   created_at, updated_at, completed_at)
+            VALUES ($1::uuid, $2, $3, $4, $5::jsonb, $6, NOW(), NOW(), $7)
+            ON CONFLICT (run_id) DO UPDATE
+            SET status       = EXCLUDED.status,
+                state        = EXCLUDED.state,
+                error        = EXCLUDED.error,
+                updated_at   = NOW(),
+                completed_at = EXCLUDED.completed_at
+            """,
+            state["run_id"],
+            state.get("user_id"),
+            state.get("user_input") or "",
+            status,
+            _serialize(state),
+            "; ".join(errors) if errors else None,
+            completed_at,
+        )
+
+
 async def update_run_status(run_id: str, status: str) -> None:
     """Set status + bump updated_at."""
     pool = await get_db_pool()
