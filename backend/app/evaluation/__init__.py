@@ -6,8 +6,10 @@ Distinct from ``app.eval`` (offline verdict-drift harness for
 
 from app.evaluation.capture import (
     capture_fault,
+    fault_reasons,
     fault_report_from_state,
     load_faults,
+    maybe_capture_fault,
     state_failed,
 )
 from app.evaluation.golden_set import DuplicateCaseError, GoldenSet, LoadResult
@@ -33,8 +35,10 @@ __all__ = [
     "RunSummary",
     "arun_cases",
     "capture_fault",
+    "fault_reasons",
     "fault_report_from_state",
     "load_faults",
+    "maybe_capture_fault",
     "run_cases",
     "state_failed",
 ]
