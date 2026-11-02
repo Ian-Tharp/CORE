@@ -576,10 +576,10 @@ async def setup_db_schema() -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_kb_documents_file_hash ON kb_documents(file_hash) WHERE file_hash IS NOT NULL"
             )
 
-            # World-scoped knowledge: link KB documents to a world so a world's
-            # wiki lore can be ingested and listed as its own knowledge.
+            # World-scoped knowledge: an opaque scope key from callers outside the
+            # kernel. TEXT to match migration 005 (which also converts old UUIDs).
             await conn.execute(
-                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS world_id UUID"
+                "ALTER TABLE kb_documents ADD COLUMN IF NOT EXISTS world_id TEXT"
             )
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_kb_documents_world_id ON kb_documents(world_id)"
@@ -589,8 +589,24 @@ async def setup_db_schema() -> None:
             # `embedding_vec` column; chunk inserts only fill embedding_vec, so drop
             # the stale NOT NULL on databases that predate the pgvector migration
             # (otherwise every chunk insert fails the not-null constraint).
+            # Guarded: databases that ran the pgvector cleanup no longer have the
+            # column, and an unguarded ALTER there aborted this whole transaction
+            # (rolling back world_id and every table created after this point).
             await conn.execute(
-                "ALTER TABLE kb_chunks ALTER COLUMN embedding DROP NOT NULL"
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'kb_chunks'
+                          AND column_name = 'embedding'
+                          AND is_nullable = 'NO'
+                    ) THEN
+                        ALTER TABLE kb_chunks ALTER COLUMN embedding DROP NOT NULL;
+                    END IF;
+                END $$;
+                """
             )
 
             # Activity log for knowledgebase operations (uploads, deletes, processing, etc.)
