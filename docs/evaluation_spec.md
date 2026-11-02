@@ -47,14 +47,36 @@ When an issue is identified in either track:
 
 No roadmap box above is ticked: the slice below is groundwork, not completion of either phase.
 
-*   **Fault capture (§3.C "Capture") — implemented, not wired.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). Nothing in the live pipeline calls it yet.
+*   **Fault capture (§3.C "Capture") — implemented and wired, default off.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). `COREGraph.conversation_node` in `core_graph_v2.py` calls `maybe_capture_fault()` next to `record_pipeline_run`. See "Live fault capture" below.
 *   **Golden Set (§3.C "Update") — implemented.** JSONL store with dedupe by stable signature, corrupt-line tolerance, and `append_fault()`. 10 seed cases in `docs/evaluation/golden/seed.jsonl` (Phase II targets 100).
 *   **Production-track evaluators (§3.B.2) — partially implemented.** Deterministic exact/contains/regex/max-latency/forbidden-substring checks and a replay runner that takes an injected callable. Heuristic guardrails for loops and safety constraints are not done.
 
 Deviations from this spec:
 
 *   **No OpenTelemetry.** Phase I asks for OTEL instrumentation; this slice captures faults without it. Phase I stays open. Token counts and latency are recorded only when the caller supplies them.
-*   **Not wired into the pipeline.** The task allowed an optional, default-off call site in `core/langgraph/core_graph.py`, but that file is an unused stub; the live graph is `core_graph_v2.py` (`COREGraph.conversation_node`, next to `record_pipeline_run`). A hook there is a follow-up.
+*   **Capture is synchronous.** §2 asks that evaluation not add user-facing latency. The hook does one small JSONL append, only when the flag is on and only for faulted runs; moving it to a background writer is a follow-up if that ever shows up in latency.
 *   **Missing latency fails `max_latency_ms`** rather than passing silently.
 *   **Not built:** trajectory matching, confidence scoring, the asynchronous analyzer and the `monitoring` service (§4, Phase III).
 *   `app/eval` (verdict-drift harness for `evaluation_service`) is a separate, older package and is untouched.
+
+### Live fault capture
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `CORE_EVAL_CAPTURE_FAULTS` | off | `true`/`1`/`yes`/`on` turns capture on. |
+| `CORE_EVAL_FAULTS_DIR` | `backend/data/evaluation/faults` | Where `faults.jsonl` is appended. Relative paths resolve against `backend/`, never the cwd or repo root. In Docker this is `/app/data/...` on the `backend-data` volume. |
+
+Read through `app/config/evaluation.py` (`get_fault_capture_config()`) on every run, so no restart is needed.
+
+**Where a fault is detected.** Every path through the graph ends in `conversation_node` (task runs, plain chat, gate clarify/refuse, and every node's exception fallback), so the check runs once there, on the finished state, after the response is set. `fault_reasons()` returns:
+
+*   `errors`: any node hit its exception path (`state.errors`). This includes an evaluation crash, which the graph otherwise hides behind a default "success".
+*   `eval_failure`: the evaluator judged the run a failure.
+*   `step_failure`: at least one plan step failed.
+*   `unresolved_evaluation`: the run ended while the evaluator still asked to revise or retry, i.e. the plan-revision loop guard forced finalization (§3.B.2 "infinite loops").
+
+A front-gate refusal or clarification on its own is not a fault: it is the gate doing its job. If one turns out to be wrong it shows up as a Golden Set case, not as an automatic capture.
+
+**Fail-safe.** `maybe_capture_fault()` never raises. Any error (unwritable dir, disk full, a bug building the report) is logged at WARNING with the `run_id` and dropped; the request completes normally. The call site in the node has a second guard for the same reason. `capture_fault()` itself still raises, for callers that want to know.
+
+Each captured report's `metadata` carries `source`, `fault_reasons`, `gate_outcome`, `plan_revisions`, `eval_status` and `eval_next_action`.
