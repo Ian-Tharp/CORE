@@ -24,3 +24,6 @@ docker-compose.override.yml
 
 # Claude Code durable scheduled tasks (local loop state)
 .claude/scheduled_tasks.json
+
+# evaluation fault capture output
+eval_faults/
