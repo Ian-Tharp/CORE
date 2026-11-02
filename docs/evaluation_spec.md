@@ -42,3 +42,19 @@ When an issue is identified in either track:
 *   [ ] **Phase I: Instrumentation.** Implement full OTEL logging across all core tool integrations in `backend/`.
 *   [ ] **Phase II: Core Rule Set.** Establish the first 100 "Golden" edge cases for standard operations (e.g., data retrieval, scheduling).
 *   [ ] **Phase III: Automated Audit.** Integrate an asynchronous monitoring service to flag and log failures in the `monitoring` module.
+
+### Implementation status (Phase I/II slice)
+
+No roadmap box above is ticked: the slice below is groundwork, not completion of either phase.
+
+*   **Fault capture (§3.C "Capture") — implemented, not wired.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). Nothing in the live pipeline calls it yet.
+*   **Golden Set (§3.C "Update") — implemented.** JSONL store with dedupe by stable signature, corrupt-line tolerance, and `append_fault()`. 10 seed cases in `docs/evaluation/golden/seed.jsonl` (Phase II targets 100).
+*   **Production-track evaluators (§3.B.2) — partially implemented.** Deterministic exact/contains/regex/max-latency/forbidden-substring checks and a replay runner that takes an injected callable. Heuristic guardrails for loops and safety constraints are not done.
+
+Deviations from this spec:
+
+*   **No OpenTelemetry.** Phase I asks for OTEL instrumentation; this slice captures faults without it. Phase I stays open. Token counts and latency are recorded only when the caller supplies them.
+*   **Not wired into the pipeline.** The task allowed an optional, default-off call site in `core/langgraph/core_graph.py`, but that file is an unused stub; the live graph is `core_graph_v2.py` (`COREGraph.conversation_node`, next to `record_pipeline_run`). A hook there is a follow-up.
+*   **Missing latency fails `max_latency_ms`** rather than passing silently.
+*   **Not built:** trajectory matching, confidence scoring, the asynchronous analyzer and the `monitoring` service (§4, Phase III).
+*   `app/eval` (verdict-drift harness for `evaluation_service`) is a separate, older package and is untouched.
