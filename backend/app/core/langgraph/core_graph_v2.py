@@ -13,6 +13,9 @@ from langgraph.types import Send
 # Maximum number of plan revisions before forcing finalization.
 # Prevents infinite revise_plan → orchestration → reasoning → evaluation loops.
 _MAX_PLAN_REVISIONS = int(os.getenv("CORE_MAX_PLAN_REVISIONS", "3"))
+# Maximum retry_step passes per plan revision before forcing finalization.
+# Prevents infinite retry_step → reasoning → evaluation loops.
+_MAX_STEP_RETRIES = int(os.getenv("CORE_MAX_STEP_RETRIES", "3"))
 
 from app.models.core_state import (
     COREState,
@@ -561,6 +564,24 @@ class COREGraph:
                 _MAX_PLAN_REVISIONS,
             )
             return "conversation"
+
+        # Loop guard: cap step retries since the latest plan (re)creation
+        if state.eval_result.next_action == "retry_step":
+            history = state.execution_history
+            last_orch = (
+                len(history) - 1 - history[::-1].index("orchestration")
+                if "orchestration" in history
+                else -1
+            )
+            retries_done = history[last_orch + 1 :].count("reasoning") - 1
+            if retries_done >= _MAX_STEP_RETRIES:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Max step retries (%d) reached — forcing finalization",
+                    _MAX_STEP_RETRIES,
+                )
+                return "conversation"
 
         action_routes = {
             "finalize": "conversation",
