@@ -315,7 +315,13 @@ async def evaluation(
         + ctx
     )
     text = _llm_or_stub(system, user_input.user_input, user_input.model)
-    verdict = "SATISFACTORY" if "satisf" in text.lower() else "UNSATISFACTORY"
+    lowered = text.lower()
+    # "unsatisfactory" contains "satisf", so check the negative verdict first.
+    verdict = (
+        "SATISFACTORY"
+        if "satisf" in lowered and "unsatisf" not in lowered
+        else "UNSATISFACTORY"
+    )
     return StepResponse(step="Evaluation", text=text, evaluation=verdict)
 
 

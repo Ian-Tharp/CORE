@@ -58,7 +58,7 @@ class FileOperationsTool:
 
     def _safe_path(self, rel_path: str) -> Path:
         resolved = (self.workspace_dir / rel_path).resolve()
-        if not str(resolved).startswith(str(self.workspace_dir)):
+        if not resolved.is_relative_to(self.workspace_dir):
             raise ToolSafetyError(
                 f"Path '{rel_path}' escapes workspace '{self.workspace_dir}'"
             )
