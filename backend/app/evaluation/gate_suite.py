@@ -186,7 +186,7 @@ def gate_predictor(
             for amb in detect(text):
                 if amb not in intent.ambiguities:
                     intent.ambiguities.append(amb)
-        return decide_gate(intent, reg, thresholds).outcome
+        return decide_gate(intent, reg, thresholds, text=text).outcome
 
     return predict
 

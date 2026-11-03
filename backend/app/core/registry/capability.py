@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Set, Tuple
 
 SideEffect = Literal["none", "read", "write", "network"]
 
@@ -87,6 +87,21 @@ class CapabilityEntry:
     side_effects: SideEffect = "none"
     source: str = "builtin"  # "builtin" | "mcp:<server>"
     examples: List[str] = field(default_factory=list)
+    # Operation verbs this capability serves ("read", "open", "show"...), used by
+    # the front gate to tell "show the git log" from "push to git". Empty means
+    # the action segment of the id (git.status -> "status").
+    verbs: Tuple[str, ...] = ()
+
+    @property
+    def root(self) -> str:
+        """Tool root of the id: "git.status" -> "git"."""
+        return self.id.split(".", 1)[0]
+
+    def action_verbs(self) -> Tuple[str, ...]:
+        if self.verbs:
+            return self.verbs
+        _, _, action = self.id.partition(".")
+        return (action,) if action else ()
 
     def _index_text(self) -> str:
         # id split on . and _ contributes tokens too (file_operations.read → file operations read)
@@ -116,6 +131,13 @@ class CapabilityRegistry:
     def all(self) -> List[CapabilityEntry]:
         return list(self._entries.values())
 
+    def roots(self) -> Set[str]:
+        """Tool roots that have at least one capability ("git", "file_operations")."""
+        return {e.root for e in self._entries.values()}
+
+    def for_root(self, root: str) -> List[CapabilityEntry]:
+        return [e for e in self._entries.values() if e.root == root]
+
     def search(self, query: str, k: int = 5) -> List[CapabilityEntry]:
         """Return up to `k` entries by content-word overlap, best first.
 
@@ -134,5 +156,10 @@ class CapabilityRegistry:
         return [entry for _, _, entry in scored[:k]]
 
     def has_capability(self, query: str) -> bool:
-        """True if at least one capability plausibly covers the query."""
+        """True if at least one capability plausibly covers the query.
+
+        Lexical, so "git" matches every git.* entry whatever the action. The
+        front gate does not use this for named tools; see
+        ``comprehension_gate.resolve_tools``.
+        """
         return bool(self.search(query, k=1))

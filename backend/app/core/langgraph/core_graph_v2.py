@@ -57,7 +57,6 @@ class COREGraph:
             "CORE_DEFAULT_MODEL", get_default_model("comprehension")
         )
 
-        self.comprehension_agent = ComprehensionAgent(model=ollama_model)
         self.orchestration_agent = OrchestrationAgent(model=ollama_model)
         self.reasoning_agent = ReasoningAgent(model=ollama_model)
         self.evaluation_agent = EvaluationAgent(model=ollama_model)
@@ -70,6 +69,11 @@ class COREGraph:
         _workspace = os.getenv("CORE_WORKSPACE_DIR", os.getcwd())
         _dispatcher = ToolDispatcher(workspace_dir=_workspace)
         self.registry = build_registry_from_dispatcher(_dispatcher)
+        # The classifier's tool list comes from the same registry the gate
+        # checks, so it can't advertise actions CORE doesn't have.
+        self.comprehension_agent = ComprehensionAgent(
+            model=ollama_model, registry=self.registry
+        )
         # Dispatchable tool roots, used by plan grounding to reject invented tools.
         # Sourced from the dispatcher (not registry ids) so that future MCP
         # capabilities registered into the registry can't make a tool the
@@ -187,7 +191,7 @@ class COREGraph:
                 # proceed → run the loop; clarify/refuse → answer directly (no spend).
                 from app.core.agents.comprehension_gate import decide_gate
 
-                decision = decide_gate(intent, self.registry)
+                decision = decide_gate(intent, self.registry, text=state.user_input)
                 state.gate_outcome = decision.outcome
                 state.gate_message = decision.message or None
                 span.set_attribute("gate.outcome", decision.outcome)

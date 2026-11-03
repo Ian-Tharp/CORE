@@ -166,6 +166,12 @@ alone on paired act/abstain twins (proceed vs clarify/refuse), reporting paired 
 over-refusal rate, with the regex-ambiguity merge as an ablation. Data, baseline and findings:
 [`docs/evaluation/gate/README.md`](../evaluation/gate/README.md).
 
+**Action-level presence (landed).** The suite showed root-level presence is not enough: `git` is
+registered, `git.push` is not. The gate now resolves `tools_needed` exactly (root or capability id,
+no lexical match), and for a present root refuses a gated operation verb in the request that none of
+the root's capabilities serve (`CapabilityEntry.verbs`, `app/core/registry/actions.py`). The
+classifier prompt is built from the registry (§4.2(a)), replacing the hardcoded tool list.
+
 ## 6. Phased build (each phase shippable + measurable)
 
 1. **Phase 1 — Registry + comprehension grounding (the foundation).** Build the Capability Registry
