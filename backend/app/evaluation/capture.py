@@ -20,8 +20,12 @@ FAULTS_FILENAME = "faults.jsonl"
 
 
 def state_failed(state: Any) -> bool:
-    """True if the run recorded errors, a failed eval, or a failed step."""
+    """True if the run recorded errors, a failed eval, a failed step, or an
+    action claim that no tool call supports."""
     if getattr(state, "errors", None):
+        return True
+    claims = getattr(state, "claim_report", None)
+    if isinstance(claims, dict) and claims.get("unsupported"):
         return True
     ev = getattr(state, "eval_result", None)
     if ev is not None and getattr(ev, "overall_status", None) == "failure":
@@ -56,6 +60,11 @@ def fault_report_from_state(state: Any, expected: Optional[str] = None) -> Fault
         if not getattr(ps, "tool", None):
             continue
         r = by_id.get(ps.id)
+        # A result that says the dispatcher did NOT run this tool (LLM-executed,
+        # dry-run or blocked step) must not appear as a tool call in the trace.
+        # Results without the field (older/duck-typed states) keep the plan view.
+        if r is not None and hasattr(r, "dispatched_tool") and not r.dispatched_tool:
+            continue
         tool_calls.append(
             ToolCallRecord(
                 name=ps.tool,
@@ -72,6 +81,20 @@ def fault_report_from_state(state: Any, expected: Optional[str] = None) -> Fault
         if started is not None and ended is not None
         else None
     )
+    metadata = {}
+    refusal = getattr(state, "refusal", None)
+    if refusal is not None:
+        metadata["refusal"] = (
+            refusal.model_dump() if hasattr(refusal, "model_dump") else refusal
+        )
+    blocked = getattr(state, "blocked_actions", None) or []
+    if blocked:
+        metadata["blocked_actions"] = [
+            b.model_dump() if hasattr(b, "model_dump") else b for b in blocked
+        ]
+    claims = getattr(state, "claim_report", None)
+    if isinstance(claims, dict) and claims.get("unsupported"):
+        metadata["unsupported_claims"] = claims["unsupported"]
     return FaultReport(
         run_id=getattr(state, "run_id", None),
         input=getattr(state, "user_input", "") or "",
@@ -83,6 +106,7 @@ def fault_report_from_state(state: Any, expected: Optional[str] = None) -> Fault
         started_at=started,
         ended_at=ended,
         latency_ms=latency,
+        metadata=metadata,
     )
 
 

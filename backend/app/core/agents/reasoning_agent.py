@@ -18,8 +18,14 @@ from datetime import datetime
 import httpx
 
 from app.dependencies import get_openai_client_sync
-from app.models.core_state import ExecutionPlan, PlanStep, StepResult
+from app.models.core_state import (
+    ExecutionPlan,
+    PlanStep,
+    RefusalRecord,
+    StepResult,
+)
 from app.core.tools.dispatcher import ToolDispatcher
+from app.core.agents.refusal_guard import EXCERPT_CHARS, RefusalLatch, detect_refusal
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +140,7 @@ class ReasoningAgent:
         plan: ExecutionPlan,
         start_from_step: Optional[str] = None,
         enable_tools: bool = True,
+        refusal_latch: Optional[RefusalLatch] = None,
     ) -> List[StepResult]:
         """
         Execute the plan respecting dependency ordering.
@@ -146,6 +153,9 @@ class ReasoningAgent:
             plan: The execution plan to run
             start_from_step: Optional step ID to resume from (for retries)
             enable_tools: Whether to actually call tools (False for dry-run)
+            refusal_latch: Per-run abstention guard. Once it is tripped (by the
+                gate or by a step that declines), remaining steps are blocked
+                instead of executed. None disables the guard.
 
         Returns:
             List of StepResult objects in plan order (skipped steps included).
@@ -155,12 +165,12 @@ class ReasoningAgent:
             steps_to_execute = [s for s in plan.steps if s.id == start_from_step]
             results = []
             for step in steps_to_execute:
-                result = self._execute_step(step, enable_tools)
+                result = self._run_step(step, enable_tools, refusal_latch)
                 self._apply_step_status(step, result)
                 results.append(result)
             return results
 
-        return self._execute_with_parallelism(plan.steps, enable_tools)
+        return self._execute_with_parallelism(plan.steps, enable_tools, refusal_latch)
 
     def _build_execution_waves(self, steps: List) -> List[List]:
         """
@@ -201,7 +211,10 @@ class ReasoningAgent:
         return waves
 
     def _execute_with_parallelism(
-        self, steps: List, enable_tools: bool
+        self,
+        steps: List,
+        enable_tools: bool,
+        refusal_latch: Optional[RefusalLatch] = None,
     ) -> List[StepResult]:
         """Execute steps wave by wave; run each wave in parallel."""
         waves = self._build_execution_waves(steps)
@@ -211,6 +224,11 @@ class ReasoningAgent:
             # Determine which steps in this wave have failed deps → skip them
             runnable, skipped = [], []
             for step in wave:
+                # After a refusal, every remaining step goes to the guard so it
+                # is recorded as blocked (not merely dependency-skipped).
+                if refusal_latch is not None and refusal_latch.active:
+                    runnable.append(step)
+                    continue
                 failed_deps = [
                     dep
                     for dep in step.dependencies
@@ -242,7 +260,7 @@ class ReasoningAgent:
 
             if len(runnable) == 1:
                 # No parallelism overhead for single step
-                result = self._execute_step(runnable[0], enable_tools)
+                result = self._run_step(runnable[0], enable_tools, refusal_latch)
                 self._apply_step_status(runnable[0], result)
                 results_by_id[runnable[0].id] = result
             else:
@@ -255,7 +273,9 @@ class ReasoningAgent:
                     max_workers=min(len(runnable), self._MAX_PARALLEL_WORKERS)
                 ) as executor:
                     future_to_step = {
-                        executor.submit(self._execute_step, step, enable_tools): step
+                        executor.submit(
+                            self._run_step, step, enable_tools, refusal_latch
+                        ): step
                         for step in runnable
                     }
                     for future in as_completed(future_to_step):
@@ -278,9 +298,61 @@ class ReasoningAgent:
         # Return results in original step order
         return [results_by_id[s.id] for s in steps if s.id in results_by_id]
 
+    def _run_step(
+        self,
+        step: PlanStep,
+        enable_tools: bool,
+        refusal_latch: Optional[RefusalLatch] = None,
+    ) -> StepResult:
+        """Run one step behind the abstention guard.
+
+        Blocked steps are never handed to ``_execute_step``. After an
+        LLM-executed step, its output is checked for a refusal; a refusal fails
+        the step (so dependents skip) and trips the latch for everything after.
+        """
+        if refusal_latch is not None:
+            blocked = refusal_latch.check(step)
+            if blocked is not None:
+                step.status = "skipped"
+                logger.info("Blocked step '%s': %s", step.name, blocked.reason)
+                return StepResult(
+                    step_id=step.id,
+                    status="failure",
+                    outputs={},
+                    logs=[f"Blocked: {blocked.reason}"],
+                    error=f"Blocked: {blocked.reason}",
+                )
+
+        result = self._execute_step(step, enable_tools)
+
+        if (
+            refusal_latch is not None
+            and enable_tools
+            and result.status == "success"
+            and result.dispatched_tool is None
+        ):
+            text = str((result.outputs or {}).get("result", ""))
+            phrase = detect_refusal(text)
+            if phrase:
+                refusal_latch.trip(
+                    RefusalRecord(
+                        source="reasoning",
+                        reason=f"step declined: {phrase!r}",
+                        step_id=step.id,
+                        excerpt=text[:EXCERPT_CHARS],
+                    )
+                )
+                logger.warning("Step '%s' refused (%r); latching", step.name, phrase)
+                result.status = "failure"
+                result.error = f"Refused: {phrase}"
+                result.logs = list(result.logs) + ["Refusal detected; run latched"]
+        return result
+
     @staticmethod
     def _apply_step_status(step, result: StepResult) -> None:
         """Synchronise step.status with the StepResult outcome."""
+        if step.status == "skipped":
+            return  # blocked by the abstention guard; keep it visible as skipped
         if result.status == "success":
             step.status = "completed"
         elif result.status == "failure":
@@ -296,11 +368,13 @@ class ReasoningAgent:
             step.status = "running"
             step.started_at = datetime.utcnow()
 
+            dispatched = None
             if not enable_tools:
                 outputs = {"result": f"Simulated execution of: {step.description}"}
                 artifacts = []
                 logs = [f"Dry-run: Would execute {step.name}"]
             elif step.tool and step.tool in self.tool_dispatcher.available_tools:
+                dispatched = step.tool
                 outputs = self.tool_dispatcher.dispatch(step.tool, step.params)
                 artifacts = self.tool_dispatcher.get_artifacts(step.tool, outputs)
                 tool_status = outputs.get("status", "success")
@@ -331,6 +405,7 @@ class ReasoningAgent:
                 artifacts=artifacts,
                 logs=logs,
                 duration_seconds=duration,
+                dispatched_tool=dispatched,
             )
 
         except Exception as e:

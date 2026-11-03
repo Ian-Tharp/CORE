@@ -50,6 +50,7 @@ No roadmap box above is ticked: the slice below is groundwork, not completion of
 *   **Fault capture (§3.C "Capture") — implemented, not wired.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). Nothing in the live pipeline calls it yet.
 *   **Golden Set (§3.C "Update") — implemented.** JSONL store with dedupe by stable signature, corrupt-line tolerance, and `append_fault()`. 10 seed cases in `docs/evaluation/golden/seed.jsonl` (Phase II targets 100).
 *   **Production-track evaluators (§3.B.2) — partially implemented.** Deterministic exact/contains/regex/max-latency/forbidden-substring checks and a replay runner that takes an injected callable. Heuristic guardrails for loops and safety constraints are not done.
+*   **Abstention guard and claim verification (§3.B.2 guardrails) — implemented, wired, default on.** An unresolved refusal (comprehension gate clarify/refuse, or an LLM step that declines) blocks every later step and stops retry/re-plan; action claims in LLM step outputs are checked against the dispatched tool-call trace (`StepResult.dispatched_tool`), and unsupported ones lower evaluation confidence and are flagged in the response. The `claims_supported` evaluator applies the same check to golden cases. Fault reports no longer list never-dispatched steps as tool calls. See `docs/architecture/abstention-guard.md`.
 
 Deviations from this spec:
 
