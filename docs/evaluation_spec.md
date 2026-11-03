@@ -50,6 +50,7 @@ No roadmap box above is ticked: the slice below is groundwork, not completion of
 *   **Fault capture (§3.C "Capture") — implemented, not wired.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). Nothing in the live pipeline calls it yet.
 *   **Golden Set (§3.C "Update") — implemented.** JSONL store with dedupe by stable signature, corrupt-line tolerance, and `append_fault()`. 10 seed cases in `docs/evaluation/golden/seed.jsonl` (Phase II targets 100).
 *   **Production-track evaluators (§3.B.2) — partially implemented.** Deterministic exact/contains/regex/max-latency/forbidden-substring checks and a replay runner that takes an injected callable. Heuristic guardrails for loops and safety constraints are not done.
+*   **Comprehension gate suite — implemented.** `backend/app/evaluation/gate_suite.py` + `docs/evaluation/gate/paired_twins.jsonl` (35 paired act/abstain twins): paired accuracy, act/abstain accuracy and over-refusal for the proceed/clarify/refuse gate. See `docs/evaluation/gate/README.md`.
 
 Deviations from this spec:
 
