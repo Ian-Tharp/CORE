@@ -27,6 +27,7 @@ from app.core.agents.reasoning_agent import ReasoningAgent
 from app.core.agents.evaluation_agent import EvaluationAgent
 from app.core.telemetry import get_tracer
 from app.core.intelligence_log import record_pipeline_run
+from app.evaluation.capture import maybe_capture_fault
 
 
 class COREGraph:
@@ -515,6 +516,15 @@ class COREGraph:
                 record_pipeline_run(state)
             except Exception as _intel_exc:
                 logger.debug("Intelligence log failed (non-critical): %s", _intel_exc)
+
+            # Evaluation layer: persist faulted runs for the Golden Set loop
+            # (docs/evaluation_spec.md 3.C). Off unless CORE_EVAL_CAPTURE_FAULTS
+            # is set; maybe_capture_fault never raises, the guard is belt and
+            # braces so capture can never break a user request.
+            try:
+                maybe_capture_fault(state)
+            except Exception as _capture_exc:
+                logger.warning("Fault capture failed (non-critical): %s", _capture_exc)
 
         return state
 

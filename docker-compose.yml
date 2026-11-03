@@ -24,6 +24,10 @@ services:
       # CORE uses LM Studio as its local provider by default (override: CORE_LOCAL_PROVIDER=ollama).
       - CORE_LOCAL_PROVIDER=${CORE_LOCAL_PROVIDER:-lmstudio}
       - CORE_DEFAULT_MODEL=${CORE_DEFAULT_MODEL:-}
+      # Evaluation fault capture (docs/evaluation_spec.md). Off by default; writes
+      # to /app/data/evaluation/faults (the backend-data volume) when on.
+      - CORE_EVAL_CAPTURE_FAULTS=${CORE_EVAL_CAPTURE_FAULTS:-false}
+      - CORE_EVAL_FAULTS_DIR=${CORE_EVAL_FAULTS_DIR:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - DB_HOST=postgres
