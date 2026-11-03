@@ -153,6 +153,14 @@ class TestStoreMemoryGrounder:
         # Only cue words in the query → no scoring tokens → no hits.
         assert grounder.ground("like last time", user_id="u1") == []
 
+    def test_inflected_cue_words_are_not_scored(self, grounder):
+        from app.core.memory.grounding import _query_tokens
+
+        tokens = _query_tokens("as we discussed, use my preferred stack as decided")
+        assert tokens == {"use", "stack"}
+        grounder.remember("I preferred tea, we discussed and decided it")
+        assert grounder.ground("as we discussed, my preferred stack") == []
+
     def test_hits_ranked_best_first_and_capped_at_k(self, grounder):
         grounder.remember("api service", user_id="u1", key="a")
         grounder.remember("api service deploy helm", user_id="u1", key="b")

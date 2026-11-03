@@ -105,7 +105,9 @@ def _content_tokens(text: str) -> set:
 
 
 def _query_tokens(text: str) -> set:
-    return {t for t in _content_tokens(text) if t not in _CUE_WORDS}
+    # Filter cue words before stemming: stemmed forms ("discuss", "preferr")
+    # would no longer match the cue list.
+    return {_stem(t) for t in _tokens(text or "") if t not in _CUE_WORDS}
 
 
 # ---------------------------------------------------------------------------
