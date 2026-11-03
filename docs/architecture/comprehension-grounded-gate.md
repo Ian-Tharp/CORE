@@ -1,6 +1,6 @@
 # CORE as a self-grounded deliberation loop — design spec
 
-**Status:** Draft for review (Ian) · **Date:** 2026-06-25 · **Branch:** `feat/comprehension-grounded-gate`
+**Status:** Phases 1–3 implemented, Phase 4 open (see [§9](#9-implementation-status)) · **Date:** 2026-06-25, updated 2026-11-03
 **Related:** the overnight ToT experiment (`atlas/overnight-2026-06-24`) — `app/reasoning/` harness +
 `FINDINGS_tot_generalization_2026-06-25.md`; the reasoning-strategy proposal
 `docs/research/reasoning-strategy-as-governed-policy.md`.
@@ -195,3 +195,65 @@ and which verifier is carrying it." Depends on merging the overnight harness bra
   later (a node could deliberate, but that's downstream of this).
 - Auto-tuning thresholds or learned routing — heuristics first, measure, then maybe.
 - Changing live `core_graph_v2` default behavior without the Phase 4 measurement backing it.
+
+## 9. Implementation status
+
+| Phase | Status | Where |
+|---|---|---|
+| 1. Registry + comprehension gate | Shipped | `app/core/registry/`, `app/core/agents/comprehension_gate.py`, `comprehension_routing.py` |
+| 2. Orchestration from the registry | Shipped | `app/core/registry/grounding.py`, `orchestration_node` |
+| 3. Memory grounding + per-step evaluation | Implemented, memory grounding **off by default** | `app/core/memory/`, `app/evaluation/step_checks.py` |
+| 4. Measure (ablations) | Not started | — |
+
+### Phase 3 as built
+
+**Memory grounding (§4.2(b), §4.5).** `app/core/memory/grounding.py` exposes a small
+`MemoryGrounder.ground(query, user_id=, conversation_id=, k=) -> list[MemoryHit]` (content, kind
+`fact|episode`, score). The default `StoreMemoryGrounder` sits on LangGraph's `BaseStore`:
+`InMemoryStore` by default and in tests, `PostgresStore` when `CORE_MEMORY_STORE=postgres`
+(DSN from `CORE_MEMORY_STORE_DSN` or `DATABASE_URL`). Items live under
+`("core_memory", <user_id|"global">, <kind>)`. Scores are the store's own when it has a semantic
+index, otherwise a deterministic lexical overlap, so there is no embedder call on the gate path.
+
+Why the LangGraph store and not `memory_service`: comprehension is synchronous and must stay cheap
+and offline-testable. `memory_service` is async, needs the asyncpg pool and an Ollama embedding call
+per query, and is scoped per agent rather than per user. The store matches §4.5 ("LangGraph
+`PostgresStore` over CORE pgvector") and has a sync API. A `memory_service` adapter can sit behind
+the same interface later.
+
+**Knowledge gaps feed the existing gate.** `detect_knowledge_dependencies()` finds strong cues that a
+request relies on prior knowledge ("like last time", "the usual", "as we discussed", "my preferred
+X", "my manager"). A bare "my"/"our" is deliberately not a cue. A cue that no memory hit covers is a
+gap; gaps are appended to `UserIntent.ambiguities`, so the unchanged tri-state gate returns
+**clarify**. Relevant hits are appended to `intent.context_retrieved`; the full assessment is
+recorded in `COREState.memory_grounding`. This is a "summary of what CORE knows" scoped to the
+request, not the free-text `memory.summarize()` of §4.5.
+
+**Flag:** `CORE_COMPREHENSION_MEMORY_GROUNDING` (`1/true/yes/on`), default off. Off means the
+grounder is never built, `memory_grounding` stays `None`, and routing is identical to Phase 2
+(pinned by `tests/test_phase3_graph_integration.py`).
+
+**Per-step evaluation (§4.4).** After reasoning executes, `app/evaluation/step_checks.py` checks every
+executed step deterministically: has a result, no error/partial status, non-empty output, and output
+matches the step's declared `PlanStep.output_schema` (new, optional). Results are recorded in
+`COREState.step_checks`. Failing checks are passed to `EvaluationAgent.evaluate_execution`: listed in
+the LLM prompt and counted as failures by the rule-based fallback. No extra LLM calls; clean runs
+call the evaluator exactly as before. The evaluation prompt now names `retry_step` (execution flaked)
+vs `revise_plan` (intent misalignment).
+
+### Deviations and follow-ups
+
+- **Checks run after the reasoning node, not between steps.** Reasoning executes the plan in one
+  call (with parallel waves), so the checks see every step after the batch. Stopping early on the
+  first bad step needs a hook inside `ReasoningAgent.execute_plan`; not done.
+- **Checks run on every step, not only `requires_hitl` ones.** They are deterministic and cheap, so
+  there is no reason to restrict them; an LLM per-step review stays out of scope.
+- **No write path into memory yet.** `StoreMemoryGrounder.remember()` exists, but nothing in the
+  pipeline consolidates conversations into the store. With the flag on and an empty store, every
+  cue becomes a clarify, which is the honest answer but also why the flag stays off.
+- **`PostgresStore` is optional.** It ships in `langgraph-checkpoint-postgres`, which is not a
+  dependency today. Without it, `CORE_MEMORY_STORE=postgres` logs a warning and uses the in-memory
+  store.
+- **Fault capture does not yet count failing step checks** (`app/evaluation/capture.state_failed`).
+  Left for after the fault-capture wiring PR lands, to avoid conflicts.
+

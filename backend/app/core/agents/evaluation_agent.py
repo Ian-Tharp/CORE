@@ -149,8 +149,8 @@ Analyze:
 
 Determine next action:
 - **finalize**: Task completed successfully, return results to user
-- **retry_step**: A specific step failed, retry it
-- **revise_plan**: The plan itself was flawed, need to re-orchestrate
+- **retry_step**: Execution flaked: a specific step failed or errored, but the plan is right. Retry that step.
+- **revise_plan**: Intent misalignment: the steps ran, but the plan did not achieve what the user wanted. Re-orchestrate.
 - **ask_user**: Need user input to proceed
 
 Respond in JSON format:
@@ -170,6 +170,7 @@ Respond in JSON format:
         intent: Optional[UserIntent],
         plan: ExecutionPlan,
         step_results: List[StepResult],
+        step_checks: Optional[List[Dict]] = None,
     ) -> EvaluationResult:
         """
         Evaluate execution results using LLM for nuanced quality assessment.
@@ -183,13 +184,24 @@ Respond in JSON format:
             intent: The comprehension result
             plan: The execution plan that was run
             step_results: Results from each step execution
+            step_checks: Optional failing deterministic per-step checks
+                (``StepCheck.to_dict()``), shown to the evaluator and counted
+                as failures by the rule-based fallback
 
         Returns:
             EvaluationResult with LLM-assessed quality and next action
         """
+        if step_checks:
+            return self._llm_evaluate(
+                user_input, plan, step_results, intent=intent, step_checks=step_checks
+            )
         return self._llm_evaluate(user_input, plan, step_results, intent=intent)
 
-    def _rule_based_evaluate(self, step_results: List[StepResult]) -> EvaluationResult:
+    def _rule_based_evaluate(
+        self,
+        step_results: List[StepResult],
+        step_checks: Optional[List[Dict]] = None,
+    ) -> EvaluationResult:
         """
         Rule-based fallback evaluation when LLM is unavailable.
 
@@ -206,10 +218,24 @@ Respond in JSON format:
                 next_action="ask_user",
             )
 
-        failed_steps = [r for r in step_results if r.status == "failure"]
+        # A step that failed its deterministic check counts as failed even when
+        # its own status says success (e.g. empty output, schema mismatch).
+        check_failed = {
+            c.get("step_id") for c in (step_checks or []) if not c.get("passed", True)
+        }
+        failed_steps = [
+            r
+            for r in step_results
+            if r.status == "failure" or r.step_id in check_failed
+        ]
         all_succeeded = not failed_steps
         success_rate = (
-            sum(1 for r in step_results if r.status == "success") / len(step_results)
+            sum(
+                1
+                for r in step_results
+                if r.status == "success" and r.step_id not in check_failed
+            )
+            / len(step_results)
             if step_results
             else 0.0
         )
@@ -258,6 +284,7 @@ Respond in JSON format:
         plan: ExecutionPlan,
         step_results: List[StepResult],
         intent: Optional[UserIntent] = None,
+        step_checks: Optional[List[Dict]] = None,
     ) -> EvaluationResult:
         """
         Use LLM to evaluate execution quality with nuanced assessment.
@@ -293,6 +320,22 @@ Respond in JSON format:
 
         steps_block = "\n".join(step_lines) if step_lines else "No steps were executed."
 
+        # Deterministic per-step checks: only failing ones are passed in, and the
+        # block is omitted entirely when there are none (prompt unchanged).
+        checks_block = ""
+        if step_checks:
+            check_lines = [
+                f"- {c.get('step_name') or c.get('step_id')}: "
+                f"{', '.join(c.get('failures') or [])}"
+                + (f" ({c.get('detail')})" if c.get("detail") else "")
+                for c in step_checks
+            ]
+            checks_block = (
+                "\n\nDeterministic step checks FAILED for:\n"
+                + "\n".join(check_lines)
+                + "\nDo not finalize as a success while these steps are failing."
+            )
+
         # Rubric: inject task-type-specific evaluation criteria
         rubric = get_rubric_for_user_intent(intent)
 
@@ -303,7 +346,7 @@ Plan goal: {plan.goal}
 Plan steps: {len(plan.steps)}
 
 Step execution results:
-{steps_block}
+{steps_block}{checks_block}
 
 {rubric}
 
@@ -371,4 +414,4 @@ Evaluate whether the user's request was satisfied by the execution above."""
                 self.model,
                 exc,
             )
-            return self._rule_based_evaluate(step_results)
+            return self._rule_based_evaluate(step_results, step_checks=step_checks)

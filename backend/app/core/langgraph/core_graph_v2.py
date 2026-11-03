@@ -76,6 +76,10 @@ class COREGraph:
         # in-process dispatcher cannot run look valid.
         self._dispatcher_tools = set(_dispatcher.available_tools)
 
+        # Phase 3 memory grounding: built lazily on first use, and only when
+        # CORE_COMPREHENSION_MEMORY_GROUNDING is on. Tests may inject one.
+        self.memory_grounder = None
+
     def initialize_graph(self) -> None:
         """Build and compile the CORE graph with conditional routing."""
         # Create graph with COREState as the state schema
@@ -175,6 +179,10 @@ class COREGraph:
                         "ambiguity detection failed (non-critical): %s", amb_exc
                     )
 
+                # Phase 3 (flag, default off): ground the request in memory.
+                # Knowledge gaps become ambiguities, so the gate below clarifies.
+                self._ground_in_memory(state, intent)
+
                 # Front verifier: tri-state gate over the capability registry.
                 # proceed → run the loop; clarify/refuse → answer directly (no spend).
                 from app.core.agents.comprehension_gate import decide_gate
@@ -196,6 +204,46 @@ class COREGraph:
                 )
 
         return state
+
+    def _ground_in_memory(self, state: COREState, intent: UserIntent) -> None:
+        """Phase 3: feed known facts and knowledge gaps into the intent.
+
+        No-op unless CORE_COMPREHENSION_MEMORY_GROUNDING is on. Never raises.
+        """
+        from app.core.memory import grounding as memory
+
+        if not memory.memory_grounding_enabled():
+            return
+        try:
+            if self.memory_grounder is None:
+                self.memory_grounder = memory.StoreMemoryGrounder(
+                    memory.build_memory_store()
+                )
+            assessment = memory.assess_knowledge(
+                state.user_input,
+                self.memory_grounder,
+                user_id=state.user_id,
+                conversation_id=state.conversation_id,
+            )
+            memory.apply_to_intent(intent, assessment)
+            state.memory_grounding = assessment.to_dict()
+        except Exception as exc:  # memory must never block comprehension
+            state.add_warning(f"memory grounding failed: {exc}")
+
+    def _record_step_checks(self, state: COREState) -> None:
+        """Phase 3: record a deterministic check per executed step. Never raises."""
+        try:
+            from app.evaluation.step_checks import check_steps
+
+            state.step_checks = [
+                c.to_dict() for c in check_steps(state.plan, state.step_results)
+            ]
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).debug(
+                "step checks failed (non-critical): %s", exc
+            )
 
     def orchestration_node(self, state: COREState) -> COREState:
         """
@@ -322,6 +370,9 @@ class COREGraph:
                 span.set_attribute("error", True)
                 state.add_error(f"Reasoning failed: {str(e)}")
 
+            # Phase 3 per-step evaluation: deterministic, no LLM.
+            self._record_step_checks(state)
+
         return state
 
     def evaluation_node(self, state: COREState) -> COREState:
@@ -341,12 +392,18 @@ class COREGraph:
             state.add_execution_node("evaluation")
 
             try:
-                # Run evaluation agent
+                # Run evaluation agent. Failing per-step checks are passed in
+                # only when present, so the clean-run call is unchanged.
+                extra = {}
+                failing = [c for c in state.step_checks if not c.get("passed", True)]
+                if failing:
+                    extra["step_checks"] = failing
                 evaluation = self.evaluation_agent.evaluate_execution(
                     user_input=state.user_input,
                     intent=state.intent,
                     plan=state.plan,
                     step_results=state.step_results,
+                    **extra,
                 )
 
                 state.eval_result = evaluation
