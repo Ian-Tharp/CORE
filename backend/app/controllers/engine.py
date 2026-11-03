@@ -396,6 +396,15 @@ async def run_core_stream(
     )
 
 
+def _iso(value: Any) -> Optional[str]:
+    """ISO-format a datetime; pass through already-serialized strings/None."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
 def _sse_event(data: dict) -> str:
     """Format data as an SSE event."""
     data["timestamp"] = datetime.utcnow().isoformat()
@@ -455,11 +464,13 @@ async def get_run(run_id: str, api_key: str = Depends(require_api_key)) -> CORES
                 # Fallback: build minimal state from fields
                 return COREState(
                     run_id=db_run["run_id"],
-                    user_input=db_run.get("user_input", ""),
+                    user_input=db_run.get("input_text")
+                    or db_run.get("user_input")
+                    or "",
                     conversation_id=db_run.get("conversation_id"),
                     user_id=db_run.get("user_id"),
                     response=db_run.get("response"),
-                    current_node=db_run.get("current_node"),
+                    current_node=db_run.get("current_node") or "START",
                 )
     except Exception as e:
         logger.warning(f"Failed to fetch run {run_id} from database: {e}")
@@ -802,25 +813,19 @@ async def list_runs(
             for db_run in db_runs:
                 rid = db_run["run_id"]
                 if rid not in runs:  # Don't duplicate in-memory runs
+                    # Repository rows expose the input as ``input_text`` and
+                    # timestamps already ISO-serialized (see _row_to_dict).
+                    db_input = (
+                        db_run.get("input_text") or db_run.get("user_input") or ""
+                    )
                     runs[rid] = {
                         "status": db_run.get("status", "unknown"),
                         "current_node": db_run.get("current_node"),
                         "user_input": (
-                            (db_run.get("user_input", "")[:100] + "...")
-                            if db_run.get("user_input")
-                            and len(db_run.get("user_input", "")) > 100
-                            else db_run.get("user_input", "")
+                            db_input[:100] + "..." if len(db_input) > 100 else db_input
                         ),
-                        "started_at": (
-                            db_run["created_at"].isoformat()
-                            if db_run.get("created_at")
-                            else None
-                        ),
-                        "completed_at": (
-                            db_run["completed_at"].isoformat()
-                            if db_run.get("completed_at")
-                            else None
-                        ),
+                        "started_at": _iso(db_run.get("created_at")),
+                        "completed_at": _iso(db_run.get("completed_at")),
                         "source": "database",
                     }
         except Exception as e:

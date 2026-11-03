@@ -13,6 +13,9 @@ from langgraph.types import Send
 # Maximum number of plan revisions before forcing finalization.
 # Prevents infinite revise_plan → orchestration → reasoning → evaluation loops.
 _MAX_PLAN_REVISIONS = int(os.getenv("CORE_MAX_PLAN_REVISIONS", "3"))
+# Maximum retry_step passes per plan revision before forcing finalization.
+# Prevents infinite retry_step → reasoning → evaluation loops.
+_MAX_STEP_RETRIES = int(os.getenv("CORE_MAX_STEP_RETRIES", "3"))
 
 from app.models.core_state import (
     COREState,
@@ -27,6 +30,7 @@ from app.core.agents.reasoning_agent import ReasoningAgent
 from app.core.agents.evaluation_agent import EvaluationAgent
 from app.core.telemetry import get_tracer
 from app.core.intelligence_log import record_pipeline_run
+from app.evaluation.capture import maybe_capture_fault
 
 
 class COREGraph:
@@ -71,6 +75,10 @@ class COREGraph:
         # capabilities registered into the registry can't make a tool the
         # in-process dispatcher cannot run look valid.
         self._dispatcher_tools = set(_dispatcher.available_tools)
+
+        # Phase 3 memory grounding: built lazily on first use, and only when
+        # CORE_COMPREHENSION_MEMORY_GROUNDING is on. Tests may inject one.
+        self.memory_grounder = None
 
     def initialize_graph(self) -> None:
         """Build and compile the CORE graph with conditional routing."""
@@ -171,6 +179,10 @@ class COREGraph:
                         "ambiguity detection failed (non-critical): %s", amb_exc
                     )
 
+                # Phase 3 (flag, default off): ground the request in memory.
+                # Knowledge gaps become ambiguities, so the gate below clarifies.
+                self._ground_in_memory(state, intent)
+
                 # Front verifier: tri-state gate over the capability registry.
                 # proceed → run the loop; clarify/refuse → answer directly (no spend).
                 from app.core.agents.comprehension_gate import decide_gate
@@ -200,6 +212,46 @@ class COREGraph:
                 )
 
         return state
+
+    def _ground_in_memory(self, state: COREState, intent: UserIntent) -> None:
+        """Phase 3: feed known facts and knowledge gaps into the intent.
+
+        No-op unless CORE_COMPREHENSION_MEMORY_GROUNDING is on. Never raises.
+        """
+        from app.core.memory import grounding as memory
+
+        if not memory.memory_grounding_enabled():
+            return
+        try:
+            if self.memory_grounder is None:
+                self.memory_grounder = memory.StoreMemoryGrounder(
+                    memory.build_memory_store()
+                )
+            assessment = memory.assess_knowledge(
+                state.user_input,
+                self.memory_grounder,
+                user_id=state.user_id,
+                conversation_id=state.conversation_id,
+            )
+            memory.apply_to_intent(intent, assessment)
+            state.memory_grounding = assessment.to_dict()
+        except Exception as exc:  # memory must never block comprehension
+            state.add_warning(f"memory grounding failed: {exc}")
+
+    def _record_step_checks(self, state: COREState) -> None:
+        """Phase 3: record a deterministic check per executed step. Never raises."""
+        try:
+            from app.evaluation.step_checks import check_steps
+
+            state.step_checks = [
+                c.to_dict() for c in check_steps(state.plan, state.step_results)
+            ]
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).debug(
+                "step checks failed (non-critical): %s", exc
+            )
 
     def orchestration_node(self, state: COREState) -> COREState:
         """
@@ -346,6 +398,9 @@ class COREGraph:
                 span.set_attribute("error", True)
                 state.add_error(f"Reasoning failed: {str(e)}")
 
+            # Phase 3 per-step evaluation: deterministic, no LLM.
+            self._record_step_checks(state)
+
         return state
 
     def evaluation_node(self, state: COREState) -> COREState:
@@ -365,12 +420,18 @@ class COREGraph:
             state.add_execution_node("evaluation")
 
             try:
-                # Run evaluation agent
+                # Run evaluation agent. Failing per-step checks are passed in
+                # only when present, so the clean-run call is unchanged.
+                extra = {}
+                failing = [c for c in state.step_checks if not c.get("passed", True)]
+                if failing:
+                    extra["step_checks"] = failing
                 evaluation = self.evaluation_agent.evaluate_execution(
                     user_input=state.user_input,
                     intent=state.intent,
                     plan=state.plan,
                     step_results=state.step_results,
+                    **extra,
                 )
 
                 state.eval_result = evaluation
@@ -612,6 +673,15 @@ class COREGraph:
             except Exception as _intel_exc:
                 logger.debug("Intelligence log failed (non-critical): %s", _intel_exc)
 
+            # Evaluation layer: persist faulted runs for the Golden Set loop
+            # (docs/evaluation_spec.md 3.C). Off unless CORE_EVAL_CAPTURE_FAULTS
+            # is set; maybe_capture_fault never raises, the guard is belt and
+            # braces so capture can never break a user request.
+            try:
+                maybe_capture_fault(state)
+            except Exception as _capture_exc:
+                logger.warning("Fault capture failed (non-critical): %s", _capture_exc)
+
         return state
 
     # ======================
@@ -675,6 +745,24 @@ class COREGraph:
                 _MAX_PLAN_REVISIONS,
             )
             return "conversation"
+
+        # Loop guard: cap step retries since the latest plan (re)creation
+        if state.eval_result.next_action == "retry_step":
+            history = state.execution_history
+            last_orch = (
+                len(history) - 1 - history[::-1].index("orchestration")
+                if "orchestration" in history
+                else -1
+            )
+            retries_done = history[last_orch + 1 :].count("reasoning") - 1
+            if retries_done >= _MAX_STEP_RETRIES:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Max step retries (%d) reached — forcing finalization",
+                    _MAX_STEP_RETRIES,
+                )
+                return "conversation"
 
         action_routes = {
             "finalize": "conversation",

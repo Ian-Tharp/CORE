@@ -49,6 +49,9 @@ class PlanStep(BaseModel):
     dependencies: List[str] = Field(
         default_factory=list, description="Step IDs this depends on"
     )
+    # Optional JSON Schema the step's StepResult.outputs must satisfy. Checked
+    # by the deterministic per-step evaluation (app/evaluation/step_checks.py).
+    output_schema: Optional[Dict[str, Any]] = None
     requires_hitl: bool = False  # Human-in-the-loop checkpoint
     retry_policy: Dict[str, Any] = Field(
         default_factory=lambda: {"max_attempts": 3, "backoff_seconds": 1}
@@ -169,6 +172,10 @@ class COREState(BaseModel):
     # orphaned dependents. Optional + default so existing construction is unaffected.
     grounding_report: Optional[Dict[str, Any]] = None
 
+    # Memory grounding (Phase 3): relevant facts/episodes, knowledge cues and
+    # gaps found by comprehension. None when the feature flag is off.
+    memory_grounding: Optional[Dict[str, Any]] = None
+
     # Reasoning outputs
     step_results: List[StepResult] = Field(default_factory=list)
     current_step_id: Optional[str] = None
@@ -181,6 +188,10 @@ class COREState(BaseModel):
     # Claim verification: action claims in LLM step outputs checked against the
     # dispatched tool-call trace. See app/evaluation/claims.py.
     claim_report: Optional[Dict[str, Any]] = None
+
+    # Per-step evaluation (Phase 3): one deterministic check per executed step
+    # (StepCheck.to_dict()); failing ones are passed to the final evaluation.
+    step_checks: List[Dict[str, Any]] = Field(default_factory=list)
 
     # Evaluation outputs
     eval_result: Optional[EvaluationResult] = None

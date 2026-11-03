@@ -6,8 +6,10 @@ Distinct from ``app.eval`` (offline verdict-drift harness for
 
 from app.evaluation.capture import (
     capture_fault,
+    fault_reasons,
     fault_report_from_state,
     load_faults,
+    maybe_capture_fault,
     state_failed,
 )
 from app.evaluation.claims import (
@@ -44,8 +46,10 @@ __all__ = [
     "arun_cases",
     "capture_fault",
     "extract_claims",
+    "fault_reasons",
     "fault_report_from_state",
     "load_faults",
+    "maybe_capture_fault",
     "run_cases",
     "state_failed",
     "trace_from_state",

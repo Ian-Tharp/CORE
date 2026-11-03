@@ -7,6 +7,7 @@ import pytest
 
 from app.evaluation import (
     extract_claims,
+    fault_reasons,
     fault_report_from_state,
     run_cases,
     state_failed,
@@ -203,6 +204,7 @@ def test_evaluation_node_downgrades_on_unsupported_claim():
     assert "Unsupported action claims" in ev.feedback
     assert state.claim_report["unsupported"][0]["kind"] == "git_write"
     assert state_failed(state)
+    assert fault_reasons(state) == ["unsupported_claims"]
 
 
 def test_evaluation_node_clean_claims_leave_eval_alone():
