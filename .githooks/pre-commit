@@ -24,6 +24,11 @@ cd "$repo_root/backend" || {
     echo "[pre-commit] could not cd into backend/"; exit 1;
 }
 
+# Git exports GIT_DIR / GIT_INDEX_FILE to hooks. Tests that run `git init` or
+# `git config` in a temp dir would then write to THIS repo's config instead
+# (seen: core.bare=true and a fake user.name). Run the checks without them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR
+
 echo "[pre-commit] black --check (app/ tests/) ..."
 if ! uv run black --check app/ tests/; then
     echo
