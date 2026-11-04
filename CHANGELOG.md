@@ -3,6 +3,26 @@
 
 ---
 
+## Session: November 4, 2026 — Side effects that matter
+
+### Confirm tier for writes
+Capability `side_effects` from the registry is now enforced. A step whose capability writes
+(file writes, database POSTs other than KB search, anything unclassified), or that the plan marked
+`requires_hitl`, is held instead of dispatched and recorded in `pending_confirmations`; its
+dependents wait. Evaluation asks the user instead of retrying or re-planning, and the response
+lists what was held and which capability ids to approve (`config["approved_capabilities"]`).
+`CORE_CONFIRM_WRITES=0` disables it. See `docs/architecture/action-confirmation.md`.
+**Status:** ✅ Complete
+
+### Dependency-failure latch
+A step never runs unless every dependency succeeded: retries now check dependencies (and resume
+dependents once the dependency succeeds), dependency cycles are blocked instead of run, and an LLM
+call that errors or returns nothing fails its step instead of passing as success. Dependency
+blocks are recorded in `blocked_actions` (`kind`, `cause_step_id`) and listed in the response.
+**Status:** ✅ Complete
+
+---
+
 ## Session: November 3, 2026 — Refusals that hold, claims that are checked
 
 ### Block actions after an unresolved refusal

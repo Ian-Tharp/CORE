@@ -15,9 +15,13 @@ file delete). Keep them in step with what the dispatcher handler really does.
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
-from app.core.registry.capability import CapabilityEntry, CapabilityRegistry
+from app.core.registry.capability import (
+    CapabilityEntry,
+    CapabilityRegistry,
+    SideEffect,
+)
 
 _PATH_SCHEMA = {
     "type": "object",
@@ -230,6 +234,41 @@ def capability_id_for_step(tool: str, params: Dict) -> str:
         return _ROOT_FIXED_CAPABILITY[tool]
     action = params.get("action") or _ROOT_DEFAULT_ACTION.get(tool)
     return f"{tool}.{action}" if action else tool
+
+
+# database.query is "network" for reads, but the dispatcher also sends POSTs,
+# which can change data. These POST endpoints only search, so they stay reads.
+_READ_ONLY_POST_ENDPOINTS = frozenset(
+    {
+        "knowledgebase/semantic-search",
+        "knowledgebase/chunk-search",
+        "knowledgebase/instance-search",
+    }
+)
+
+
+def side_effect_for_step(
+    tool: str, params: Dict, registry: Optional[CapabilityRegistry]
+) -> Tuple[str, SideEffect]:
+    """Resolve a dispatchable step to ``(capability_id, side_effect)``.
+
+    The registry's class is the default. Params can raise it: a database call
+    with a method other than GET (outside the search allowlist) is a write.
+    A step that maps to no registry entry is treated as a write (fail closed),
+    so an unclassified capability can never run without confirmation.
+    """
+    params = params or {}
+    cap_id = capability_id_for_step(tool, params)
+    entry = registry.get(cap_id) if registry is not None else None
+    if entry is None:
+        return cap_id, "write"
+    effect: SideEffect = entry.side_effects
+    if tool == "database":
+        method = str(params.get("method") or "GET").upper()
+        endpoint = str(params.get("endpoint") or "").strip("/").split("?", 1)[0]
+        if method != "GET" and endpoint not in _READ_ONLY_POST_ENDPOINTS:
+            effect = "write"
+    return cap_id, effect
 
 
 def build_registry_from_dispatcher(dispatcher) -> CapabilityRegistry:

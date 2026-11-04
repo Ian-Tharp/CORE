@@ -326,7 +326,7 @@ def test_gate_refusal_seeds_latch(graph):
 
 
 def test_reasoning_node_records_refusal_and_blocked(graph):
-    def fake_execute(plan, start_from_step, enable_tools, refusal_latch):
+    def fake_execute(plan, start_from_step, enable_tools, refusal_latch, **_):
         refusal_latch.trip(RefusalRecord(source="reasoning", reason="r", step_id="s1"))
         refusal_latch.check(plan.steps[1])
         return [

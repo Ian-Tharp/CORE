@@ -2,6 +2,7 @@
 
 **Status:** Implemented (default on) · **Date:** 2026-11-03
 **Related:** [`comprehension-grounded-gate.md`](comprehension-grounded-gate.md) (front verifier),
+[`action-confirmation.md`](action-confirmation.md) (confirm tier for writes, dependency latch),
 [`../evaluation_spec.md`](../evaluation_spec.md) (production-track guardrails).
 **Motivation:** AgentAbstain (arXiv 2607.10059, 2026), on agents whose abstentions do not hold
 once execution starts.
@@ -30,7 +31,8 @@ Code: `backend/app/core/agents/refusal_guard.py`, `ReasoningAgent._run_step`,
 - **What it blocks.** Every step that has not started yet: tool steps and LLM steps, dependent
   or not. Blocked steps are never handed to the dispatcher; they come back as failed
   `StepResult`s, the step is marked `skipped`, and each one is recorded in
-  `COREState.blocked_actions`. The refusing step itself is failed (`error="Refused: …"`) and keeps
+  `COREState.blocked_actions` with `kind="refusal"`. (Steps whose dependency failed are recorded
+  there too, with `kind="dependency_failed"`; see `action-confirmation.md`.) The refusing step itself is failed (`error="Refused: …"`) and keeps
   the model's words in its outputs.
 - **No retry or re-plan around it.** `route_from_evaluation` sends `retry_step` and `revise_plan`
   to `conversation` while `state.refusal` is set.
