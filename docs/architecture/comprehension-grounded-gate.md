@@ -161,6 +161,11 @@ and measure accuracy + cost + how often the front gate correctly clarifies/refus
 of the gate itself). This directly answers "is the CORE framework viable for generalizable output,
 and which verifier is carrying it." Depends on merging the overnight harness branch first.
 
+**Gate-level measurement (landed):** `backend/app/evaluation/gate_suite.py` scores the front gate
+alone on paired act/abstain twins (proceed vs clarify/refuse), reporting paired accuracy and the
+over-refusal rate, with the regex-ambiguity merge as an ablation. Data, baseline and findings:
+[`docs/evaluation/gate/README.md`](../evaluation/gate/README.md).
+
 ## 6. Phased build (each phase shippable + measurable)
 
 1. **Phase 1 — Registry + comprehension grounding (the foundation).** Build the Capability Registry
