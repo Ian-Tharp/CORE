@@ -71,6 +71,8 @@ Code: `backend/app/evaluation/claims.py`, `COREGraph._verify_claims` (runs at th
   records `refusal`, `blocked_actions` and `unsupported_claims` in `metadata` and no longer lists
   never-dispatched steps as tool calls. The `claims_supported` Golden Set evaluator applies the
   same check to `RunOutput.output` against `RunOutput.tool_calls`.
+- **Claude Code sessions.** The same verifier runs as a Claude Code `Stop` hook over the
+  session transcript: see [`claim-verifier-stop-hook.md`](claim-verifier-stop-hook.md).
 
 **Limits.** Extraction is regex-based with deliberately modest recall: a clean report means no
 *recognised* claim is unsupported, not that every sentence is true. Refusal detection is also
