@@ -316,6 +316,17 @@ class COREGraph:
                     state.grounding_report = report.to_dict()
                     span.set_attribute("grounding.dropped", len(report.dropped))
 
+                    # Confirm tier: mark write steps as HITL checkpoints so the
+                    # plan reports them. The reasoning guard enforces the hold.
+                    from app.core.agents.action_guard import (
+                        confirm_writes_enabled,
+                        mark_confirmation_steps,
+                    )
+
+                    if confirm_writes_enabled():
+                        marked = mark_confirmation_steps(plan, self.registry)
+                        span.set_attribute("plan.write_checkpoints", marked)
+
                 state.plan = plan
                 if plan:
                     span.set_attribute("plan.step_count", len(plan.steps))
@@ -368,13 +379,46 @@ class COREGraph:
                     RefusalLatch(existing=state.refusal) if guard_enabled() else None
                 )
 
+                # Confirm tier + dependency latch: one guard per pass, seeded
+                # with what earlier passes of this run already hold.
+                from app.core.agents.action_guard import (
+                    ActionGuard,
+                    confirm_writes_enabled,
+                )
+
+                guard = ActionGuard(
+                    registry=self.registry,
+                    approved=state.config.get("approved_capabilities") or (),
+                    confirm=confirm_writes_enabled(),
+                    awaiting=[p.step_id for p in state.pending_confirmations]
+                    + [
+                        b.step_id
+                        for b in state.blocked_actions
+                        if b.kind == "awaiting_confirmation"
+                    ],
+                )
+
                 # Execute the plan
                 results = self.reasoning_agent.execute_plan(
                     plan=state.plan,
                     start_from_step=start_step_id,
                     enable_tools=state.config.get("enable_tools", True),
                     refusal_latch=latch,
+                    action_guard=guard,
+                    prior_results=list(state.step_results) if start_step_id else None,
                 )
+
+                # A retry replaces the results (and block records) of every
+                # step it re-ran: the retried step and any resumed dependents.
+                rerun = {r.step_id for r in results}
+                if start_step_id:
+                    rerun.add(start_step_id)
+                    state.blocked_actions = [
+                        b for b in state.blocked_actions if b.step_id not in rerun
+                    ]
+                    state.pending_confirmations = [
+                        p for p in state.pending_confirmations if p.step_id not in rerun
+                    ]
 
                 if latch is not None:
                     state.refusal = latch.record
@@ -387,13 +431,27 @@ class COREGraph:
                     span.set_attribute("refusal.latched", state.refusal is not None)
                     span.set_attribute("refusal.blocked", len(latch.blocked))
 
+                state.blocked_actions.extend(guard.blocked)
+                state.pending_confirmations.extend(guard.pending)
+                if guard.pending:
+                    state.add_warning(
+                        f"confirm tier held {len(guard.pending)} step(s) for the "
+                        "user's go-ahead: "
+                        + ", ".join(p.capability_id for p in guard.pending[:5])
+                    )
+                span.set_attribute("confirm.held", len(guard.pending))
+                span.set_attribute("dependency.blocked", len(guard.blocked))
+
                 # Update state with results
                 if start_step_id:
-                    # Replace result for retried step
-                    state.step_results = [
-                        r for r in state.step_results if r.step_id != start_step_id
-                    ]
-                state.step_results.extend(results)
+                    order = {s.id: i for i, s in enumerate(state.plan.steps)}
+                    kept = [r for r in state.step_results if r.step_id not in rerun]
+                    state.step_results = sorted(
+                        kept + list(results),
+                        key=lambda r: order.get(r.step_id, len(order)),
+                    )
+                else:
+                    state.step_results.extend(results)
 
                 span.set_attribute("steps.executed", len(results))
 
@@ -466,8 +524,25 @@ class COREGraph:
                 )
 
             self._verify_claims(state, span)
+            self._hold_for_confirmation(state, span)
 
         return state
+
+    def _hold_for_confirmation(self, state: COREState, span=None) -> None:
+        """Held writes need the user, not another pass: turn retry/revise
+        into ask_user so the run ends with the confirmation request."""
+        ev = state.eval_result
+        if not state.pending_confirmations or ev is None:
+            return
+        if span is not None:
+            span.set_attribute("confirm.pending", len(state.pending_confirmations))
+        if ev.next_action in ("retry_step", "revise_plan", "finalize"):
+            ev.next_action = "ask_user"
+            ev.retry_step_id = None
+            note = "Waiting for the user to confirm: " + ", ".join(
+                p.capability_id for p in state.pending_confirmations[:5]
+            )
+            ev.feedback = f"{ev.feedback}\n{note}" if ev.feedback else note
 
     # Confidence ceiling when a recognised action claim has no tool call behind it.
     # Below the conversation node's 0.7 threshold, so the low-confidence notice shows.
@@ -506,6 +581,36 @@ class COREGraph:
             logging.getLogger(__name__).debug(
                 "claim verification failed (non-critical): %s", exc
             )
+
+    @staticmethod
+    def _confirmation_notice(state: COREState) -> list:
+        """Lines asking the user to confirm held writes (empty if none)."""
+        held = state.pending_confirmations
+        if not held:
+            return []
+        lines = [
+            "I need your go-ahead before changing anything. "
+            f"I did not run {len(held)} step(s):"
+        ]
+        for p in held[:5]:
+            what = p.capability_id + (f" → {p.target}" if p.target else "")
+            lines.append(f"  • {p.step_name or p.step_id} ({what})")
+        waiting = [
+            b for b in state.blocked_actions if b.kind == "awaiting_confirmation"
+        ]
+        if waiting:
+            lines.append(
+                f"{len(waiting)} step(s) that depend on them also waited: "
+                + ", ".join(b.step_name or b.step_id for b in waiting[:5])
+                + "."
+            )
+        caps = sorted({p.capability_id for p in held})
+        lines.append(
+            "To go ahead, send the request again with approval for: "
+            + ", ".join(caps)
+            + "."
+        )
+        return lines
 
     def conversation_node(self, state: COREState) -> COREState:
         """
@@ -613,23 +718,43 @@ class COREGraph:
                                 f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
                             )
 
-                    # An unresolved mid-run refusal leads the response: say the
-                    # run stopped, and what didn't run, before any partial output.
+                    # Notices lead the response, before any partial output:
+                    # an unresolved refusal first, then writes held for the
+                    # user's go-ahead.
+                    notice = []
                     if state.refusal and state.refusal.source == "reasoning":
-                        notice = [
+                        notice.append(
                             "I stopped before finishing: a step declined "
                             f"({state.refusal.reason})."
+                        )
+                        refused = [
+                            b for b in state.blocked_actions if b.kind == "refusal"
                         ]
-                        if state.blocked_actions:
+                        if refused:
                             names = ", ".join(
-                                b.step_name or b.step_id
-                                for b in state.blocked_actions[:5]
+                                b.step_name or b.step_id for b in refused[:5]
                             )
                             notice.append(
                                 f"I did not run the remaining "
-                                f"{len(state.blocked_actions)} step(s): {names}."
+                                f"{len(refused)} step(s): {names}."
                             )
+                    notice.extend(self._confirmation_notice(state))
+                    if notice:
                         response_parts = notice + [""] + response_parts
+
+                    dep_blocked = [
+                        b
+                        for b in state.blocked_actions
+                        if b.kind == "dependency_failed"
+                    ]
+                    if dep_blocked:
+                        response_parts.append("")
+                        response_parts.append(
+                            "⚠️ Not run: a step they depend on did not succeed: "
+                            + ", ".join(
+                                b.step_name or b.step_id for b in dep_blocked[:5]
+                            )
+                        )
 
                     unsupported = (state.claim_report or {}).get("unsupported") or []
                     if unsupported:
@@ -735,6 +860,17 @@ class COREGraph:
                     state.refusal.source,
                     state.eval_result.next_action,
                 )
+                return "conversation"
+
+        # Confirm tier: a held write is waiting on the user. Retrying holds it
+        # again; re-planning could route around it. Either way, ask the user.
+        if state.pending_confirmations and state.eval_result.next_action in (
+            "retry_step",
+            "revise_plan",
+        ):
+            from app.core.agents.action_guard import confirm_writes_enabled
+
+            if confirm_writes_enabled():
                 return "conversation"
 
         # Loop guard: cap plan revisions to prevent infinite cycles

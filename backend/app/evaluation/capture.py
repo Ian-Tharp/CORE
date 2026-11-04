@@ -46,7 +46,8 @@ def fault_reasons(state: Any) -> List[str]:
       tool call supports (``state.claim_report``, see app/evaluation/claims.py).
 
     A front-gate refusal or clarification is the gate working as designed, not
-    a fault, so it is not a reason on its own.
+    a fault, so it is not a reason on its own. Likewise a write held for the
+    user's confirmation (and the steps waiting on it) is not a step failure.
     """
     reasons: List[str] = []
     if getattr(state, "errors", None):
@@ -57,14 +58,31 @@ def fault_reasons(state: Any) -> List[str]:
     ev = getattr(state, "eval_result", None)
     if ev is not None and getattr(ev, "overall_status", None) == "failure":
         reasons.append("eval_failure")
+    waiting = _awaiting_confirmation_ids(state)
     if any(
         getattr(r, "status", None) == "failure"
+        and getattr(r, "step_id", None) not in waiting
         for r in (getattr(state, "step_results", None) or [])
     ):
         reasons.append("step_failure")
     if ev is not None and getattr(ev, "next_action", None) in _UNRESOLVED_ACTIONS:
         reasons.append("unresolved_evaluation")
     return reasons
+
+
+def _awaiting_confirmation_ids(state: Any) -> set:
+    """Steps held for confirmation, or blocked only because they wait on one."""
+    ids = {
+        getattr(p, "step_id", None)
+        for p in (getattr(state, "pending_confirmations", None) or [])
+    }
+    ids.update(
+        getattr(b, "step_id", None)
+        for b in (getattr(state, "blocked_actions", None) or [])
+        if getattr(b, "kind", None) == "awaiting_confirmation"
+    )
+    ids.discard(None)
+    return ids
 
 
 def state_failed(state: Any) -> bool:
@@ -127,6 +145,11 @@ def fault_report_from_state(state: Any, expected: Optional[str] = None) -> Fault
     if blocked:
         metadata["blocked_actions"] = [
             b.model_dump() if hasattr(b, "model_dump") else b for b in blocked
+        ]
+    pending = getattr(state, "pending_confirmations", None) or []
+    if pending:
+        metadata["pending_confirmations"] = [
+            p.model_dump() if hasattr(p, "model_dump") else p for p in pending
         ]
     claims = getattr(state, "claim_report", None)
     if isinstance(claims, dict) and claims.get("unsupported"):

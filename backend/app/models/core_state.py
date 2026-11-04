@@ -123,12 +123,41 @@ class RefusalRecord(BaseModel):
 
 
 class BlockedAction(BaseModel):
-    """A plan step that was not run because a refusal was unresolved."""
+    """A plan step that was not run, and why.
+
+    ``kind="refusal"``: a refusal was unresolved (see refusal_guard.py).
+    ``kind="dependency_failed"``: a step it depends on failed, was blocked, or
+    never ran (dependency cycle).
+    ``kind="awaiting_confirmation"``: a step it depends on is held for the
+    user's confirmation (see action_guard.py).
+    """
 
     step_id: str
     step_name: str = ""
     tool: Optional[str] = None
     reason: str = ""
+    kind: Literal["refusal", "dependency_failed", "awaiting_confirmation"] = "refusal"
+    # The dependency that caused a dependency block (None for refusal blocks).
+    cause_step_id: Optional[str] = None
+
+
+class PendingConfirmation(BaseModel):
+    """A dispatchable step held until the user confirms it.
+
+    Held because its capability changes something (``side_effect="write"``)
+    or because the plan marked it ``requires_hitl``. It was never dispatched.
+    The user approves it by re-sending the request with the capability id in
+    ``config["approved_capabilities"]`` (a new run).
+    """
+
+    step_id: str
+    step_name: str = ""
+    tool: Optional[str] = None
+    capability_id: str
+    side_effect: str
+    reason: Literal["write", "requires_hitl"]
+    # Short human-readable target (path, url or endpoint), for the response.
+    target: str = ""
 
 
 class ConversationMessage(BaseModel):
@@ -184,6 +213,10 @@ class COREState(BaseModel):
     # it kept from running. See app/core/agents/refusal_guard.py.
     refusal: Optional[RefusalRecord] = None
     blocked_actions: List[BlockedAction] = Field(default_factory=list)
+
+    # Confirm tier: write (and requires_hitl) steps held for the user's
+    # go-ahead instead of being dispatched. See app/core/agents/action_guard.py.
+    pending_confirmations: List[PendingConfirmation] = Field(default_factory=list)
 
     # Claim verification: action claims in LLM step outputs checked against the
     # dispatched tool-call trace. See app/evaluation/claims.py.
