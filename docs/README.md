@@ -9,6 +9,7 @@ Design documents and system architecture.
 - [Agent Factory](architecture/agent-factory.md) — Original agent system design/vision (2025-10-26): library, factory, registry, communication
 - [Agent Factory Implementation](architecture/agent-factory-implementation.md) — Deep implementation plan for the agent factory system
 - [Agent Response System](architecture/agent-response-system.md) — Design for agent response generation in Communication Commons
+- [Abstention Guard & Claim Verification](architecture/abstention-guard.md) — Blocks actions after an unresolved refusal; checks action claims against the dispatched tool-call trace
 
 ## ADR (Architecture Decision Records)
 - [Communication WebSocket Contract](adr/ADR-communication-ws-contract.md) — WebSocket message contract for real-time communication

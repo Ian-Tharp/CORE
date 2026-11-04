@@ -193,6 +193,13 @@ over-refusal rate, with the regex-ambiguity merge as an ablation. Data, baseline
 5. **Scope of Phase 1 registry:** builtin dispatcher tools only first, or include MCP servers from
    day one?
 
+## 7a. Follow-up: refusals that hold
+
+A gate `clarify`/`refuse` now also latches an unresolved refusal on the state, so if reasoning
+ever runs after it, no step is dispatched. The same latch trips when a reasoning step declines
+mid-run, and evaluation then cannot route to `retry_step`/`revise_plan`. Evaluation also checks
+action claims against the tool-call trace. See [`abstention-guard.md`](abstention-guard.md).
+
 ## 8. Non-goals / out of scope
 
 - Re-architecting orchestration's planning algorithm beyond "select+sequence from the registry."

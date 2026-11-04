@@ -112,8 +112,18 @@ class ForbiddenSubstring(_Spec):
     case_sensitive: bool = False
 
 
+class ClaimsSupported(_Spec):
+    """Every recognised action claim in the output is backed by a tool call.
+
+    Checks against ``RunOutput.tool_calls``; a callable that returns a bare
+    string reports no calls, so any action claim it makes fails.
+    """
+
+    type: Literal["claims_supported"] = "claims_supported"
+
+
 EvaluatorSpec = Annotated[
-    Union[ExactMatch, Contains, Regex, MaxLatency, ForbiddenSubstring],
+    Union[ExactMatch, Contains, Regex, MaxLatency, ForbiddenSubstring, ClaimsSupported],
     Field(discriminator="type"),
 ]
 

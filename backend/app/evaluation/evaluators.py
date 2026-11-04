@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Optional, Sequence
 
 from app.evaluation.models import (
+    ClaimsSupported,
     Contains,
     EvaluatorOutcome,
     EvaluatorSpec,
@@ -13,11 +14,15 @@ from app.evaluation.models import (
     ForbiddenSubstring,
     MaxLatency,
     Regex,
+    ToolCallRecord,
 )
 
 
 def evaluate(
-    spec: EvaluatorSpec, output: str, latency_ms: Optional[float]
+    spec: EvaluatorSpec,
+    output: str,
+    latency_ms: Optional[float],
+    tool_calls: Sequence[ToolCallRecord] = (),
 ) -> EvaluatorOutcome:
     name = spec.type
 
@@ -80,6 +85,16 @@ def evaluate(
             evaluator=name,
             passed=not hits,
             detail="" if not hits else f"forbidden: {hits!r}",
+        )
+
+    if isinstance(spec, ClaimsSupported):
+        from app.evaluation.claims import verify_claims
+
+        bad = verify_claims(output, tool_calls).unsupported
+        return EvaluatorOutcome(
+            evaluator=name,
+            passed=not bad,
+            detail="" if not bad else f"unsupported claims: {[c.text for c in bad]!r}",
         )
 
     raise TypeError(f"unsupported evaluator spec: {spec!r}")  # pragma: no cover

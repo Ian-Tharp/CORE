@@ -12,6 +12,14 @@ from app.evaluation.capture import (
     maybe_capture_fault,
     state_failed,
 )
+from app.evaluation.claims import (
+    ClaimCheck,
+    ClaimReport,
+    extract_claims,
+    trace_from_state,
+    verify_claims,
+    verify_state_claims,
+)
 from app.evaluation.golden_set import DuplicateCaseError, GoldenSet, LoadResult
 from app.evaluation.models import (
     CaseResult,
@@ -25,6 +33,8 @@ from app.evaluation.runner import arun_cases, run_cases
 
 __all__ = [
     "CaseResult",
+    "ClaimCheck",
+    "ClaimReport",
     "DuplicateCaseError",
     "FaultReport",
     "GoldenCase",
@@ -35,10 +45,14 @@ __all__ = [
     "RunSummary",
     "arun_cases",
     "capture_fault",
+    "extract_claims",
     "fault_reasons",
     "fault_report_from_state",
     "load_faults",
     "maybe_capture_fault",
     "run_cases",
     "state_failed",
+    "trace_from_state",
+    "verify_claims",
+    "verify_state_claims",
 ]

@@ -86,6 +86,10 @@ class StepResult(BaseModel):
     error: Optional[str] = None
     attempt: int = 1
     duration_seconds: float = 0.0
+    # Tool the dispatcher actually ran for this step, or None when the step was
+    # answered by the LLM, dry-run, or blocked. This is the tool-call trace that
+    # claim verification checks against: a planned tool is not an executed one.
+    dispatched_tool: Optional[str] = None
 
 
 class EvaluationResult(BaseModel):
@@ -101,6 +105,30 @@ class EvaluationResult(BaseModel):
     )
     retry_step_id: Optional[str] = None
     revision_suggestions: List[str] = Field(default_factory=list)
+
+
+class RefusalRecord(BaseModel):
+    """An unresolved refusal or abstention that blocks further actions this run.
+
+    ``source="gate"``: the comprehension gate chose clarify/refuse.
+    ``source="reasoning"``: a step's LLM output declined to do the work.
+    Only the user resolves it, by sending a new turn (a new run). Nothing inside
+    the run (retry, plan revision) clears it.
+    """
+
+    source: Literal["gate", "reasoning"]
+    reason: str
+    step_id: Optional[str] = None
+    excerpt: str = ""
+
+
+class BlockedAction(BaseModel):
+    """A plan step that was not run because a refusal was unresolved."""
+
+    step_id: str
+    step_name: str = ""
+    tool: Optional[str] = None
+    reason: str = ""
 
 
 class ConversationMessage(BaseModel):
@@ -151,6 +179,15 @@ class COREState(BaseModel):
     # Reasoning outputs
     step_results: List[StepResult] = Field(default_factory=list)
     current_step_id: Optional[str] = None
+
+    # Abstention guard: the refusal that latched this run (if any) and the steps
+    # it kept from running. See app/core/agents/refusal_guard.py.
+    refusal: Optional[RefusalRecord] = None
+    blocked_actions: List[BlockedAction] = Field(default_factory=list)
+
+    # Claim verification: action claims in LLM step outputs checked against the
+    # dispatched tool-call trace. See app/evaluation/claims.py.
+    claim_report: Optional[Dict[str, Any]] = None
 
     # Per-step evaluation (Phase 3): one deterministic check per executed step
     # (StepCheck.to_dict()); failing ones are passed to the final evaluation.
