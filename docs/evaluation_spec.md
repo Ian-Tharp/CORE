@@ -50,6 +50,7 @@ No roadmap box above is ticked: the slice below is groundwork, not completion of
 *   **Fault capture (§3.C "Capture") — implemented and wired, default off.** `backend/app/evaluation/` provides the `FaultReport` model (input, steps, tool calls, expected vs actual, timestamps, latency, token counts when available), `fault_report_from_state()` and `capture_fault()` (JSONL on disk). `COREGraph.conversation_node` in `core_graph_v2.py` calls `maybe_capture_fault()` next to `record_pipeline_run`. See "Live fault capture" below.
 *   **Golden Set (§3.C "Update") — implemented.** JSONL store with dedupe by stable signature, corrupt-line tolerance, and `append_fault()`. 10 seed cases in `docs/evaluation/golden/seed.jsonl` (Phase II targets 100).
 *   **Production-track evaluators (§3.B.2) — partially implemented.** Deterministic exact/contains/regex/max-latency/forbidden-substring checks and a replay runner that takes an injected callable. Heuristic guardrails for loops and safety constraints are not done.
+*   **Abstention guard and claim verification (§3.B.2 guardrails) — implemented, wired, default on.** An unresolved refusal (comprehension gate clarify/refuse, or an LLM step that declines) blocks every later step and stops retry/re-plan; action claims in LLM step outputs are checked against the dispatched tool-call trace (`StepResult.dispatched_tool`), and unsupported ones lower evaluation confidence and are flagged in the response. The `claims_supported` evaluator applies the same check to golden cases. Fault reports no longer list never-dispatched steps as tool calls. See `docs/architecture/abstention-guard.md`.
 *   **Comprehension gate suite — implemented.** `backend/app/evaluation/gate_suite.py` + `docs/evaluation/gate/paired_twins.jsonl` (35 paired act/abstain twins): paired accuracy, act/abstain accuracy and over-refusal for the proceed/clarify/refuse gate. See `docs/evaluation/gate/README.md`.
 
 Deviations from this spec:
@@ -75,9 +76,10 @@ Read through `app/config/evaluation.py` (`get_fault_capture_config()`) on every 
 *   `eval_failure`: the evaluator judged the run a failure.
 *   `step_failure`: at least one plan step failed.
 *   `unresolved_evaluation`: the run ended while the evaluator still asked to revise or retry, i.e. the plan-revision loop guard forced finalization (§3.B.2 "infinite loops").
+*   `unsupported_claims`: an action claim in an LLM step output has no dispatched tool call behind it (`state.claim_report`, see "Abstention guard and claim verification" above).
 
 A front-gate refusal or clarification on its own is not a fault: it is the gate doing its job. If one turns out to be wrong it shows up as a Golden Set case, not as an automatic capture.
 
 **Fail-safe.** `maybe_capture_fault()` never raises. Any error (unwritable dir, disk full, a bug building the report) is logged at WARNING with the `run_id` and dropped; the request completes normally. The call site in the node has a second guard for the same reason. `capture_fault()` itself still raises, for callers that want to know.
 
-Each captured report's `metadata` carries `source`, `fault_reasons`, `gate_outcome`, `plan_revisions`, `eval_status` and `eval_next_action`.
+Each captured report's `metadata` carries `source`, `fault_reasons`, `gate_outcome`, `plan_revisions`, `eval_status` and `eval_next_action`, plus `refusal`, `blocked_actions` and `unsupported_claims` when the run has them.

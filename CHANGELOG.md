@@ -3,6 +3,24 @@
 
 ---
 
+## Session: November 3, 2026 — Refusals that hold, claims that are checked
+
+### Block actions after an unresolved refusal
+A comprehension-gate clarify/refuse, or an LLM step that declines, now latches the run: every
+later step is blocked (never dispatched, recorded in `blocked_actions`), and evaluation can no
+longer retry or re-plan around the refusal. The response leads with what stopped and what did
+not run. `CORE_BLOCK_AFTER_REFUSAL=0` disables it. See `docs/architecture/abstention-guard.md`.
+**Status:** ✅ Complete
+
+### Verify action claims against the tool-call trace
+`StepResult.dispatched_tool` records which tool actually ran. Evaluation checks "I wrote X" /
+"I committed" style claims in LLM output against that trace; unsupported claims cap confidence,
+fail `meets_requirements`, and are flagged in the response. New `claims_supported` Golden Set
+evaluator; fault reports stop listing never-dispatched steps as tool calls.
+**Status:** ✅ Complete
+
+---
+
 ## Session: June 3, 2026 — Kernel focus, Anthropic chat, portable Docker
 
 ### Refocus CORE on the cognitive architecture

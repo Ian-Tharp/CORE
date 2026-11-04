@@ -35,7 +35,10 @@ def _score(case: GoldenCase, produced: object, wall_ms: float) -> CaseResult:
             error=f"callable returned {type(produced).__name__}, expected str|RunOutput",
         )
     latency = produced.latency_ms if produced.latency_ms is not None else wall_ms
-    outcomes = [evaluate(spec, produced.output, latency) for spec in case.evaluators]
+    outcomes = [
+        evaluate(spec, produced.output, latency, produced.tool_calls)
+        for spec in case.evaluators
+    ]
     return CaseResult(
         case_id=case.id,
         passed=all(o.passed for o in outcomes),

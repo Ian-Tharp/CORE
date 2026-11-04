@@ -196,6 +196,14 @@ class COREGraph:
                 state.gate_message = decision.message or None
                 span.set_attribute("gate.outcome", decision.outcome)
 
+                # A blocking gate outcome is an unresolved refusal: if anything
+                # downstream runs anyway, the reasoning latch starts tripped.
+                from app.core.agents.refusal_guard import gate_refusal
+
+                gate_rec = gate_refusal(decision.outcome, decision.message)
+                if gate_rec is not None:
+                    state.refusal = gate_rec
+
             except Exception as e:
                 span.record_exception(e)
                 span.set_attribute("error", True)
@@ -352,12 +360,32 @@ class COREGraph:
                 span.set_attribute("plan.goal", state.plan.goal or "")
                 span.set_attribute("plan.step_count", len(state.plan.steps))
 
+                # Abstention guard: one latch per run, seeded with any refusal
+                # already on the state (gate or an earlier reasoning pass).
+                from app.core.agents.refusal_guard import RefusalLatch, guard_enabled
+
+                latch = (
+                    RefusalLatch(existing=state.refusal) if guard_enabled() else None
+                )
+
                 # Execute the plan
                 results = self.reasoning_agent.execute_plan(
                     plan=state.plan,
                     start_from_step=start_step_id,
                     enable_tools=state.config.get("enable_tools", True),
+                    refusal_latch=latch,
                 )
+
+                if latch is not None:
+                    state.refusal = latch.record
+                    state.blocked_actions.extend(latch.blocked)
+                    if latch.blocked:
+                        state.add_warning(
+                            f"abstention guard blocked {len(latch.blocked)} step(s) "
+                            f"after an unresolved {state.refusal.source} refusal"
+                        )
+                    span.set_attribute("refusal.latched", state.refusal is not None)
+                    span.set_attribute("refusal.blocked", len(latch.blocked))
 
                 # Update state with results
                 if start_step_id:
@@ -437,7 +465,47 @@ class COREGraph:
                     next_action="finalize",
                 )
 
+            self._verify_claims(state, span)
+
         return state
+
+    # Confidence ceiling when a recognised action claim has no tool call behind it.
+    # Below the conversation node's 0.7 threshold, so the low-confidence notice shows.
+    _UNSUPPORTED_CLAIM_CONFIDENCE = 0.5
+
+    def _verify_claims(self, state: COREState, span=None) -> None:
+        """Back verifier, deterministic half: check LLM step outputs' action
+        claims against the dispatched tool-call trace. Annotates the evaluation
+        (never changes next_action, so it cannot cause a loop)."""
+        import logging
+
+        try:
+            from app.evaluation.claims import verify_state_claims
+
+            report = verify_state_claims(state)
+            state.claim_report = report.to_dict()
+            bad = report.unsupported
+            if span is not None:
+                span.set_attribute("claims.checked", len(report.checks))
+                span.set_attribute("claims.unsupported", len(bad))
+            if not bad:
+                return
+            state.add_warning(
+                f"{len(bad)} action claim(s) not backed by any tool call: "
+                + "; ".join(c.text for c in bad[:3])
+            )
+            ev = state.eval_result
+            if ev is not None:
+                ev.meets_requirements = False
+                ev.confidence = min(ev.confidence, self._UNSUPPORTED_CLAIM_CONFIDENCE)
+                note = "Unsupported action claims: " + "; ".join(
+                    c.text for c in bad[:3]
+                )
+                ev.feedback = f"{ev.feedback}\n{note}" if ev.feedback else note
+        except Exception as exc:  # verification must never break the run
+            logging.getLogger(__name__).debug(
+                "claim verification failed (non-critical): %s", exc
+            )
 
     def conversation_node(self, state: COREState) -> COREState:
         """
@@ -545,6 +613,34 @@ class COREGraph:
                                 f"⚠️ Low confidence ({state.eval_result.confidence:.0%}) - please review"
                             )
 
+                    # An unresolved mid-run refusal leads the response: say the
+                    # run stopped, and what didn't run, before any partial output.
+                    if state.refusal and state.refusal.source == "reasoning":
+                        notice = [
+                            "I stopped before finishing: a step declined "
+                            f"({state.refusal.reason})."
+                        ]
+                        if state.blocked_actions:
+                            names = ", ".join(
+                                b.step_name or b.step_id
+                                for b in state.blocked_actions[:5]
+                            )
+                            notice.append(
+                                f"I did not run the remaining "
+                                f"{len(state.blocked_actions)} step(s): {names}."
+                            )
+                        response_parts = notice + [""] + response_parts
+
+                    unsupported = (state.claim_report or {}).get("unsupported") or []
+                    if unsupported:
+                        response_parts.append("")
+                        response_parts.append(
+                            "⚠️ Not verified: no tool call backs these statements:"
+                        )
+                        response_parts.extend(
+                            f"  • {c.get('text', '')}" for c in unsupported[:5]
+                        )
+
                     state.response = (
                         "\n".join(response_parts)
                         if response_parts
@@ -622,6 +718,24 @@ class COREGraph:
         """
         if not state.eval_result:
             return "conversation"  # Default to conversation on error
+
+        # Abstention guard: never retry or re-plan around an unresolved refusal.
+        # Only the user can resolve it, so the run ends with the refusal surfaced.
+        if state.refusal is not None and state.eval_result.next_action in (
+            "retry_step",
+            "revise_plan",
+        ):
+            from app.core.agents.refusal_guard import guard_enabled
+
+            if guard_enabled():
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Unresolved %s refusal — not routing to %s",
+                    state.refusal.source,
+                    state.eval_result.next_action,
+                )
+                return "conversation"
 
         # Loop guard: cap plan revisions to prevent infinite cycles
         if (
