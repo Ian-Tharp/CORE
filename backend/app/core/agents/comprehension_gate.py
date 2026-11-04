@@ -14,6 +14,13 @@ entire expensive deliberation loop from running on requests that are ambiguous o
 impossible. It is pure (no LLM, no IO) so it is fully deterministic and testable;
 the LLM-driven classification happens upstream in the comprehension agent.
 
+Capability presence is checked at the ACTION level, not the root. A named tool
+must resolve exactly to a registered root ("git") or capability id ("git.log");
+an id the registry lacks ("git.push") is missing, and so is a gated operation
+verb in the request ("push", "delete", "drop"; see `app.core.registry.actions`)
+that no capability of the named roots serves. Without this, "git" lexically
+matches git.status and "push main to origin" runs the loop.
+
 Division of labor (kept deliberately narrow): the gate checks capability
 *presence* only. Whether a plan can be *composed* is orchestration's job; whether
 the result *achieves* the intent is evaluation's. Overloading the gate with those
@@ -23,8 +30,9 @@ produces over-conservative refusals.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Literal
+from typing import List, Literal, Optional, Tuple
 
+from app.core.registry.actions import requested_operations
 from app.core.registry.capability import CapabilityRegistry
 from app.models.core_state import UserIntent
 
@@ -60,11 +68,60 @@ def _capability_names(
     return [e.name for e in hits]
 
 
+def _normalize_tool(name: str) -> str:
+    return "_".join(str(name).strip().lower().replace("-", " ").split())
+
+
+def resolve_tools(
+    tools_needed: List[str], registry: CapabilityRegistry
+) -> Tuple[List[str], List[str]]:
+    """Split named tools into (present roots, missing names). Exact, not lexical.
+
+    - "git" (a registered root)            -> root present
+    - "git.log" (a registered id)          -> root "git" present
+    - "git.push" (root present, id absent) -> missing "git.push"
+    - "email", "web_search"                -> missing as named
+    """
+    roots = registry.roots()
+    present: List[str] = []
+    missing: List[str] = []
+    for tool in tools_needed:
+        name = _normalize_tool(tool)
+        if not name:
+            continue
+        if name in roots:
+            root = name
+        elif registry.get(name) is not None:
+            root = registry.get(name).root
+        else:
+            missing.append(name if "." in name else str(tool).strip())
+            continue
+        if root not in present:
+            present.append(root)
+    return present, missing
+
+
+def unsupported_operations(
+    roots: List[str], text: str, registry: CapabilityRegistry
+) -> List[str]:
+    """Gated verbs in ``text`` that no capability of ``roots`` serves, as
+    "<root>.<verb>" (first root) so the refusal names the missing action."""
+    if not roots:
+        return []
+    served = {v for r in roots for e in registry.for_root(r) for v in e.action_verbs()}
+    return [f"{roots[0]}.{op}" for op in requested_operations(text) if op not in served]
+
+
 def decide_gate(
     intent: UserIntent,
     registry: CapabilityRegistry,
     thresholds: GateThresholds | None = None,
+    *,
+    text: Optional[str] = None,
 ) -> GateDecision:
+    """``text`` is the raw user input. When given, its operation verbs are
+    checked along with the intent description's (the classifier may paraphrase
+    "push main" as "update the remote")."""
     t = thresholds or GateThresholds()
 
     # Non-actionable intents (chat / follow-ups) are not gated here; they route
@@ -83,11 +140,13 @@ def decide_gate(
             rationale=f"confidence {intent.confidence:.2f} < tau_low {t.tau_low}",
         )
 
-    # 2) Understood, but a NAMED required tool is absent → honest refuse.
+    # 2) Understood, but a NAMED required tool, or the action asked of a present
+    #    tool, is absent → honest refuse.
     if intent.requires_tools and intent.tools_needed:
-        missing = [
-            tool for tool in intent.tools_needed if not registry.has_capability(tool)
-        ]
+        roots, missing = resolve_tools(intent.tools_needed, registry)
+        if not missing:
+            request_text = "\n".join(x for x in (text, intent.description) if x)
+            missing = unsupported_operations(roots, request_text, registry)
         if missing:
             return GateDecision(
                 outcome="refuse",
@@ -116,7 +175,14 @@ def decide_gate(
 
 
 def _refuse_message(missing: List[str], registry: CapabilityRegistry) -> str:
-    can_do = ", ".join(_capability_names(registry, " ".join(missing))) or "nothing yet"
+    # For a missing action on a present root, list what that root can do.
+    roots = registry.roots()
+    present = [m.split(".", 1)[0] for m in missing if m.split(".", 1)[0] in roots]
+    if present:
+        names = [e.name for r in dict.fromkeys(present) for e in registry.for_root(r)]
+    else:
+        names = _capability_names(registry, " ".join(missing).replace(".", " "))
+    can_do = ", ".join(names) or "nothing yet"
     return (
         f"I can't do that — I don't have a capability for: {', '.join(missing)}. "
         f"Here's what I can do: {can_do}."

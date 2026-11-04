@@ -103,8 +103,8 @@ FLAG_OFF_CASES = {
         UserIntent(type="conversation", description="greeting", confidence=0.95),
     ),
     "like_last_time": (
-        "deploy the service like last time",
-        _task_intent("deploy the service like last time"),
+        "write the release notes like last time",
+        _task_intent("write the release notes like last time"),
     ),
     "preferred_stack": (STACK_TASK, _task_intent(STACK_TASK)),
 }
@@ -158,7 +158,7 @@ class TestFlagOnMemoryGrounding:
     def test_like_last_time_gap_recorded(self, flag_on):
         graph = COREGraph()
         graph.memory_grounder = _grounder_with()
-        text = "deploy the service like last time"
+        text = "write the release notes like last time"
 
         state, route = _comprehend(graph, text, _task_intent(text))
 

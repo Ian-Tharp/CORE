@@ -24,29 +24,21 @@ from app.evaluation.gate_suite import (
 # Pairs the live gate gets wrong today (see docs/evaluation/gate/README.md).
 # A new failure outside this set is a regression. When a fix lands, remove the
 # ids it closes and raise the floors below.
-KNOWN_GAPS = {
-    # root-level tools_needed + lexical has_capability: a missing action on a
-    # present tool root (git push, file delete, ...) proceeds instead of refusing
-    "action-git-commit",
-    "action-git-push",
-    "action-file-delete",
-    "action-db-drop",
-    "action-web-submit",
-    "action-tool-name-overlap",
-    # the regex ambiguity detector flags fully specified requests
-    "trap-this-repo",
-    "trap-after-date",
-    "trap-this-module",
-    "trap-some-files",
-    "trap-the-function",
-}
+#
+# Empty since the action-level capability check and the referent-aware
+# ambiguity detector (2026-11-03). Both were written after reading the seed
+# pairs, so 100% on them is a regression guard, not a generalization claim; the
+# "holdout" pairs were written before measuring and scored 85.7% paired before
+# the two detector fixes they exposed.
+KNOWN_GAPS: set = set()
 
 # Floors for the live gate (merged regex ambiguities, builtin registry).
-# Current: paired 0.686, act 0.857, abstain 0.829, over-refusal 0.143.
-PAIRED_FLOOR = 0.65
-ACT_FLOOR = 0.85
-ABSTAIN_FLOOR = 0.80
-OVER_REFUSAL_CEILING = 0.15
+# Current: paired 1.00, act 1.00, abstain 1.00, over-refusal 0.00 on 49 pairs.
+# Floors leave room for one or two misses as new pairs are added.
+PAIRED_FLOOR = 0.95
+ACT_FLOOR = 0.95
+ABSTAIN_FLOOR = 0.95
+OVER_REFUSAL_CEILING = 0.05
 
 
 @pytest.fixture(scope="module")
@@ -258,16 +250,31 @@ def test_live_gate_has_no_new_failures(live_report):
     assert failing <= KNOWN_GAPS, f"new gate failures: {sorted(failing - KNOWN_GAPS)}"
 
 
-def test_regex_ambiguities_trade_over_refusal_for_clarify_recall(pairs, live_report):
-    """The ablation the suite exists to show: the regex detector catches
-    underspecified requests the classifier missed, at the cost of blocking
-    some clear ones."""
+def test_regex_ambiguities_add_clarify_recall_without_over_refusal(pairs, live_report):
+    """The ablation the suite exists to show. The regex detector catches
+    underspecified requests the classifier missed; since it skips references
+    the request resolves itself, it no longer blocks clear ones."""
     no_regex = run_gate_suite(
         pairs, gate_predictor(merge_pattern_ambiguities=False)
     ).overall
     live = live_report.overall
     assert live.clarify_accuracy > no_regex.clarify_accuracy
-    assert live.over_refusal_rate > no_regex.over_refusal_rate
+    assert live.over_refusal_rate <= no_regex.over_refusal_rate
+
+
+def test_unsupported_actions_refuse_and_their_twins_proceed(live_report):
+    rows = [p for p in live_report.pairs if p.category == "unsupported_action"]
+    assert len(rows) >= 10
+    assert all(p.paired_correct for p in rows), [
+        p.pair_id for p in rows if not p.paired_correct
+    ]
+
+
+def test_holdout_pairs_present_and_passing(pairs, live_report):
+    holdout = {p.id for p in pairs if "holdout" in p.tags}
+    assert len(holdout) >= 10
+    failing = {p.pair_id for p in live_report.failures()} & holdout
+    assert not failing, sorted(failing)
 
 
 def test_cli_prints_markdown(capsys):

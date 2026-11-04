@@ -12,13 +12,16 @@ import json
 import logging
 import os
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
 from app.dependencies import get_openai_client_sync
 from app.models.core_state import UserIntent
 from app.utils.json_repair import safe_json_loads, extract_json_object
+
+if TYPE_CHECKING:  # pragma: no cover
+    from app.core.registry.capability import CapabilityRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +41,44 @@ class ComprehensionAgent:
     model can ground its answer in relevant documents.
     """
 
-    def __init__(self, model: str = "gpt-oss:20b"):
+    def __init__(
+        self,
+        model: str = "gpt-oss:20b",
+        registry: Optional["CapabilityRegistry"] = None,
+    ):
         # Default to local model for offline-first operation
         # Override with gpt-4o-mini or claude-3-5-haiku-latest for cloud
         self.model = model
+        # The tool list in the prompt is built from the capability registry, so
+        # the classifier only hears about actions the dispatcher can run.
+        # Without one, use every builtin capability.
+        if registry is None:
+            from types import SimpleNamespace
+
+            from app.core.registry.builtin import (
+                _BUILTIN,
+                build_registry_from_dispatcher,
+            )
+
+            registry = build_registry_from_dispatcher(
+                SimpleNamespace(available_tools=list(_BUILTIN))
+            )
+        self.registry = registry
         self.system_prompt = self._build_system_prompt()
+
+    def _tools_section(self) -> str:
+        """Tool list for the prompt, one line per root, from the registry."""
+        lines = []
+        for root in sorted(self.registry.roots()):
+            entries = sorted(self.registry.for_root(root), key=lambda e: e.id)
+            actions = "; ".join(f"{e.id} ({e.description})" for e in entries)
+            lines.append(f"- {root}: {actions}")
+        return "\n".join(lines) or "- (none)"
 
     def _build_system_prompt(self) -> str:
         """Build the base system prompt for intent classification."""
-        return """You are the Comprehension layer of the CORE cognitive system.
+        return (
+            """You are the Comprehension layer of the CORE cognitive system.
 
 Your job is to analyze user input and determine:
 1. Intent type: task, conversation, question, or clarification
@@ -60,11 +92,16 @@ Intent Types:
 - **question**: Information request (e.g., "What files handle routing?", "How does authentication work?")
 - **clarification**: Follow-up to previous context (e.g., "Do that", "Yes", "The first one")
 
-Tools Available:
-- file_operations: Read, write, edit, search files
-- git: Branch, commit, diff, create PR
-- database: Query, schema, explain
-- web_research: Search docs, Stack Overflow, GitHub
+Tools Available (these are the ONLY actions CORE can run):
+"""
+            + self._tools_section()
+            + """
+
+In tools_needed, name the capability ids the request needs (e.g. "git.log").
+If the request needs an action that is not listed, name it anyway as
+root.action (e.g. "git.push", "file_operations.delete") or as the missing tool
+(e.g. "email", "slack"). Never map it onto a listed action that does something
+else: an unlisted action is refused honestly, which is the right answer.
 
 Respond in JSON format:
 {
@@ -75,6 +112,7 @@ Respond in JSON format:
   "tools_needed": ["tool1", "tool2"],
   "ambiguities": ["ambiguity1", "ambiguity2"]
 }"""
+        )
 
     def check_knowledge_base(self, query: str, top_k: int = 5) -> Optional[str]:
         """
@@ -242,41 +280,117 @@ Respond in JSON format:
 
     # ------------------------------------------------------------------
     # Ambiguity detection — pattern table
-    # Each entry: (regex_pattern, message_template)
-    # Patterns are applied case-insensitively to the full input.
+    # Each entry: (kind, regex_pattern, message_template)
+    # Patterns are applied case-insensitively to the full input. A hit the same
+    # request already resolves is skipped (see _is_resolved).
     # ------------------------------------------------------------------
-    _AMBIGUITY_PATTERNS: list[tuple[str, str]] = [
+    _AMBIGUITY_PATTERNS: list[tuple[str, str, str]] = [
         # Unresolved pronouns / deictic references
         (
+            "pronoun",
             r"\b(it|that|this|those|these|they|them|the thing|the stuff)\b",
             "Unresolved pronoun or deictic reference: what does '{match}' refer to?",
         ),
         # Underspecified file / code artifacts
         (
+            "artifact",
             r"\bthe\s+(file|component|function|class|module|service|endpoint|route|method|variable)\b",
             "Underspecified artifact: which {match}?",
         ),
         # Underspecified temporal reference
         (
+            "temporal",
             r"\b(recently|before|after|last time|earlier|previously|just now)\b",
             "Ambiguous temporal reference: when exactly is '{match}'?",
         ),
         # Vague quantity
         (
+            "quantity",
             r"\b(some|a few|several|many|a couple of|a bunch of)\b",
             "Vague quantity: how many does '{match}' mean?",
         ),
         # Underspecified location
         (
+            "location",
             r"\b(there|somewhere|in that place|in the other place)\b",
             "Underspecified location: where is '{match}'?",
         ),
         # Relative / comparative without referent
         (
+            "comparative",
             r"\b(better|faster|smaller|larger|cleaner|simpler)\s+than\b",
             "Comparative without referent: better/faster than what?",
         ),
     ]
+
+    # Explicit referents a request can name: URL, path, file name with an
+    # extension, glob, quoted or backticked text, commit sha, code identifier.
+    _REFERENT_RE = re.compile(
+        r"https?://\S+"
+        r"|[\w.*-]+/[\w./*-]+"
+        r"|\b[\w-]{2,}\.[A-Za-z][A-Za-z0-9]{0,5}\b"
+        r"|\S*\*\S*"
+        r"|(?<!\w)'[^'\n]+'(?!\w)|\"[^\"\n]+\"|`[^`\n]+`"
+        r"|\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b"
+        r"|\b[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+\b"
+        r"|\b[a-z]+[A-Z][A-Za-z0-9]*\b"
+    )
+    # A name right after "the function" etc.: "the function decide_gate",
+    # "the file auth.py", "the class called Foo".
+    _NAMED_AFTER_RE = re.compile(
+        r"\s+(?:(?:named|called)\s+\S+"
+        r"|(?:[\w.-]*[_./0-9][\w./-]*|[A-Za-z][a-z0-9]*[A-Z]\w*"
+        r"|`[^`]+`|'[^']+'|\"[^\"]+\"))"
+    )
+    # A concrete anchor after "before"/"after": a date, version, sha, quote.
+    _TEMPORAL_ANCHOR_RE = re.compile(
+        r"\s+(?:commit\s+|version\s+|release\s+|tag\s+)?"
+        r"(?:\d{4}-\d{2}(?:-\d{2})?|\d{1,2}/\d{1,2}(?:/\d{2,4})?"
+        r"|v?\d+(?:\.\d+)+|[0-9a-f]{7,40}\b|`[^`]+`|'[^']+'|\"[^\"]+\")"
+    )
+    # "this repository" names the environment CORE runs in, not a lost referent.
+    _CONTEXT_NOUN_RE = re.compile(
+        r"\s+(?:repo|repository|project|workspace|codebase|conversation|chat|session)\b",
+        re.IGNORECASE,
+    )
+    # "the commit that added X": "that" after "<determiner> <noun>" opens a
+    # relative clause; it is not a pointer to something unsaid.
+    _RELATIVE_THAT_RE = re.compile(
+        r"\b(?:the|a|an|any|every|each|all)\s+[a-z][\w-]*\s+$", re.IGNORECASE
+    )
+    _RESOLVABLE_PRONOUNS = frozenset(
+        {"it", "that", "this", "those", "these", "they", "them"}
+    )
+
+    def _has_referent_before(self, text: str, pos: int) -> bool:
+        return any(m.end() <= pos for m in self._REFERENT_RE.finditer(text))
+
+    def _is_resolved(self, kind: str, match: re.Match, text: str) -> bool:
+        """True when the request itself resolves this hit, so it is not an
+        ambiguity worth a clarify round-trip."""
+        word = match.group(0).lower()
+        after = text[match.end() :]
+        if kind == "pronoun":
+            if word == "this" and self._CONTEXT_NOUN_RE.match(after):
+                return True
+            if word == "that" and self._RELATIVE_THAT_RE.search(text[: match.start()]):
+                return True
+            return word in self._RESOLVABLE_PRONOUNS and self._has_referent_before(
+                text, match.start()
+            )
+        if kind == "artifact":
+            return bool(self._NAMED_AFTER_RE.match(after))
+        if kind == "temporal":
+            return word in ("before", "after") and bool(
+                self._TEMPORAL_ANCHOR_RE.match(after)
+            )
+        if kind == "quantity":
+            # "some of them" after the request named them: a sample of a known set.
+            m = re.match(r"\s+of\s+(them|these|those)\b", after, re.IGNORECASE)
+            return bool(m) and self._has_referent_before(text, match.start())
+        if kind == "location":
+            return word == "there" and self._has_referent_before(text, match.start())
+        return False
 
     def detect_ambiguities(self, user_input: str) -> list[str]:
         """
@@ -290,6 +404,17 @@ Respond in JSON format:
         - Underspecified locations (there, somewhere, …)
         - Comparatives without a referent (better than, faster than, …)
 
+        A hit is skipped when the same request resolves it, so a fully
+        specified request is not sent to clarify:
+        - a pronoun, or "there", after an explicit referent (a path, file name,
+          URL, glob, quoted text, sha or identifier): "Read main.py and explain
+          what this module does";
+        - "this repository/project/workspace…" (the current environment);
+        - a relative "that" ("the commit that added X");
+        - "the function/file/…" followed by a name: "the function decide_gate";
+        - "before/after" followed by a date, version or sha: "after 2026-10-01";
+        - "some of them" when "them" is resolved.
+
         Returns a deduplicated list of human-readable ambiguity descriptions.
         Empty list means no ambiguities were detected.
         """
@@ -298,11 +423,12 @@ Respond in JSON format:
 
         found: list[str] = []
         seen_messages: set[str] = set()
-        lowered = user_input.lower()
 
-        for pattern, message_template in self._AMBIGUITY_PATTERNS:
-            for match in re.finditer(pattern, lowered, re.IGNORECASE):
-                matched_text = match.group(0)
+        for kind, pattern, message_template in self._AMBIGUITY_PATTERNS:
+            for match in re.finditer(pattern, user_input, re.IGNORECASE):
+                if self._is_resolved(kind, match, user_input):
+                    continue
+                matched_text = match.group(0).lower()
                 # For "the <artifact>" pattern keep the full matched phrase
                 message = message_template.format(match=matched_text)
                 if message not in seen_messages:

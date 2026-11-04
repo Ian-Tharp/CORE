@@ -181,3 +181,48 @@ class TestDeduplication:
         )
         # Expects: temporal (recently), pronoun (it), artifact (function), quantity (some)
         assert len(result) >= 3
+
+
+# ---------------------------------------------------------------------------
+# References the request resolves itself (paired-twin phrasing traps)
+# ---------------------------------------------------------------------------
+
+
+class TestResolvedReferences:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Show the git status of this repository",
+            "Show the git log for commits after 2026-10-01",
+            "Show the git log before v0.3.0",
+            "Read backend/app/main.py and explain what this module does",
+            "Search backend/tests for files named test_gate*.py and show me some of them",
+            "Read backend/app/core/agents/comprehension_gate.py and explain the function decide_gate",
+            "Explain the class CapabilityRegistry",
+            "Read the file auth.py",
+            "Show the commit that added backend/app/core/registry/actions.py",
+            "Open scratch/notes.txt and fix the typo in it",
+            "Go to backend/app and list the files there",
+        ],
+    )
+    def test_fully_specified_requests_are_clean(self, agent, text):
+        assert agent.detect_ambiguities(text) == []
+
+    @pytest.mark.parametrize(
+        "text,needle",
+        [
+            ("Show that commit", "'that'"),
+            ("Show the git status of that other repository", "'that'"),
+            ("Show the git log for commits after the refactor", "'after'"),
+            ("Read the module and explain what it does", "module"),
+            ("Show me some of the files", "'some'"),
+            ("Explain the function", "function"),
+            ("Show the commit that broke it", "'it'"),
+            ("Find the config somewhere in there", "somewhere"),
+            # a referent AFTER the pronoun does not resolve it
+            ("Fix it in main.py", "'it'"),
+        ],
+    )
+    def test_underspecified_twins_still_flagged(self, agent, text, needle):
+        result = agent.detect_ambiguities(text)
+        assert any(needle in r for r in result), result

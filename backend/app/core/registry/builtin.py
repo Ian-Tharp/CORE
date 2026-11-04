@@ -7,8 +7,10 @@ anti-drift contract — the system can never advertise a capability it can't run
 (MCP-server capabilities register through the same `CapabilityRegistry` in a later
 phase; this module covers the builtin tools.)
 
-Descriptions are written for retrieval quality, since comprehension's
-capability-presence check is lexical search over them.
+Descriptions are written for retrieval quality (``registry.search`` is lexical).
+``verbs`` lists the operation words each capability serves; the front gate uses
+them to refuse a request for an action a present root does not have (git push,
+file delete). Keep them in step with what the dispatcher handler really does.
 """
 
 from __future__ import annotations
@@ -40,6 +42,17 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
             description="Read the contents of a file in the workspace",
             params_schema=_PATH_SCHEMA,
             side_effects="read",
+            verbs=(
+                "read",
+                "open",
+                "view",
+                "show",
+                "display",
+                "cat",
+                "inspect",
+                "explain",
+                "summarize",
+            ),
             examples=["read main.py", "open and read a file from disk"],
         ),
         CapabilityEntry(
@@ -55,6 +68,16 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
                 "required": ["path", "content"],
             },
             side_effects="write",
+            verbs=(
+                "write",
+                "create",
+                "save",
+                "overwrite",
+                "edit",
+                "modify",
+                "update",
+                "append",
+            ),
             examples=["create a new file", "save changes to a file"],
         ),
         CapabilityEntry(
@@ -63,6 +86,7 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
             description="List the files and directories in a workspace folder",
             params_schema=_PATH_OPTIONAL_SCHEMA,  # path defaults to '.' in the dispatcher
             side_effects="read",
+            verbs=("list", "show", "display"),
             examples=["list the files in a directory"],
         ),
         CapabilityEntry(
@@ -78,6 +102,7 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
                 "required": ["pattern"],
             },
             side_effects="read",
+            verbs=("search", "find", "locate", "grep"),
             examples=["find files matching a name"],
         ),
     ],
@@ -87,12 +112,14 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
             name="Git status",
             description="Show the git working tree status: changed, staged and untracked files",
             side_effects="read",
+            verbs=("status", "show", "check"),
         ),
         CapabilityEntry(
             id="git.diff",
             name="Git diff",
             description="Show the git diff of changes in the repository",
             side_effects="read",
+            verbs=("diff", "show", "compare"),
             examples=["show me the diff", "what changed in the repo"],
         ),
         CapabilityEntry(
@@ -100,12 +127,14 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
             name="Git log",
             description="Show the git commit history log for the repository",
             side_effects="read",
+            verbs=("log", "show", "list", "find", "search"),
         ),
         CapabilityEntry(
             id="git.show",
             name="Git show",
             description="Show the contents of a git object such as a specific commit",
             side_effects="read",
+            verbs=("show", "inspect", "view", "display"),
         ),
     ],
     "web_research": [
@@ -119,6 +148,18 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
                 "required": ["url"],
             },
             side_effects="network",
+            verbs=(
+                "fetch",
+                "download",
+                "get",
+                "retrieve",
+                "read",
+                "open",
+                "view",
+                "show",
+                "browse",
+                "check",
+            ),
             examples=["fetch a documentation page", "download a web page over http"],
         ),
     ],
@@ -136,6 +177,19 @@ _BUILTIN: Dict[str, List[CapabilityEntry]] = {
                 "required": ["endpoint"],
             },
             side_effects="network",
+            verbs=(
+                "query",
+                "lookup",
+                "look",
+                "search",
+                "find",
+                "get",
+                "retrieve",
+                "list",
+                "show",
+                "check",
+                "count",
+            ),
             examples=["look up a record in the database"],
         ),
     ],
